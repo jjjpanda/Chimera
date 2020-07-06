@@ -1,6 +1,7 @@
 var express    = require('express')
 var serveIndex = require('serve-index')
 var path       = require('path')
+var ffmpeg     = require('fluent-ffmpeg');
 require('dotenv').config()
  
 var app = express()
@@ -8,7 +9,7 @@ var app = express()
 // Serve URLs like /ftp/thing as public/ftp/thing
 // The express.static serves the file contents
 // The serveIndex is this module serving the directory
-//app.use('/', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
+app.use('/', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
  
 const NodeMediaServer = require('node-media-server')
 
@@ -51,6 +52,21 @@ const config = {
         ]
     }
 }
+
+/* ffmpeg()
+  .addInput("video1.mp4")
+  .addInput('last.jpg').fps(12).loop(1)
+  .addInput("video2.mp4")
+  .on('error', function(err) {
+    console.log('An error occurred: ' + err.message);
+  })
+  .on('progress', function(progress) {
+    console.log('Processing: ' + progress.percent + '% done');
+  })
+  .on('end', function() {
+    console.log('Finished processing');
+  })
+  .mergeToFile('output.mp4', "/") */
 
 var nms = new NodeMediaServer(config)
 nms.run();
