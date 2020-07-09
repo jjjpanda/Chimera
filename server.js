@@ -68,8 +68,12 @@ const config = {
   })
   .mergeToFile('output.mp4', "/") */
 
-var nms = new NodeMediaServer(config)
-nms.run();
+if(process.env.mediaServer == "on"){
+  var nms = new NodeMediaServer(config)
+  nms.run();
+}
 
-// Listen
-app.listen(process.env.PORT || 8080)
+if(process.env.fileServer == "on"){
+  // Listen
+  app.listen(process.env.PORT || 8080)
+}
