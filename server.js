@@ -1,6 +1,7 @@
 var express    = require('express')
 var serveIndex = require('serve-index')
 var path       = require('path')
+var fs         = require('fs')
 var ffmpeg     = require('fluent-ffmpeg');
 require('dotenv').config()
  
@@ -53,10 +54,24 @@ const config = {
     }
 }
 
-/* ffmpeg()
-  .addInput("video1.mp4")
-  .addInput('last.jpg').fps(12).loop(1)
-  .addInput("video2.mp4")
+const dirList = fs.readdirSync(process.env.imgDir)
+console.log(dirList)
+let files = ""
+for (const file of dirList){
+  if(file.includes('.jpg')){
+    files += `file ${file}\n` 
+  }
+}
+fs.writeFileSync('img/mp4.txt', files)
+
+let videoCreator = ffmpeg(process.env.imgDir+"/mp4.txt").inputFormat('concat');
+  
+const createVideo = (creator) => {
+  creator
+  .outputFPS(12)
+  .videoBitrate(1024)
+  .videoCodec('libx264')
+  .format('mp4')
   .on('error', function(err) {
     console.log('An error occurred: ' + err.message);
   })
@@ -66,7 +81,11 @@ const config = {
   .on('end', function() {
     console.log('Finished processing');
   })
-  .mergeToFile('output.mp4', "/") */
+  .mergeToFile('output.mp4', process.env.imgDir+'/')
+}
+
+createVideo(videoCreator)
+  
 
 if(process.env.mediaServer == "on"){
   var nms = new NodeMediaServer(config)
