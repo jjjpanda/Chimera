@@ -4,6 +4,9 @@ var path       = require('path')
 var fs         = require('fs')
 var ffmpeg     = require('fluent-ffmpeg');
 require('dotenv').config()
+
+ffmpeg.setFfmpegPath(process.env.ffmpeg)
+ffmpeg.setFfprobePath(process.env.ffprobe)
  
 var app = express()
  
