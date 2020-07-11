@@ -62,7 +62,7 @@ for (const file of dirList){
     files += `file ${file}\n` 
   }
 }
-fs.writeFileSync('img/mp4.txt', files)
+fs.writeFileSync(process.env.imgDir+"/mp4.txt", files)
 
 let videoCreator = ffmpeg(process.env.imgDir+"/mp4.txt").inputFormat('concat');
   
