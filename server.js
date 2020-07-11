@@ -57,7 +57,7 @@ const config = {
     }
 }
 
-const dirList = fs.readdirSync(path.resolve(process.env.imgDir))
+const dirList = fs.readdirSync(process.env.imgDir)
 console.log(dirList)
 let files = ""
 for (const file of dirList){
@@ -65,9 +65,9 @@ for (const file of dirList){
     files += `file ${file}\n` 
   }
 }
-fs.writeFileSync(path.resolve(process.env.imgDir+"/mp4.txt"), files)
+fs.writeFileSync(process.env.imgDir+"/img.txt", files)
 
-let videoCreator = ffmpeg(process.env.imgDir+"/mp4.txt").inputFormat('concat');
+let videoCreator = ffmpeg(process.env.imgDir+"/img.txt").inputFormat('concat');
   
 const createVideo = (creator) => {
   creator
