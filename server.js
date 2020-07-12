@@ -62,12 +62,17 @@ console.log(dirList)
 let files = ""
 for (const file of dirList){
   if(file.includes('.jpg')){
-    files += `file ${file}\n` 
+    files += `file '${path.relative(__dirname, path.resolve(process.env.imgDir, file))}'\n` 
   }
 }
-fs.writeFileSync(path.resolve(process.env.imgDir+"/img.txt"), files)
+fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
 
-let videoCreator = ffmpeg(path.relative(__dirname, path.resolve(process.env.imgDir+"/img.txt"))).inputFormat('concat');
+/*
+*
+*
+*/
+
+/* let videoCreator = ffmpeg(path.relative(__dirname, path.resolve(process.env.imgDir,"img.txt"))).inputFormat('concat');
   
 const createVideo = (creator) => {
   creator
@@ -87,8 +92,12 @@ const createVideo = (creator) => {
   .mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
 }
 
-createVideo(videoCreator)
+createVideo(videoCreator) */
   
+/*
+*
+*
+*/
 
 if(process.env.mediaServer == "on"){
   var nms = new NodeMediaServer(config)
