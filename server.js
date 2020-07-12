@@ -71,7 +71,7 @@ console.log(dirList)
 let files = ""
 for (const file of dirList){
   if(file.includes('.jpg')){
-    files += `file '${file}'\n` 
+    files += `file '${file}'\r\n` 
   }
 }
 fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
