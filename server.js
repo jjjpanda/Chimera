@@ -7,6 +7,10 @@ require('dotenv').config()
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
+
+slash = (str) => {
+  return str.replace(/\\/g, "/")
+}
  
 var app = express()
  
@@ -57,12 +61,17 @@ const config = {
     }
 }
 
+/*
+*
+*
+*/
+
 const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
 console.log(dirList)
 let files = ""
 for (const file of dirList){
   if(file.includes('.jpg')){
-    files += `file '${path.relative(__dirname, path.resolve(process.env.imgDir, file))}'\n` 
+    files += `file '${file}'\n` 
   }
 }
 fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
@@ -72,7 +81,7 @@ fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
 *
 */
 
-/* let videoCreator = ffmpeg(path.relative(__dirname, path.resolve(process.env.imgDir,"img.txt"))).inputFormat('concat');
+let videoCreator = ffmpeg(process.env.imgDir+"/img.txt").inputFormat('concat'); //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
   
 const createVideo = (creator) => {
   creator
@@ -89,10 +98,10 @@ const createVideo = (creator) => {
   .on('end', function() {
     console.log('Finished processing');
   })
-  .mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+  .mergeToFile('output.mp4', process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
 }
 
-createVideo(videoCreator) */
+createVideo(videoCreator)
   
 /*
 *
