@@ -66,43 +66,47 @@ const config = {
 *
 */
 
-const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
-console.log(dirList)
-let files = ""
-for (const file of dirList){
-  if(file.includes('.jpg')){
-    files += `file '${file}'\r\n` 
+if(process.env.converter === "on"){
+  
+  const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
+  console.log(dirList)
+  let files = ""
+  for (const file of dirList.slice(-100)){
+    if(file.includes('.jpg')){
+      files += `file '${file}'\r\n` 
+    }
   }
-}
-fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
-
-/*
-*
-*
-*/
-
-let videoCreator = ffmpeg(process.env.imgDir+"/img.txt").inputFormat('concat'); //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
+  fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
   
-const createVideo = (creator) => {
-  creator
-  .outputFPS(12)
-  .videoBitrate(1024)
-  .videoCodec('libx264')
-  .format('mp4')
-  .on('error', function(err) {
-    console.log('An error occurred: ' + err.message);
-  })
-  .on('progress', function(progress) {
-    console.log('Processing: ' + progress.percent + '% done');
-  })
-  .on('end', function() {
-    console.log('Finished processing');
-  })
-  .mergeToFile('output.mp4', process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+  /*
+  *
+  *
+  */
+  
+  let videoCreator = ffmpeg(process.env.imgDir+"/img.txt").inputFormat('concat'); //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
+    
+  const createVideo = (creator) => {
+    creator
+    .outputFPS(12)
+    .videoBitrate(1024)
+    .videoCodec('libx264')
+    .format('mp4')
+    .on('error', function(err) {
+      console.log('An error occurred: ' + err.message);
+    })
+    .on('progress', function(progress) {
+      console.log('Processing: ' + progress.percent + '% done');
+    })
+    .on('end', function() {
+      console.log('Finished processing');
+    })
+    .mergeToFile('output.mp4', process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+  }
+  
+  createVideo(videoCreator)
+    
 }
 
-createVideo(videoCreator)
-  
 /*
 *
 *
