@@ -71,10 +71,8 @@ if(process.env.converter === "on"){
   const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
   console.log(dirList)
   let files = ""
-  for (const file of dirList.slice(-100)){
-    if(file.includes('.jpg')){
-      files += `file '${file}'\r\n` 
-    }
+  for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1000)){
+    files += `file '${file}'\r\n` 
   }
   fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
   
