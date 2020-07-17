@@ -71,7 +71,7 @@ if(process.env.converter === "on"){
   const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
   console.log(dirList)
   let files = ""
-  for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * process.env.frames)){
+  for (const file of dirList.filter(file => file.includes(".jpg") && file.split('-')[0] == process.env.camera).slice(-1 * process.env.frames)){
     files += `file '${file}'\r\n` 
   }
   fs.writeFileSync(path.resolve(process.env.imgDir, "img.txt"), files)
@@ -85,7 +85,7 @@ if(process.env.converter === "on"){
     
   const createVideo = (creator) => {
     creator
-    .outputFPS(12)
+    .outputFPS(17)
     .videoBitrate(1024)
     .videoCodec('libx264')
     .format('mp4')
