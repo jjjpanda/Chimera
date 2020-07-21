@@ -15,6 +15,7 @@
     "fluent-ffmpeg": "^2.1.2",
     "node-media-server": "^2.2.2",
     "nodemon": "^2.0.4",
-    "serve-index": "^1.9.1"
+    "serve-index": "^1.9.1",
+    "webdav-server": "^2.6.2"
   }
 }
