@@ -15,7 +15,7 @@ const server = new webdav.WebDAVServer({
 
 server.afterRequest((arg, next) => {
     console.log('>>', arg.request.method, arg.user.uid, arg.fullUri(), '>', arg.response.statusCode, arg.response.statusMessage);
-    console.log(arg.responseBody);
+    //console.log(arg.responseBody);
     next();
 });
 
