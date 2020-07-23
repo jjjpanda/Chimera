@@ -1,3 +1,4 @@
+require('dotenv').config()
 const NodeMediaServer = require('node-media-server')
 
 const config = {

@@ -1,3 +1,4 @@
+require('dotenv').config()
 var path       = require('path')
 var serveIndex = require('serve-index')
 var express    = require('express')
