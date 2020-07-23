@@ -25,9 +25,11 @@ module.exports = () => {
         }
     }).then(() => {
         ssh.exec(
-            "ls"
-        ).then(() => {
-            console.log("Command Executed")
+            "ls",
+            { cwd:'/home/oo/shared' }
+        ).then((result) => {
+            console.log('STDOUT: ' + result.stdout)
+            console.log('STDERR: ' + result.stderr)
         })
         ssh.exec(
             "sudo", 
@@ -36,8 +38,9 @@ module.exports = () => {
                 execOptions: { pty: true },
                 stdin: `${process.env.privateKey}\n`
             }
-        ).then(() => {
-            console.log("Command Executed")
+        ).then((result) => {
+            console.log('STDOUT: ' + result.stdout)
+            console.log('STDERR: ' + result.stderr)
         })
     }, (err) => {
         console.log(err)
