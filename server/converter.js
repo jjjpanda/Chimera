@@ -2,7 +2,7 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 var ffmpeg     = require('fluent-ffmpeg');
-const slash    = require('./slash.js')
+const slash    = require('../slash.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
