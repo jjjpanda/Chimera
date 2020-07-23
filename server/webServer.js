@@ -28,6 +28,7 @@ module.exports = () => {
             "sudo", 
             [`tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`], 
             {
+                execOptions: { pty: true },
                 stdin: `${process.env.privateKey}\n`
             }
         )
