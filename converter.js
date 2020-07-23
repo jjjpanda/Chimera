@@ -20,12 +20,12 @@ const convert = (camera, callback) => {
     let files = ""
     if(process.env.frames != "inf"){
         for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * process.env.frames)){
-        files += `file '${camera}/${file}'\r\n` 
+            files += `file '${camera}/${file}'\r\n` 
         }
     }
     else{
         for (const file of dirList.filter(file => file.includes(".jpg"))){
-        files += `file '${camera}/${file}'\r\n` 
+            files += `file '${camera}/${file}'\r\n` 
         }
     }
 
@@ -45,14 +45,14 @@ const convert = (camera, callback) => {
         .videoCodec('libx264')
         .format('mp4')
         .on('error', function(err) {
-        console.log('An error occurred: ' + err.message);
+            console.log('An error occurred: ' + err.message);
         })
         .on('progress', function(progress) {
-        console.log('Processing: ' + progress.percent + '% done');
+            console.log('Processing: ' + progress.percent + '% done');
         })
         .on('end', function() {
-        console.log('Finished processing');
-        fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
+            console.log('Finished processing');
+            fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
         if(cameras.length > 0){
             callback(cameras.pop(), convert)
         }
