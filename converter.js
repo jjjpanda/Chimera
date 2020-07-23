@@ -7,9 +7,6 @@ const slash    = require('./slash.js')
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
-const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir)))
-  
-console.log(dirList)
 let cameras = []
 for(let i = 0; i < process.env.cameras; i++){
     cameras.push(`${i+1}`)
@@ -18,15 +15,17 @@ console.log(cameras)
   
 const convert = (camera, callback) => {
 
+    const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir, camera)))
+ 
     let files = ""
     if(process.env.frames != "inf"){
-        for (const file of dirList.filter(file => file.includes(".jpg") && file.split('-')[0] == camera).slice(-1 * process.env.frames)){
-        files += `file '${file}'\r\n` 
+        for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * process.env.frames)){
+        files += `file '${camera}/${file}'\r\n` 
         }
     }
     else{
-        for (const file of dirList.filter(file => file.includes(".jpg") && file.split('-')[0] == camera)){
-        files += `file '${file}'\r\n` 
+        for (const file of dirList.filter(file => file.includes(".jpg"))){
+        files += `file '${camera}/${file}'\r\n` 
         }
     }
 
