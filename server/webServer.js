@@ -25,13 +25,20 @@ module.exports = () => {
         }
     }).then(() => {
         ssh.exec(
+            "ls"
+        ).then(() => {
+            console.log("Command Executed")
+        })
+        ssh.exec(
             "sudo", 
             [`tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`], 
             {
                 execOptions: { pty: true },
                 stdin: `${process.env.privateKey}\n`
             }
-        )
+        ).then(() => {
+            console.log("Command Executed")
+        })
     }, (err) => {
         console.log(err)
     })
