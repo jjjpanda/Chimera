@@ -15,7 +15,7 @@ const execCallback = (command, options=[]) => (req, res) => {
         else{
             console.log(`stdout: ${stdout}`);
             console.error(`stderr: ${stderr}`);
-                res.status(200).send(JSON.stringify({
+            res.status(200).send(JSON.stringify({
                 out: stdout,
                 err: stderr
             }))
@@ -23,14 +23,57 @@ const execCallback = (command, options=[]) => (req, res) => {
     });
 }
 
+const statusCheck = (req, res, next) => {
+    exec(`pidof -s motion`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            next()
+        }
+        else{
+            console.log(`stdout: ${stdout}`);
+            console.error(`stderr: ${stderr}`);
+            if(stdout != ""){
+                console.log(stdout)
+                next()
+            }
+            else{
+                res.status(200).send(JSON.stringify({
+                    out: stdout,
+                    err: stderr
+                }))
+            }
+        }
+    });
+}
 
-app.get("/on", execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
+const tmuxCheck = (req, res, next) => {
+    exec(`sudo tmux list-sessions`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            res.status(200).send(JSON.stringify(error));
+        }
+        else{
+            console.log(`stdout: ${stdout}`);
+            console.error(`stderr: ${stderr}`);
+            if(!stdout.includes("no server running")){
+                console.log(stdout)
+                next()
+            }
+            else{
+                res.status(200).send(JSON.stringify({
+                    out: stdout,
+                    err: stderr
+                }))
+            }
+        }
+    });
+}
 
-app.get('/status', execCallback(`pidof -s motion`))
+app.get("/on", statusCheck, execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
 
-app.get('/off', execCallback(`sudo tmux kill-server`))
+app.get('/off', tmuxCheck, execCallback(`sudo tmux kill-server`))
 
-app.get("/end", execCallback(`sudo pkill motion`))
+app.get("/end", statusCheck, execCallback(`sudo pkill motion`))
 
 // Listen
 module.exports = () => {
