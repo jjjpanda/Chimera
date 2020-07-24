@@ -15,7 +15,7 @@ console.log(cameras)
   
 const convert = (camera, callback) => {
 
-    const dirList = fs.readdirSync(path.relative(__dirname, path.resolve(process.env.imgDir, camera)))
+    const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
  
     let files = ""
     if(process.env.frames != "inf"){
