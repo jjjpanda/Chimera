@@ -24,24 +24,13 @@ const execCallback = (command, options=[]) => (req, res) => {
 }
 
 
-app.get("/on", execCallback(`sudo tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`))
+app.get("/on", execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
 
-app.get('/status', execCallback('pidof -s motion'))
+app.get('/status', execCallback(`pidof -s motion`))
 
-app.get("/off", execCallback("sudo pkill motion"))
+app.get('/off', execCallback(`sudo tmux kill-server`))
 
-app.get('/kill', execCallback('sudo tmux kill-session -t motion'))
-
-exec('pidof -s motion', (error, stdout, stderr) => {
-    if (error) {
-        console.error(`exec error: ${error}`);
-
-    }
-    console.log(`stdout: ${stdout}`);
-    console.error(`stderr: ${stderr}`);
-
-});
-
+app.get("/end", execCallback(`sudo pkill motion`))
 
 // Listen
 module.exports = () => {
