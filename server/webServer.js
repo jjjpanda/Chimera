@@ -24,11 +24,13 @@ const execCallback = (command, options=[]) => (req, res) => {
 }
 
 
-app.get("/on", execCallback(`tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`))
+app.get("/on", execCallback(`sudo tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`))
 
 app.get('/status', execCallback('pidof -s motion'))
 
-app.get("/off", execCallback("pkill -f motion")) 
+app.get("/off", execCallback("sudo pkill motion"))
+
+app.get('/kill', execCallback('sudo tmux kill-session -t motion'))
 
 exec('pidof -s motion', (error, stdout, stderr) => {
     if (error) {
