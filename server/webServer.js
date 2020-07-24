@@ -6,7 +6,7 @@ var { exec }   = require('child_process');
 
 var app = express()
 
-const execCallback = (command, options) => (req, res) => {
+const execCallback = (command, options=[]) => (req, res) => {
     exec(command, options, (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
@@ -24,13 +24,13 @@ const execCallback = (command, options) => (req, res) => {
 }
 
 
-app.get("/on", execCallback("tmux", [`new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`]))
+app.get("/on", execCallback(`tmux new-session -d -s motion "motion -c /home/oo/shared/motion.conf"`))
 
-app.get('/status', execCallback('pidof', ['motion']))
+app.get('/status', execCallback('pidof -s motion'))
 
-app.get("/off", execCallback("pkill", [`-f motion`])) 
+app.get("/off", execCallback("pkill -f motion")) 
 
-exec("pidof", ["motion"], (error, stdout, stderr) => {
+exec('pidof -s motion', (error, stdout, stderr) => {
     if (error) {
         console.error(`exec error: ${error}`);
 
