@@ -21,18 +21,17 @@ const sendRes = (req, res) => {
 }
 
 const execCallback = (command, c=0, options=[]) => (req, res, next) => {
-    console.log(command)
     ssh.exec(command, {
         args: options,
         pty: true,
         out: (out) => {
-            console.log("OUT: ",out);
+            console.log(`${command} OUT: `,out);
         },
         err: (err) => {
-            console.log("ERR: ",err); // this-does-not-exist: command not found
+            console.log(`${command} ERR: `,err); // this-does-not-exist: command not found
         },
         exit: (code) => {
-            console.log("EXIT CODE: ", code);
+            console.log(`${command} EXIT CODE: `, code);
             if(c == code){
                 next()
             }
