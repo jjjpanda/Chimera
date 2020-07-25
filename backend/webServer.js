@@ -36,14 +36,18 @@ const execCallback = (command, options=[]) => (req, res) => {
         args: options,
         out: function(stdout) {
             console.log(stdout);
+            res.status(200).send(JSON.stringify({
+                out: stdout,
+                command: "sent"
+            }))
         },
         err: function(stderr) {
             console.log(stderr); // this-does-not-exist: command not found
+            res.status(200).send(JSON.stringify(error));
         },
         exit: function(code) {
-            console.log(code); // 69
-        },
-        in: process.env.key
+            console.log(code);
+        }
     }).start();
 }
 
@@ -62,7 +66,7 @@ const statusCheck = (req, res, next) => {
             }))
 
         }
-    });
+    })
 }
 
 const tmuxCheck = (req, res, next) => {
@@ -108,7 +112,7 @@ app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
     index: "index.html"
 }))
 
-ssh.exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
+ssh.exec(`pidof -s motion`, {
     pty: true,
     out: function(stdout) {
         console.log("OUT ", stdout);
@@ -118,8 +122,7 @@ ssh.exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
     },
     exit: function(code) {
         console.log("EXIT ", code); // 69
-    },
-    in: process.env.key
+    }
 }).start();
 
 // Listen
