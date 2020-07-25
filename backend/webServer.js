@@ -2,13 +2,21 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 var express    = require('express')
+var serveIndex = require('serve-index')
+var SSH        = require('simple-ssh');
 var { exec }   = require('child_process');
+
+var ssh = new SSH({
+    host: process.env.host,
+    user: process.env.username,
+    pass: process.env.key
+});
 
 var app = express()
 
 const execCallback = (command, options=[]) => (req, res) => {
     console.log(command)
-    exec(command, options, (error, stdout, stderr) => {
+    /* exec(command, options, (error, stdout, stderr) => {
         if (error) {
             console.log("Command failed")
             console.error(`exec error: ${error}`);
@@ -23,7 +31,20 @@ const execCallback = (command, options=[]) => (req, res) => {
                 command: "sent"
             }))
         }
-    });
+    }); */
+    ssh.exec(command, {
+        args: options,
+        out: function(stdout) {
+            console.log(stdout);
+        },
+        err: function(stderr) {
+            console.log(stderr); // this-does-not-exist: command not found
+        },
+        exit: function(code) {
+            console.log(code); // 69
+        },
+        in: process.env.key
+    }).start();
 }
 
 const statusCheck = (req, res, next) => {
@@ -69,15 +90,37 @@ const tmuxCheck = (req, res, next) => {
     });
 }
 
-app.get("/on", statusCheck, execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
+if(process.env.fileServer){
+    app.use('/files', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
+}
 
-app.get("/off", execCallback(`sudo pkill motion`))
+if(process.env.converter){
+    app.post('/convert', require('./converter.js'))
+}
 
-app.get('/kill', tmuxCheck, execCallback(`sudo tmux kill-server`))
+app.post("/on", statusCheck, execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
+
+app.post("/off", execCallback(`sudo pkill motion`))
+
+app.post('/kill', tmuxCheck, execCallback(`sudo tmux kill-server`))
 
 app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
     index: "index.html"
 }))
+
+ssh.exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
+    args: options,
+    out: function(stdout) {
+        console.log(stdout);
+    },
+    err: function(stderr) {
+        console.log(stderr); // this-does-not-exist: command not found
+    },
+    exit: function(code) {
+        console.log(code); // 69
+    },
+    in: process.env.key
+}).start();
 
 // Listen
 module.exports = () => {
