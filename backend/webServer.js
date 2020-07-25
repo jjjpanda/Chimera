@@ -97,6 +97,7 @@ const startMotion = (req, res) => {
 
 const oneCommand = (req, res) => {
     return {
+        pty: true,
         out: (out) => {
             console.log(`OUT: `,out);
         },
