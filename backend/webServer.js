@@ -14,84 +14,43 @@ var ssh = new SSH({
 
 var app = express()
 
-const execCallback = (command, options=[]) => (req, res) => {
+const sendRes = (req, res) => {
+    res.status(200).send(JSON.stringify({
+        sent: true
+    }))
+}
+
+const execCallback = (command, c=0, options=[]) => (req, res, next) => {
     console.log(command)
-    /* exec(command, options, (error, stdout, stderr) => {
-        if (error) {
-            console.log("Command failed")
-            console.error(`exec error: ${error}`);
-            res.status(200).send(JSON.stringify(error));
-        }
-        else{
-            console.log(`stdout: ${stdout}`);
-            console.error(`stderr: ${stderr}`);
-            res.status(200).send(JSON.stringify({
-                out: stdout,
-                err: stderr,
-                command: "sent"
-            }))
-        }
-    }); */
+    var stdout, stderr, code
     ssh.exec(command, {
         args: options,
-        out: function(stdout) {
-            console.log(stdout);
-            res.status(200).send(JSON.stringify({
-                out: stdout,
-                command: "sent"
-            }))
+        out: (e) => {
+            console.log(e);
+            stdout = e
         },
-        err: function(stderr) {
-            console.log(stderr); // this-does-not-exist: command not found
-            res.status(200).send(JSON.stringify(error));
+        err: (e) => {
+            console.log(e); // this-does-not-exist: command not found
+            stderr = e;
         },
-        exit: function(code) {
-            console.log(code);
+        exit: (e) => {
+            console.log(e);
+            code = e
         }
-    }).start();
-}
-
-const statusCheck = (req, res, next) => {
-    exec(`pidof -s motion`, (error, stdout, stderr) => {
-        if (error) {
-            console.log("Process not running")
-            console.error(`exec error: ${error}`);
+    }).start().on('end', () => {
+        if(code == c){
             next()
         }
-        else{
+        else {
             res.status(200).send(JSON.stringify({
-                out: stdout,
-                err: stderr,
-                process: "running"
-            }))
-
-        }
-    })
-}
-
-const tmuxCheck = (req, res, next) => {
-    exec(`sudo tmux list-sessions`, (error, stdout, stderr) => {
-        if (error) {
-            console.log('TMUX not running')
-            console.error(`exec error: ${error}`);
-            res.status(200).send(JSON.stringify(error));
-        }
-        else{
-            console.log(`stdout: ${stdout}`);
-            console.error(`stderr: ${stderr}`);
-            if(!stdout.includes("no server running")){
-                console.log(stdout)
-                next()
-            }
-            else{
-                res.status(200).send(JSON.stringify({
-                    out: stdout,
-                    err: stderr,
-                    server: "running"
-                }))
-            }
+                error: true,
+                stdout, 
+                stderr,
+                code
+            }));
         }
     });
+
 }
 
 if(process.env.fileServer){
@@ -102,28 +61,15 @@ if(process.env.converter){
     app.post('/convert', require('./converter.js'))
 }
 
-app.post("/on", statusCheck, execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`))
+app.post("/on", execCallback(`pidof -s motion`, 1), execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`), sendRes)
 
-app.post("/off", execCallback(`sudo pkill motion`))
+app.post("/off", execCallback(`sudo pkill motion`), sendRes)
 
-app.post('/kill', tmuxCheck, execCallback(`sudo tmux kill-server`))
+app.post('/kill', execCallback(`sudo tmux list-sessions`, 1), execCallback(`sudo tmux kill-server`), sendRes)
 
 app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
     index: "index.html"
 }))
-
-ssh.exec(`pidof -s motion`, {
-    pty: true,
-    out: function(stdout) {
-        console.log("OUT ", stdout);
-    },
-    err: function(stderr) {
-        console.log("ERR ", stderr); // this-does-not-exist: command not found
-    },
-    exit: function(code) {
-        console.log("EXIT ", code); // 69
-    }
-}).start();
 
 // Listen
 module.exports = () => {
