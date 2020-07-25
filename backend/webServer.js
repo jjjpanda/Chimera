@@ -22,32 +22,28 @@ const sendRes = (req, res) => {
 
 const execCallback = (command, c=0, options=[]) => (req, res, next) => {
     console.log(command)
-    var stdout, stderr, code
     ssh.exec(command, {
         args: options,
-        out: (e) => {
-            console.log(e);
-            stdout = e
+        pty: true,
+        out: (out) => {
+            console.log(out);
         },
-        err: (e) => {
-            console.log(e); // this-does-not-exist: command not found
-            stderr = e;
+        err: (err) => {
+            console.log(err); // this-does-not-exist: command not found
         },
-        exit: (e) => {
-            console.log(e);
-            code = e
-        }
-    }).on('end', () => {
-        if(code == c){
-            next()
-        }
-        else {
-            res.status(200).send(JSON.stringify({
-                error: true,
-                stdout, 
-                stderr,
-                code
-            }));
+        exit: (code) => {
+            console.log(code);
+            if(c == code){
+                next()
+            }
+            else {
+                res.status(200).send(JSON.stringify({
+                    error: true,
+                    stdout, 
+                    stderr,
+                    code
+                }));
+            }
         }
     }).start();
 
