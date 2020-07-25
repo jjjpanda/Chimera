@@ -4,8 +4,6 @@ var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
 var SSH        = require('simple-ssh');
-var { exec }   = require('child_process');
-const { kill } = require('process')
 
 var ssh = new SSH({
     host: process.env.host,
@@ -14,37 +12,6 @@ var ssh = new SSH({
 });
 
 var app = express()
-
-const sendRes = (req, res) => {
-    res.status(200).send(JSON.stringify({
-        sent: true
-    }))
-}
-
-const execCallback = (command, c=0, options=[]) => (req, res, next) => {
-    ssh.exec(command, {
-        args: options,
-        pty: true,
-        out: (out) => {
-            console.log(`${command} OUT: `,out);
-        },
-        err: (err) => {
-            console.log(`${command} ERR: `,err); // this-does-not-exist: command not found
-        },
-        exit: (code) => {
-            console.log(`${command} EXIT CODE: `, code);
-            if(c == code){
-                next()
-            }
-            else {
-                res.status(200).send(JSON.stringify({
-                    error: true,
-                    code
-                }));
-            }
-        }
-    }).start();
-}
 
 const startMotion = (req, res) => {
     ssh.exec(`pidof -s motion`, {
