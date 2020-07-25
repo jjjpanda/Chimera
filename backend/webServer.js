@@ -43,7 +43,6 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
             }
         }
     }).start();
-
 }
 
 if(process.env.fileServer){
@@ -54,7 +53,10 @@ if(process.env.converter){
     app.post('/convert', require('./converter.js'))
 }
 
-app.post("/on", execCallback(`pidof -s motion`, 1), execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`), sendRes)
+app.post("/on", (req, res, next) => {
+    console.log("REQuEST")
+    next()
+}, execCallback(`pidof -s motion`, 1), execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`), sendRes)
 
 app.post("/off", execCallback(`sudo pkill motion`), sendRes)
 
