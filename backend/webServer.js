@@ -109,15 +109,15 @@ app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
 }))
 
 ssh.exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
-    args: options,
+    pty: true,
     out: function(stdout) {
-        console.log(stdout);
+        console.log("OUT ", stdout);
     },
     err: function(stderr) {
-        console.log(stderr); // this-does-not-exist: command not found
+        console.log("ERR ", stderr); // this-does-not-exist: command not found
     },
     exit: function(code) {
-        console.log(code); // 69
+        console.log("EXIT ", code); // 69
     },
     in: process.env.key
 }).start();
