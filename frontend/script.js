@@ -1,17 +1,17 @@
 document.getElementById('on').addEventListener('click', () => {
     fetch("/on", {
-        method: "GET"
+        method: "POST"
     })
 })
 
 document.getElementById('off').addEventListener('click', () => {
     fetch("/off", {
-        method: "GET"
+        method: "POST"
     })
 })
 
 document.getElementById('kill').addEventListener('click', () => {
     fetch("/kill", {
-        method: "GET"
+        method: "POST"
     })
 })

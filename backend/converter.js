@@ -6,20 +6,14 @@ const slash    = require('./slash.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
-
-let cameras = []
-for(let i = 0; i < process.env.cameras; i++){
-    cameras.push(`${i+1}`)
-}
-console.log(cameras)
   
-const convert = (camera, callback) => {
+const convert = (camera, frames, fps, res) => {
 
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
  
     let files = ""
-    if(process.env.frames != "inf"){
-        for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * process.env.frames)){
+    if(frames != "inf"){
+        for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * frames)){
             files += `file '${camera}/${file}'\r\n` 
         }
     }
@@ -40,7 +34,7 @@ const convert = (camera, callback) => {
         
     const createVideo = (creator) => {
         creator
-        .outputFPS(30)
+        .outputFPS(fps)
         .videoBitrate(1024)
         .videoCodec('libx264')
         .format('mp4')
@@ -53,17 +47,17 @@ const convert = (camera, callback) => {
         .on('end', function() {
             console.log('Finished processing');
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
-        if(cameras.length > 0){
-            callback(cameras.pop(), convert)
-        }
         })
-        .mergeToFile(`output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+        .pipe(res, {end: true})
+        //.mergeToFile(`output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
     }
 
     createVideo(videoCreator)
 
 }
 
-module.exports = () => {
-    convert(cameras.pop(), convert)
+module.exports = (req, res) => {
+    const { camera, frames, fps } = req.body;
+    res.attachment('output.mp4')
+    convert(camera, frames, fps, res)
 }
