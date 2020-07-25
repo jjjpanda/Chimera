@@ -5,6 +5,7 @@ var express    = require('express')
 var serveIndex = require('serve-index')
 var SSH        = require('simple-ssh');
 var { exec }   = require('child_process');
+const { kill } = require('process')
 
 var ssh = new SSH({
     host: process.env.host,
@@ -45,6 +46,97 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
     }).start();
 }
 
+const startMotion = (req, res) => {
+    ssh.exec(`pidof -s motion`, {
+        args: options,
+        out: (out) => {
+            console.log(`OUT: `,out);
+        },
+        err: (err) => {
+            console.log(`ERR: `,err); // this-does-not-exist: command not found
+        },
+        exit: (code) => {
+            console.log(`EXIT CODE: `, code);
+            if(code == 1){
+                console.log("next command")
+            }
+            else {
+                res.status(200).send(JSON.stringify({
+                    error: code,
+                    sent: false
+                }))
+                return false
+            }
+        }
+    })
+    .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
+        args: options,
+        pty: true,
+        out: (out) => {
+            console.log(`OUT: `,out);
+        },
+        err: (err) => {
+            console.log(`ERR: `,err); // this-does-not-exist: command not found
+        },
+        exit: (code) => {
+            console.log(`EXIT CODE: `, code);
+            if(code == 0){
+                res.status(200).send(JSON.stringify({
+                    error: code,
+                    sent: true
+                }))
+            }
+            else {
+                res.status(200).send(JSON.stringify({
+                    error: code,
+                    sent: false
+                }))
+            }
+        }
+    })
+    .start();
+}
+
+const stopMotion = (req, res) => {
+    ssh.exec(`sudo pkill motion`, {
+        args: options,
+        out: (out) => {
+            console.log(`OUT: `,out);
+        },
+        err: (err) => {
+            console.log(`ERR: `,err); // this-does-not-exist: command not found
+        },
+        exit: (code) => {
+            console.log(`EXIT CODE: `, code);
+            res.status(200).send(JSON.stringify({
+                error: code,
+                sent: true
+            }))
+        }
+    })
+    .start();
+}
+
+const killServer = (req, res) => {
+    ssh.exec(`sudo tmux kill-server`, {
+        args: options,
+        out: (out) => {
+            console.log(`OUT: `,out);
+        },
+        err: (err) => {
+            console.log(`ERR: `,err); // this-does-not-exist: command not found
+        },
+        exit: (code) => {
+            console.log(`EXIT CODE: `, code);
+            res.status(200).send(JSON.stringify({
+                error: code,
+                sent: true
+            }))
+        }
+    })
+    .start();
+}
+
 if(process.env.fileServer){
     app.use('/files', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
 }
@@ -53,14 +145,11 @@ if(process.env.converter){
     app.post('/convert', require('./converter.js'))
 }
 
-app.post("/on", (req, res, next) => {
-    console.log("REQuEST")
-    next()
-}, execCallback(`pidof -s motion`, 1), execCallback(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`), sendRes)
+app.post("/on", startMotion)
 
-app.post("/off", execCallback(`sudo pkill motion`), sendRes)
+app.post("/off", stopMotion)
 
-app.post('/kill', execCallback(`sudo tmux list-sessions`, 1), execCallback(`sudo tmux kill-server`), sendRes)
+app.post('/kill', killServer)
 
 app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
     index: "index.html"
