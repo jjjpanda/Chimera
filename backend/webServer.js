@@ -37,7 +37,7 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
             console.log(e);
             code = e
         }
-    }).start().on('end', () => {
+    }).on('end', () => {
         if(code == c){
             next()
         }
@@ -49,7 +49,7 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
                 code
             }));
         }
-    });
+    }).start();
 
 }
 
