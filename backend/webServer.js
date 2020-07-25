@@ -48,7 +48,6 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
 
 const startMotion = (req, res) => {
     ssh.exec(`pidof -s motion`, {
-        args: options,
         out: (out) => {
             console.log(`OUT: `,out);
         },
@@ -70,7 +69,6 @@ const startMotion = (req, res) => {
         }
     })
     .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
-        args: options,
         pty: true,
         out: (out) => {
             console.log(`OUT: `,out);
@@ -97,9 +95,8 @@ const startMotion = (req, res) => {
     .start();
 }
 
-const stopMotion = (req, res) => {
-    ssh.exec(`sudo pkill motion`, {
-        args: options,
+const oneCommand = (req, res) => {
+    return {
         out: (out) => {
             console.log(`OUT: `,out);
         },
@@ -113,27 +110,16 @@ const stopMotion = (req, res) => {
                 sent: true
             }))
         }
-    })
+    }
+}
+
+const stopMotion = (req, res) => {
+    ssh.exec(`sudo pkill motion`, oneCommand(req, res))
     .start();
 }
 
 const killServer = (req, res) => {
-    ssh.exec(`sudo tmux kill-server`, {
-        args: options,
-        out: (out) => {
-            console.log(`OUT: `,out);
-        },
-        err: (err) => {
-            console.log(`ERR: `,err); // this-does-not-exist: command not found
-        },
-        exit: (code) => {
-            console.log(`EXIT CODE: `, code);
-            res.status(200).send(JSON.stringify({
-                error: code,
-                sent: true
-            }))
-        }
-    })
+    ssh.exec(`sudo tmux kill-server`, oneCommand(req, res))
     .start();
 }
 
