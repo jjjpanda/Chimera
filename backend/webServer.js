@@ -39,8 +39,6 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
             else {
                 res.status(200).send(JSON.stringify({
                     error: true,
-                    stdout, 
-                    stderr,
                     code
                 }));
             }
