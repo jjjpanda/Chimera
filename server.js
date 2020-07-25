@@ -4,34 +4,34 @@ console.log("Starting Process:")
 if(process.env.converter === "on"){
   
   console.log('Starting Image Conversion')
-  require('./server/converter.js')()
+  require('./backend/converter.js')()
 
 }
 
 if(process.env.mediaServer == "on"){
   
   console.log("Starting Media Server and Streams")
-  require('./server/nodeMediaServer.js')()
+  require('./backend/nodeMediaServer.js')()
 
 }
 
 if(process.env.fileServer == "on"){
   
   console.log('Starting File Server')
-  require('./server/fileServer.js')()
+  require('./backend/fileServer.js')()
 
 }
 
 if(process.env.webdav == 'on'){
 
   console.log("Starting WebDav Server")
-  require('./webDav.js')()
+  require('./backend/webDav.js')()
 
 }
 
 if(process.env.webServer == "on"){
 
   console.log("Starting Web Command Server")
-  require('./server/webServer.js')()
+  require('./backend/webServer.js')()
 
 }
