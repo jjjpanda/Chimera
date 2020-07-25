@@ -26,13 +26,13 @@ const execCallback = (command, c=0, options=[]) => (req, res, next) => {
         args: options,
         pty: true,
         out: (out) => {
-            console.log(out);
+            console.log("OUT: ",out);
         },
         err: (err) => {
-            console.log(err); // this-does-not-exist: command not found
+            console.log("ERR: ",err); // this-does-not-exist: command not found
         },
         exit: (code) => {
-            console.log(code);
+            console.log("EXIT CODE: ", code);
             if(c == code){
                 next()
             }
