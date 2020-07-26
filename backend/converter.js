@@ -27,7 +27,7 @@ const createFileList = (camera, frames) => {
 
 const convert = (camera, fps, save, res) => {
 
-    if(save && save == "true") {
+    if( !(save && save == "true") ) {
         res.attachment('output.mp4')
     }
 
