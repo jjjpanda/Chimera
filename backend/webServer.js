@@ -5,22 +5,29 @@ var express    = require('express')
 var serveIndex = require('serve-index')
 var SSH        = require('simple-ssh');
 
-var ssh = new SSH({
+const sshAuth = {
     host: process.env.host,
     user: process.env.username,
     pass: process.env.key
-});
+}
+
+const output = {
+    out: (out) => {
+        console.log(`OUT: `,out);
+    },
+    err: (err) => {
+        console.log(`ERR: `,err); // this-does-not-exist: command not found
+    },
+}
 
 var app = express()
 
 const startMotion = (req, res) => {
+    console.log('START MOTION')
+    var ssh = new SSH(sshAuth);
+
     ssh.exec(`pidof -s motion`, {
-        out: (out) => {
-            console.log(`OUT: `,out);
-        },
-        err: (err) => {
-            console.log(`ERR: `,err); // this-does-not-exist: command not found
-        },
+        ...output,
         exit: (code) => {
             console.log(`EXIT CODE: `, code);
             if(code == 1){
@@ -37,12 +44,7 @@ const startMotion = (req, res) => {
     })
     .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
         pty: true,
-        out: (out) => {
-            console.log(`OUT: `,out);
-        },
-        err: (err) => {
-            console.log(`ERR: `,err); // this-does-not-exist: command not found
-        },
+        ...output,
         exit: (code) => {
             console.log(`EXIT CODE: `, code);
             if(code == 0){
@@ -62,15 +64,13 @@ const startMotion = (req, res) => {
     .start();
 }
 
-const oneCommand = (req, res) => {
-    return {
+const oneCommand = (command, msg) => (req, res) => {
+    console.log(msg)
+    var ssh = new SSH(sshAuth);
+
+    ssh.exec(command, {
         pty: true,
-        out: (out) => {
-            console.log(`OUT: `,out);
-        },
-        err: (err) => {
-            console.log(`ERR: `,err); // this-does-not-exist: command not found
-        },
+        ...output,
         exit: (code) => {
             console.log(`EXIT CODE: `, code);
             res.status(200).send(JSON.stringify({
@@ -78,16 +78,7 @@ const oneCommand = (req, res) => {
                 sent: true
             }))
         }
-    }
-}
-
-const stopMotion = (req, res) => {
-    ssh.exec(`sudo pkill motion`, oneCommand(req, res))
-    .start();
-}
-
-const killServer = (req, res) => {
-    ssh.exec(`sudo tmux kill-server`, oneCommand(req, res))
+    })
     .start();
 }
 
@@ -101,9 +92,11 @@ if(process.env.converter){
 
 app.post("/on", startMotion)
 
-app.post("/off", stopMotion)
+app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
 
-app.post('/kill', killServer)
+app.post('/status', oneCommand(`pidof -s motion`, "MOTION STATUS"))
+
+app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
 
 app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
     index: "index.html"
