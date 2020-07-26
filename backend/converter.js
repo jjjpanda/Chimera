@@ -9,23 +9,27 @@ ffmpeg.setFfprobePath(process.env.ffprobe)
   
 const createFileList = (camera, frames) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
- 
+    let total = 0
+
     let files = ""
     if(frames != "inf"){
         for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * frames)){
             files += `file '${camera}/${file}'\r\n` 
+            total++
         }
     }
     else{
         for (const file of dirList.filter(file => file.includes(".jpg"))){
             files += `file '${camera}/${file}'\r\n` 
+            total++
         }
     }
 
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${camera}.txt`), files)
+    return total
 }
 
-const convert = (camera, fps, save, res) => {
+const convert = (camera, fps, total, save, res) => {
 
     if( !(save && save == "true") ) {
         res.attachment('output.mp4')
@@ -42,9 +46,21 @@ const convert = (camera, fps, save, res) => {
         })
         .on('progress', function(progress) {
             console.log('Processing: ' + progress.percent + '% done');
+            if(save && save == "true"){
+                res.write(JSON.stringify({
+                    progress: progress.frames/total,
+                    url: `http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}.mp4`
+                }))
+            }
         })
         .on('end', function() {
             console.log('Finished processing');
+            if(save && save == "true"){
+                res.send(JSON.stringify({
+                    progress: 100,
+                    url: `http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}.mp4`
+                }))
+            }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
         })
 
@@ -52,10 +68,6 @@ const convert = (camera, fps, save, res) => {
         if(save && save == "true"){
             creator
                 .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
-            
-            res.send(JSON.stringify({
-                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}.mp4`
-            }))
         }
         else{
             creator
@@ -71,6 +83,6 @@ const convert = (camera, fps, save, res) => {
 module.exports = (req, res) => {
     //console.log(req)
     const { camera, frames, save, fps } = req.body;
-    createFileList(camera, frames)
-    convert(camera, fps, save, res)
+    const total = createFileList(camera, frames)
+    convert(camera, fps, total, save, res)
 }
