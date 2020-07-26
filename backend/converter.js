@@ -47,15 +47,15 @@ const convert = (camera, fps, save, res) => {
     const createVideo = (creator) => {
         if(save && save == "true"){
             creator
-            .outputOptions('-movflags frag_keyframe+empty_moov')
-            .pipe(res, {end: true}) 
-        }
-        else{
-            creator
-            .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+                .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
             res.send(JSON.stringify({
                 url: "http://192.168.1.230/shared/captures/"
             }))
+        }
+        else{
+            creator
+                .outputOptions('-movflags frag_keyframe+empty_moov')
+                .pipe(res, {end: true}) 
         }
     }
 
