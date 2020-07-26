@@ -110,13 +110,9 @@ if(process.env.converter == "on"){
 
 else if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use("/convert", proxy((pathname, req) => {
-        return pathname.match('/convert') && req.method === 'POST';
-    }, {
-        target: `http://${process.env.host}:${process.env.PORT}/`
-    }))
-    app.use("/status", proxy((pathname, req) => {
-        return pathname.match('/status') && req.method === 'POST';
+    app.use(/\/convert|\/status/, proxy((pathname, req) => {
+        console.log(pathname, req.body, req.method)
+        return (pathname.match('/convert') && req.method === 'POST') || (pathname.match('/status') && req.method === 'POST');
     }, {
         target: `http://${process.env.host}:${process.env.PORT}/`
     }))
