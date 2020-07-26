@@ -34,7 +34,8 @@ const convert = (camera, fps, res) => {
         .outputFPS(fps)
         .videoBitrate(1024)
         .videoCodec('libx264')
-        .toFormat('mpeg')
+        .outputOptions('-movflags frag_keyframe+empty_moov')
+        .toFormat('mp4')
         .on('error', function(err) {
             console.log('An error occurred: ' + err.message);
         })
