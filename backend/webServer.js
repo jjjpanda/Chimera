@@ -3,7 +3,7 @@ var fs         = require('fs')
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
-var proxy      = require('http-proxy-middleware')
+var proxy      = require('http-proxy-middleware').createProxyMiddleware
 var SSH        = require('simple-ssh');
 
 var app = express()
@@ -95,12 +95,8 @@ if(process.env.fileServer == "on"){
 
 else if(process.env.fileServer == "proxy"){
     console.log("File Server Proxied")
-    app.use("/proxy", proxy(`${process.env.host}:${process.env.PORT}/shared`, {
-        
-        proxyReqOptDecorator: function(proxyReqOpts, srcReq) {  
-            proxyReqOpts.method = 'GET';
-            return proxyReqOpts;
-          }
+    app.use("/shared", proxy({
+        target: `${process.env.host}:${process.env.PORT}/shared`
     }))
 }
 
@@ -112,8 +108,12 @@ if(process.env.converter == "on"){
 
 else if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.post('/convert', proxy(`${process.env.host}:${process.env.PORT}/convert`))
-    app.post("/status", proxy(`${process.env.host}:${process.env.PORT}/status`))
+    app.use("/convert", proxy({
+        target: `${process.env.host}:${process.env.PORT}/convert`
+    }))
+    app.use("/status", proxy({
+        target: `${process.env.host}:${process.env.PORT}/status`
+    }))
 }
 
 if(process.env.webServer == "on"){
