@@ -88,24 +88,28 @@ const oneCommand = (command, msg) => (req, res) => {
 }
 
 if(process.env.fileServer){
-    app.use('/files', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
+    app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
 }
 
 if(process.env.converter){
     app.post('/convert', require('./converter.js'))
 }
 
-app.post("/on", startMotion)
+if(process.env.webServer == "on"){
 
-app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
+    app.post("/on", startMotion)
 
-app.post('/status', oneCommand(`pidof -s motion`, "MOTION STATUS"))
+    app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
 
-app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
+    app.post('/status', oneCommand(`pidof -s motion`, "MOTION STATUS"))
 
-app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
-    index: "index.html"
+    app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
+
+    app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
+        index: "index.html"
 }))
+
+}
 
 // Listen
 module.exports = () => {

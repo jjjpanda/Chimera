@@ -48,8 +48,9 @@ const convert = (camera, fps, save, res) => {
         if(save && save == "true"){
             creator
                 .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+            
             res.send(JSON.stringify({
-                url: "http://192.168.1.230/shared/captures/"
+                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}.mp4`
             }))
         }
         else{
