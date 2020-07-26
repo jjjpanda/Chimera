@@ -7,8 +7,7 @@ const slash    = require('./slash.js')
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
   
-const convert = (camera, frames, fps, res) => {
-
+const createFileList = (camera, frames) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
  
     let files = ""
@@ -24,11 +23,9 @@ const convert = (camera, frames, fps, res) => {
     }
 
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${camera}.txt`), files)
+}
 
-    /*
-    *
-    *
-    */
+const convert = (camera, fps, res) => {
 
     let videoCreator = ffmpeg(process.env.imgDir+`/img_${camera}.txt`).inputFormat('concat'); //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         
@@ -37,7 +34,7 @@ const convert = (camera, frames, fps, res) => {
         .outputFPS(fps)
         .videoBitrate(1024)
         .videoCodec('libx264')
-        .format('mp4')
+        .toFormat('mpeg')
         .on('error', function(err) {
             console.log('An error occurred: ' + err.message);
         })
@@ -59,6 +56,8 @@ const convert = (camera, frames, fps, res) => {
 module.exports = (req, res) => {
     //console.log(req)
     const { camera, frames, fps } = req.body;
+    createFileList(camera, frames)
+    res.contentType('video/mp4');
     res.attachment('output.mp4')
-    convert(camera, frames, fps, res)
+    convert(camera, fps, res)
 }
