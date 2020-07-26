@@ -57,6 +57,7 @@ const convert = (camera, frames, fps, res) => {
 }
 
 module.exports = (req, res) => {
+    //console.log(req)
     const { camera, frames, fps } = req.body;
     res.attachment('output.mp4')
     convert(camera, frames, fps, res)

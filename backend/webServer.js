@@ -5,6 +5,13 @@ var express    = require('express')
 var serveIndex = require('serve-index')
 var SSH        = require('simple-ssh');
 
+var app = express()
+
+const bodyParser = require('body-parser');
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+
 const sshAuth = {
     host: process.env.host,
     user: process.env.username,
@@ -19,8 +26,6 @@ const output = {
         console.log(`ERR: `,err); // this-does-not-exist: command not found
     },
 }
-
-var app = express()
 
 const startMotion = (req, res) => {
     console.log('START MOTION')
