@@ -95,8 +95,10 @@ if(process.env.fileServer == "on"){
 
 else if(process.env.fileServer == "proxy"){
     console.log("File Server Proxied")
-    app.use("/shared", proxy({
-        target: `${process.env.host}:${process.env.PORT}/shared`
+    app.use("/shared", proxy((pathname, req) => {
+        return pathname.match('/shared');
+    },{
+        target: `http://${process.env.host}:${process.env.PORT}/`,
     }))
 }
 
@@ -108,11 +110,15 @@ if(process.env.converter == "on"){
 
 else if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use("/convert", proxy({
-        target: `${process.env.host}:${process.env.PORT}/convert`
+    app.use("/convert", proxy((pathname, req) => {
+        return pathname.match('/convert') && req.method === 'POST';
+    }, {
+        target: `http://${process.env.host}:${process.env.PORT}/`
     }))
-    app.use("/status", proxy({
-        target: `${process.env.host}:${process.env.PORT}/status`
+    app.use("/status", proxy((pathname, req) => {
+        return pathname.match('/status') && req.method === 'POST';
+    }, {
+        target: `http://${process.env.host}:${process.env.PORT}/`
     }))
 }
 

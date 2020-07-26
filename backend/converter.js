@@ -44,7 +44,7 @@ const convert = (camera, fps, rand, save, res) => {
             console.log('An error occurred: ' + err.message);
         })
         .on('progress', function(progress) {
-            console.log('Processing: ' + progress.frames + '% done');
+            console.log('Processing: ' + progress.frames + ' done');
         })
         .on('end', function() {
             console.log('Finished processing');
@@ -76,6 +76,7 @@ module.exports = {
     convert: (req, res) => {
         //console.log(req)
         const { camera, frames, save, fps } = req.body;
+        console.log(camera, frames, fps)
         const rand = createFileList(camera, frames)
         convert(camera, fps, rand, save, res)
     },
