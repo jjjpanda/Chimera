@@ -3,7 +3,7 @@ var fs         = require('fs')
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
-var proxy      = require('express-http-proxy')
+var proxy      = require('http-proxy-middleware')
 var SSH        = require('simple-ssh');
 
 var app = express()
@@ -89,25 +89,35 @@ const oneCommand = (command, msg) => (req, res) => {
 }
 
 if(process.env.fileServer == "on"){
+    console.log("File Server On")
     app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
 }
 
 else if(process.env.fileServer == "proxy"){
-    app.use("/shared", proxy(`${process.env.host}:${process.env.PORT}/shared`))
+    console.log("File Server Proxied")
+    app.use("/proxy", proxy(`${process.env.host}:${process.env.PORT}/shared`, {
+        
+        proxyReqOptDecorator: function(proxyReqOpts, srcReq) {  
+            proxyReqOpts.method = 'GET';
+            return proxyReqOpts;
+          }
+    }))
 }
 
 if(process.env.converter == "on"){
+    console.log("Converter On")
     app.post('/convert', require('./converter.js').convert)
     app.post("/status", require('./converter.js').status )
 }
 
 else if(process.env.converter == "proxy"){
+    console.log("Converter Proxied")
     app.post('/convert', proxy(`${process.env.host}:${process.env.PORT}/convert`))
     app.post("/status", proxy(`${process.env.host}:${process.env.PORT}/status`))
 }
 
 if(process.env.webServer == "on"){
-
+    console.log("Motion Controls On")
     app.post("/on", startMotion)
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
     app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
@@ -115,7 +125,6 @@ if(process.env.webServer == "on"){
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
     }))
-
 }
 
 // Listen
