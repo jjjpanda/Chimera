@@ -25,16 +25,13 @@ const createFileList = (camera, frames) => {
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${camera}.txt`), files)
 }
 
-const convert = (camera, fps, res) => {
+const convert = (camera, fps, save, res) => {
 
-    let videoCreator = ffmpeg(process.env.imgDir+`/img_${camera}.txt`).inputFormat('concat'); //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
-        
-    const createVideo = (creator) => {
-        creator
+    let videoCreator = ffmpeg(process.env.imgDir+`/img_${camera}.txt`)
+        .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         .outputFPS(fps)
         .videoBitrate(1024)
         .videoCodec('libx264')
-        .outputOptions('-movflags frag_keyframe+empty_moov')
         .toFormat('mp4')
         .on('error', function(err) {
             console.log('An error occurred: ' + err.message);
@@ -46,8 +43,20 @@ const convert = (camera, fps, res) => {
             console.log('Finished processing');
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
         })
-        .pipe(res, {end: true})
-        .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+
+    const createVideo = (creator) => {
+        if(save && save == "true"){
+            creator
+            .outputOptions('-movflags frag_keyframe+empty_moov')
+            .pipe(res, {end: true}) 
+        }
+        else{
+            creator
+            .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+            res.send(JSON.stringify({
+                url: "http://192.168.1.230/shared/captures/"
+            }))
+        }
     }
 
     createVideo(videoCreator)
@@ -56,8 +65,8 @@ const convert = (camera, fps, res) => {
 
 module.exports = (req, res) => {
     //console.log(req)
-    const { camera, frames, fps } = req.body;
+    const { camera, frames, save, fps } = req.body;
     createFileList(camera, frames)
     res.attachment('output.mp4')
-    convert(camera, fps, res)
+    convert(camera, fps, save, res)
 }
