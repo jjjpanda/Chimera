@@ -3,6 +3,7 @@ var fs         = require('fs')
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
+var proxy      = require('express-http-proxy')
 var SSH        = require('simple-ssh');
 
 var app = express()
@@ -87,28 +88,33 @@ const oneCommand = (command, msg) => (req, res) => {
     .start();
 }
 
-if(process.env.fileServer){
+if(process.env.fileServer == "on"){
     app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
 }
 
-if(process.env.converter){
+else if(process.env.fileServer == "proxy"){
+    app.use("/shared", proxy(`${process.env.host}:${process.env.PORT}/shared`))
+}
+
+if(process.env.converter == "on"){
     app.post('/convert', require('./converter.js').convert)
     app.post("/status", require('./converter.js').status )
+}
+
+else if(process.env.converter == "proxy"){
+    app.post('/convert', proxy(`${process.env.host}:${process.env.PORT}/convert`))
+    app.post("/status", proxy(`${process.env.host}:${process.env.PORT}/status`))
 }
 
 if(process.env.webServer == "on"){
 
     app.post("/on", startMotion)
-
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
-
     app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
-
     app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
-}))
+    }))
 
 }
 
