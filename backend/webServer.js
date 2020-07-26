@@ -92,7 +92,7 @@ if(process.env.fileServer){
 }
 
 if(process.env.converter){
-    app.post('/convert', require('./converter.js'))
+    app.post('/convert', require('./converter.js').convert)
 }
 
 if(process.env.webServer == "on"){

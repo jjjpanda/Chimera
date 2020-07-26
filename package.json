@@ -19,6 +19,7 @@
     "nodemon": "^2.0.4",
     "serve-index": "^1.9.1",
     "simple-ssh": "^1.0.0",
+    "uuid": "^8.2.0",
     "webdav-server": "^2.6.2"
   }
 }
