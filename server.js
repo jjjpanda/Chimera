@@ -15,9 +15,5 @@ if(process.env.webdav == 'on'){
 
 }
 
-if(process.env.webServer == "on"){
-
-  console.log("Starting Web Command Server")
-  require('./backend/webServer.js')()
-
-}
+console.log("Starting Web Command Server")
+require('./backend/webServer.js')()
