@@ -47,7 +47,7 @@ const convert = (camera, fps, res) => {
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${camera}.txt`))
         })
         .pipe(res, {end: true})
-        //.mergeToFile(`output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+        .mergeToFile(`${process.env.imgDir}/output_${camera}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
     }
 
     createVideo(videoCreator)
@@ -58,7 +58,6 @@ module.exports = (req, res) => {
     //console.log(req)
     const { camera, frames, fps } = req.body;
     createFileList(camera, frames)
-    res.contentType('video/mp4');
     res.attachment('output.mp4')
     convert(camera, fps, res)
 }
