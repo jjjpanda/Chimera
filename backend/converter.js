@@ -27,6 +27,10 @@ const createFileList = (camera, frames) => {
 
 const convert = (camera, fps, save, res) => {
 
+    if(save && save == "true") {
+        res.attachment('output.mp4')
+    }
+
     let videoCreator = ffmpeg(process.env.imgDir+`/img_${camera}.txt`)
         .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         .outputFPS(fps)
@@ -68,6 +72,5 @@ module.exports = (req, res) => {
     //console.log(req)
     const { camera, frames, save, fps } = req.body;
     createFileList(camera, frames)
-    res.attachment('output.mp4')
     convert(camera, fps, save, res)
 }
