@@ -10,28 +10,25 @@ ffmpeg.setFfprobePath(process.env.ffprobe)
   
 const createFileList = (camera, frames) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
-    let total = 0
     const rand =  uuid();
 
     let files = ""
     if(frames != "inf"){
         for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * frames)){
             files += `file '${camera}/${file}'\r\n` 
-            total++
         }
     }
     else{
         for (const file of dirList.filter(file => file.includes(".jpg"))){
             files += `file '${camera}/${file}'\r\n` 
-            total++
         }
     }
 
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
-    return { total, rand } 
+    return rand
 }
 
-const convert = (camera, fps, total, rand, save, res) => {
+const convert = (camera, fps, rand, save, res) => {
 
     if( !(save && save == "true") ) {
         res.attachment('output.mp4')
@@ -47,7 +44,7 @@ const convert = (camera, fps, total, rand, save, res) => {
             console.log('An error occurred: ' + err.message);
         })
         .on('progress', function(progress) {
-            console.log('Processing: ' + progress.frames/total + '% done');
+            console.log('Processing: ' + progress.frames + '% done');
         })
         .on('end', function() {
             console.log('Finished processing');
@@ -79,8 +76,8 @@ module.exports = {
     convert: (req, res) => {
         //console.log(req)
         const { camera, frames, save, fps } = req.body;
-        const { total, rand } = createFileList(camera, frames)
-        convert(camera, fps, total, rand, save, res)
+        const rand = createFileList(camera, frames)
+        convert(camera, fps, rand, save, res)
     },
 
     status: (req, res) => {

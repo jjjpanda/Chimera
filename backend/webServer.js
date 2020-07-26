@@ -93,6 +93,7 @@ if(process.env.fileServer){
 
 if(process.env.converter){
     app.post('/convert', require('./converter.js').convert)
+    app.post("/status", require('./converter.js').status )
 }
 
 if(process.env.webServer == "on"){
@@ -101,7 +102,7 @@ if(process.env.webServer == "on"){
 
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
 
-    app.post('/status', oneCommand(`pidof -s motion`, "MOTION STATUS"))
+    app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
 
     app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
 
