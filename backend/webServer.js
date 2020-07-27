@@ -8,10 +8,37 @@ var SSH        = require('simple-ssh');
 
 var app = express()
 
-const bodyParser = require('body-parser');
+if(process.env.fileServer == "on"){
+    console.log("File Server On")
+    app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
+}
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+else if(process.env.fileServer == "proxy"){
+    console.log("File Server Proxied")
+    app.use("/shared", proxy((pathname, req) => {
+        return pathname.match('/shared');
+    },{
+        target: `http://${process.env.host}:${process.env.PORT}/`,
+        logLevel: 'debug',
+    }))
+}
+
+if(process.env.converter == "on"){
+    console.log("Converter On")
+    app.post('/convert', require('./converter.js').convert)
+    app.post("/status", require('./converter.js').status )
+}
+
+else if(process.env.converter == "proxy"){
+    console.log("Converter Proxied")
+    app.use(/\/convert|\/status/, proxy((pathname, req) => {
+        console.log(pathname, req.body, req.method)
+        return (pathname.match(/\/convert|\/status/) && req.method === 'POST');
+    }, {
+        target: `http://${process.env.host}:${process.env.PORT}/`,
+        logLevel: 'debug',
+    }))
+}
 
 const sshAuth = {
     host: process.env.host,
@@ -85,40 +112,13 @@ const oneCommand = (command, msg) => (req, res) => {
             }))
         }
     })
+    .on('ready', () => {
+        console.log("ssh connected")
+    })
     .start();
 }
 
-if(process.env.fileServer == "on"){
-    console.log("File Server On")
-    app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
-}
-
-else if(process.env.fileServer == "proxy"){
-    console.log("File Server Proxied")
-    app.use("/shared", proxy((pathname, req) => {
-        return pathname.match('/shared');
-    },{
-        target: `http://${process.env.host}:${process.env.PORT}/`,
-    }))
-}
-
-if(process.env.converter == "on"){
-    console.log("Converter On")
-    app.post('/convert', require('./converter.js').convert)
-    app.post("/status", require('./converter.js').status )
-}
-
-else if(process.env.converter == "proxy"){
-    console.log("Converter Proxied")
-    app.use(/\/convert|\/status/, proxy((pathname, req) => {
-        console.log(pathname, req.body, req.method)
-        return (pathname.match('/convert') && req.method === 'POST') || (pathname.match('/status') && req.method === 'POST');
-    }, {
-        target: `http://${process.env.host}:${process.env.PORT}/`
-    }))
-}
-
-if(process.env.webServer == "on"){
+if(process.env.commandServer == "on"){
     console.log("Motion Controls On")
     app.post("/on", startMotion)
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
@@ -129,6 +129,10 @@ if(process.env.webServer == "on"){
     }))
 }
 
+const bodyParser = require('body-parser');
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 // Listen
 module.exports = () => {
     
