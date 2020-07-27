@@ -14,18 +14,16 @@ if(process.env.fileServer == "proxy"){
         return pathname.match('/shared');
     },{
         target: `http://${process.env.host}:${process.env.PORT}/`,
-        logLevel: 'debug',
     }))
 }
 
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
     app.use(/\/convert|\/status/, proxy((pathname, req) => {
-        console.log(pathname, req.body, req.method)
+        console.log(pathname, req.method)
         return (pathname.match(/\/convert|\/status/) && req.method === 'POST');
     }, {
         target: `http://${process.env.host}:${process.env.PORT}/`,
-        logLevel: 'debug',
     }))
 }
 
@@ -48,10 +46,13 @@ if(process.env.converter == "on"){
 
 if(process.env.commandServer == "on"){
     console.log("Motion Controls On")
+
     app.post("/on", commands.startMotion)
     app.post("/off", commands.oneCommand(`sudo pkill motion`, "MOTION OFF"))
     app.post('/motion', commands.oneCommand(`pidof -s motion`, "MOTION STATUS"))
     app.post('/kill', commands.oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
+    app.post('/size', commands.oneCommand(`du -sh ${process.env.hostImgDir}`, "SIZE CHECK"))
+    
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
     }))
