@@ -12,11 +12,11 @@ const lines = (output, error) => {
     return { 
         out: (out) => {
             console.log(`OUT: `,out);
-            output += `${out}\n`
+            output(`${out}\n`)
         },
         err: (err) => {
             console.log(`ERR: `,err); // this-does-not-exist: command not found
-            error += `${err}\n`
+            error(`${err}\n`)
         }
     }
 }
@@ -27,10 +27,21 @@ module.exports = {
         var ssh = new SSH(sshAuth);
 
         let output = "", error = ""
+        let outputChanger = (res) => {
+            output += res
+        }
+        let errorChanger = (res) => {
+            error += res
+        }
+
+        let commandAppends = ""
+        if(req.body && req.body.commandAppends){
+            commandAppends = req.body.commandAppends
+        }
     
-        ssh.exec(command, {
+        ssh.exec(command + commandAppends, {
             pty: true,
-            ...lines(output, error),
+            ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
                 res.status(200).send(JSON.stringify({
@@ -49,9 +60,15 @@ module.exports = {
         var ssh = new SSH(sshAuth);
 
         let output = "", error = ""
+        let outputChanger = (res) => {
+            output += res
+        }
+        let errorChanger = (res) => {
+            error += res
+        }
     
         ssh.exec(`pidof -s motion`, {
-            ...lines(output, error),
+            ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
                 if(code == 1){
@@ -70,7 +87,7 @@ module.exports = {
         })
         .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
             pty: true,
-            ...lines(output, error),
+            ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
                 res.status(200).send(JSON.stringify({

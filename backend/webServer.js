@@ -2,15 +2,20 @@ require('dotenv').config()
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
-var proxy      = require('http-proxy-middleware').createProxyMiddleware
-var commands   = require('./commands.js')
+var {
+    createProxyMiddleware
+}              = require('http-proxy-middleware')
+var { 
+    startMotion, 
+    oneCommand 
+}              = require('./commands.js')
 
 var app = express()
 
 //PROXY
 if(process.env.fileServer == "proxy"){
     console.log("File Server Proxied")
-    app.use("/shared", proxy((pathname, req) => {
+    app.use("/shared", createProxyMiddleware((pathname, req) => {
         return pathname.match('/shared');
     },{
         target: `http://${process.env.host}:${process.env.PORT}/`,
@@ -19,7 +24,7 @@ if(process.env.fileServer == "proxy"){
 
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use(/\/convert|\/status/, proxy((pathname, req) => {
+    app.use(/\/convert|\/status/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
         return (pathname.match(/\/convert|\/status/) && req.method === 'POST');
     }, {
@@ -47,11 +52,13 @@ if(process.env.converter == "on"){
 if(process.env.commandServer == "on"){
     console.log("Motion Controls On")
 
-    app.post("/on", commands.startMotion)
-    app.post("/off", commands.oneCommand(`sudo pkill motion`, "MOTION OFF"))
-    app.post('/motion', commands.oneCommand(`pidof -s motion`, "MOTION STATUS"))
-    app.post('/kill', commands.oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-    app.post('/size', commands.oneCommand(`du -sh ${process.env.hostImgDir}`, "SIZE CHECK"))
+    app.post("/on", startMotion)
+    app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
+    app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
+    app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
+    app.post('/size', oneCommand(`du -sh ${process.env.hostImgDir}`, "SIZE CHECK"))
+    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.hostImgDir}/output*`, "DELETE VIDEOS"))
+    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.hostImgDir}/`, "DELETE IMAGES"))
     
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
