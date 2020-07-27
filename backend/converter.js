@@ -83,8 +83,10 @@ module.exports = {
 
     status: (req, res) => {
         const { id } = req.body
+        console.log(id)
         res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
+            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
+            id
         }))
     }
 }

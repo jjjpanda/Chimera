@@ -8,33 +8,38 @@ const sshAuth = {
     pass: process.env.key
 }
 
-const output = {
-    out: (out) => {
-        console.log(`OUT: `,out);
-    },
-    err: (err) => {
-        console.log(`ERR: `,err); // this-does-not-exist: command not found
-    },
+const lines = (output, error) => {
+    return { 
+        out: (out) => {
+            console.log(`OUT: `,out);
+            output += `${out}\n`
+        },
+        err: (err) => {
+            console.log(`ERR: `,err); // this-does-not-exist: command not found
+            error += `${err}\n`
+        }
+    }
 }
 
 module.exports = {
     oneCommand: (command, msg) => (req, res) => {
         console.log(msg)
         var ssh = new SSH(sshAuth);
+
+        let output = "", error = ""
     
         ssh.exec(command, {
             pty: true,
-            ...output,
+            ...lines(output, error),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
                 res.status(200).send(JSON.stringify({
-                    error: code,
-                    sent: true
+                    code,
+                    sent: true,
+                    output,
+                    error
                 }))
             }
-        })
-        .on('ready', () => {
-            console.log("ssh connected")
         })
         .start();
     },
@@ -42,9 +47,11 @@ module.exports = {
     startMotion: (req, res) => {
         console.log('START MOTION')
         var ssh = new SSH(sshAuth);
+
+        let output = "", error = ""
     
         ssh.exec(`pidof -s motion`, {
-            ...output,
+            ...lines(output, error),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
                 if(code == 1){
@@ -52,8 +59,10 @@ module.exports = {
                 }
                 else {
                     res.status(200).send(JSON.stringify({
-                        error: code,
-                        sent: false
+                        code,
+                        sent: false,
+                        output,
+                        error
                     }))
                     return false
                 }
@@ -61,21 +70,15 @@ module.exports = {
         })
         .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
             pty: true,
-            ...output,
+            ...lines(output, error),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
-                if(code == 0){
-                    res.status(200).send(JSON.stringify({
-                        error: code,
-                        sent: true
-                    }))
-                }
-                else {
-                    res.status(200).send(JSON.stringify({
-                        error: code,
-                        sent: false
-                    }))
-                }
+                res.status(200).send(JSON.stringify({
+                    code,
+                    sent: code == 0,
+                    output,
+                    error,
+                }))
             }
         })
         .start();
