@@ -19,8 +19,8 @@
     "node-ssh": "^10.0.2",
     "nodemon": "^2.0.4",
     "serve-index": "^1.9.1",
+    "shortid": "^2.2.15",
     "simple-ssh": "^1.0.0",
-    "uuid": "^8.2.0",
     "webdav-server": "^2.6.2"
   }
 }

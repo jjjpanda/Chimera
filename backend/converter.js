@@ -2,7 +2,7 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 var ffmpeg     = require('fluent-ffmpeg');
-var uuid       = require('uuid').v4
+var shortid       = require("shortid")
 const slash    = require('./slash.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
@@ -10,7 +10,7 @@ ffmpeg.setFfprobePath(process.env.ffprobe)
   
 const createFileList = (camera, frames) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
-    const rand =  uuid();
+    const rand =  shortid.generate();
 
     let files = ""
     if(frames != "inf"){
