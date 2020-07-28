@@ -73,10 +73,33 @@ const convert = (camera, fps, rand, save, res) => {
 }
 
 module.exports = {
+    validateVideoDetails: (req, res, next) => {
+        const { camera, frames, save, fps } = req.body;
+        
+        if(camera == undefined || frames == undefined || save == undefined || fps == undefined){
+            res.statusCode(400)
+        }
+        else{
+            next()
+        }
+    },
+
+    validateID: (req, res) => {
+        const { id } = req.body
+        
+        if(id == undefined){
+            res.statusCode(400)
+        }
+        else{
+            next()
+        }
+    },
+
     convert: (req, res) => {
         //console.log(req)
         const { camera, frames, save, fps } = req.body;
-    
+        
+        camera = camera.toString()
         console.log(camera, frames, fps)
         const rand = createFileList(camera, frames)
         convert(camera, fps, rand, save, res)

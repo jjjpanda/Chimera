@@ -6,6 +6,8 @@ var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
 var {
+    validateVideoDetails,
+    validateID,
     convert,
     status,
     deleteVideo
@@ -50,9 +52,9 @@ if(process.env.fileServer == "on"){
 
 if(process.env.converter == "on"){
     console.log("Converter On")
-    app.post('/convert', convert)
-    app.post("/status", status)
-    app.post("/deleteVideo", deleteVideo)
+    app.post('/convert', validateVideoDetails, convert)
+    app.post("/status", validateID, status)
+    app.post("/deleteVideo", validateID, deleteVideo)
 }
 
 if(process.env.commandServer == "on"){
