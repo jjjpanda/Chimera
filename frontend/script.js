@@ -23,7 +23,7 @@ document.getElementById('convert').addEventListener('click', () => {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            camera: "1", // or 1
+            camera: 1,
             fps: 15,
             frames: 150,
             save: false
