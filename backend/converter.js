@@ -76,6 +76,7 @@ module.exports = {
     convert: (req, res) => {
         //console.log(req)
         const { camera, frames, save, fps } = req.body;
+    
         console.log(camera, frames, fps)
         const rand = createFileList(camera, frames)
         convert(camera, fps, rand, save, res)
@@ -83,10 +84,21 @@ module.exports = {
 
     status: (req, res) => {
         const { id } = req.body
+
         console.log(id)
         res.send(JSON.stringify({
             running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
             id
+        }))
+    },
+
+    deleteVideo: (req, res) => {
+        const { id } = req.body
+
+        console.log(id)
+        fs.unlinkSync(path.resolve(process.env.imgDir, `output_${camera}_${rand}.mp4`))
+        res.send(JSON.stringify({
+            deleted: id
         }))
     }
 }
