@@ -22,7 +22,7 @@ const lines = (output, error) => {
 }
 
 module.exports = {
-    oneCommand: (command, msg) => (req, res) => {
+    oneCommand: (command, msg, appendable=false) => (req, res) => {
         console.log(msg)
         var ssh = new SSH(sshAuth);
 
@@ -35,7 +35,7 @@ module.exports = {
         }
 
         let commandAppends = ""
-        if(req.body && req.body.commandAppends){
+        if(appendable && req.body && req.body.commandAppends){
             commandAppends = req.body.commandAppends
         }
     
@@ -85,7 +85,7 @@ module.exports = {
                 }
             }
         })
-        .exec(`sudo tmux new-session -d "motion -c /home/oo/shared/motion.conf"`, {
+        .exec(`sudo tmux new-session -d "motion -c ${process.env.sharedLocation}/shared/motion.conf"`, {
             pty: true,
             ...lines(outputChanger, errorChanger),
             exit: (code) => {

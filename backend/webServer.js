@@ -5,6 +5,11 @@ var serveIndex = require('serve-index')
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
+var {
+    convert,
+    status,
+    deleteVideo
+}              = require('./converter.js')
 var { 
     startMotion, 
     oneCommand 
@@ -24,9 +29,9 @@ if(process.env.fileServer == "proxy"){
 
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use(/\/convert|\/status/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/convert|\/status|\/deleteVideo/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/convert|\/status/) && req.method === 'POST');
+        return (pathname.match(/\/convert|\/status|\/deleteVideo/) && req.method === 'POST');
     }, {
         target: `http://${process.env.host}:${process.env.PORT}/`,
     }))
@@ -45,8 +50,9 @@ if(process.env.fileServer == "on"){
 
 if(process.env.converter == "on"){
     console.log("Converter On")
-    app.post('/convert', require('./converter.js').convert)
-    app.post("/status", require('./converter.js').status )
+    app.post('/convert', convert)
+    app.post("/status", status)
+    app.post("/deleteVideo", deleteVideo)
 }
 
 if(process.env.commandServer == "on"){
@@ -56,9 +62,9 @@ if(process.env.commandServer == "on"){
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
     app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
     app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-    app.post('/size', oneCommand(`du -sh ${process.env.hostImgDir}`, "SIZE CHECK"))
-    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.hostImgDir}/output*`, "DELETE VIDEOS"))
-    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.hostImgDir}/`, "DELETE IMAGES"))
+    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", true))
+    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
+    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", true))
     
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
