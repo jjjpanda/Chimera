@@ -67,11 +67,12 @@ module.exports = {
             error += res
         }
     
-        ssh.exec(`pidof -s motion`, {
+        ssh.exec(`ps -e | grep motion`, {
             ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
-                if(code == 1){
+                //console.log(output)
+                if(output.includes("defunct") || code == 1){
                     console.log("next command")
                 }
                 else {

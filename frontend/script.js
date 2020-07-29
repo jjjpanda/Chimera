@@ -1,10 +1,10 @@
 var logger = document.getElementById('log');
-const log = () => {
+const log = (...arguments) => {
     for (var i = 0; i < arguments.length; i++) {
     if (typeof arguments[i] == 'object') {
-        logger.innerHTML += (JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />';
+        logger.innerHTML = (JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />' + logger.innerHTML;
     } else {
-        logger.innerHTML += arguments[i] + '<br />';
+        logger.innerHTML = arguments[i] + '<br />' + logger.innerHTML;
     }
     }
 }

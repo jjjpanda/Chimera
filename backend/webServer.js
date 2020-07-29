@@ -62,7 +62,7 @@ if(process.env.commandServer == "on"){
 
     app.post("/on", startMotion)
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
-    app.post('/motion', oneCommand(`pidof -s motion`, "MOTION STATUS"))
+    app.post('/motion', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
     app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
     app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", true))
     app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
