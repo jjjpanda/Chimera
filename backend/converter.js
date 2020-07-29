@@ -2,12 +2,30 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 var ffmpeg     = require('fluent-ffmpeg');
-var shortid       = require("shortid")
+var shortid    = require("shortid")
+const request  = require('request');
 const slash    = require('./slash.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
   
+const sendAlert = (camera, id) => {
+    request({
+        method: "POST",
+        url: process.env.alertURL,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            content: `Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}_${id}.mp4`
+        }),
+    }, (error, response, body) => {
+        if (!error) {
+            console.log('Alert Sent')
+        } else {
+            console.log("Error sending alert: ", error)
+        }
+    });
+}
+
 const createFileList = (camera, frames) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
     const rand =  shortid.generate();
@@ -48,6 +66,9 @@ const convert = (camera, fps, rand, save, res) => {
         })
         .on('end', function() {
             console.log('Finished processing');
+            if(save && save == "true"){
+                sendAlert(camera, rand)
+            }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
 
@@ -84,7 +105,7 @@ module.exports = {
         }
     },
 
-    validateID: (req, res) => {
+    validateID: (req, res, next) => {
         const { id } = req.body
         
         if(id == undefined){

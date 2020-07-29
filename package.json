@@ -18,6 +18,7 @@
     "node-media-server": "^2.2.2",
     "node-ssh": "^10.0.2",
     "nodemon": "^2.0.4",
+    "request": "^2.88.2",
     "serve-index": "^1.9.1",
     "shortid": "^2.2.15",
     "simple-ssh": "^1.0.0",
