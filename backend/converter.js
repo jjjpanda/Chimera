@@ -48,7 +48,7 @@ const createFileList = (camera, frames) => {
 
 const convert = (camera, fps, rand, save, res) => {
 
-    if( !(save && save == "true") ) {
+    if( !(save || save == "true") ) {
         res.attachment('output.mp4')
     }
 
@@ -66,14 +66,14 @@ const convert = (camera, fps, rand, save, res) => {
         })
         .on('end', function() {
             console.log('Finished processing');
-            if(save && save == "true"){
+            if(save || save == "true"){
                 sendAlert(camera, rand)
             }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
 
     const createVideo = (creator) => {
-        if(save && save == "true"){
+        if(save || save == "true"){
             creator
                 .mergeToFile(`${process.env.imgDir}/output_${camera}_${rand}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
             
