@@ -1,3 +1,15 @@
+var logger = document.getElementById('log');
+const log = () => {
+    for (var i = 0; i < arguments.length; i++) {
+    if (typeof arguments[i] == 'object') {
+        logger.innerHTML += (JSON && JSON.stringify ? JSON.stringify(arguments[i], undefined, 2) : arguments[i]) + '<br />';
+    } else {
+        logger.innerHTML += arguments[i] + '<br />';
+    }
+    }
+}
+
+
 const request = (url, opt, callback) => {
     callback(fetch(url, opt))
 }
@@ -43,6 +55,7 @@ document.getElementById('on').addEventListener('click', () => {
     }, (prom) => {
         jsonProcessing(prom, (data) => {
             console.log(data)
+            log(data)
         })
     })
 })
@@ -53,6 +66,7 @@ document.getElementById('off').addEventListener('click', () => {
     }, (prom) => {
         jsonProcessing(prom, (data) => {
             console.log(data)
+            log(data)
         })
     })
 })
@@ -63,6 +77,7 @@ document.getElementById('motion').addEventListener('click', () => {
     }, (prom) => {
         jsonProcessing(prom, (data) => {
             console.log(data)
+            log(data)
         })
     })
 })
@@ -73,6 +88,7 @@ document.getElementById('kill').addEventListener('click', () => {
     }, (prom) => {
         jsonProcessing(prom, (data) => {
             console.log(data)
+            log(data)
         })
     })
 })
