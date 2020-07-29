@@ -28,7 +28,7 @@ const jsonProcessing = (prom, callback) => {
     .then((data) => callback(data))
 }
 
-document.getElementById('convert').addEventListener('click', () => {
+/* document.getElementById('convert').addEventListener('click', () => {
     request("/convert", {
         method: "POST",
         headers: {
@@ -47,7 +47,7 @@ document.getElementById('convert').addEventListener('click', () => {
             download(blob, "output.mp4")
         })
     })
-})
+}) */
 
 document.getElementById('convert1').addEventListener('click', () => {
     request("/convert", {
@@ -58,7 +58,7 @@ document.getElementById('convert1').addEventListener('click', () => {
         body: JSON.stringify({
             camera: 1,
             fps: 15,
-            frames: "inf",
+            frames: 'inf',
             save: true
         })
     }, (prom) => {
