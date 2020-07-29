@@ -49,6 +49,66 @@ document.getElementById('convert').addEventListener('click', () => {
     })
 })
 
+document.getElementById('convert1').addEventListener('click', () => {
+    request("/convert", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            camera: 1,
+            fps: 15,
+            frames: "inf",
+            save: true
+        })
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            log(data)
+        })
+    })
+})
+
+document.getElementById('convert2').addEventListener('click', () => {
+    request("/convert", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            camera: 2,
+            fps: 15,
+            frames: "inf",
+            save: true
+        })
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            log(data)
+        })
+    })
+})
+
+document.getElementById('convert3').addEventListener('click', () => {
+    request("/convert", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            camera: 3,
+            fps: 15,
+            frames: "inf",
+            save: true
+        })
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            log(data)
+        })
+    })
+})
+
 document.getElementById('on').addEventListener('click', () => {
     request("/on", {
         method: "POST"
