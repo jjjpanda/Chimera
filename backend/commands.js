@@ -22,9 +22,14 @@ const lines = (output, error) => {
 }
 
 module.exports = {
-    oneCommand: (command, msg, appendable=false) => (req, res) => {
+    oneCommand: (command, msg, baseDir, appendable=false) => (req, res) => {
         console.log(msg)
-        var ssh = new SSH(sshAuth);
+        var ssh = new SSH((baseDir != undefined ? 
+            {
+                ...sshAuth,
+                baseDir
+            } : 
+        sshAuth));
 
         let output = "", error = ""
         let outputChanger = (res) => {

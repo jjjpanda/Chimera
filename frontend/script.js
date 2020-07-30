@@ -152,3 +152,14 @@ document.getElementById('kill').addEventListener('click', () => {
         })
     })
 })
+
+document.getElementById('selfUpdate').addEventListener('click', () => {
+    request("/selfUpdate", {
+        method: "POST"
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            log(data)
+        })
+    })
+})
