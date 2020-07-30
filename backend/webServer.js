@@ -64,9 +64,10 @@ if(process.env.commandServer == "on"){
     app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
     app.post('/motion', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
     app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", true))
+    app.post('/selfUpdate', oneCommand(`sudo git pull`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
+    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", undefined, true))
     app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
-    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", true))
+    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", undefined, true))
     
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
