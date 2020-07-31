@@ -28,27 +28,6 @@ const jsonProcessing = (prom, callback) => {
     .then((data) => callback(data))
 }
 
-/* document.getElementById('convert').addEventListener('click', () => {
-    request("/convert", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            camera: 1,
-            fps: 20,
-            frames: 150,
-            save: false
-        })
-    }, (res) => {
-        res.then((resp) => {
-            return resp.blob()
-        }).then((blob) => {
-            download(blob, "output.mp4")
-        })
-    })
-}) */
-
 document.getElementById('convert1').addEventListener('click', () => {
     request("/convert", {
         method: "POST",
@@ -58,7 +37,6 @@ document.getElementById('convert1').addEventListener('click', () => {
         body: JSON.stringify({
             camera: 1,
             fps: 20,
-            frames: 'inf',
             save: true
         })
     }, (prom) => {
@@ -78,7 +56,6 @@ document.getElementById('convert2').addEventListener('click', () => {
         body: JSON.stringify({
             camera: 2,
             fps: 20,
-            frames: "inf",
             save: true
         })
     }, (prom) => {
@@ -98,7 +75,6 @@ document.getElementById('convert3').addEventListener('click', () => {
         body: JSON.stringify({
             camera: 3,
             fps: 20,
-            frames: "inf",
             save: true
         })
     }, (prom) => {
