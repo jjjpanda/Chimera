@@ -41,7 +41,7 @@ const createFileList = (camera, start, end) => {
     
     for (const file of dirList.filter( file => file.includes(".jpg") && 
             `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` < end )){
+            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )){
         files += `file '${camera}/${file}'\r\n` 
     }
     
@@ -98,9 +98,9 @@ const convert = (camera, fps, rand, save, res) => {
 
 module.exports = {
     validateVideoDetails: (req, res, next) => {
-        const { camera, start, fps } = req.body;
+        const { camera, fps } = req.body;
         
-        if(camera == undefined || start == undefined || fps == undefined){
+        if(camera == undefined || fps == undefined){
             res.status(400)
         }
         else{
@@ -123,10 +123,11 @@ module.exports = {
         //console.log(req)
         let { camera, start, end, save, fps } = req.body;
 
+        start = (start == undefined ? moment().subtract(12, "hours") : moment(start, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss'))
+
+        end = (end == undefined ? moment().format('YYYYMMDD-kkmmss') : moment(end, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss'))
+
         start = moment(start, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss')
-        if(end == undefined){
-            end = moment().format('YYYYMMDD-kkmmss')  
-        }
         
         camera = camera.toString()
 
