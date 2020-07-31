@@ -36,12 +36,12 @@ const createFileList = (camera, start, end) => {
     const rand =  shortid.generate();
 
     let files = ""
+
+    console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
     
     for (const file of dirList.filter( file => file.includes(".jpg") && 
-            file.split("-")[0] > start.split('-')[0] && 
-            file.split('-')[1] > start.split('-')[1] &&
-            file.split("-")[0] < end.split('-')[0] &&
-            file.split('-')[1] < end.split('-')[1] )){
+            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+            `${file.split("-")[0]}-${file.split('-')[1]}` < end )){
         files += `file '${camera}/${file}'\r\n` 
     }
     

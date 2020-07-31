@@ -36,7 +36,7 @@ const jsonProcessing = (prom, callback) => {
         },
         body: JSON.stringify({
             camera: 1,
-            fps: 15,
+            fps: 20,
             frames: 150,
             save: false
         })
@@ -57,7 +57,7 @@ document.getElementById('convert1').addEventListener('click', () => {
         },
         body: JSON.stringify({
             camera: 1,
-            fps: 15,
+            fps: 20,
             frames: 'inf',
             save: true
         })
@@ -77,7 +77,7 @@ document.getElementById('convert2').addEventListener('click', () => {
         },
         body: JSON.stringify({
             camera: 2,
-            fps: 15,
+            fps: 20,
             frames: "inf",
             save: true
         })
@@ -97,7 +97,7 @@ document.getElementById('convert3').addEventListener('click', () => {
         },
         body: JSON.stringify({
             camera: 3,
-            fps: 15,
+            fps: 20,
             frames: "inf",
             save: true
         })
