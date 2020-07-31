@@ -4,18 +4,23 @@ var path       = require('path')
 var ffmpeg     = require('fluent-ffmpeg');
 var shortid    = require("shortid")
 const request  = require('request');
+var moment     = require('moment')
 const slash    = require('./slash.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
-  
+ 
+const videoName = (camera, start, end, id) => {
+    return `output_${camera}_${start}_${end}_${id}.mp4`
+}
+
 const sendAlert = (camera, id) => {
     request({
         method: "POST",
         url: process.env.alertURL,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            content: `Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}_${id}.mp4`
+            content: `Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, "", "", id)}`
         }),
     }, (error, response, body) => {
         if (!error) {
@@ -26,22 +31,20 @@ const sendAlert = (camera, id) => {
     });
 }
 
-const createFileList = (camera, frames) => {
+const createFileList = (camera, start, end) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
     const rand =  shortid.generate();
 
     let files = ""
-    if(frames != "inf"){
-        for (const file of dirList.filter(file => file.includes(".jpg")).slice(-1 * frames)){
-            files += `file '${camera}/${file}'\r\n` 
-        }
+    
+    for (const file of dirList.filter( file => file.includes(".jpg") && 
+            file.split("-")[0] > start.split('-')[0] && 
+            file.split('-')[1] > start.split('-')[1] &&
+            file.split("-")[0] < end.split('-')[0] &&
+            file.split('-')[1] < end.split('-')[1] )){
+        files += `file '${camera}/${file}'\r\n` 
     }
-    else{
-        for (const file of dirList.filter(file => file.includes(".jpg"))){
-            files += `file '${camera}/${file}'\r\n` 
-        }
-    }
-
+    
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
     return rand
 }
@@ -75,11 +78,11 @@ const convert = (camera, fps, rand, save, res) => {
     const createVideo = (creator) => {
         if(save || save == "true"){
             creator
-                .mergeToFile(`${process.env.imgDir}/output_${camera}_${rand}.mp4`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+                .mergeToFile(`${process.env.imgDir}/${videoName(camera, "", "", rand)}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
             
             res.send(JSON.stringify({
                 id: rand,
-                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/output_${camera}_${rand}.mp4`
+                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, "", "", rand)}`
             }))
         }
         else{
@@ -95,9 +98,9 @@ const convert = (camera, fps, rand, save, res) => {
 
 module.exports = {
     validateVideoDetails: (req, res, next) => {
-        const { camera, frames, fps } = req.body;
+        const { camera, start, fps } = req.body;
         
-        if(camera == undefined || frames == undefined || fps == undefined){
+        if(camera == undefined || start == undefined || fps == undefined){
             res.status(400)
         }
         else{
@@ -118,11 +121,17 @@ module.exports = {
 
     convert: (req, res) => {
         //console.log(req)
-        let { camera, frames, save, fps } = req.body;
+        let { camera, start, end, save, fps } = req.body;
+
+        start = moment(start, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss')
+        if(end == undefined){
+            end = moment().format('YYYYMMDD-kkmmss')  
+        }
         
         camera = camera.toString()
-        console.log(camera, frames, fps)
-        const rand = createFileList(camera, frames)
+
+        console.log(camera, start, end, fps)
+        const rand = createFileList(camera, start, end)
         convert(camera, fps, rand, save, res)
     },
 
@@ -140,7 +149,7 @@ module.exports = {
         const { id } = req.body
 
         console.log(id)
-        fs.unlinkSync(path.resolve(process.env.imgDir, `output_${camera}_${rand}.mp4`))
+        fs.unlinkSync(path.resolve(process.env.imgDir, videoName(camera, start, end, id)))
         res.send(JSON.stringify({
             deleted: id
         }))

@@ -15,6 +15,7 @@
     "express": "^4.17.1",
     "fluent-ffmpeg": "^2.1.2",
     "http-proxy-middleware": "^1.0.5",
+    "moment": "^2.27.0",
     "node-media-server": "^2.2.2",
     "node-ssh": "^10.0.2",
     "nodemon": "^2.0.4",
