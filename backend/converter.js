@@ -47,7 +47,7 @@ const createFileList = (camera, start, end) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    sendAlert(`Video Started:\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+    sendAlert(`Video Started:\nID: ${rand}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
     return rand
 }
