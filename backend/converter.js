@@ -14,13 +14,15 @@ const videoName = (camera, start, end, id) => {
     return `output_${camera}_${start}_${end}_${id}.mp4`
 }
 
-const sendAlert = (camera, id) => {
+const dateFormat = "YYYYMMDD-kkmmss"
+
+const sendAlert = (content) => {
     request({
         method: "POST",
         url: process.env.alertURL,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            content: `Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, "", "", id)}`
+            content
         }),
     }, (error, response, body) => {
         if (!error) {
@@ -45,11 +47,12 @@ const createFileList = (camera, start, end) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
+    sendAlert(`Video Started:\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
     return rand
 }
 
-const convert = (camera, fps, rand, save, res) => {
+const convert = (camera, fps, start, end, rand, save, res) => {
 
     if( !(save || save == "true") ) {
         res.attachment('output.mp4')
@@ -70,7 +73,7 @@ const convert = (camera, fps, rand, save, res) => {
         .on('end', function() {
             console.log('Finished processing');
             if(save || save == "true"){
-                sendAlert(camera, rand)
+                sendAlert(`Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, start, end, rand)}`)
             }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
@@ -78,11 +81,11 @@ const convert = (camera, fps, rand, save, res) => {
     const createVideo = (creator) => {
         if(save || save == "true"){
             creator
-                .mergeToFile(`${process.env.imgDir}/${videoName(camera, "", "", rand)}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+                .mergeToFile(`${process.env.imgDir}/${videoName(camera, start, end, rand)}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
             
             res.send(JSON.stringify({
                 id: rand,
-                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, "", "", rand)}`
+                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, start, end, rand)}`
             }))
         }
         else{
@@ -123,17 +126,15 @@ module.exports = {
         //console.log(req)
         let { camera, start, end, save, fps } = req.body;
 
-        start = (start == undefined ? moment().subtract(12, "hours") : moment(start, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss'))
+        start = (start == undefined ? moment().subtract(12, "hours") : moment(start, dateFormat)).format(dateFormat)
 
-        end = (end == undefined ? moment().format('YYYYMMDD-kkmmss') : moment(end, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss'))
-
-        start = moment(start, "YYYYMMDD-kkmmss").format('YYYYMMDD-kkmmss')
+        end = (end == undefined ? moment() : moment(end, dateFormat)).format(dateFormat)
         
         camera = camera.toString()
 
         console.log(camera, start, end, fps)
         const rand = createFileList(camera, start, end)
-        convert(camera, fps, rand, save, res)
+        convert(camera, fps, start, end, rand, save, res)
     },
 
     status: (req, res) => {
