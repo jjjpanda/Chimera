@@ -61,11 +61,15 @@ const convert = (camera, fps, start, end, rand, save, res) => {
     let videoCreator = ffmpeg(process.env.imgDir+`/img_${rand}.txt`)
         .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         .outputFPS(fps)
-        .videoBitrate(1024)
+        .videoBitrate(65536)
         .videoCodec('libx264')
         .toFormat('mp4')
         .on('error', function(err) {
             console.log('An error occurred: ' + err.message);
+            if(save || save == "true"){
+                sendAlert(`Your video (${rand}) could not be completed.`)
+            }    
+            fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
         .on('progress', function(progress) {
             console.log('Processing: ' + progress.frames + ' done');
@@ -73,7 +77,7 @@ const convert = (camera, fps, start, end, rand, save, res) => {
         .on('end', function() {
             console.log('Finished processing');
             if(save || save == "true"){
-                sendAlert(`Your video is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, start, end, rand)}`)
+                sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${videoName(camera, start, end, rand)}`)
             }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
