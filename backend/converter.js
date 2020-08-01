@@ -37,22 +37,26 @@ const createFileList = (camera, start, end) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
     const rand =  shortid.generate();
 
+    const filteredList = dirList.filter( file => file.includes(".jpg") && 
+                        `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+                        `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+
+    const frames = filteredList.length    
+
     let files = ""
 
     console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
     
-    for (const file of dirList.filter( file => file.includes(".jpg") && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )){
+    for (const file of filteredList){
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    sendAlert(`Video Started:\nID: ${rand}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+    sendAlert(`Video Started:\nID: ${rand}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
-    return rand
+    return { rand, frames }
 }
 
-const convert = (camera, fps, start, end, rand, save, res) => {
+const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
     if( !(save || save == "true") ) {
         res.attachment('output.mp4')
@@ -61,7 +65,7 @@ const convert = (camera, fps, start, end, rand, save, res) => {
     let videoCreator = ffmpeg(process.env.imgDir+`/img_${rand}.txt`)
         .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         .outputFPS(fps)
-        .videoBitrate(65536)
+        .videoBitrate(Math.pow(2, 14))
         .videoCodec('libx264')
         .toFormat('mp4')
         .on('error', function(err) {
@@ -72,7 +76,7 @@ const convert = (camera, fps, start, end, rand, save, res) => {
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
         .on('progress', function(progress) {
-            console.log('Processing: ' + progress.frames + ' done');
+            console.log('Processing: ' + progress.frames + "/" + frames + ' done');
         })
         .on('end', function() {
             console.log('Finished processing');
@@ -137,8 +141,8 @@ module.exports = {
         camera = camera.toString()
 
         console.log(camera, start, end, fps)
-        const rand = createFileList(camera, start, end)
-        convert(camera, fps, start, end, rand, save, res)
+        const { rand, frames } = createFileList(camera, start, end)
+        convert(camera, fps, frames, start, end, rand, save, res)
     },
 
     status: (req, res) => {
