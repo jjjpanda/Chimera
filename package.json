@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.19.0",
+    "content-disposition": "^0.5.3",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "fluent-ffmpeg": "^2.1.2",
@@ -21,6 +22,7 @@
     "nodemon": "^2.0.4",
     "request": "^2.88.2",
     "serve-index": "^1.9.1",
+    "serve-static": "^1.14.1",
     "shortid": "^2.2.15",
     "simple-ssh": "^1.0.0",
     "webdav-server": "^2.6.2"

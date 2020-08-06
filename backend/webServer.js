@@ -2,6 +2,8 @@ require('dotenv').config()
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
+var serveStatic        = require('serve-static')
+var contentDisposition = require('content-disposition')
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
@@ -47,7 +49,15 @@ app.use(bodyParser.json())
 //NON PROXY
 if(process.env.fileServer == "on"){
     console.log("File Server On")
-    app.use('/shared', express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {'icons': true}))
+    app.use('/shared', serveStatic(path.join(process.env.filePath), {
+        index: false,
+        'setHeaders': (res, path) => {
+            res.setHeader('Content-Disposition', contentDisposition(path))
+        },
+    }),
+    express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
+        'icons': true
+    }))
 }
 
 if(process.env.converter == "on"){
