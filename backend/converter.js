@@ -35,7 +35,7 @@ const sendAlert = (content) => {
 
 const createFileList = (camera, start, end) => {
     const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
-    const rand =  shortid.generate();
+    const rand =  shortid.characters('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ').generate();
 
     const filteredList = dirList.filter( file => file.includes(".jpg") && 
                         `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
@@ -51,7 +51,7 @@ const createFileList = (camera, start, end) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    sendAlert(`Video Started:\nID: ${rand}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+    sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
     return { rand, frames }
 }
@@ -134,7 +134,7 @@ module.exports = {
         //console.log(req)
         let { camera, start, end, save, fps } = req.body;
 
-        start = (start == undefined ? moment().subtract(12, "hours") : moment(start, dateFormat)).format(dateFormat)
+        start = (start == undefined ? moment().subtract(1, "week") : moment(start, dateFormat)).format(dateFormat)
 
         end = (end == undefined ? moment() : moment(end, dateFormat)).format(dateFormat)
         
