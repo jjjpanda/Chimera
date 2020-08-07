@@ -17,6 +17,7 @@ const fileName = (camera, start, end, id, type) => {
 
 const dateFormat = "YYYYMMDD-kkmmss"
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]'
+shortid.characters(charList)
 
 const sendAlert = (content) => {
     request({
@@ -36,7 +37,7 @@ const sendAlert = (content) => {
 }
 
 const randomID = () => {
-    return shortid.characters(charList).generate() + "-" + moment().format(dateFormat);
+    return shortid.generate() + "-" + moment().format(dateFormat);
 }
 
 const createFileList = (camera, start, end) => {
