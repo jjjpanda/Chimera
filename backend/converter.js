@@ -16,7 +16,7 @@ const fileName = (camera, start, end, id, type) => {
 }
 
 const dateFormat = "YYYYMMDD-kkmmss"
-const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]'
 
 const sendAlert = (content) => {
     request({
