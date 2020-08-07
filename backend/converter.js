@@ -147,7 +147,11 @@ const zip = (camera, start, end) => {
     
     sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
-    
+    res.send(JSON.stringify({
+        id: rand,
+        url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+    }))
+
     archive.pipe(output)
     archive.finalize()
 
