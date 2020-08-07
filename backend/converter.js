@@ -142,10 +142,11 @@ const zip = (camera, start, end) => {
 
     output.on('end', function() {
         sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+        fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`))
     });
     
     sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
-    fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), files)
+    fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
     
     archive.pipe(output)
     archive.finalize()
