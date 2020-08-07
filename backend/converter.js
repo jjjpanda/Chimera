@@ -116,7 +116,9 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
 const zip = (camera, start, end) => {
 
-    var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, randomID(), 'zip')}`)
+    const rand = randomID()
+
+    var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
 
     var archive = archiver('zip', {
         zlib: {level: 9}
