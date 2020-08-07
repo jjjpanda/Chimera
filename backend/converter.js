@@ -114,7 +114,7 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
 }
 
-const zip = (camera, start, end) => {
+const zip = (camera, start, end, res) => {
 
     const rand = randomID()
 
@@ -227,7 +227,7 @@ module.exports = {
     createZip: (req, res) => {
         let { camera, start, end } = req.body;
 
-        zip(camera, start, end)
+        zip(camera, start, end, res)
     },
 
     statusZip: (req, res) => {
