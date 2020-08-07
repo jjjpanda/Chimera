@@ -1,5 +1,6 @@
 require('dotenv').config()
 var fs         = require('fs')
+var path       = require('path')
 var SSH        = require('simple-ssh');
 
 const sshAuth = {
@@ -105,5 +106,28 @@ module.exports = {
             }
         })
         .start();
+    },
+
+    validatePath: (req, res, next) => {
+        const { path } = req.body
+        
+        if(path == undefined){
+            res.status(400)
+        }
+        else{
+            next()
+        }
+    },
+
+    getPathSize: (req, res) => {
+        const { path } = req.body
+
+        module.exports.oneCommand(`du -sh ${process.env.sharedLocation}${path}`, "SIZE CHECK")
+    },
+
+    pathDelete: (req, res) => {
+        const { path } = req.body
+
+        module.exports.oneCommand(`rm -rf ${process.env.sharedLocation}${path}`, "DELETE PATH")
     }
 }

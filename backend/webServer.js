@@ -8,15 +8,23 @@ var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
 var {
-    validateVideoDetails,
+    validateRequest,
     validateID,
-    convert,
-    status,
-    deleteVideo
+    createVideo,
+    statusVideo,
+    cancelVideo,
+    deleteVideo,
+    createZip,
+    statusZip,
+    cancelZip,
+    deleteZip
 }              = require('./converter.js')
 var { 
     startMotion, 
-    oneCommand 
+    oneCommand,
+    validatePath,
+    getPathSize,
+    pathDelete
 }              = require('./commands.js')
 
 var app = express()
@@ -47,6 +55,33 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json())
 
 //NON PROXY
+if(process.env.commandServer == "on"){
+    console.log("Motion Controls On")
+
+    /* app.post("/on", startMotion)
+    app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
+    app.post('/motion', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
+    app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
+    app.post('/selfUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
+    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", undefined, true))
+    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
+    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", undefined, true)) */
+    
+    app.post('/motionStart', startMotion)
+    app.post('/motionStatus', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
+    app.post('/motionStop', oneCommand(`sudo pkill motion`, "MOTION OFF"))
+    
+    app.post('/serverUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
+    app.post('/serverStatus', oneCommand(`ps -e | grep node`, "SERVER STATUS"))
+    app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"))
+    app.post('/pathSize', validatePath, getPathSize)
+    app.post('/pathDelete', validatePath, pathDelete)
+
+    app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
+        index: "index.html"
+    }))
+}
+
 if(process.env.fileServer == "on"){
     console.log("File Server On")
     app.use('/shared', serveStatic(path.join(process.env.filePath), {
@@ -62,26 +97,19 @@ if(process.env.fileServer == "on"){
 
 if(process.env.converter == "on"){
     console.log("Converter On")
-    app.post('/convert', validateVideoDetails, convert)
+    /* app.post('/convert', validateVideoDetails, convert)
     app.post("/status", validateID, status)
-    app.post("/deleteVideo", validateID, deleteVideo)
-}
+    app.post("/deleteVideo", validateID, deleteVideo) */
 
-if(process.env.commandServer == "on"){
-    console.log("Motion Controls On")
+    app.post('/createVideo', validateRequest, createVideo)
+    app.post('/statusVideo', validateID, statusVideo)
+    app.post('/cancelVideo', validateID, cancelVideo)
+    app.post('/deleteVideo', validateID, deleteVideo)
 
-    app.post("/on", startMotion)
-    app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
-    app.post('/motion', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
-    app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-    app.post('/selfUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
-    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", undefined, true))
-    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
-    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", undefined, true))
-    
-    app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
-        index: "index.html"
-    }))
+    app.post('/createZip', validateRequest, createZip)
+    app.post('/statusZip', validateID, statusZip)
+    app.post('/cancelZip', validateID, cancelZip)
+    app.post('/deleteZip', validateID, deleteZip)
 }
 
 // Listen
