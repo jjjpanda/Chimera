@@ -114,12 +114,7 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
 }
 
-const zip = (camera, start, end, res) => {
-
-    const rand = randomID()
-
-    var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
-
+const createZipList = (camera, start, end) => {
     var archive = archiver('zip', {
         zlib: {level: 9}
     })
@@ -140,18 +135,31 @@ const zip = (camera, start, end, res) => {
         }) 
     }
 
+    return {frames, archive}
+}
+
+const zip = (archive, camera, frames, start, end, save, res) => {
+
+    const rand = randomID()
+
+    var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`).pipe(res, {end: true})
+
     output.on('close', function() {
-        sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+        if(save == "true"){
+            sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+        }
         fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`))
     });
     
-    sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
-    fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
-    res.send(JSON.stringify({
-        id: rand,
-        url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
-    }))
+    if(save == "true"){
+        sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+        res.send(JSON.stringify({
+            id: rand,
+            url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+        }))
+    }
 
+    fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
     archive.pipe(output)
     archive.finalize()
 
@@ -193,6 +201,11 @@ module.exports = {
 
         console.log(camera, start, end, fps)
         const { rand, frames } = createFileList(camera, start, end)
+
+        if(save == undefined || frames > 1000){
+            save = true
+        }
+
         convert(camera, fps, frames, start, end, rand, save, res)
     },
 
@@ -225,14 +238,25 @@ module.exports = {
     },
 
     createZip: (req, res) => {
-        let { camera, start, end } = req.body;
+        let { camera, start, end, save } = req.body;
 
-        zip(camera, start, end, res)
+        const {frames, archive} = createZipList(camera, start, end)
+
+        if(save == undefined || frames > 250){
+            save = true
+        }
+
+        zip(archive, camera, frames, start, end, save, res)
     },
 
     statusZip: (req, res) => {
         const { id } = req.body
 
+        console.log(id)
+        res.send(JSON.stringify({
+            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
+            id
+        }))
     },
 
     cancelZip: (req, res) => {

@@ -14,25 +14,25 @@
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/motionStart|Start motion recording|None|SSH Command Response|
-|POST|/motionStatus|Get motion status|None|SSH Command Response|
-|POST|/motionStop|Stop motion recording|None|SSH Command Response|
+|POST|/motionStart|Start motion recording|None|`{ sent: Boolean }`|
+|POST|/motionStatus|Get motion status|None|`{ running: Boolean, duration: String }`|
+|POST|/motionStop|Stop motion recording|None|`{ sent: Boolean }`|
 
 ### Command Server
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/serverUpdate|Update machine running command server|None|SSH Command Response|
+|POST|/serverUpdate|Update machine running command server|None|`{ sent: Boolean }`|
 |POST|/serverStatus|Get command server status|None|`{ running: Boolean, duration: String }`|
-|POST|/serverStop|Stop command server|None|SSH Command Response|
-|POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: Number }`|
+|POST|/serverStop|Stop command server|None|`{ sent: Boolean }`|
+|POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
 
 ### Video Conversions
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, start: Date | YYYYMMDD-HHMMSS, end: Date | YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
+|POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, save: Boolean, start: Date | YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
 |POST|/statusVideo|Get status of video process|`{ id: String }`|`{ running: Boolean }`|
 |POST|/cancelVideo|Cancel running video process|`{ id: String }`|`{ cancelled: Boolean }`|
 |POST|/deleteVideo|Delete video by given ID|`{ id: String }`|`{ deleted: Boolean }`|
@@ -41,7 +41,7 @@
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, fps: Number, start: Date | YYYYMMDD-HHMMSS, end: Date | YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
+|POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date | YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
 |POST|/statusZip|Get status of zip process|`{ id: String }`|`{ running: Boolean }`|
 |POST|/cancelZip|Cancel running zip process|`{ id: String }`|`{ cancelled: Boolean }`|
 |POST|/deleteZip|Delete zip archive by given ID|`{ id: String }`|`{ deleted: Boolean }`|
