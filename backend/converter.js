@@ -68,6 +68,7 @@ const createVideoList = (camera, start, end) => {
 const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
     if(save){
+        console.log("SENDING START ALERT")
         sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     }
     else{
@@ -93,6 +94,7 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
         .on('end', function() {
             console.log('Finished processing');
             if(save){
+                console.log("SENDING END ALERT")
                 sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
             }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
@@ -146,18 +148,18 @@ const zip = (archive, camera, frames, start, end, save, res) => {
     if(save){
         var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
        
+        console.log("SENDING START ALERT")
         sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
         output.on('close', function() {
-            if(save == "true"){
-                sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
-            }
+            console.log("SENDING END ALERT")
+            sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
             fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`))
         });    
         
         fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
 
-        archive.pipe(output, {end: true})
+        archive.pipe(output)
 
         res.send(JSON.stringify({
             id: rand,
