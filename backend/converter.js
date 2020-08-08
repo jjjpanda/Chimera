@@ -210,7 +210,7 @@ module.exports = {
         console.log(camera, start, end, fps)
         const { rand, frames } = createVideoList(camera, start, end)
 
-        if(save == undefined || save || frames > 250 || save == "true"){
+        if(save == undefined || save == true || frames > 250 || save == "true"){
             save = true
         }
         else{
@@ -253,7 +253,7 @@ module.exports = {
 
         const {frames, archive} = createZipList(camera, start, end)
 
-        if(save == undefined || save || frames > 250 || save == "true"){
+        if(save == undefined || save == true || frames > 250 || save == "true"){
             save = true
         }
         else{
