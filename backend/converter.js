@@ -143,7 +143,6 @@ const zip = (archive, camera, frames, start, end, save, res) => {
     const rand = randomID()
 
     var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
-    fs.createReadStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`).pipe(res, {end: true})
 
     output.on('close', function() {
         if(save == "true"){
@@ -164,6 +163,7 @@ const zip = (archive, camera, frames, start, end, save, res) => {
     archive.pipe(output)
     archive.finalize()
 
+    fs.createReadStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`).pipe(res, {end: true})
 }
 
 module.exports = {
