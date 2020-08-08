@@ -41,9 +41,9 @@ if(process.env.fileServer == "proxy"){
 
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use(/\/convert|\/status|\/deleteVideo/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/.*Video|\/.*Zip/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/convert|\/status|\/deleteVideo/) && req.method === 'POST');
+        return (pathname.match(/\/.*Video|\/.*Zip/) && req.method === 'POST');
     }, {
         target: `http://${process.env.host}:${process.env.PORT}/`,
     }))
