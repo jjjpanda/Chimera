@@ -40,13 +40,16 @@ const randomID = () => {
     return shortid.generate() + "-" + moment().format(dateFormat);
 }
 
-const createFileList = (camera, start, end) => {
-    const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
-    const rand =  randomID()
+const filterList = (camera, start, end) => {
+    return fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
+            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+}
 
-    const filteredList = dirList.filter( file => file.includes(".jpg") && 
-                        `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-                        `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+const createVideoList = (camera, start, end) => {
+    const rand = randomID()
+
+    const filteredList = filterList(camera, start, end)
 
     const frames = filteredList.length    
 
@@ -58,17 +61,19 @@ const createFileList = (camera, start, end) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
     return { rand, frames }
 }
 
 const convert = (camera, fps, frames, start, end, rand, save, res) => {
 
-    if( !(save || save == "true") ) {
-        res.attachment('output.mp4')
+    if(save){
+        sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
     }
-
+    else{
+        res.attachment(fileName(camera, start, end, rand, 'mp4'))
+    }
+    
     let videoCreator = ffmpeg(process.env.imgDir+`/img_${rand}.txt`)
         .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
         .outputFPS(fps)
@@ -77,7 +82,7 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
         .toFormat('mp4')
         .on('error', function(err) {
             console.log('An error occurred: ' + err.message);
-            if(save || save == "true"){
+            if(save){
                 sendAlert(`Your video (${rand}) could not be completed.`)
             }    
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
@@ -87,14 +92,14 @@ const convert = (camera, fps, frames, start, end, rand, save, res) => {
         })
         .on('end', function() {
             console.log('Finished processing');
-            if(save || save == "true"){
+            if(save){
                 sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
             }
             fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
         })
 
     const createVideo = (creator) => {
-        if(save || save == "true"){
+        if(save){
             creator
                 .mergeToFile(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
             
@@ -119,11 +124,7 @@ const createZipList = (camera, start, end) => {
         zlib: {level: 9}
     })
 
-    const dirList = fs.readdirSync(path.resolve(process.env.imgDir, camera))
-    
-    const filteredList = dirList.filter( file => file.includes(".jpg") && 
-                        `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-                        `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+    const filteredList = filterList(camera, start, end)
 
     const frames = filteredList.length    
 
@@ -142,14 +143,10 @@ const zip = (archive, camera, frames, start, end, save, res) => {
 
     const rand = randomID()
 
-    if(save == "true"){
+    if(save){
         var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
        
         sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
-        res.send(JSON.stringify({
-            id: rand,
-            url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
-        }))
 
         output.on('close', function() {
             if(save == "true"){
@@ -160,10 +157,16 @@ const zip = (archive, camera, frames, start, end, save, res) => {
         
         fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
 
-        archive.pipe(output)
+        archive.pipe(output, {end: true})
+
+        res.send(JSON.stringify({
+            id: rand,
+            url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+        }))
     }
     else{
-        archive.pipe(res)
+        res.attachment(fileName(camera, start, end, rand, 'zip'))
+        archive.pipe(res, {end: true})
     }
 
     archive.finalize()
@@ -205,10 +208,13 @@ module.exports = {
         fps = fps == undefined ? 20 : fps
 
         console.log(camera, start, end, fps)
-        const { rand, frames } = createFileList(camera, start, end)
+        const { rand, frames } = createVideoList(camera, start, end)
 
-        if(save == undefined || frames > 1000){
+        if(save == undefined || save || frames > 250 || save == "true"){
             save = true
+        }
+        else{
+            save = false
         }
 
         convert(camera, fps, frames, start, end, rand, save, res)
@@ -247,8 +253,11 @@ module.exports = {
 
         const {frames, archive} = createZipList(camera, start, end)
 
-        if(save == undefined || frames > 250){
+        if(save == undefined || save || frames > 250 || save == "true"){
             save = true
+        }
+        else{
+            save = false
         }
 
         zip(archive, camera, frames, start, end, save, res)
