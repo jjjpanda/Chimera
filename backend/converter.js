@@ -163,7 +163,7 @@ const zip = (archive, camera, frames, start, end, save, res) => {
     archive.pipe(output)
     archive.finalize()
 
-    fs.createReadStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`).pipe(res, {end: true})
+    res.download(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
 }
 
 module.exports = {
