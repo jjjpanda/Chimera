@@ -23,8 +23,8 @@ var {
     startMotion, 
     oneCommand,
     validatePath,
-    getPathSize,
-    pathDelete
+    formattedCommandResponse,
+    pathCommandAppend
 }              = require('./commands.js')
 
 var app = express()
@@ -67,16 +67,16 @@ if(process.env.commandServer == "on"){
     app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
     app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", undefined, true)) */
     
-    app.post('/motionStart', startMotion)
-    app.post('/motionStatus', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
-    app.post('/motionStop', oneCommand(`sudo pkill motion`, "MOTION OFF"))
+    app.post('/motionStart', startMotion, formattedCommandResponse)
+    app.post('/motionStatus', oneCommand(`ps -e | grep motion`, "MOTION STATUS"), formattedCommandResponse)
+    app.post('/motionStop', oneCommand(`sudo pkill motion`, "MOTION OFF"), formattedCommandResponse)
     
-    app.post('/serverUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
-    app.post('/serverStatus', oneCommand(`ps -e | grep node`, "SERVER STATUS"))
-    app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"))
-    app.post('/pathSize', validatePath, getPathSize)
-    app.post('/pathDelete', validatePath, pathDelete)
-
+    app.post('/serverUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
+    app.post('/serverStatus', oneCommand(`ps -e | grep node`, "SERVER STATUS"), formattedCommandResponse)
+    app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"), formattedCommandResponse)
+    app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
+    app.post('/pathDelete', validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
+ 
     app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
         index: "index.html"
     }))

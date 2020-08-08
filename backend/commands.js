@@ -23,7 +23,7 @@ const lines = (output, error) => {
 }
 
 module.exports = {
-    oneCommand: (command, msg, baseDir, appendable=false) => (req, res) => {
+    oneCommand: (command, msg, baseDir, appendable=false) => (req, res, next) => {
         console.log(msg)
         var ssh = new SSH((baseDir != undefined ? 
             {
@@ -50,19 +50,21 @@ module.exports = {
             ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
-                res.status(200).send(JSON.stringify({
+                req.body.unformattedResponse = {
+                    msg,
                     code,
                     sent: true,
                     output,
-                    error
-                }))
+                    error,
+                }
+                next()
             }
         })
         .start();
     },
 
-    startMotion: (req, res) => {
-        console.log('START MOTION')
+    startMotion: (req, res, next) => {
+        console.log('MOTION ON')
         var ssh = new SSH(sshAuth);
 
         let output = "", error = ""
@@ -83,10 +85,7 @@ module.exports = {
                 }
                 else {
                     res.status(200).send(JSON.stringify({
-                        code,
-                        sent: false,
-                        output,
-                        error
+                        sent: false
                     }))
                     return false
                 }
@@ -97,19 +96,58 @@ module.exports = {
             ...lines(outputChanger, errorChanger),
             exit: (code) => {
                 console.log(`EXIT CODE: `, code);
-                res.status(200).send(JSON.stringify({
+                req.body.unformattedResponse = {
+                    msg: 'MOTION ON',
                     code,
                     sent: code == 0,
                     output,
                     error,
-                }))
+                }
+                next()
             }
         })
         .start();
     },
 
+    formattedCommandResponse: (req, res) => {
+        switch (req.body.unformattedResponse.msg){
+            case "MOTION ON":
+            case "MOTION OFF":
+            case "UPDATING SERVER":
+            case "SERVER STOP":
+                res.send(JSON.stringify({
+                    sent: req.body.unformattedResponse.code == 0
+                }))
+                break
+            case "MOTION STATUS":
+            case "SERVER STATUS":
+                const running = !(req.body.unformattedResponse.output.length == 0 || (req.body.unformattedResponse.output.includes("?") && req.body.unformattedResponse.output.includes("<defunct>")))
+                console.log("OUT: ", req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' '))
+                res.send(JSON.stringify({
+                    running,
+                    duration: (running ? req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' ')[2] : "00:00:00")
+                }))
+                break
+            case "SIZE CHECK":
+                console.log("OUT: ", req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' '))
+                res.send(JSON.stringify({
+                    size: req.body.unformattedResponse.code == 0 ? `${req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' ')[0]}B` : "ERROR"
+                }))
+                break
+            case "DELETE PATH":
+                res.send(JSON.stringify({
+                    sent: req.body.unformattedResponse.sent
+                }))
+                break
+            default:
+                res.send(JSON.stringify(req.body.unformattedResponse))
+        }
+    },
+
     validatePath: (req, res, next) => {
         const { path } = req.body
+
+        console.log("PATH: ", path)
         
         if(path == undefined){
             res.status(400)
@@ -119,15 +157,11 @@ module.exports = {
         }
     },
 
-    getPathSize: (req, res) => {
+    pathCommandAppend: (req, res, next) => {
         const { path } = req.body
 
-        module.exports.oneCommand(`du -sh ${process.env.sharedLocation}${path}`, "SIZE CHECK")
-    },
+        req.body.commandAppends = path;
 
-    pathDelete: (req, res) => {
-        const { path } = req.body
-
-        module.exports.oneCommand(`rm -rf ${process.env.sharedLocation}${path}`, "DELETE PATH")
+        next()
     }
 }
