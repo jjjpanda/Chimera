@@ -1,6 +1,7 @@
 require('dotenv').config()
 var ffmpeg     = require('fluent-ffmpeg');
 const slash    = require('./slash.js')
+var path       = require('path')
 var dateFormat = require('./dateFormat.js')
 const {
     sendAlert,
