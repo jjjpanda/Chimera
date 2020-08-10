@@ -22,7 +22,8 @@
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/serverUpdate|Update machine running command server|None|`{ sent: Boolean }`|
+|POST|/serverUpdate|Update machine accepting commands|None|`{ sent: Boolean }`|
+|POST|/serverInstall|Install dependencies in machine accepting commands|None|`{ sent: Boolean }`|
 |POST|/serverStatus|Get command server status|None|`{ running: Boolean, duration: String }`|
 |POST|/serverStop|Stop command server|None|`{ sent: Boolean }`|
 |POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
