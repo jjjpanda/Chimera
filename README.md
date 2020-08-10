@@ -35,9 +35,9 @@
 | :-|:- |:-:|:-:|:-:|
 |POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
 |POST|/statusVideo|Get status of video process|`{ id: String }`|`{ running: Boolean, id: String }`|
-|POST|/cancelVideo|Cancel running video process|`{ id: String }`|`{ cancelled: String }`|
+|POST|/cancelVideo|Cancel running video process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
 |POST|/listVideo|Get list of all videos|None|`{ list: [ VideoObj ] }`|
-|POST|/deleteVideo|Delete video by given ID|`{ id: String }`|`{ deleted: String }`|
+|POST|/deleteVideo|Delete video by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
 
 ### Archive Conversions
 
@@ -45,9 +45,9 @@
 | :-|:- |:-:|:-:|:-:|
 |POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
 |POST|/statusZip|Get status of zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
-|POST|/cancelZip|Cancel running zip process|`{ id: String }`|`{ cancelled: String }`|
+|POST|/cancelZip|Cancel running zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
 |POST|/listZip|Get list of all zip archives|None|`{ list: [ ZipObj ] }`|
-|POST|/deleteZip|Delete zip archive by given ID|`{ id: String }`|`{ deleted: String }`|
+|POST|/deleteZip|Delete zip archive by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
 
 
 ### SSH Command Responses
