@@ -3,6 +3,7 @@ var ffmpeg     = require('fluent-ffmpeg');
 const slash    = require('./slash.js')
 var fs         = require('fs')
 var path       = require('path')
+var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
 const {
     sendAlert,

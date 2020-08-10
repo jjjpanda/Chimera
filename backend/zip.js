@@ -3,6 +3,7 @@ var archiver   = require('archiver');
 var dateFormat = require('./dateFormat.js')
 var fs         = require('fs')
 var path       = require('path')
+var moment     = require('moment')
 const {
     sendAlert,
     randomID,
