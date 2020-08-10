@@ -114,6 +114,7 @@ module.exports = {
             case "MOTION ON":
             case "MOTION OFF":
             case "UPDATING SERVER":
+            case "INSTALLING SERVER":
             case "SERVER STOP":
                 res.send(JSON.stringify({
                     sent: req.body.unformattedResponse.code == 0
