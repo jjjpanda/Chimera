@@ -1,6 +1,7 @@
 require('dotenv').config()
 var archiver   = require('archiver');
 var dateFormat = require('./dateFormat.js')
+var fs         = require('fs')
 var path       = require('path')
 const {
     sendAlert,
