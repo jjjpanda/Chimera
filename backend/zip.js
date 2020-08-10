@@ -59,6 +59,14 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
                 sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`))
             });    
+
+            archive.on('error', function(err) {
+                console.log('An error occurred: ' + err.message);
+                if(save){
+                    sendAlert(`Your zip (${rand}) could not be completed.`)
+                }    
+                fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`))
+            });
             
             fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`), "progress")
 
