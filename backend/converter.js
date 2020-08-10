@@ -49,7 +49,9 @@ module.exports = {
         end = (end == undefined ? moment() : moment(end, dateFormat)).format(dateFormat)
         
         if(camera == undefined){
-            res.status(400)
+            res.status(400).send({
+                error: "No Camera"
+            })
         }
         else{
             camera = camera.toString()
@@ -61,7 +63,9 @@ module.exports = {
         const { id } = req.body
         
         if(id == undefined){
-            res.status(400)
+            res.status(400).send({
+                error: "No ID"
+            })
         }
         else{
             next()

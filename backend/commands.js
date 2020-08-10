@@ -147,13 +147,14 @@ module.exports = {
 
     validatePath: (req, res, next) => {
         const { path } = req.body
-
-        console.log("PATH: ", path)
         
         if(path == undefined){
-            res.status(400)
+            res.status(400).send({
+                error: "No Path"
+            })
         }
         else{
+            console.log("PATH: ", path)
             next()
         }
     },
