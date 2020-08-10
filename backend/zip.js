@@ -113,7 +113,7 @@ module.exports = {
         let cancelled = true
 
         if(req.app.locals[id] != undefined){
-            req.app.locals[id].kill()
+            req.app.locals[id].abort()
             delete req.app.locals[id]
             sendAlert(`Your zip (${id}) was cancelled.`)
         }
