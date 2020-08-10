@@ -138,11 +138,22 @@ module.exports = {
     cancelVideo: (req, res) => {
         const { id } = req.body
 
-        req.app.locals[id].kill()
-        fs.unlinkSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
+        let cancelled = true;
+
+        if(req.app.locals[id] != undefined){
+            req.app.locals[id].kill()
+            delete req.app.locals[id]
+            sendAlert(`Your video (${id}) was cancelled.`)
+        }
+        else{
+            cancelled = false;
+        }
+        
+        //fs.unlinkSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
 
         res.send(JSON.stringify({
-            cancelled: id
+            cancelled, 
+            id
         }))
     },
 
@@ -150,9 +161,15 @@ module.exports = {
         const { id } = req.body
 
         console.log(id)
-        fs.unlinkSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
+        let deletable = fs.existsSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
+
+        if(deletable){
+            fs.unlinkSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
+        }
+        
         res.send(JSON.stringify({
-            deleted: id
+            deleted: deletable,
+            id
         }))
     },
 }
