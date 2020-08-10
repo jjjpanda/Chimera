@@ -10,15 +10,19 @@ var {
 var {
     validateRequest,
     validateID,
+}              = require('./converter.js')
+var {
     createVideo,
     statusVideo,
     cancelVideo,
     deleteVideo,
+}              = require('./video.js')
+var {
     createZip,
     statusZip,
     cancelZip,
     deleteZip
-}              = require('./converter.js')
+}              = require('./zip.js')
 var { 
     startMotion, 
     oneCommand,
@@ -91,7 +95,9 @@ if(process.env.fileServer == "on"){
         },
     }),
     express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
-        'icons': true
+        'icons': true,
+        stylesheet: path.resolve(__dirname, 'templates/fileStyle.css'),
+        template: path.resolve(__dirname, 'templates/fileTemplate.html')
     }))
 }
 

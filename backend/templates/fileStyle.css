@@ -1,0 +1,58 @@
+body {
+    font-family: 'Helvetica Neue', sans-serif;
+    background: #000000;
+    background-repeat: no-repeat;
+    color: #525252;
+}
+
+a{
+    color: #96e7f5
+}
+
+button {
+    border-radius: 10%;
+    border-color: rgb(95, 59, 59);
+    background-color: #092527;
+}
+
+ul#files {
+    width: 100%;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
+    list-style-type: none;
+}
+
+ul#files li {
+    width: 100%;
+    height: 12pt;
+    margin: 1%;
+}
+
+.icon-directory {
+   color: #dde004
+}
+
+.icon-default {
+    color: #dee3ff
+}
+
+.size, .date {
+    visibility: hidden;
+}
+
+#files .icon .name {
+    text-indent: 28px; 
+    background-repeat: no-repeat;
+}
+
+#files span {
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.view-tiles .name {
+    width: 100%;
+    background-position: 8px 5px;
+}

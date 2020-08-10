@@ -1,181 +1,46 @@
 require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
-var ffmpeg     = require('fluent-ffmpeg');
 var shortid    = require("shortid")
 const request  = require('request');
 var moment     = require('moment')
-var archiver   = require('archiver');
-const slash    = require('./slash.js')
+var dateFormat = require('./dateFormat.js')
 
-ffmpeg.setFfmpegPath(process.env.ffmpeg)
-ffmpeg.setFfprobePath(process.env.ffprobe)
- 
-const fileName = (camera, start, end, id, type) => {
-    return `output_${camera}_${start}_${end}_${id}.${type}`
-}
-
-const dateFormat = "YYYYMMDD-kkmmss"
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]'
 shortid.characters(charList)
 
-const sendAlert = (content) => {
-    request({
-        method: "POST",
-        url: process.env.alertURL,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            content
-        }),
-    }, (error, response, body) => {
-        if (!error) {
-            console.log('Alert Sent')
-        } else {
-            console.log("Error sending alert: ", error)
-        }
-    });
-}
-
-const randomID = () => {
-    return shortid.generate() + "-" + moment().format(dateFormat);
-}
-
-const filterList = (camera, start, end) => {
-    return fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
-}
-
-const createVideoList = (camera, start, end) => {
-    const rand = randomID()
-
-    const filteredList = filterList(camera, start, end)
-
-    const frames = filteredList.length    
-
-    let files = ""
-
-    console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
-    
-    for (const file of filteredList){
-        files += `file '${camera}/${file}'\r\n` 
-    }
-    
-    fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
-    return { rand, frames }
-}
-
-const convert = (camera, fps, frames, start, end, rand, save, res) => {
-
-    if(save){
-        console.log("SENDING START ALERT")
-        sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
-    }
-    else{
-        res.attachment(fileName(camera, start, end, rand, 'mp4'))
-    }
-    
-    let videoCreator = ffmpeg(process.env.imgDir+`/img_${rand}.txt`)
-        .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
-        .outputFPS(fps)
-        .videoBitrate(Math.pow(2, 14))
-        .videoCodec('libx264')
-        .toFormat('mp4')
-        .on('error', function(err) {
-            console.log('An error occurred: ' + err.message);
-            if(save){
-                sendAlert(`Your video (${rand}) could not be completed.`)
-            }    
-            fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
-        })
-        .on('progress', function(progress) {
-            console.log('Processing: ' + progress.frames + "/" + frames + ' done');
-        })
-        .on('end', function() {
-            console.log('Finished processing');
-            if(save){
-                console.log("SENDING END ALERT")
-                sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
-            }
-            fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
-        })
-
-    const createVideo = (creator) => {
-        if(save){
-            creator
-                .mergeToFile(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
-            
-            res.send(JSON.stringify({
-                id: rand,
-                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
-            }))
-        }
-        else{
-            creator
-                .outputOptions('-movflags frag_keyframe+empty_moov')
-                .pipe(res, {end: true}) 
-        }
-    }
-
-    createVideo(videoCreator)
-
-}
-
-const createZipList = (camera, start, end) => {
-    var archive = archiver('zip', {
-        zlib: {level: 9}
-    })
-
-    const filteredList = filterList(camera, start, end)
-
-    const frames = filteredList.length    
-
-    console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
-    
-    for (const file of filteredList){
-        archive.file(path.resolve(process.env.imgDir, camera, file), {
-            name: file
-        }) 
-    }
-
-    return {frames, archive}
-}
-
-const zip = (archive, camera, frames, start, end, save, res) => {
-
-    const rand = randomID()
-
-    if(save){
-        var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
-       
-        console.log("SENDING START ALERT")
-        sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
-
-        output.on('close', function() {
-            console.log("SENDING END ALERT")
-            sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
-            fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`))
-        });    
-        
-        fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.progress`), "progress")
-
-        archive.pipe(output)
-
-        res.send(JSON.stringify({
-            id: rand,
-            url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
-        }))
-    }
-    else{
-        res.attachment(fileName(camera, start, end, rand, 'zip'))
-        archive.pipe(res, {end: true})
-    }
-
-    archive.finalize()
-
-}
-
 module.exports = {
+    sendAlert: (content) => {
+        request({
+            method: "POST",
+            url: process.env.alertURL,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                content
+            }),
+        }, (error, response, body) => {
+            if (!error) {
+                console.log('Alert Sent')
+            } else {
+                console.log("Error sending alert: ", error)
+            }
+        });
+    },
+    
+    randomID: () => {
+        return shortid.generate() + "-" + moment().format(dateFormat);
+    },
+    
+    filterList: (camera, start, end) => {
+        return fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
+                `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+                `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+    },
+
+    fileName: (camera, start, end, id, type) => {
+        return `output_${camera}_${start}_${end}_${id}.${type}`
+    },
+
     validateRequest: (req, res, next) => {
         let { camera, start, end } = req.body;
 
@@ -202,87 +67,4 @@ module.exports = {
             next()
         }
     },
-
-    createVideo: (req, res) => {
-        //console.log(req)
-        let { camera, start, end, save, fps } = req.body;
-
-        fps = fps == undefined ? 20 : fps
-
-        console.log(camera, start, end, fps)
-        const { rand, frames } = createVideoList(camera, start, end)
-
-        if(save == undefined || save == true || frames > 250 || save == "true"){
-            save = true
-        }
-        else{
-            save = false
-        }
-
-        convert(camera, fps, frames, start, end, rand, save, res)
-    },
-
-    statusVideo: (req, res) => {
-        const { id } = req.body
-
-        console.log(id)
-        res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
-            id
-        }))
-    },
-
-    cancelVideo: (req, res) => {
-        const { id } = req.body
-
-        res.send(JSON.stringify({
-            nothing: "was done"
-        }))
-    },
-
-    deleteVideo: (req, res) => {
-        const { id } = req.body
-
-        console.log(id)
-        fs.unlinkSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
-        res.send(JSON.stringify({
-            deleted: id
-        }))
-    },
-
-    createZip: (req, res) => {
-        let { camera, start, end, save } = req.body;
-
-        const {frames, archive} = createZipList(camera, start, end)
-
-        if(save == undefined || save == true || frames > 250 || save == "true"){
-            save = true
-        }
-        else{
-            save = false
-        }
-
-        zip(archive, camera, frames, start, end, save, res)
-    },
-
-    statusZip: (req, res) => {
-        const { id } = req.body
-
-        console.log(id)
-        res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
-            id
-        }))
-    },
-
-    cancelZip: (req, res) => {
-        const { id } = req.body
-
-    },
-
-    deleteZip: (req, res) => {
-        const { id } = req.body
-
-    }
-
 }
