@@ -122,16 +122,16 @@ module.exports = {
             case "MOTION STATUS":
             case "SERVER STATUS":
                 const running = !(req.body.unformattedResponse.output.length == 0 || (req.body.unformattedResponse.output.includes("?") && req.body.unformattedResponse.output.includes("<defunct>")))
-                console.log("OUT: ", req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' '))
+                console.log("OUT: ", req.body.unformattedResponse.output.trim().replace(/\s+/g,' ').split(' '))
                 res.send(JSON.stringify({
                     running,
-                    duration: (running ? req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' ')[2] : "00:00:00")
+                    duration: (running ? req.body.unformattedResponse.output.trim().replace(/\s+/g,' ').split(' ')[2] : "00:00:00")
                 }))
                 break
             case "SIZE CHECK":
-                console.log("OUT: ", req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' '))
+                console.log("OUT: ", req.body.unformattedResponse.output.trim().replace(/\s+/g,' ').split(' '))
                 res.send(JSON.stringify({
-                    size: req.body.unformattedResponse.code == 0 ? `${req.body.unformattedResponse.output.replace(/\s+/g,' ').split(' ')[0]}B` : "ERROR"
+                    size: req.body.unformattedResponse.code == 0 ? `${req.body.unformattedResponse.output.trim().replace(/\s+/g,' ').split(' ')[0]}B` : "ERROR"
                 }))
                 break
             case "DELETE PATH":

@@ -25,7 +25,6 @@ ul#files {
 
 ul#files li {
     width: 100%;
-    height: 12pt;
     margin: 1%;
 }
 
@@ -54,5 +53,4 @@ ul#files li {
 
 .view-tiles .name {
     width: 100%;
-    background-position: 8px 5px;
 }
