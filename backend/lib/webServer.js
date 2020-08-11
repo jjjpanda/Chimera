@@ -113,22 +113,11 @@ if(process.env.converter == "on"){
     app.post("/status", validateID, status)
     app.post("/deleteVideo", validateID, deleteVideo) */
 
-    app.post('/createVideo', validateRequest, createVideo)
 
-    app.post('/createZip', validateRequest, createZip)
-
-    app.post('/statusProcess', validateID, (req, res) => {
-        res.send("BRUH")
-    })
-    app.post('/cancelProcess', validateID, (req, res) => {
-        res.send("BRUH")
-    })
-    app.post('/listProcess', (req, res) => {
-        res.send("BRUH")
-    })
-    app.post('/deleteProcess', validateID, (req, res) => {
-        res.send("BRUH")
-    })
+    app.post('/statusProcess', validateID, statusProcess)
+    app.post('/cancelProcess', validateID, cancelProcess)
+    app.post('/listProcess', listProcess)
+    app.post('/deleteProcess', validateID, deleteProcess)
 }
 
 // Listen
