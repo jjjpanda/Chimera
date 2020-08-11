@@ -79,7 +79,7 @@ if(process.env.commandServer == "on"){
     
     app.post('/serverUpdate', oneCommand(`sudo git pull`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
     app.post('/serverStatus', oneCommand(`ps -e | grep node`, "SERVER STATUS"), formattedCommandResponse)
-    app.post('/serverInstall', oneCommand(`npm install`, "INSTALLING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
+    app.post('/serverInstall', oneCommand(`npm install --no-progress`, "INSTALLING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
     app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"), formattedCommandResponse)
     
     app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)

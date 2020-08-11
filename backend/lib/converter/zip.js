@@ -148,6 +148,10 @@ module.exports = {
                 running: fs.existsSync(path.resolve(process.env.imgDir, `zip_${id}.txt`))
             }
         })
+
+        res.send({
+            list: zipList
+        })
     },
 
     deleteZip: (req, res) => {
