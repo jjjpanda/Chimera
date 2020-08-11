@@ -11,7 +11,8 @@ const {
     filterList,
     filterType,
     fileName,
-    parseFileName
+    parseFileName,
+    findFile
 }              = require('./converter.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
@@ -181,7 +182,7 @@ module.exports = {
         const videoFile = findFile(id);
 
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, videoFile))
+        let deletable = fs.existsSync(path.resolve(process.env.imgDir, videoFile)) && videoFile.includes('.mp4')
 
         if(deletable){
             fs.unlinkSync(path.resolve(process.env.imgDir, videoFile))
