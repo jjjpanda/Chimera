@@ -12,18 +12,16 @@ class Main extends React.Component {
     constructor(props){
         super(props)
         this.state = {
-            videoList: [],
-            zipList: []
+            processList: []
         }
     }
 
     componentDidMount = () => {
-        this.updateVideos()
-        this.updateZips()
+        this.updateProcesses()
     }
 
-    updateVideos = () => {
-        request("/listVideo", {
+    updateProcesses = () => {
+        request("/listProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -33,25 +31,7 @@ class Main extends React.Component {
                 console.log(data)
                 this.setState((oldState) => {
                     return{
-                        videoList: Array.from(new Set([...oldState.videoList, ...data.list]))
-                    }
-                })
-            })
-        })
-    }
-
-    updateZips = () => {
-        request("/listZip", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        }, (prom) => {
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.setState((oldState) => {
-                    return{
-                        zipList: Array.from(new Set([...oldState.zipList, ...data.list]))
+                        videoList: Array.from(new Set([...oldState.processList, ...data.list]))
                     }
                 })
             })
@@ -62,34 +42,19 @@ class Main extends React.Component {
         console.log("STATE FROM RENDER", this.state)
         return (
             <List style={{ margin: '5px 0', backgroundColor: 'white' }}>
-                {this.state.videoList.map(video => {
+                {this.state.processList.map(process => {
                     return (
                         <List.Item
                             extra={<Button type="ghost" size="small" inline>X</Button>}
                             multipleLine
                         >
-                            Video
+                            {process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                             <List.Item.Brief>
-                                {video.link}
+                                {process.link}
                             </List.Item.Brief>
                         </List.Item>
                     )
-                })}
-
-                {this.state.zipList.map(zip => {
-                    return (
-                        <List.Item
-                            extra={<Button type="ghost" size="small" inline>X</Button>}
-                            multipleLine
-                        >
-                            Zip
-                            <List.Item.Brief>
-                                {zip.link}
-                            </List.Item.Brief>
-                        </List.Item>
-                    )
-                })}
-                
+                })}               
             </List>
         )
     }
