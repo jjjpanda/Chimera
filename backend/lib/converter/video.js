@@ -178,11 +178,13 @@ module.exports = {
     deleteVideo: (req, res) => {
         const { id } = req.body
 
+        const videoFile = findFile(id);
+
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
+        let deletable = fs.existsSync(path.resolve(process.env.imgDir, videoFile))
 
         if(deletable){
-            fs.unlinkSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'mp4')))
+            fs.unlinkSync(path.resolve(process.env.imgDir, videoFile))
         }
         
         res.send(JSON.stringify({
