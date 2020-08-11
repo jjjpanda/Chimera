@@ -13,6 +13,7 @@ const {
     parseFileName,
     findFile
 }              = require('./converter.js');
+const { parse } = require('path');
 
 const createZipList = (camera, start, end) => {
     var archive = archiver('zip', {
@@ -161,7 +162,7 @@ module.exports = {
         const zipFile = findFile(id);
 
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, zipFile))
+        let deletable = fs.existsSync(path.resolve(process.env.imgDir, zipFile)) && zipFile.includes('.zip')
 
         if(deletable){
             fs.unlinkSync(path.resolve(process.env.imgDir, zipFile))
