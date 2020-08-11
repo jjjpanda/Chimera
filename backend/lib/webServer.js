@@ -45,9 +45,9 @@ if(process.env.fileServer == "proxy"){
 
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use(/\/.*Video|\/.*Zip/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/.*Video|\/.*Zip|\/.*Process/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/.*Video|\/.*Zip/) && req.method === 'POST');
+        return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST');
     }, {
         target: `http://${process.env.host}:${process.env.PORT}/`,
     }))
@@ -59,18 +59,41 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json())
 
 //NON PROXY
+
+if(process.env.fileServer == "on"){
+    console.log("File Server On")
+    app.use('/shared', serveStatic(path.join(process.env.filePath), {
+        index: false,
+        'setHeaders': (res, path) => {
+            res.setHeader('Content-Disposition', contentDisposition(path))
+        },
+    }),
+    express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
+        'icons': true,
+        stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
+        template: path.resolve(__dirname, '../templates/fileTemplate.html')
+    }))
+}
+
+if(process.env.converter == "on"){
+    console.log("Converter On")
+    /* app.post('/convert', validateVideoDetails, convert)
+    app.post("/status", validateID, status)
+    app.post("/deleteVideo", validateID, deleteVideo) */
+
+    app.post('/createVideo', validateRequest, createVideo)
+
+    app.post('/createZip', validateRequest, createZip)
+
+    app.post('/statusProcess', validateID, statusProcess)
+    app.post('/cancelProcess', validateID, cancelProcess)
+    app.post('/listProcess', listProcess)
+    app.post('/deleteProcess', validateID, deleteProcess)
+}
+
 if(process.env.commandServer == "on"){
     console.log("Motion Controls On")
 
-    /* app.post("/on", startMotion)
-    app.post("/off", oneCommand(`sudo pkill motion`, "MOTION OFF"))
-    app.post('/motion', oneCommand(`ps -e | grep motion`, "MOTION STATUS"))
-    app.post('/kill', oneCommand(`sudo tmux kill-server`, "KILL SERVER"))
-    app.post('/selfUpdate', oneCommand(`sudo git pull && npm install`, "UPDATING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`))
-    app.post('/size', oneCommand(`du -sh ${process.env.sharedLocation}/shared/captures/`, "SIZE CHECK", undefined, true))
-    app.post('/deleteVideos', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/output*`, "DELETE VIDEOS"))
-    app.post('/deleteImages', oneCommand(`sudo rm -rf ${process.env.sharedLocation}/shared/captures/`, "DELETE IMAGES", undefined, true)) */
-    
     app.post('/motionStart', startMotion, formattedCommandResponse)
     app.post('/motionStatus', oneCommand(`ps -e | grep motion`, "MOTION STATUS"), formattedCommandResponse)
     app.post('/motionStop', oneCommand(`sudo pkill motion`, "MOTION OFF"), formattedCommandResponse)
@@ -90,34 +113,6 @@ if(process.env.commandServer == "on"){
     app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
         index: "index.html"
     }))
-}
-
-if(process.env.fileServer == "on"){
-    console.log("File Server On")
-    app.use('/shared', serveStatic(path.join(process.env.filePath), {
-        index: false,
-        'setHeaders': (res, path) => {
-            res.setHeader('Content-Disposition', contentDisposition(path))
-        },
-    }),
-    express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
-        'icons': true,
-        stylesheet: path.resolve(__dirname, 'templates/fileStyle.css'),
-        template: path.resolve(__dirname, 'templates/fileTemplate.html')
-    }))
-}
-
-if(process.env.converter == "on"){
-    console.log("Converter On")
-    /* app.post('/convert', validateVideoDetails, convert)
-    app.post("/status", validateID, status)
-    app.post("/deleteVideo", validateID, deleteVideo) */
-
-
-    app.post('/statusProcess', validateID, statusProcess)
-    app.post('/cancelProcess', validateID, cancelProcess)
-    app.post('/listProcess', listProcess)
-    app.post('/deleteProcess', validateID, deleteProcess)
 }
 
 // Listen
