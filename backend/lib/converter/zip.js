@@ -10,7 +10,6 @@ const {
     filterList,
     fileName
 }              = require('./converter.js');
-const { send } = require('process');
 
 const createZipList = (camera, start, end) => {
     var archive = archiver('zip', {

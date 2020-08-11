@@ -10,26 +10,26 @@ var {
 var {
     validateRequest,
     validateID,
-}              = require('./converter.js')
+}              = require('./converter/converter.js')
 var {
     createVideo,
     statusVideo,
     cancelVideo,
     deleteVideo,
-}              = require('./video.js')
+}              = require('./converter/video.js')
 var {
     createZip,
     statusZip,
     cancelZip,
     deleteZip
-}              = require('./zip.js')
+}              = require('./converter/zip.js')
 var { 
     startMotion, 
     oneCommand,
     validatePath,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('./commands.js')
+}              = require('./commands/commands.js')
 
 var app = express()
 
@@ -83,7 +83,11 @@ if(process.env.commandServer == "on"){
     app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
     app.post('/pathDelete', validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
  
-    app.use('/', express.static(path.resolve(__dirname, "../frontend/"), {
+    app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
+        index: "index.html"
+    }))
+
+    app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
         index: "index.html"
     }))
 }
