@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+import Main from "./app/Main.jsx"
+
 import * as FastClick from 'fastclick'
 if ('addEventListener' in document) {
     document.addEventListener('DOMContentLoaded', function() {
@@ -8,8 +10,6 @@ if ('addEventListener' in document) {
     }, false);
 }
 
-ReactDOM.render(<div>
-    BRUH
-</div>,
+ReactDOM.render(<Main />,
     document.getElementById('root'),
 );
