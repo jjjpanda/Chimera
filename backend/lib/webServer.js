@@ -13,18 +13,16 @@ var {
 }              = require('./converter/converter.js')
 var {
     createVideo,
-    statusVideo,
-    cancelVideo,
-    listVideo,
-    deleteVideo,
 }              = require('./converter/video.js')
 var {
     createZip,
-    statusZip,
-    cancelZip,
-    listZip,
-    deleteZip
 }              = require('./converter/zip.js')
+var {
+    statusProcess,
+    cancelProcess,
+    listProcess,
+    deleteProcess,
+}              = require('./converter/process.js')
 var { 
     startMotion, 
     oneCommand,
@@ -116,16 +114,13 @@ if(process.env.converter == "on"){
     app.post("/deleteVideo", validateID, deleteVideo) */
 
     app.post('/createVideo', validateRequest, createVideo)
-    app.post('/statusVideo', validateID, statusVideo)
-    app.post('/cancelVideo', validateID, cancelVideo)
-    app.post('/listVideo', listVideo)
-    app.post('/deleteVideo', validateID, deleteVideo)
 
     app.post('/createZip', validateRequest, createZip)
-    app.post('/statusZip', validateID, statusZip)
-    app.post('/cancelZip', validateID, cancelZip)
-    app.post('/listZip', listZip)
-    app.post('/deleteZip', validateID, deleteZip)
+
+    app.post('/statusProcess', validateID, statusProcess)
+    app.post('/cancelProcess', validateID, cancelProcess)
+    app.post('/listProcess', listProcess)
+    app.post('/deleteProcess', validateID, deleteProcess)
 }
 
 // Listen

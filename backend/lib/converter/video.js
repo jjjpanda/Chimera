@@ -9,10 +9,7 @@ const {
     sendAlert,
     randomID,
     filterList,
-    filterType,
     fileName,
-    parseFileName,
-    findFile
 }              = require('./converter.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
@@ -126,71 +123,5 @@ module.exports = {
         }
 
         video(camera, fps, frames, start, end, rand, save, req, res)
-    },
-
-    statusVideo: (req, res) => {
-        const { id } = req.body
-
-        console.log(id)
-        res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`)),
-            id
-        }))
-    },
-
-    cancelVideo: (req, res) => {
-        const { id } = req.body
-
-        let cancelled = true;
-
-        if(req.app.locals[id] != undefined){
-            req.app.locals[id].kill()
-            delete req.app.locals[id]
-            sendAlert(`Your video (${id}) was cancelled.`)
-        }
-        else{
-            cancelled = false;
-        }
-        
-        //fs.unlinkSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
-
-        res.send(JSON.stringify({
-            cancelled, 
-            id
-        }))
-    },
-
-    listVideo: (req, res) => {
-        let videoList = filterType('mp4')
-
-        videoList = videoList.map(video => {
-            const id = parseFileName(video).id
-            return {
-                ...parseFileName(video),
-                running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
-            }
-        })
-
-        res.send({
-            list: videoList
-        })
-    },
-
-    deleteVideo: (req, res) => {
-        const { id } = req.body
-
-        const videoFile = findFile(id);
-
-        console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, videoFile)) && videoFile.includes('.mp4')
-
-        if(deletable){
-            fs.unlinkSync(path.resolve(process.env.imgDir, videoFile))
-        }
-        
-        res.send(JSON.stringify({
-            deleted: deletable,
-            id
-        }))
-    },
+    }
 }

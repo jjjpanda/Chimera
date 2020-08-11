@@ -49,6 +49,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         return {
             link: `/shared/captures/${fileName}`,
+            type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],
             start: fileInfo[2],

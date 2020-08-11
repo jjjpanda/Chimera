@@ -8,12 +8,8 @@ const {
     sendAlert,
     randomID,
     filterList,
-    filterType,
     fileName,
-    parseFileName,
-    findFile
 }              = require('./converter.js');
-const { parse } = require('path');
 
 const createZipList = (camera, start, end) => {
     var archive = archiver('zip', {
@@ -106,71 +102,5 @@ module.exports = {
         }
 
         zip(archive, camera, frames, start, end, save, req, res)
-    },
-
-    statusZip: (req, res) => {
-        const { id } = req.body
-
-        console.log(id)
-        res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `zip_${id}.txt`)),
-            id
-        }))
-    },
-
-    cancelZip: (req, res) => {
-        const { id } = req.body
-
-        let cancelled = true
-
-        if(req.app.locals[id] != undefined){
-            req.app.locals[id].abort()
-            delete req.app.locals[id]
-            sendAlert(`Your zip (${id}) was cancelled.`)
-        }
-        else{
-            cancelled = false;
-        }
-        
-        //fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${id}.txt`))
-
-        res.send(JSON.stringify({
-            cancelled,
-            id
-        }))
-    },
-   
-    listZip: (req, res) => {
-        let zipList = filterType('zip')
-
-        zipList = zipList.map(zip => {
-            const id = parseFileName(zip).id
-            return {
-                ...parseFileName(zip),
-                running: fs.existsSync(path.resolve(process.env.imgDir, `zip_${id}.txt`))
-            }
-        })
-
-        res.send({
-            list: zipList
-        })
-    },
-
-    deleteZip: (req, res) => {
-        const { id } = req.body
-
-        const zipFile = findFile(id);
-
-        console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, zipFile)) && zipFile.includes('.zip')
-
-        if(deletable){
-            fs.unlinkSync(path.resolve(process.env.imgDir, zipFile))
-        }
-        
-        res.send(JSON.stringify({
-            deleted: deletable,
-            id
-        }))
     }
 }

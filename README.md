@@ -29,26 +29,16 @@
 |POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
 
-### Video Conversions
+### Video and Archive Conversions
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
 |POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
-|POST|/statusVideo|Get status of video process|`{ id: String }`|`{ running: Boolean, id: String }`|
-|POST|/cancelVideo|Cancel running video process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
-|POST|/listVideo|Get list of all videos|None|`{ list: [ VideoObj ] }`|
-|POST|/deleteVideo|Delete video by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
-
-### Archive Conversions
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
 |POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String }`|
-|POST|/statusZip|Get status of zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
-|POST|/cancelZip|Cancel running zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
-|POST|/listZip|Get list of all zip archives|None|`{ list: [ ZipObj ] }`|
-|POST|/deleteZip|Delete zip archive by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
-
+|POST|/statusProcess|Get status of video or zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
+|POST|/cancelProcess|Cancel running video or zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
+|POST|/listProcess|Get list of all processes|None|`{ list: [ ProcessObj ] }`|
+|POST|/deleteProcess|Delete video or zip by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
 
 ### SSH Command Responses
 
@@ -61,28 +51,19 @@
 }
 ```
 
-### VideoObj & ZipObj
+### ProcessObj
 
 ```javascript
-// fileName = output_[cameraNumber]_[startDateTime]_[endDateTime]_[ID]
+// fileName = output_[cameraNumber]_[startDateTime]_[endDateTime]_[ID].[type]
 
 // id = [RandomAlphaNumeric]_[requestDateTime]
 
 // dateTime = YYYYMMDD-hhmmss (0-23 hour clock)
 
-//VideoObj
+//ProcessObj
 {
-    link: String // /shared/captures/[fileName].mp4
-    id: String, // id,
-    camera: Number,
-    start: String, // dateTime,
-    end: String, //dateTime,
-    running: Boolean
-}
-
-//ZipObj
-{
-    link: String // /shared/captures/[fileName].zip
+    link: String // /shared/captures/[fileName]
+    type: String // mp4, zip, etc
     id: String, // id
     camera: Number,
     start: String,  // dateTime,
