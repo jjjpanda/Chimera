@@ -10,7 +10,8 @@ const {
     filterList,
     filterType,
     fileName,
-    parseFileName
+    parseFileName,
+    findFile
 }              = require('./converter.js');
 
 const createZipList = (camera, start, end) => {
@@ -157,11 +158,13 @@ module.exports = {
     deleteZip: (req, res) => {
         const { id } = req.body
 
+        const zipFile = findFile(id);
+
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'zip')))
+        let deletable = fs.existsSync(path.resolve(process.env.imgDir, zipFile))
 
         if(deletable){
-            fs.unlinkSync(path.resolve(process.env.imgDir, fileName(camera, start, end, id, 'zip')))
+            fs.unlinkSync(path.resolve(process.env.imgDir, zipFile))
         }
         
         res.send(JSON.stringify({
