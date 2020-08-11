@@ -37,8 +37,23 @@ module.exports = {
                 `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
     },
 
+    filterType: (type) => {
+        return fs.readdirSync(path.resolve(process.env.imgDir)).filter(file => file.includes(`.${type}`))
+    },
+
     fileName: (camera, start, end, id, type) => {
         return `output_${camera}_${start}_${end}_${id}.${type}`
+    },
+
+    parseFileName: (fileName) => {
+        const fileInfo = fileName.split('_');
+        return {
+            link: `/shared/captures/${fileName}`,
+            id: fileInfo[4].split('.')[0],
+            camera: fileInfo[1],
+            start: fileInfo[2],
+            end: fileInfo[3]
+        }
     },
 
     validateRequest: (req, res, next) => {

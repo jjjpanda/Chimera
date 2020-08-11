@@ -8,7 +8,9 @@ const {
     sendAlert,
     randomID,
     filterList,
-    fileName
+    filterType,
+    fileName,
+    parseFileName
 }              = require('./converter.js');
 
 const createZipList = (camera, start, end) => {
@@ -134,6 +136,18 @@ module.exports = {
             cancelled,
             id
         }))
+    },
+   
+    listZip: (req, res) => {
+        let zipList = filterType('zip')
+
+        zipList = zipList.map(zip => {
+            const id = parseFileName(zip).id
+            return {
+                ...parseFileName(zip),
+                running: fs.existsSync(path.resolve(process.env.imgDir, `zip_${id}.txt`))
+            }
+        })
     },
 
     deleteZip: (req, res) => {

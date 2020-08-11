@@ -9,7 +9,9 @@ const {
     sendAlert,
     randomID,
     filterList,
-    fileName
+    filterType,
+    fileName,
+    parseFileName
 }              = require('./converter.js')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
@@ -155,6 +157,18 @@ module.exports = {
             cancelled, 
             id
         }))
+    },
+
+    listVideo: (req, res) => {
+        let videoList = filterType('mp4')
+
+        videoList = videoList.map(video => {
+            const id = parseFileName(video).id
+            return {
+                ...parseFileName(video),
+                running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
+            }
+        })
     },
 
     deleteVideo: (req, res) => {
