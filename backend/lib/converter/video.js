@@ -169,6 +169,10 @@ module.exports = {
                 running: fs.existsSync(path.resolve(process.env.imgDir, `img_${id}.txt`))
             }
         })
+
+        res.send({
+            list: videoList
+        })
     },
 
     deleteVideo: (req, res) => {
