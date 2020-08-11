@@ -1,9 +1,6 @@
 require('dotenv').config()
-var archiver   = require('archiver');
-var dateFormat = require('./dateFormat.js')
 var fs         = require('fs')
 var path       = require('path')
-var moment     = require('moment')
 const {
     sendAlert,
     filterType,
@@ -32,9 +29,17 @@ module.exports = {
         let cancelled = true
 
         if(req.app.locals[id] != undefined){
-            req.app.locals[id].abort()
-            delete req.app.locals[id]
-            sendAlert(`Your ${type} (${id}) was cancelled.`)
+            if(type == "mp4"){
+                req.app.locals[id].kill()
+                delete req.app.locals[id]
+                sendAlert(`Your video (${id}) was cancelled.`)
+            }
+            else if(type == "zip"){
+                req.app.locals[id].abort()
+                delete req.app.locals[id]
+                sendAlert(`Your archive (${id}) was cancelled.`)
+            }
+            
         }
         else{
             cancelled = false;

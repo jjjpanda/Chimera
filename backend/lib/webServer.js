@@ -21,7 +21,7 @@ var {
     statusProcess,
     cancelProcess,
     listProcess,
-    deleteProcess,
+    deleteProcess
 }              = require('./converter/process.js')
 var { 
     startMotion, 
