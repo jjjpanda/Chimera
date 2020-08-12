@@ -8,7 +8,8 @@ import {
     NoticeBar,
     Icon,
     WhiteSpace,
-    Flex
+    Flex,
+    Modal
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -76,28 +77,62 @@ class Processes extends React.Component{
     }
 
     listProcesses = () => {
-        request("/listProcess", {
+        this.setState({ processList: [] }, () => {
+            request("/listProcess", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }, (prom) => {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    this.setState(() => {
+                        return{
+                            processList: [...data.list.sort((process1, process2) => {
+                                return moment(process2.start).diff(moment(process1.start), "seconds")
+                            })]
+                        }
+                    })
+                })
+        })
+        })
+        
+    }
+
+    cancelProcess = (id, type) => {
+        request("/cancelProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({
+                id
+            })
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
-                this.setState((oldState) => {
-                    for(const process of data.list){
-                        if(!oldState.processList.some(knownProcess => knownProcess.id == process.id)){
-                            oldState.processList.push(process)
-                        }
-                    }
-                    return{
-                        processList: [...oldState.processList.sort((process1, process2) => {
-                            return moment(process2.start).diff(moment(process1.start), "seconds")
-                        })]
-                    }
-                })
+                this.listProcesses()
             })
         })
+        
+    }
+
+    deleteProcess = (id, type) => {
+        request("/deleteProcess", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+                this.listProcesses()
+            })
+        })
+
     }
 
     render () {
@@ -163,10 +198,24 @@ class Processes extends React.Component{
                     return (
                         <Card >
                             <Card.Header 
-                                extra={<Button type="ghost" size="small" inline>X</Button>}
+                                extra={<Button type="ghost" size="small" inline onClick={() => {
+                                    const alert = Modal.alert(process.running ? "Cancel" : "Delete", "Are you sure?", [
+                                        { text: "Cancel", onPress: () => {}, style: "default" },
+                                        { text: "Ok", onPress: () => {
+                                            if(process.running){
+                                                this.cancelProcess(process.id)
+                                            }
+                                            else{
+                                                this.deleteProcess(process.id)
+                                            }
+                                        }}
+                                    ])
+                                }}>{process.running ? "cancel" : "delete"}</Button>}
                                 title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                             />
-                                {process.link}
+                                <a href={process.link} download>
+                                    LINK
+                                </a>
                             <Card.Footer 
                                 content={<div>{process.running ? "Running" : "Finished"}</div>} 
                             />  
