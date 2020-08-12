@@ -6,7 +6,9 @@ import {
     Button,
     SegmentedControl,
     DatePicker,
-    List
+    List,
+    Checkbox,
+    WhiteSpace
 } from 'antd-mobile';
 
 import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
@@ -23,8 +25,21 @@ class SaveProcess extends React.Component{
             cameras: ['1', '2', '3'],
             visible: false,
             startDate: moment().subtract(1, "day").toDate(),
-            endDate: moment().toDate()
+            endDate: moment().toDate(),
+            download: false
         }
+    }
+
+    processBody = () => {
+        console.log(this.state.startDate, this.state.endDate)
+        const body = JSON.stringify({
+            camera: (this.state.camera+1).toString(),
+            start: moment(this.state.startDate).format("YYYYMMDD-HHmmss"),
+            end: moment(this.state.endDate).format("YYYYMMDD-HHmmss"),
+            save: !this.state.download
+        })
+        console.log(body)
+        return body
     }
 
     createVideo = () => {
@@ -33,11 +48,7 @@ class SaveProcess extends React.Component{
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                camera: (this.state.camera+1).toString(),
-                start: moment(this.state.startDate).format("YYYYMMDD-kkmmss"),
-                end: moment(this.state.endDate).format("YYYYMMDD-kkmmss"),
-            })
+            body: this.processBody()
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -51,11 +62,7 @@ class SaveProcess extends React.Component{
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                camera: (this.state.camera+1).toString(),
-                start: moment(this.state.startDate).format("YYYYMMDD-kkmmss"),
-                end: moment(this.state.endDate).format("YYYYMMDD-kkmmss"),
-            })
+            body: this.processBody()
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -120,8 +127,12 @@ class SaveProcess extends React.Component{
                                 End Date
                             </List.Item>
                         </DatePicker>
+
+                        <Checkbox.CheckboxItem checked={this.state.download} onChange={(e) => this.setState({ download : e.target.checked })} >Direct Download</Checkbox.CheckboxItem>
                     </List>
                 
+                    <WhiteSpace size="md" />
+
                     <Flex>
                         <Flex.Item>
                             <Button icon="check-circle-o" onClick={this.createVideo}>VIDEO</Button>

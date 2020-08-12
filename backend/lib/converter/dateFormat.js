@@ -1,1 +1,1 @@
-module.exports = "YYYYMMDD-kkmmss"
+module.exports = "YYYYMMDD-HHmmss"
