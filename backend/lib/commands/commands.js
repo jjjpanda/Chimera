@@ -23,7 +23,7 @@ const lines = (output, error) => {
 }
 
 module.exports = {
-    oneCommand: (command, msg, baseDir, appendable=false) => (req, res, next) => {
+    oneCommand: (command, msg, baseDir, appendable=false, pipeable=false) => (req, res, next) => {
         console.log(msg)
         var ssh = new SSH((baseDir != undefined ? 
             {
@@ -44,8 +44,13 @@ module.exports = {
         if(appendable && req.body && req.body.commandAppends){
             commandAppends = req.body.commandAppends
         }
+
+        let pipe = ""
+        if(pipeable && req.body && req.body.pipeCommand){
+            pipe = req.body.pipeCommand
+        }
     
-        ssh.exec(command + commandAppends, {
+        ssh.exec(command + commandAppends + pipe, {
             pty: true,
             ...lines(outputChanger, errorChanger),
             exit: (code) => {
@@ -109,7 +114,13 @@ module.exports = {
         .start();
     },
 
+    pipeCommand: (command) => (req, res, next) => {
+        req.body.pipeCommand = command
+        next()
+    },
+
     formattedCommandResponse: (req, res) => {
+        console.log(req.body.unformattedResponse)
         switch (req.body.unformattedResponse.msg){
             case "MOTION ON":
             case "MOTION OFF":
@@ -135,6 +146,11 @@ module.exports = {
                     size: req.body.unformattedResponse.code == 0 ? `${req.body.unformattedResponse.output.trim().replace(/\s+/g,' ').split(' ')[0]}B` : "ERROR"
                 }))
                 break
+            case "FILE COUNT":
+                console.log("FILES: ", req.body.unformattedResponse.output.trim())
+                res.send(JSON.stringify({
+                    count: parseInt(req.body.unformattedResponse.output.trim())
+                }))
             case "DELETE PATH":
                 res.send(JSON.stringify({
                     sent: req.body.unformattedResponse.sent
