@@ -90,6 +90,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 
                 res.send(JSON.stringify({
                     id: rand,
+                    frameLimitMet: req.body.frameLimitMet,
                     url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
@@ -115,8 +116,12 @@ module.exports = {
         console.log(camera, start, end, fps)
         const { rand, frames } = createVideoList(camera, start, end)
 
-        if(save == undefined || save == true || frames > 250 || save == "true"){
+        if(save == undefined || save == true || save == "true"){
             save = true
+        }
+        else if(frames > 250){
+            save = true
+            req.body.frameLimitMet = true
         }
         else{
             save = false

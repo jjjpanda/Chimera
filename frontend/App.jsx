@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 
 import Main from "./app/Main.jsx"
 
+import './css/style.less'
+
 import * as FastClick from 'fastclick'
 if ('addEventListener' in document) {
     document.addEventListener('DOMContentLoaded', function() {
