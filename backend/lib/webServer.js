@@ -26,6 +26,7 @@ var {
 var { 
     startMotion, 
     oneCommand,
+    pipeCommand,
     validatePath,
     formattedCommandResponse,
     pathCommandAppend
@@ -103,7 +104,8 @@ if(process.env.commandServer == "on"){
     app.post('/serverInstall', oneCommand(`npm install --no-progress`, "INSTALLING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
     app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"), formattedCommandResponse)
     
-    app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
+    app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
+    app.post('/pathFileCount', validatePath, pathCommandAppend, pipeCommand(' | wc -l'), oneCommand(`ls ${process.env.sharedLocation}`, "FILE COUNT", undefined, true, true), formattedCommandResponse)
     app.post('/pathDelete', validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
  
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {

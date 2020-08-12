@@ -27,6 +27,7 @@
 |POST|/serverStatus|Get command server status|None|`{ running: Boolean, duration: String }`|
 |POST|/serverStop|Stop command server|None|`{ sent: Boolean }`|
 |POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
+|POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
 
 ### Video and Archive Conversions
