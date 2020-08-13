@@ -47,6 +47,7 @@ module.exports = {
 
     parseFileName: (fileName) => {
         const fileInfo = fileName.split('_');
+        console.log(fileName)
         return {
             link: `/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
