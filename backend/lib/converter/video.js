@@ -67,7 +67,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 if(save){
                     sendAlert(`Your video (${rand}) could not be completed.`)
                 }    
-                fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
+                fs.unlinkSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`))
             })
             .on('progress', function(progress) {
                 console.log('Processing: ' + progress.frames + "/" + frames + ' done');

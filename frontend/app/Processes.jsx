@@ -15,7 +15,8 @@ import {
 import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import SaveProcess from './SaveProcess.jsx';
-import MainProcess from './MainProcess.jsx';
+import MotionProcess from './MotionProcess.jsx';
+import ServerProcess from './ServerProcess.jsx';
 
 class Processes extends React.Component{
 
@@ -24,58 +25,16 @@ class Processes extends React.Component{
         this.state = {
             refreshing: false,
             lastUpdated: moment().format("h:mm:ss a"),
-            motionStatus: {
-                running: false,
-                duration: "00:00:00"
-            },
-            serverStatus: {
-                running: true,
-                duration: "00:00:00"
-            },
             processList: []
         }
     }
 
     componentDidMount = () => {
-        this.motionStatus()
-        this.serverStatus()
         this.listProcesses()
         this.setState(() => ({
             lastUpdated: moment().format("h:mm:ss a")
         }))
-    }
-
-    serverStatus = () => {
-        request("/serverStatus", {
-            method: "POST"
-        }, (prom) => {
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.setState(() => ({
-                    serverStatus: {
-                        running: data.running, 
-                        duration: data.duration
-                    }
-                }))
-            })
-        })
-    }
-
-    motionStatus = () => {
-        request("/motionStatus", {
-            method: "POST"
-        }, (prom) => {
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.setState(() => ({
-                    motionStatus: {
-                        running: data.running, 
-                        duration: data.duration
-                    }
-                }))
-            })
-        })
-    }
+    } 
 
     listProcesses = () => {
         this.setState({ processList: [] }, () => {
@@ -141,17 +100,12 @@ class Processes extends React.Component{
         return (
             <PullToRefresh
                 damping={60}
-                indicator={{ deactivate: 'Refresh' }}
+                indicator={{ activate: "Refresh", deactivate: "Cancel", release: "Refreshing", finish: "Refreshed" }}
                 direction={'down'}
                 refreshing={this.state.refreshing}
                 onRefresh={() => {
                     this.setState({ refreshing: true }, () => {
-                        this.motionStatus()
-                        this.serverStatus()
-                        this.listProcesses()
-                        this.setState(() => ({
-                            lastUpdated: moment().format("h:mm:ss a")
-                        }))
+                        this.componentDidMount()
                         setTimeout(() => {
                             this.setState({ refreshing: false });
                         }, 1000);
@@ -163,16 +117,20 @@ class Processes extends React.Component{
                 </NoticeBar>
                 <WhiteSpace size="sm" />
 
-                <MainProcess 
+                {/* <MotionProcess 
+                    setParentState={this.setState}
                     motionStatus={this.state.motionStatus} 
-                    motionChange={() => {
+                    motionAfterChange={() => {
                         this.motionStatus()
                     }} 
                     serverStatus={this.state.serverStatus} 
-                    serverChange={() => {
+                    serverAfterChange={() => {
                         this.serverStatus()
                     }}
-                />
+                /> */}
+
+                <MotionProcess key={`motion${this.state.lastUpdated}`}/>
+                <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
                 <WhiteSpace size="sm" />
 
