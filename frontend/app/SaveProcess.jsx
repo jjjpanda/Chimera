@@ -43,7 +43,7 @@ class SaveProcess extends React.Component{
     }
 
     createVideo = () => {
-        request("/createZip", {
+        request("/createVideo", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
