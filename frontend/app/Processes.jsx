@@ -117,18 +117,6 @@ class Processes extends React.Component{
                 </NoticeBar>
                 <WhiteSpace size="sm" />
 
-                {/* <MotionProcess 
-                    setParentState={this.setState}
-                    motionStatus={this.state.motionStatus} 
-                    motionAfterChange={() => {
-                        this.motionStatus()
-                    }} 
-                    serverStatus={this.state.serverStatus} 
-                    serverAfterChange={() => {
-                        this.serverStatus()
-                    }}
-                /> */}
-
                 <MotionProcess key={`motion${this.state.lastUpdated}`}/>
                 <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
