@@ -52,6 +52,7 @@ class SaveProcess extends React.Component{
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
+                this.closeModal()
             })
         })
     }
@@ -66,6 +67,7 @@ class SaveProcess extends React.Component{
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
+                this.closeModal()
             })
         })
     }
