@@ -30,7 +30,7 @@ const createVideoList = (camera, start, end) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    fs.writeFileSync(path.resolve(process.env.imgDir, `img_${rand}.txt`), files)
+    fs.writeFileSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`), files)
     return { rand, frames }
 };
 
@@ -56,7 +56,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
             res.attachment(fileName(camera, start, end, rand, 'mp4'))
         }
     
-        let videoCreator = ffmpeg(process.env.imgDir+`/img_${rand}.txt`)
+        let videoCreator = ffmpeg(process.env.imgDir+`/mp4_${rand}.txt`)
             .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
             .outputFPS(fps)
             .videoBitrate(Math.pow(2, 14))
@@ -78,7 +78,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                     console.log("SENDING END ALERT")
                     sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
-                fs.unlinkSync(path.resolve(process.env.imgDir, `img_${rand}.txt`))
+                fs.unlinkSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`))
             })
 
         req.app.locals[rand] = videoCreator
