@@ -59,7 +59,7 @@ module.exports = {
     },
 
     findFile: (id) => {
-        const fileName = fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id))
+        const fileName = fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id) && !file.includes('.txt'))
         return fileName == undefined ? "output_0_start_end_id.type" : fileName
     },
 
