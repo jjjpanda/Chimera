@@ -6,7 +6,7 @@ const request  = require('request');
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
 
-const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]'
+const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
 shortid.characters(charList)
 
 module.exports = {
@@ -58,7 +58,8 @@ module.exports = {
     },
 
     findFile: (id) => {
-        return fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id))
+        const fileName = fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id))
+        return fileName == undefined ? "output_0_start_end_id.type"
     },
 
     validateRequest: (req, res, next) => {
