@@ -15,6 +15,7 @@ import {
 import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import SaveProcess from './SaveProcess.jsx';
+import MainProcess from './MainProcess.jsx';
 
 class Processes extends React.Component{
 
@@ -162,24 +163,16 @@ class Processes extends React.Component{
                 </NoticeBar>
                 <WhiteSpace size="sm" />
 
-                <Card >
-                    <Card.Header 
-                        extra={<Button type="ghost" size="small" inline>X</Button>} 
-                    />
-                    Motion: {this.state.motionStatus.running ? "on": "off"}
-                    <Card.Footer 
-                        content={<div> {this.state.motionStatus.duration} </div>} 
-                    />
-                </Card>            
-                <Card>
-                    <Card.Header 
-                        extra={<Button type="ghost" size="small" inline>X</Button>}
-                    />
-                    Status: {this.state.serverStatus.running ? "on": "off"}
-                    <Card.Footer 
-                        content={<div> {this.state.serverStatus.duration} </div>} 
-                    />                   
-                </Card>
+                <MainProcess 
+                    motionStatus={this.state.motionStatus} 
+                    motionChange={() => {
+                        this.motionStatus()
+                    }} 
+                    serverStatus={this.state.serverStatus} 
+                    serverChange={() => {
+                        this.serverStatus()
+                    }}
+                />
 
                 <WhiteSpace size="sm" />
 
