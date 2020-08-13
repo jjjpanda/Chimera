@@ -58,7 +58,7 @@ module.exports = {
     },
 
     findFile: (id) => {
-        return fs.readdirSync(path.resolve(process.env.imgDir)).filter(file => file.includes(id))[0]
+        return fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id))
     },
 
     validateRequest: (req, res, next) => {
