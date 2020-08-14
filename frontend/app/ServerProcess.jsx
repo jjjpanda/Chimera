@@ -84,14 +84,17 @@ class ServerProcess extends React.Component {
         return ( 
             <Card>
                 <Card.Header 
+                    title="Node Server" 
                     extra={(this.state.updatingOrInstalling ? <ActivityIndicator />: <div>
                         <Button type="ghost" size="small" inline onClick={this.serverUpdate}>Update</Button>
                         <Button size="small" inline onClick={this.serverInstall}>Install</Button>
                     </div>)}
                 />
-                Status: {this.state.serverStatus.running ? "on": "off"}
+                <Card.Body>
+                    Status: {this.state.serverStatus.running == "loading" ? <ActivityIndicator /> : (this.state.serverStatus.running ? "On": "Off")}
+                </Card.Body>
                 <Card.Footer 
-                    content={<div> {this.state.serverStatus.duration} </div>} 
+                    content={<div>CPU Time: {this.state.serverStatus.duration} </div>} 
                 />                   
             </Card>
         )

@@ -51,7 +51,7 @@ class Processes extends React.Component{
                     this.setState(() => {
                         return{
                             processList: [...data.list.sort((process1, process2) => {
-                                return moment(process2.start).diff(moment(process1.start), "seconds")
+                                return moment(process2.requested, 'YYYYMMDD-HHmmss').diff(moment(process1.requested, "YYYYMMDD-HHmmss"), "seconds")
                             })]
                         }
                     })
@@ -129,12 +129,12 @@ class Processes extends React.Component{
                 <WhiteSpace size="sm" />
 
                 <Flex>
-                    <SaveProcess update={this.listProcesses}/>
                     <Flex.Item>
                         <a href= "/shared">
                             <Button icon="check-circle-o" >VIEW</Button>
                         </a>
                     </Flex.Item>
+                    <SaveProcess update={this.listProcesses}/>    
                 </Flex>
 
                 <WhiteSpace size="sm" />
@@ -164,6 +164,7 @@ class Processes extends React.Component{
                                 title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                             />
                                 <WingBlank size="md">
+                                    Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
                                     Camera: {process.camera} <br />
                                     Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
                                     End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
