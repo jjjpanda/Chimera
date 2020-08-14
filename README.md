@@ -57,7 +57,7 @@
 ```javascript
 // fileName = output_[cameraNumber]_[startDateTime]_[endDateTime]_[ID].[type]
 
-// id = [RandomAlphaNumeric]_[requestDateTime]
+// id = [RandomAlphaNumeric]-[requestDateTime]
 
 // dateTime = YYYYMMDD-hhmmss (0-23 hour clock)
 
@@ -66,6 +66,7 @@
     link: String // /shared/captures/[fileName]
     type: String // mp4, zip, etc
     id: String, // id
+    requested: String, //dateTime
     camera: Number,
     start: String,  // dateTime,
     end: String, //dateTime,

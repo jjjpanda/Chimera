@@ -59,6 +59,7 @@ module.exports = {
 
             return {
                 ...parseFileName(file),
+                requested: id.split('-')[1]+"-"+id.split('-')[2],
                 running: fs.existsSync(path.resolve(process.env.imgDir, `${type}_${id}.txt`))
             }
         })
