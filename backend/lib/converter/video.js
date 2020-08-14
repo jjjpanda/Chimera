@@ -43,7 +43,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
         else{
             res.send(JSON.stringify({
                 id: rand,
-                url: undefined
+                url: undefined,
             }))
         }
     }
@@ -119,7 +119,7 @@ module.exports = {
         if(save == undefined || save == true || save == "true"){
             save = true
         }
-        else if(frames > 250){
+        else if(frames > 500){
             save = true
             req.body.frameLimitMet = true
         }

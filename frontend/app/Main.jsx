@@ -21,9 +21,12 @@ class Main extends React.Component {
     render () {
         return (
             <WingBlank>
-
+            
                 <WhiteSpace size="md" />
                 <Processes />
+
+                {/* <WhiteSpace size="md" />
+                <FileStats /> */}
 
             </WingBlank>
         )

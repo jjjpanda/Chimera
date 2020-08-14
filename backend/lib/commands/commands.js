@@ -151,6 +151,7 @@ module.exports = {
                 res.send(JSON.stringify({
                     count: parseInt(req.body.unformattedResponse.output.trim())
                 }))
+                break
             case "DELETE PATH":
                 res.send(JSON.stringify({
                     sent: req.body.unformattedResponse.sent
