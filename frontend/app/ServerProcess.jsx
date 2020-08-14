@@ -18,6 +18,7 @@ class ServerProcess extends React.Component {
                 running: "loading",
                 duration: "00:00:00"
             },
+            updatingOrInstalling: false,
         }
     }
 
@@ -41,35 +42,41 @@ class ServerProcess extends React.Component {
         })
     }
 
-    motionChange = (checked) => {
+    serverUpdate = () => {
         this.setState({motionStatus: {
                 running: "loading",
                 duration: "00:00:00"
-            }}, () => {
-            if(!checked){
-                request("/motionStop", {
-                    method: "POST"
-                }, (prom) => {
-                    jsonProcessing(prom, (data) => {
-                        console.log(data)
-                        setTimeout(() => {
-                            this.serverStatus()
-                        }, 1000)
-                    })
+            }, updatingOrInstalling: true}, () => {
+            request("/serverUpdate", {
+                method: "POST"
+            }, (prom) => {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    setTimeout(() => {
+                        this.setState({updatingOrInstalling: false})
+                        this.serverStatus()
+                    }, 1000)
                 })
-            }
-            else{
-                request("/motionStart", {
-                    method: "POST"
-                }, (prom) => {
-                    jsonProcessing(prom, (data) => {
-                        console.log(data)
-                        setTimeout(() => {
-                            this.serverStatus()
-                        }, 1000)
-                    })
+            })
+        })   
+    }
+
+    serverInstall = () => {
+        this.setState({motionStatus: {
+                running: "loading",
+                duration: "00:00:00"
+            }, updatingOrInstalling: true}, () => {
+            request("/serverInstall", {
+                method: "POST"
+            }, (prom) => {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    setTimeout(() => {
+                        this.setState({updatingOrInstalling: false})
+                        this.serverStatus()
+                    }, 1000)
                 })
-            }
+            })
         })   
     }
 
@@ -77,10 +84,10 @@ class ServerProcess extends React.Component {
         return ( 
             <Card>
                 <Card.Header 
-                    extra={<div>
+                    extra={(this.state.updatingOrInstalling ? <ActivityIndicator />: <div>
                         <Button type="ghost" size="small" inline onClick={this.serverUpdate}>Update</Button>
                         <Button size="small" inline onClick={this.serverInstall}>Install</Button>
-                    </div>}
+                    </div>)}
                 />
                 Status: {this.state.serverStatus.running ? "on": "off"}
                 <Card.Footer 

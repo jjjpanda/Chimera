@@ -6,7 +6,8 @@ import {
     Card,
     PullToRefresh,
     NoticeBar,
-    Icon
+    Icon,
+    ActivityIndicator
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -16,23 +17,25 @@ class FileStats extends React.Component {
     constructor(props){
         super(props)
         this.state = {
+            loading: true,
             camera: [
                 {
                     path: "shared/captures/1",
-                    size: "",
+                    size: 0,
                     count: 0
                 },
                 {
                     path: "shared/captures/2",
-                    size: "",
+                    size: 0,
                     count: 0
                 },
                 {
                     path: "shared/captures/3",
-                    size: "",
+                    size: 0,
                     count: 0
                 }
-            ]
+            ],
+            numberOfCameras: 3,
         }
     }
 
@@ -40,7 +43,16 @@ class FileStats extends React.Component {
         this.cameraUpdate()
     }
 
+    loadingStatus = (responseNumber) => {
+        if(responseNumber >= this.state.numberOfCameras * (Object.keys(this.state.camera).length - 1)){
+            this.setState({
+                loading: false
+            })
+        }
+    }
+
     cameraUpdate = () => {
+        let responseNumber = 0
         this.state.camera.forEach((camera, index) => {
             request("/pathSize", {
                 method: "POST",
@@ -53,9 +65,12 @@ class FileStats extends React.Component {
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
+                    responseNumber++
                     this.setState((oldState) => {
                         oldState.camera[index].size = data.size
                         return oldState
+                    }, () => {
+                        this.loadingStatus(responseNumber)
                     })
                 })
             })
@@ -70,9 +85,12 @@ class FileStats extends React.Component {
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
+                    responseNumber++
                     this.setState((oldState) => {
                         oldState.camera[index].count = data.count
                         return oldState
+                    }, () => {
+                        this.loadingStatus(responseNumber)
                     })
                 })
             })
@@ -82,15 +100,26 @@ class FileStats extends React.Component {
     render() {
         console.log("STATE FROM FILE STATS", this.state)
         return (
-            <List renderHeader={() => 'Subtitle'} className="my-list">
-                {this.state.camera.map(cam => {
-                    return (<List.Item arrow="horizontal" multipleLine onClick={() => {}}>
-                        {cam.path} 
-                        <List.Item.Brief>{cam.size}</List.Item.Brief>
-                        <List.Item.Brief>{cam.count}</List.Item.Brief>
-                    </List.Item>)
-                })}
-            </List>
+            <Card>
+                <Card.Header
+                    title = "Camera Footage" 
+                    extra={this.state.loading ? <ActivityIndicator /> : <Button size="small" onClick={this.cameraUpdate}>
+                            Refresh
+                        </Button>}
+                />
+                <Card.Body>
+                    <List >
+                        {this.state.camera.map(cam => {
+                            return (<List.Item arrow="horizontal" multipleLine onClick={() => {}}>
+                                {cam.path} 
+                                <List.Item.Brief>Size: {this.state.loading == "loading" ? "---" : cam.size}</List.Item.Brief>
+                                <List.Item.Brief>File Count: {this.state.loading == "loading" ? "---" : cam.count}</List.Item.Brief>
+                            </List.Item>)
+                        })}
+                    </List>    
+                </Card.Body>
+                
+            </Card>
         )
     }
 }

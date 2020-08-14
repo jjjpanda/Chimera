@@ -98,7 +98,7 @@ module.exports = {
         if(save == undefined || save == true || save == "true"){
             save = true
         }
-        else if(frames > 500){
+        else if(frames > 1000){
             save = true
             req.body.frameLimitMet = true
         }

@@ -17,6 +17,7 @@ import moment from 'moment';
 import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
 import ServerProcess from './ServerProcess.jsx';
+import alertModal from './Alert.jsx';
 
 class Processes extends React.Component{
 
@@ -71,7 +72,9 @@ class Processes extends React.Component{
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
-                this.listProcesses()
+                setTimeout(() => {
+                    this.listProcesses()  
+                }, 1500)
             })
         })
         
@@ -89,7 +92,9 @@ class Processes extends React.Component{
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
-                this.listProcesses()
+                setTimeout(() => {
+                    this.listProcesses()  
+                }, 1500)
             })
         })
 
@@ -123,7 +128,7 @@ class Processes extends React.Component{
                 <WhiteSpace size="sm" />
 
                 <Flex>
-                    <SaveProcess />
+                    <SaveProcess update={this.listProcesses}/>
                     <Flex.Item>
                         <a href= "/shared">
                             <Button icon="check-circle-o" >VIEW</Button>
@@ -138,17 +143,14 @@ class Processes extends React.Component{
                         <Card >
                             <Card.Header 
                                 extra={<Button type="ghost" size="small" inline onClick={() => {
-                                    const alert = Modal.alert(process.running ? "Cancel" : "Delete", "Are you sure?", [
-                                        { text: "Cancel", onPress: () => {}, style: "default" },
-                                        { text: "Ok", onPress: () => {
-                                            if(process.running){
-                                                this.cancelProcess(process.id)
-                                            }
-                                            else{
-                                                this.deleteProcess(process.id)
-                                            }
-                                        }}
-                                    ])
+                                    alertModal(process.running ? "Cancel" : "Delete", "Are you sure?", () => {
+                                        if(process.running){
+                                            this.cancelProcess(process.id)
+                                        }
+                                        else{
+                                            this.deleteProcess(process.id)
+                                        }
+                                    })
                                 }}>{process.running ? "cancel" : "delete"}</Button>}
                                 title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                             />

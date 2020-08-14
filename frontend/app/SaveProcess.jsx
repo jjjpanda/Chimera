@@ -8,12 +8,13 @@ import {
     DatePicker,
     List,
     Checkbox,
-    WhiteSpace
+    WhiteSpace,
+    Toast
 } from 'antd-mobile';
 
 import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
 
-import {request, jsonProcessing} from './../js/request.js'
+import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
 
 class SaveProcess extends React.Component{
@@ -26,7 +27,8 @@ class SaveProcess extends React.Component{
             visible: false,
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
-            download: false
+            download: false,
+            downloading: true,
         }
     }
 
@@ -34,8 +36,8 @@ class SaveProcess extends React.Component{
         console.log(this.state.startDate, this.state.endDate)
         const body = JSON.stringify({
             camera: (this.state.camera+1).toString(),
-            start: moment(this.state.startDate).format("YYYYMMDD-HHmmss"),
-            end: moment(this.state.endDate).format("YYYYMMDD-HHmmss"),
+            start: moment(this.state.startDate).second(0).format("YYYYMMDD-HHmmss"),
+            end: moment(this.state.endDate).second(0).format("YYYYMMDD-HHmmss"),
             save: !this.state.download
         })
         console.log(body)
@@ -43,6 +45,7 @@ class SaveProcess extends React.Component{
     }
 
     createVideo = () => {
+        Toast.loading("Generating", 0)
         request("/createVideo", {
             method: "POST",
             headers: {
@@ -50,14 +53,22 @@ class SaveProcess extends React.Component{
             },
             body: this.processBody()
         }, (prom) => {
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.closeModal()
-            })
+            if(this.state.download){
+                downloadProcessing(prom, () => {
+                    this.closeModal()
+                })
+            }
+            else {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    this.closeModal()
+                })
+            }
         })
     }
 
     createZip = () => {
+        Toast.loading("Generating", 0)
         request("/createZip", {
             method: "POST",
             headers: {
@@ -65,10 +76,17 @@ class SaveProcess extends React.Component{
             },
             body: this.processBody()
         }, (prom) => {
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.closeModal()
-            })
+            if(this.state.download){
+                downloadProcessing(prom, () => {
+                    this.closeModal()
+                })
+            }
+            else {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    this.closeModal()
+                })
+            }
         })
     }
 
@@ -77,7 +95,7 @@ class SaveProcess extends React.Component{
     }
 
     closeModal = () => {
-        this.setState(() => ({visible: false}))
+        this.setState(() => ({visible: false}), this.props.update)
     }
 
     render () {
