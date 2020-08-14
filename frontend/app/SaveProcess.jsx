@@ -45,7 +45,9 @@ class SaveProcess extends React.Component{
     }
 
     createVideo = () => {
-        Toast.loading("Generating", 0)
+        if(this.state.download){
+            Toast.loading("Generating", 0)
+        }
         request("/createVideo", {
             method: "POST",
             headers: {
@@ -68,7 +70,9 @@ class SaveProcess extends React.Component{
     }
 
     createZip = () => {
-        Toast.loading("Generating", 0)
+        if(this.state.download){
+            Toast.loading("Generating", 0)
+        }
         request("/createZip", {
             method: "POST",
             headers: {
