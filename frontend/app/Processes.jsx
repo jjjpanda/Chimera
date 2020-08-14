@@ -9,7 +9,8 @@ import {
     Icon,
     WhiteSpace,
     Flex,
-    Modal
+    Modal,
+    WingBlank
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -142,23 +143,35 @@ class Processes extends React.Component{
                     return (
                         <Card >
                             <Card.Header 
-                                extra={<Button type="ghost" size="small" inline onClick={() => {
-                                    alertModal(process.running ? "Cancel" : "Delete", "Are you sure?", () => {
-                                        if(process.running){
-                                            this.cancelProcess(process.id)
-                                        }
-                                        else{
-                                            this.deleteProcess(process.id)
-                                        }
-                                    })
-                                }}>{process.running ? "cancel" : "delete"}</Button>}
+                                extra={<div>
+                                    {process.running ? null : <a href={process.link} download>
+                                        <Button size="small" inline>
+                                            Download
+                                        </Button>
+                                    </a>}
+                                    <Button type="ghost" size="small" inline onClick={() => {
+                                        alertModal(process.running ? "Cancel" : "Delete", "Are you sure?", () => {
+                                            if(process.running){
+                                                this.cancelProcess(process.id)
+                                            }
+                                            else{
+                                                this.deleteProcess(process.id)
+                                            }
+                                        })
+                                    }}>{process.running ? "Cancel" : "Delete"}</Button>
+                                </div>
+                                }
                                 title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                             />
-                                <a href={process.link} download>
-                                    LINK
-                                </a>
+                                <WingBlank size="md">
+                                    Camera: {process.camera} <br />
+                                    Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                                    End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                                    {(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
+                                </WingBlank>
+                                <br />
                             <Card.Footer 
-                                content={<div>{process.running ? "Running" : "Finished"}</div>} 
+                                content={<div>{process.running ? "Running" : null}</div>} 
                             />  
                         </Card>
                     )
