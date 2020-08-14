@@ -25,8 +25,8 @@ class Main extends React.Component {
                 <WhiteSpace size="md" />
                 <Processes />
 
-                {/* <WhiteSpace size="md" />
-                <FileStats /> */}
+                <WhiteSpace size="md" />
+                <FileStats />
 
             </WingBlank>
         )

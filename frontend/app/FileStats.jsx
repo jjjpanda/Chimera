@@ -103,9 +103,9 @@ class FileStats extends React.Component {
             <Card>
                 <Card.Header
                     title = "Camera Footage" 
-                    extra={this.state.loading ? <ActivityIndicator /> : <Button size="small" onClick={this.cameraUpdate}>
-                            Refresh
-                        </Button>}
+                    extra={<Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
+                            Refresh{this.state.loading ? "ing" : ""}
+                    </Button>}
                 />
                 <Card.Body>
                     <List >

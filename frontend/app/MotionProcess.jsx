@@ -54,7 +54,7 @@ class MotionProcess extends React.Component {
                         console.log(data)
                         setTimeout(() => {
                             this.motionStatus()
-                        }, 1000)
+                        }, 2500)
                     })
                 })
             }
@@ -66,7 +66,7 @@ class MotionProcess extends React.Component {
                         console.log(data)
                         setTimeout(() => {
                             this.motionStatus()
-                        }, 1000)
+                        }, 2500)
                     })
                 })
             }
@@ -77,13 +77,16 @@ class MotionProcess extends React.Component {
         return (
             <Card >
                 <Card.Header 
+                    title="Motion Recording" 
                     extra={<div>
                         <Switch checked = {this.state.motionStatus.running && this.state.motionStatus.running != "loading"} disabled = {this.state.motionStatus.running == "loading"} onChange={this.motionChange} />
                     </div>} 
                 />
-                Motion: {this.state.motionStatus.running == "loading" ? <ActivityIndicator /> : (this.state.motionStatus.running ? "on": "off")}
+                <Card.Body>
+                    Status: {this.state.motionStatus.running == "loading" ? <ActivityIndicator /> : (this.state.motionStatus.running ? "On": "Off")}
+                </Card.Body>
                 <Card.Footer 
-                    content={<div> {this.state.motionStatus.duration} </div>} 
+                    content={<div>CPU Time: {this.state.motionStatus.duration} </div>} 
                 />
             </Card>
         )
