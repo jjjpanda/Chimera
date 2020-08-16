@@ -47,7 +47,7 @@ class CameraDatePicker extends React.Component {
                 <DatePicker
                     value={this.props.endDate}
                     locale={enUs}
-                    onChange={this.props.endDate}
+                    onChange={this.props.endChange}
                 >
                     <List.Item arrow="horizontal">
                         End Date

@@ -28,6 +28,7 @@ class SummaryScrubber extends React.Component{
         super(props)
         this.state ={
             sliderIndex: 0,
+            numberOfFrames: 100,
             camera: 0,
             cameras: ['1', '2', '3'],
             startDate: moment().subtract(1, "day").toDate(),
@@ -46,7 +47,7 @@ class SummaryScrubber extends React.Component{
             camera: (this.state.camera+1).toString(),
             start: moment(this.state.startDate).second(0).format("YYYYMMDD-HHmmss"),
             end: moment(this.state.endDate).second(0).format("YYYYMMDD-HHmmss"),
-            frames: 100
+            frames: this.state.numberOfFrames
         })
         console.log(body)
         return body
@@ -74,7 +75,9 @@ class SummaryScrubber extends React.Component{
     render() {
         return (
             <Card>
-                <Card.Header />
+                <Card.Header 
+                    title = "Image Preview" 
+                />
                 <Card.Body>
 
                     {this.state.list.length > 0 ? this.state.list.map((frame, index) => {
@@ -89,6 +92,8 @@ class SummaryScrubber extends React.Component{
                                 <br />
                                 <WingBlank>
                                     <Slider 
+                                        min={0}
+                                        max={Math.min(this.state.numberOfFrames - 1, this.state.list.length - 1)}
                                         value={this.state.sliderIndex} 
                                         onChange={(val) => {
                                             this.setState({
@@ -107,12 +112,18 @@ class SummaryScrubber extends React.Component{
                                 return {
                                     camera: this.state.cameras.findIndex(camera => camera == cam)
                                 }
+                            }, () => {
+                                this.updateImages()
                             })
                         }}
                         startDate={this.state.startDate}
-                        startChange={date => this.setState({ startDate: date })}
+                        startChange={date => this.setState({ startDate: date }, () => {
+                            this.updateImages()
+                        })}
                         endDate={this.state.endDate}
-                        endChange={date => this.setState({ endDate: date })}
+                        endChange={date => this.setState({ endDate: date }, () => {
+                            this.updateImages()
+                        })}
                     />
                 </Card.Body>
             </Card>
