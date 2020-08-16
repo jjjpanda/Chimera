@@ -18,7 +18,7 @@ ffmpeg.setFfprobePath(process.env.ffprobe)
 const createFrameList = (camera, start, end, limit) => {
     const filteredList = filterList(camera, start, end)
 
-    const limitIteration = Math.ceil(filteredList/limit)
+    const limitIteration = Math.ceil(filteredList.length/limit)
 
     console.log(filteredList.length, limitIteration)
 
