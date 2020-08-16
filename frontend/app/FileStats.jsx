@@ -36,6 +36,7 @@ class FileStats extends React.Component {
                 }
             ],
             numberOfCameras: 3,
+            lastUpdated: moment().format("h:mm:ss a")
         }
     }
 
@@ -46,6 +47,7 @@ class FileStats extends React.Component {
     loadingStatus = (responseNumber) => {
         if(responseNumber >= this.state.numberOfCameras * (Object.keys(this.state.camera).length - 1)){
             this.setState({
+                lastUpdated: moment().format("h:mm:ss a"),
                 loading: false
             })
         }
@@ -53,44 +55,48 @@ class FileStats extends React.Component {
 
     cameraUpdate = () => {
         let responseNumber = 0
-        this.state.camera.forEach((camera, index) => {
-            request("/pathSize", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    path: camera.path
-                })
-            }, (prom) => {
-                jsonProcessing(prom, (data) => {
-                    console.log(data)
-                    responseNumber++
-                    this.setState((oldState) => {
-                        oldState.camera[index].size = data.size
-                        return oldState
-                    }, () => {
-                        this.loadingStatus(responseNumber)
+        this.setState({
+            loading: true
+        }, () => {
+            this.state.camera.forEach((camera, index) => {
+                request("/pathSize", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        path: camera.path
+                    })
+                }, (prom) => {
+                    jsonProcessing(prom, (data) => {
+                        console.log(data)
+                        responseNumber++
+                        this.setState((oldState) => {
+                            oldState.camera[index].size = data.size
+                            return oldState
+                        }, () => {
+                            this.loadingStatus(responseNumber)
+                        })
                     })
                 })
-            })
-            request("/pathFileCount", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    path: camera.path
-                })
-            }, (prom) => {
-                jsonProcessing(prom, (data) => {
-                    console.log(data)
-                    responseNumber++
-                    this.setState((oldState) => {
-                        oldState.camera[index].count = data.count
-                        return oldState
-                    }, () => {
-                        this.loadingStatus(responseNumber)
+                request("/pathFileCount", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        path: camera.path
+                    })
+                }, (prom) => {
+                    jsonProcessing(prom, (data) => {
+                        console.log(data)
+                        responseNumber++
+                        this.setState((oldState) => {
+                            oldState.camera[index].count = data.count
+                            return oldState
+                        }, () => {
+                            this.loadingStatus(responseNumber)
+                        })
                     })
                 })
             })
@@ -108,6 +114,9 @@ class FileStats extends React.Component {
                     </Button>}
                 />
                 <Card.Body>
+                    <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
+                        Last Updated Date: {this.state.lastUpdated}
+                    </NoticeBar>
                     <List >
                         {this.state.camera.map(cam => {
                             return (<List.Item arrow="horizontal" multipleLine onClick={() => {}}>
