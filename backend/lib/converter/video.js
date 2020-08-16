@@ -29,7 +29,7 @@ const createFrameList = (camera, start, end, limit) => {
             return true
         }
         return false
-    }).forEach((item) => {
+    }).map((item) => {
         return `/shared/captures/${camera}/${item}`
     })
 

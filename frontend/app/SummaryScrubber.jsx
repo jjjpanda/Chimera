@@ -12,7 +12,8 @@ import {
     Toast, 
     Card,
     Slider,
-    WingBlank
+    WingBlank,
+    ActivityIndicator
 } from 'antd-mobile';
 
 import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
@@ -76,11 +77,11 @@ class SummaryScrubber extends React.Component{
                 <Card.Header />
                 <Card.Body>
 
-                    {this.state.list.map((frame, index) => {
+                    {this.state.list.length > 0 ? this.state.list.map((frame, index) => {
                         return (
                             <img style={{ display: this.state.sliderIndex == index ? "inherit" : 'none'}} src={frame}/>
                         )
-                    })}
+                    }) : <ActivityIndicator />}
                     
                     <CameraDatePicker
                         pre ={
