@@ -26,6 +26,7 @@ const createFrameList = (camera, start, end, limit) => {
             indexForLimit += limitIteration
             return true
         }
+        return false
     })
 
     return limitedList
