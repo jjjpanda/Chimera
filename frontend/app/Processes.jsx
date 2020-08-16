@@ -25,7 +25,7 @@ class Processes extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            refreshing: false,
+            loading: false,
             lastUpdated: moment().format("h:mm:ss a"),
             processList: []
         }
@@ -33,13 +33,10 @@ class Processes extends React.Component{
 
     componentDidMount = () => {
         this.listProcesses()
-        this.setState(() => ({
-            lastUpdated: moment().format("h:mm:ss a")
-        }))
     } 
 
     listProcesses = () => {
-        this.setState({ processList: [] }, () => {
+        this.setState({ processList: [], loading: true }, () => {
             request("/listProcess", {
                 method: "POST",
                 headers: {
@@ -52,7 +49,9 @@ class Processes extends React.Component{
                         return{
                             processList: [...data.list.sort((process1, process2) => {
                                 return moment(process2.requested, 'YYYYMMDD-HHmmss').diff(moment(process1.requested, "YYYYMMDD-HHmmss"), "seconds")
-                            })]
+                            })],
+                            lastUpdated: moment().format("h:mm:ss a"),
+                            loading: false
                         }
                     })
                 })
@@ -104,80 +103,76 @@ class Processes extends React.Component{
     render () {
         console.log("STATE FROM PROCESSES", this.state)
         return (
-            <PullToRefresh
-                damping={60}
-                indicator={{ activate: "Refresh", deactivate: "Cancel", release: "Refreshing", finish: "Refreshed" }}
-                direction={'down'}
-                refreshing={this.state.refreshing}
-                onRefresh={() => {
-                    this.setState({ refreshing: true }, () => {
-                        this.componentDidMount()
-                        setTimeout(() => {
-                            this.setState({ refreshing: false });
-                        }, 1000);
-                    });
-                }}
-            >
-                <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
-                    Last Updated Date: {this.state.lastUpdated}
-                </NoticeBar>
-                <WhiteSpace size="sm" />
+            
+            <Card>
+                <Card.Header
+                    title = "Processes" 
+                    extra={<Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.listProcesses}>
+                            Refresh{this.state.loading ? "ing" : ""}
+                    </Button>}
+                />
+                <Card.Body>
+                    <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
+                        Last Updated Date: {this.state.lastUpdated}
+                    </NoticeBar>
+                    <WhiteSpace size="sm" />
 
-                <MotionProcess key={`motion${this.state.lastUpdated}`}/>
-                <ServerProcess key={`server${this.state.lastUpdated}`}/>
+                    <MotionProcess key={`motion${this.state.lastUpdated}`}/>
+                    <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
-                <WhiteSpace size="sm" />
+                    <WhiteSpace size="sm" />
 
-                <Flex>
-                    <Flex.Item>
-                        <a href= "/shared">
-                            <Button icon="check-circle-o" >VIEW</Button>
-                        </a>
-                    </Flex.Item>
-                    <SaveProcess update={this.listProcesses}/>    
-                </Flex>
+                    <Flex>
+                        <Flex.Item>
+                            <a href= "/shared">
+                                <Button icon="check-circle-o" >VIEW</Button>
+                            </a>
+                        </Flex.Item>
+                        <SaveProcess update={this.listProcesses}/>    
+                    </Flex>
 
-                <WhiteSpace size="sm" />
+                    <WhiteSpace size="sm" />
 
-                {this.state.processList.map(process => {
-                    return (
-                        <Card >
-                            <Card.Header 
-                                extra={<div>
-                                    {process.running ? null : <a href={process.link} download>
-                                        <Button size="small" inline>
-                                            Download
-                                        </Button>
-                                    </a>}
-                                    <Button type="ghost" size="small" inline onClick={() => {
-                                        alertModal(process.running ? "Cancel" : "Delete", "Are you sure?", () => {
-                                            if(process.running){
-                                                this.cancelProcess(process.id)
-                                            }
-                                            else{
-                                                this.deleteProcess(process.id)
-                                            }
-                                        })
-                                    }}>{process.running ? "Cancel" : "Delete"}</Button>
-                                </div>
-                                }
-                                title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
-                            />
-                                <WingBlank size="md">
-                                    Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
-                                    Camera: {process.camera} <br />
-                                    Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
-                                    End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
-                                    {(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
-                                </WingBlank>
-                                <br />
-                            <Card.Footer 
-                                content={<div>{process.running ? "Running" : null}</div>} 
-                            />  
-                        </Card>
-                    )
-                })}               
-            </PullToRefresh>
+                    {this.state.processList.map(process => {
+                        return (
+                            <Card >
+                                <Card.Header 
+                                    extra={<div>
+                                        {process.running ? null : <a href={process.link} download>
+                                            <Button size="small" inline>
+                                                Download
+                                            </Button>
+                                        </a>}
+                                        <Button type="ghost" size="small" inline onClick={() => {
+                                            alertModal(process.running ? "Cancel" : "Delete", "Are you sure?", () => {
+                                                if(process.running){
+                                                    this.cancelProcess(process.id)
+                                                }
+                                                else{
+                                                    this.deleteProcess(process.id)
+                                                }
+                                            })
+                                        }}>{process.running ? "Cancel" : "Delete"}</Button>
+                                    </div>
+                                    }
+                                    title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
+                                />
+                                    <WingBlank size="md">
+                                        Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                                        Camera: {process.camera} <br />
+                                        Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                                        End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                                        {(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
+                                    </WingBlank>
+                                    <br />
+                                <Card.Footer 
+                                    content={<div>{process.running ? "Running" : null}</div>} 
+                                />  
+                            </Card>
+                        )
+                    })}    
+                </Card.Body>     
+            </Card>      
         )
     }
 }
