@@ -16,6 +16,7 @@ import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
 
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
+import CameraDatePicker from './CameraDatePicker.jsx';
 
 class SaveProcess extends React.Component{
 
@@ -28,7 +29,6 @@ class SaveProcess extends React.Component{
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
             download: false,
-            downloading: true,
         }
     }
 
@@ -116,45 +116,29 @@ class SaveProcess extends React.Component{
                     onClose={this.closeModal}
                     animationType="slide-up"
                 >
-                    <div>Camera</div>
-                    <SegmentedControl
-                        selectedIndex={this.state.camera}
-                        values={this.state.cameras}
-                        onValueChange = {(cam) => {
+                    <CameraDatePicker 
+                        camera={this.state.camera}
+                        cameras={this.state.cameras}
+                        cameraChange = {(cam) => {
                             this.setState(() => {
                                 return {
                                     camera: this.state.cameras.findIndex(camera => camera == cam)
                                 }
                             })
                         }}
-                        tintColor={'#ff0000'}
-                    />
-
-                    <List>
-                        <DatePicker
-                            value={this.state.startDate}
-                            locale={enUs}
-                            onChange={date => this.setState({ startDate: date })}
-                        >
-                            <List.Item arrow="horizontal">
-                                Start Date
-                            </List.Item>
-                        </DatePicker>
-
-                    
-                        <DatePicker
-                            value={this.state.endDate}
-                            locale={enUs}
-                            onChange={date => this.setState({ endDate: date })}
-                        >
-                            <List.Item arrow="horizontal">
-                                End Date
-                            </List.Item>
-                        </DatePicker>
-
-                        <Checkbox.CheckboxItem checked={this.state.download} onChange={(e) => this.setState({ download : e.target.checked })} >Direct Download</Checkbox.CheckboxItem>
-                    </List>
-                
+                        startDate={this.state.startDate}
+                        startChange={date => this.setState({ startDate: date })}
+                        endDate={this.state.endDate}
+                        endChange={date => this.setState({ endDate: date })}
+                        post={
+                            <Checkbox.CheckboxItem 
+                                checked={this.state.download} 
+                                onChange={(e) => this.setState({ download : e.target.checked })} 
+                            >
+                                Direct Download
+                            </Checkbox.CheckboxItem>
+                        }
+                    />                
                     <WhiteSpace size="md" />
 
                     <Flex>

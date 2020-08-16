@@ -15,6 +15,7 @@ import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import Processes from './Processes.jsx';
 import FileStats from './FileStats.jsx';
+import SummaryScrubber from './SummaryScrubber.jsx';
 
 class Main extends React.Component {
 
@@ -23,10 +24,9 @@ class Main extends React.Component {
             <WingBlank>
             
                 <WhiteSpace size="md" />
-                <Processes />
+                <SummaryScrubber />
 
-                <WhiteSpace size="md" />
-                <FileStats />
+               
 
             </WingBlank>
         )

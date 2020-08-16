@@ -29,6 +29,8 @@ const createFrameList = (camera, start, end, limit) => {
             return true
         }
         return false
+    }).forEach((item) => {
+        return `/shared/captures/${camera}/${item}`
     })
 
     return limitedList
