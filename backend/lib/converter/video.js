@@ -15,6 +15,22 @@ const {
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
+const createFrameList = (camera, start, end, limit) => {
+    const filteredList = filterList(camera, start, end)
+
+    const limitIteration = Math.ceil(filteredList/limit)
+
+    let indexForLimit = 0
+    const limitedList = filteredList.filter((item, index) => {
+        if(index === indexForLimit){
+            indexForLimit += limitIteration
+            return true
+        }
+    })
+
+    return limitedList
+}
+
 const createVideoList = (camera, start, end) => {
     const rand = randomID()
 
@@ -128,5 +144,21 @@ module.exports = {
         }
 
         video(camera, fps, frames, start, end, rand, save, req, res)
+    },
+
+    listOfFrames: (req, res) => {
+
+        let { camera, start, end, frames } = req.body;
+
+        if(frames == undefined){
+            frames = 10
+        }
+
+        const list = createFrameList(camera, start, end, frames)
+
+        res.send(JSON.stringify({
+            list
+        }))
+
     }
 }

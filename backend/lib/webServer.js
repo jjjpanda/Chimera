@@ -13,6 +13,7 @@ var {
 }              = require('./converter/converter.js')
 var {
     createVideo,
+    listOfFrames,
 }              = require('./converter/video.js')
 var {
     createZip,
@@ -83,6 +84,7 @@ if(process.env.converter == "on"){
     app.post("/deleteVideo", validateID, deleteVideo) */
 
     app.post('/createVideo', validateRequest, createVideo)
+    app.post('/listFramesVideo', validateRequest, listOfFrames)
 
     app.post('/createZip', validateRequest, createZip)
 
