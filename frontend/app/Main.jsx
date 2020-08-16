@@ -24,9 +24,13 @@ class Main extends React.Component {
             <WingBlank>
             
                 <WhiteSpace size="md" />
+                <Processes />
+
+                <WhiteSpace size="md" />
                 <SummaryScrubber />
 
-               
+                <WhiteSpace size="md" />
+                <FileStats />
 
             </WingBlank>
         )
