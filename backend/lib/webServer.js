@@ -97,6 +97,8 @@ if(process.env.converter == "on"){
 if(process.env.commandServer == "on"){
     console.log("Motion Controls On")
 
+    //scheduling requests with nodecron
+
     app.post('/motionStart', startMotion, formattedCommandResponse)
     app.post('/motionStatus', oneCommand(`ps -e | grep motion`, "MOTION STATUS"), formattedCommandResponse)
     app.post('/motionStop', oneCommand(`sudo pkill motion`, "MOTION OFF"), formattedCommandResponse)

@@ -33,7 +33,8 @@ class SummaryScrubber extends React.Component{
             cameras: ['1', '2', '3'],
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
-            list: []
+            list: [],
+            loading: true
         }
     }
 
@@ -54,22 +55,29 @@ class SummaryScrubber extends React.Component{
     }
 
     updateImages = () => {
-        request("/listFramesVideo", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: this.processBody()
-        }, (prom) => {
-            
-            jsonProcessing(prom, (data) => {
-                console.log(data)
-                this.setState({
-                    list: data.list
+        this.setState({
+            list: [],
+            loading: true
+        }, () => {
+            request("/listFramesVideo", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: this.processBody()
+            }, (prom) => {
+                
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    this.setState({
+                        list: data.list,
+                        loading: false
+                    })
                 })
+            
             })
-        
         })
+        
     }
 
     render() {
@@ -80,11 +88,17 @@ class SummaryScrubber extends React.Component{
                 />
                 <Card.Body>
 
-                    {this.state.list.length > 0 ? this.state.list.map((frame, index) => {
+                    {!this.state.loading ? (this.state.list.length > 0 ? this.state.list.map((frame, index) => {
                         return (
-                            <img style={{ display: this.state.sliderIndex == index ? "inherit" : 'none'}} src={frame}/>
+                            <img 
+                                style={{ display: this.state.sliderIndex == index ? "inherit" : 'none'}} 
+                                src={frame} 
+                            />
                         )
-                    }) : <ActivityIndicator />}
+                    }) : <div>
+                        No Images
+                    </div>) 
+                    : <ActivityIndicator />}
                     
                     <CameraDatePicker
                         pre ={
@@ -96,9 +110,9 @@ class SummaryScrubber extends React.Component{
                                         max={Math.min(this.state.numberOfFrames - 1, this.state.list.length - 1)}
                                         value={this.state.sliderIndex} 
                                         onChange={(val) => {
-                                            this.setState({
+                                            this.setState(() => ({
                                                 sliderIndex: val
-                                            })
+                                            }))
                                         }}
                                     />
                                 </WingBlank>
