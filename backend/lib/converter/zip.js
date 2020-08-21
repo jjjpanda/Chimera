@@ -91,7 +91,9 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 module.exports = {
     createZip: (req, res) => {
-        let { camera, start, end, save } = req.body;
+        let { camera, start, end, save, skip } = req.body;
+
+        skip = skip == undefined ? 1 : skip
 
         const {frames, archive} = createZipList(camera, start, end)
 
