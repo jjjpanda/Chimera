@@ -23,7 +23,7 @@ const lines = (output, error) => {
 }
 
 module.exports = {
-    oneCommand: (command, msg, baseDir, appendable=false, pipeable=false) => (req, res, next) => {
+    oneCommand: (command, msg, baseDir, appendable=false) => (req, res, next) => {
         console.log(msg)
         var ssh = new SSH((baseDir != undefined ? 
             {
@@ -44,13 +44,8 @@ module.exports = {
         if(appendable && req.body && req.body.commandAppends){
             commandAppends = req.body.commandAppends
         }
-
-        let pipe = ""
-        if(pipeable && req.body && req.body.pipeCommand){
-            pipe = req.body.pipeCommand
-        }
     
-        ssh.exec(command + commandAppends + pipe, {
+        ssh.exec(command + commandAppends, {
             pty: true,
             ...lines(outputChanger, errorChanger),
             exit: (code) => {
@@ -114,11 +109,6 @@ module.exports = {
         .start();
     },
 
-    pipeCommand: (command) => (req, res, next) => {
-        req.body.pipeCommand = command
-        next()
-    },
-
     formattedCommandResponse: (req, res) => {
         console.log(req.body.unformattedResponse)
         switch (req.body.unformattedResponse.msg){
@@ -153,6 +143,7 @@ module.exports = {
                 }))
                 break
             case "DELETE PATH":
+            case "CLEAN PATH":
                 res.send(JSON.stringify({
                     sent: req.body.unformattedResponse.sent
                 }))
@@ -181,6 +172,17 @@ module.exports = {
 
         req.body.commandAppends = path;
 
+        next()
+    },
+    
+    afterPath: (command) => (req, res, next) => {
+        req.body.commandAppends += command
+        next()
+    },
+
+    numberSwitch: (placeholder) => (req, res, next) => {
+        req.body.commandAppends = req.body.commandAppends.replace(placeholder, parseInt(req.body.days || process.env.defaultDayDelete))
+        console.log(req.body.commandAppends)
         next()
     }
 }

@@ -29,14 +29,15 @@
 |POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
 |POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
+|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
 
 ### Video and Archive Conversions
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
+|POST|/createVideo|Creates videos from images based on timestamps|`{ camera: Number, fps: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, skip: Number }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
 |POST|/listFramesVideo|Sends a list of links to images for scrubbing|`{ camera: Number, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, frames: Number }`|`{ list: [ String ] }`|
-|POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
+|POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, skip: Number }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
 |POST|/statusProcess|Get status of video or zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
 |POST|/cancelProcess|Cancel running video or zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
 |POST|/listProcess|Get list of all processes|None|`{ list: [ ProcessObj ] }`|

@@ -130,9 +130,11 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 module.exports = {
     createVideo: (req, res) => {
         //console.log(req)
-        let { camera, start, end, save, fps } = req.body;
+        let { camera, start, end, save, fps, skip } = req.body;
 
         fps = fps == undefined ? 20 : fps
+
+        skip = skip == undefined ? 1 : skip
 
         console.log(camera, start, end, fps)
         const { rand, frames } = createVideoList(camera, start, end)

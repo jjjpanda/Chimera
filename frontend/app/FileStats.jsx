@@ -119,7 +119,10 @@ class FileStats extends React.Component {
                     </NoticeBar>
                     <List >
                         {this.state.camera.map(cam => {
-                            return (<List.Item arrow="horizontal" multipleLine onClick={() => {}}>
+                            return (<List.Item extra={<div>
+                                <Button onClick={() => {}} icon="horizontal" inline/>
+                                <Button onClick={() => {}} icon="horizontal" inline/>
+                            </div>} multipleLine>
                                 {cam.path} 
                                 <List.Item.Brief>Size: {this.state.loading == "loading" ? "---" : cam.size}</List.Item.Brief>
                                 <List.Item.Brief>File Count: {this.state.loading == "loading" ? "---" : cam.count}</List.Item.Brief>

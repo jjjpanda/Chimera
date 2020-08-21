@@ -27,8 +27,9 @@ var {
 var { 
     startMotion, 
     oneCommand,
-    pipeCommand,
+    afterPath,
     validatePath,
+    numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
 }              = require('./commands/commands.js')
@@ -83,6 +84,8 @@ if(process.env.converter == "on"){
     app.post("/status", validateID, status)
     app.post("/deleteVideo", validateID, deleteVideo) */
 
+    //ADD skip frames
+
     app.post('/createVideo', validateRequest, createVideo)
     app.post('/listFramesVideo', validateRequest, listOfFrames)
 
@@ -109,9 +112,10 @@ if(process.env.commandServer == "on"){
     app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"), formattedCommandResponse)
     
     app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
-    app.post('/pathFileCount', validatePath, pathCommandAppend, pipeCommand(' | wc -l'), oneCommand(`ls ${process.env.sharedLocation}`, "FILE COUNT", undefined, true, true), formattedCommandResponse)
+    app.post('/pathFileCount', validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.sharedLocation}`, "FILE COUNT", undefined, true), formattedCommandResponse)
     app.post('/pathDelete', validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
- 
+    app.post('/pathClean', validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.sharedLocation}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
+
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
         index: "index.html"
     }))
