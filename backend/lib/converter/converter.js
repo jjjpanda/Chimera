@@ -31,10 +31,13 @@ module.exports = {
         return shortid.generate() + "-" + moment().format(dateFormat);
     },
     
-    filterList: (camera, start, end) => {
-        return fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
-                `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-                `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+    filterList: (camera, start, end, skipEvery=1) => {
+        let list = fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
+            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+        return skipEvery == 1 ? list : list.filter( (file, index) => {
+            return (index % skipEvery === 0 )
+        })
     },
 
     filterType: (type) => {

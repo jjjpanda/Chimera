@@ -11,12 +11,12 @@ const {
     fileName,
 }              = require('./converter.js');
 
-const createZipList = (camera, start, end) => {
+const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
         zlib: {level: 9}
     })
 
-    const filteredList = filterList(camera, start, end)
+    const filteredList = filterList(camera, start, end, skip)
 
     const frames = filteredList.length    
 
@@ -95,7 +95,7 @@ module.exports = {
 
         skip = skip == undefined ? 1 : skip
 
-        const {frames, archive} = createZipList(camera, start, end)
+        const {frames, archive} = createZipList(camera, start, end, skip)
 
         if(save == undefined || save == true || save == "true"){
             save = true

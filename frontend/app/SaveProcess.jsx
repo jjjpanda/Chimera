@@ -9,10 +9,9 @@ import {
     List,
     Checkbox,
     WhiteSpace,
-    Toast
+    Toast,
+    InputItem
 } from 'antd-mobile';
-
-import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
 
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
@@ -28,6 +27,7 @@ class SaveProcess extends React.Component{
             visible: false,
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
+            skip: 1,
             download: false,
         }
     }
@@ -130,14 +130,22 @@ class SaveProcess extends React.Component{
                         startChange={date => this.setState({ startDate: date })}
                         endDate={this.state.endDate}
                         endChange={date => this.setState({ endDate: date })}
-                        post={
+                        post={[
+                            <InputItem 
+                                type="number" 
+                                value={this.state.skip}
+                                extra={"Frame Skipping"}
+                                onChange = {(val) => this.setState({ skip: val })}
+                            >
+                                Skip
+                            </InputItem>,
                             <Checkbox.CheckboxItem 
                                 checked={this.state.download} 
                                 onChange={(e) => this.setState({ download : e.target.checked })} 
                             >
                                 Direct Download
                             </Checkbox.CheckboxItem>
-                        }
+                        ]}
                     />                
                     <WhiteSpace size="md" />
 
