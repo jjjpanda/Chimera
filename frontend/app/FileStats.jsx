@@ -37,7 +37,6 @@ class FileStats extends React.Component {
                     count: 0
                 }
             ],
-            numberOfCameras: 3,
             days: 7,
             lastUpdated: moment().format("h:mm:ss a")
         }
@@ -47,8 +46,8 @@ class FileStats extends React.Component {
         this.cameraUpdate()
     }
 
-    loadingStatus = (responseNumber) => {
-        if(responseNumber >= this.state.numberOfCameras * (Object.keys(this.state.camera).length - 1)){
+    loadingStatus = (responseNumber, responsesNeeded=this.state.camera.length * (Object.keys(this.state.camera).length - 1)) => {
+        if(responseNumber >= responsesNeeded){
             this.setState({
                 lastUpdated: moment().format("h:mm:ss a"),
                 loading: false
@@ -106,26 +105,53 @@ class FileStats extends React.Component {
         })
     }
 
-    deleteFiles = (path="shared/captures/") => {
-        this.setState({
-            loading: true
-        }, () => {
-            request("/pathClean", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    path,
-                    days: this.state.days
-                })
-            }, (prom) => {
-                jsonProcessing(prom, (data) => {
-                    console.log(data)
-                    this.cameraUpdate()
+    deleteFiles = (path=undefined) => {
+        if(path != undefined){
+            this.setState({
+                loading: true
+            }, () => {
+                request("/pathClean", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        path,
+                        days: this.state.days
+                    })
+                }, (prom) => {
+                    jsonProcessing(prom, (data) => {
+                        console.log(data)
+                        this.cameraUpdate()
+                    })
                 })
             })
-        })
+        }
+        else{
+            let responseNumber = 0
+            this.setState({
+                loading: true
+            }, () => {
+                this.state.camera.forEach((camera) => {
+                    request("/pathClean", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            path: camera.path,
+                            days: this.state.days
+                        })
+                    }, (prom) => {
+                        jsonProcessing(prom, (data) => {
+                            console.log(data)
+                            responseNumber++
+                            this.loadingStatus(responseNumber, this.state.camera.length)
+                        })
+                    }) 
+                })
+            })
+        }
     }
 
     render() {
@@ -135,10 +161,10 @@ class FileStats extends React.Component {
                 <Card.Header
                     title = "Camera Footage" 
                     extra={[
-                        <Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
+                        <Button style={{width: "50%"}} inline xitsize="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
                             Refresh{this.state.loading ? "ing" : ""}
                         </Button>,
-                        <Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={() => {
+                        <Button style={{width: "50%"}} inline xitsize="small" loading={this.state.loading} disabled={this.state.loading} onClick={() => {
                             alertModal("Delete", `Deleting files that are ${this.state.days} day old and older.`, () => {
                                 this.deleteFiles()
                             })
@@ -159,8 +185,8 @@ class FileStats extends React.Component {
                                 })
                             }} multipleLine>
                                 {cam.path} 
-                                <List.Item.Brief>Size: {this.state.loading == "loading" ? "---" : cam.size}</List.Item.Brief>
-                                <List.Item.Brief>File Count: {this.state.loading == "loading" ? "---" : cam.count}</List.Item.Brief>
+                                <List.Item.Brief>Size: {this.state.loading ? "---" : cam.size}</List.Item.Brief>
+                                <List.Item.Brief>File Count: {this.state.loading ? "---" : cam.count}</List.Item.Brief>
                             </List.Item>)
                         })}
                     </List>
