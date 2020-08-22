@@ -38,6 +38,7 @@ class SaveProcess extends React.Component{
             camera: (this.state.camera+1).toString(),
             start: moment(this.state.startDate).second(0).format("YYYYMMDD-HHmmss"),
             end: moment(this.state.endDate).second(0).format("YYYYMMDD-HHmmss"),
+            skip: this.state.skip,
             save: !this.state.download
         })
         console.log(body)
