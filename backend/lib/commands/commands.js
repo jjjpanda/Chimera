@@ -181,7 +181,7 @@ module.exports = {
     },
 
     numberSwitch: (placeholder) => (req, res, next) => {
-        req.body.commandAppends = req.body.commandAppends.replace(placeholder, parseInt(req.body.days || process.env.defaultDayDelete))
+        req.body.commandAppends = req.body.commandAppends.replace(placeholder, parseInt(req.body.days || 100))
         console.log(req.body.commandAppends)
         next()
     }
