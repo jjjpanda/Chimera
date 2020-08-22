@@ -22,13 +22,8 @@ const createFrameList = (camera, start, end, limit) => {
 
     console.log(filteredList.length, limitIteration)
 
-    let indexForLimit = 0
     const limitedList = filteredList.filter((item, index) => {
-        if(index === indexForLimit){
-            indexForLimit += limitIteration
-            return true
-        }
-        return false
+        return (index % limitIteration === 0)
     }).map((item) => {
         return `/shared/captures/${camera}/${item}`
     })
@@ -36,10 +31,10 @@ const createFrameList = (camera, start, end, limit) => {
     return limitedList
 }
 
-const createVideoList = (camera, start, end) => {
+const createVideoList = (camera, start, end, skip) => {
     const rand = randomID()
 
-    const filteredList = filterList(camera, start, end)
+    const filteredList = filterList(camera, start, end, skip)
 
     const frames = filteredList.length    
 
@@ -137,7 +132,7 @@ module.exports = {
         skip = skip == undefined ? 1 : skip
 
         console.log(camera, start, end, fps)
-        const { rand, frames } = createVideoList(camera, start, end)
+        const { rand, frames } = createVideoList(camera, start, end, skip)
 
         if(save == undefined || save == true || save == "true"){
             save = true

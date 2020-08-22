@@ -7,11 +7,13 @@ import {
     PullToRefresh,
     NoticeBar,
     Icon,
-    ActivityIndicator
+    ActivityIndicator,
+    Stepper
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
+import alertModal from './Alert.jsx';
 
 class FileStats extends React.Component {
     constructor(props){
@@ -36,6 +38,7 @@ class FileStats extends React.Component {
                 }
             ],
             numberOfCameras: 3,
+            days: 7,
             lastUpdated: moment().format("h:mm:ss a")
         }
     }
@@ -103,15 +106,46 @@ class FileStats extends React.Component {
         })
     }
 
+    deleteFiles = (path="shared/captures/") => {
+        this.setState({
+            loading: true
+        }, () => {
+            request("/pathClean", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    path,
+                    days: this.state.days
+                })
+            }, (prom) => {
+                jsonProcessing(prom, (data) => {
+                    console.log(data)
+                    this.cameraUpdate()
+                })
+            })
+        })
+    }
+
     render() {
         console.log("STATE FROM FILE STATS", this.state)
         return (
             <Card>
                 <Card.Header
                     title = "Camera Footage" 
-                    extra={<Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
+                    extra={[
+                        <Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
                             Refresh{this.state.loading ? "ing" : ""}
-                    </Button>}
+                        </Button>,
+                        <Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={() => {
+                            alertModal("Delete", `Deleting files that are ${this.state.days} day old and older.`, () => {
+                                this.deleteFiles()
+                            })
+                        }}>
+                            Delet{this.state.loading ? "ing" : "e"}
+                        </Button>,
+                    ]}
                 />
                 <Card.Body>
                     <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
@@ -119,16 +153,30 @@ class FileStats extends React.Component {
                     </NoticeBar>
                     <List >
                         {this.state.camera.map(cam => {
-                            return (<List.Item extra={<div>
-                                <Button onClick={() => {}} icon="horizontal" inline/>
-                                <Button onClick={() => {}} icon="horizontal" inline/>
-                            </div>} multipleLine>
+                            return (<List.Item arrow="horizontal" onClick={() => {
+                                alertModal(`Delete Files`, `Deleting files that are ${this.state.days} day old and older for ${cam.path}.`, () => {
+                                    this.deleteFiles(cam.path)
+                                })
+                            }} multipleLine>
                                 {cam.path} 
                                 <List.Item.Brief>Size: {this.state.loading == "loading" ? "---" : cam.size}</List.Item.Brief>
                                 <List.Item.Brief>File Count: {this.state.loading == "loading" ? "---" : cam.count}</List.Item.Brief>
                             </List.Item>)
                         })}
-                    </List>    
+                    </List>
+                    <List.Item extra= {
+                        <Stepper 
+                            showNumber 
+                            onChange={(val) => this.setState({days: val})} 
+                            min={1} 
+                            value={
+                                this.state.days
+                            }
+                            style={{ width: '100%' }}
+                        />
+                    }>
+                        Days to Delete
+                    </List.Item>
                 </Card.Body>
                 
             </Card>
