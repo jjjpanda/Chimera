@@ -13,7 +13,8 @@ import {
     Card,
     Slider,
     WingBlank,
-    ActivityIndicator
+    ActivityIndicator,
+    Progress
 } from 'antd-mobile';
 
 import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
@@ -34,7 +35,8 @@ class SummaryScrubber extends React.Component{
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
             list: [],
-            loading: true
+            loading: true,
+            imagesLoaded: 0,
         }
     }
 
@@ -92,13 +94,26 @@ class SummaryScrubber extends React.Component{
                         return (
                             <img 
                                 style={{ display: this.state.sliderIndex == index ? "inherit" : 'none'}} 
-                                src={frame} 
+                                src={frame}
+                                onLoad = {() => {
+                                    this.setState((oldState) => ({
+                                        imagesLoaded: oldState.imagesLoaded + 1
+                                    }), () => {
+                                        //console.log(Math.round(100 * this.state.imagesLoaded / this.state.list.length))
+                                    })
+                                }}
                             />
                         )
                     }) : <div>
                         No Images
                     </div>) 
                     : <ActivityIndicator />}
+
+                    <br />
+
+                    {this.state.list.length > 0 && this.state.imagesLoaded < this.state.list.length ? 
+                        <Progress percent={Math.round(100 * this.state.imagesLoaded / this.state.list.length)} position="normal" /> 
+                        : <div></div>}
                     
                     <CameraDatePicker
                         pre ={
