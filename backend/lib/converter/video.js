@@ -25,7 +25,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `/shared/captures/${camera}/${item}`
+        return `${process.env.host}:${process.env.PORT}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
