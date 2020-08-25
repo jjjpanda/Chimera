@@ -7,6 +7,9 @@ var contentDisposition = require('content-disposition')
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
+var { 
+    validateBody 
+}              = require('./tools/validators.js')
 var {
     validateRequest,
     validateID,
@@ -33,6 +36,13 @@ var {
     formattedCommandResponse,
     pathCommandAppend
 }              = require('./commands/commands.js')
+var {
+    validateTaskRequest,
+    validateTaskCron,
+    scheduleTask,
+    destroyTask,
+    taskCheck
+}              = require('./commands/scheduler.js')
 
 var app = express()
 
@@ -80,21 +90,16 @@ if(process.env.fileServer == "on"){
 
 if(process.env.converter == "on"){
     console.log("Converter On")
-    /* app.post('/convert', validateVideoDetails, convert)
-    app.post("/status", validateID, status)
-    app.post("/deleteVideo", validateID, deleteVideo) */
 
-    //ADD skip frames
+    app.post('/createVideo', validateBody, validateRequest, createVideo)
+    app.post('/listFramesVideo', validateBody, validateRequest, listOfFrames)
 
-    app.post('/createVideo', validateRequest, createVideo)
-    app.post('/listFramesVideo', validateRequest, listOfFrames)
+    app.post('/createZip', validateBody, validateRequest, createZip)
 
-    app.post('/createZip', validateRequest, createZip)
-
-    app.post('/statusProcess', validateID, statusProcess)
-    app.post('/cancelProcess', validateID, cancelProcess)
+    app.post('/statusProcess', validateBody, validateID, statusProcess)
+    app.post('/cancelProcess', validateBody, validateID, cancelProcess)
     app.post('/listProcess', listProcess)
-    app.post('/deleteProcess', validateID, deleteProcess)
+    app.post('/deleteProcess', validateBody, validateID, deleteProcess)
 }
 
 if(process.env.commandServer == "on"){
@@ -111,10 +116,13 @@ if(process.env.commandServer == "on"){
     app.post('/serverInstall', oneCommand(`npm install --no-progress && npm run buildNoProgress`, "INSTALLING SERVER", `${process.env.sharedLocation}shared/MotionPlayback`), formattedCommandResponse)
     app.post('/serverStop', oneCommand(`sudo pkill node`, "SERVER STOP"), formattedCommandResponse)
     
-    app.post('/pathSize', validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
-    app.post('/pathFileCount', validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.sharedLocation}`, "FILE COUNT", undefined, true), formattedCommandResponse)
-    app.post('/pathDelete', validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
-    app.post('/pathClean', validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.sharedLocation}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
+    app.post('/pathSize', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.sharedLocation}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
+    app.post('/pathFileCount', validateBody, validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.sharedLocation}`, "FILE COUNT", undefined, true), formattedCommandResponse)
+    app.post('/pathDelete', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
+    app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.sharedLocation}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
+
+    app.post('/scheduleTask', validateBody, validateTaskRequest, validateTaskCron, scheduleTask, taskCheck)
+    app.post('/destroyTask', validateBody, validateTaskRequest, destroyTask, taskCheck)
 
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
         index: "index.html"
