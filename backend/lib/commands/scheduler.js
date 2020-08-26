@@ -45,7 +45,10 @@ module.exports = {
 
         const { url, body, cronString } = req.body
 
-        req.app.locals[url] = cron.schedule(cronString, () => {
+        req.app.locals[url] = {}
+
+        req.app.locals[url].cronString = cronString
+        req.app.locals[url].task = cron.schedule(cronString, () => {
             request({
                 method: "POST",
                 url: `http://localhost:${process.env.PORT}${url}`,
@@ -62,7 +65,7 @@ module.exports = {
             scheduled: true
         })
 
-        req.app.locals[url].start()
+        req.app.locals[url].task.start()
         req.body.set = true
 
         next()
@@ -74,7 +77,7 @@ module.exports = {
         const { url } = req.body
 
         if(req.app.locals[url] != undefined){
-            req.app.locals[url].destroy()
+            req.app.locals[url].task.destroy()
             req.app.locals[url] = undefined
             req.body.destroyed = true
         }
@@ -94,15 +97,19 @@ module.exports = {
 
         if(req.app.locals[url] != undefined){
             console.log("URL Cron Defined")
+            res.send(JSON.stringify({
+                set: req.body.set,
+                cronString: req.app.locals[url].cronString,
+                destroyed: req.body.destroyed
+            }))
         }
         else{
             console.log("URL Cron Not Defined")
+            res.send(JSON.stringify({
+                set: req.body.set,
+                destroyed: req.body.destroyed
+            }))
         }
-
-        res.send(JSON.stringify({
-            set: req.body.set,
-            destroyed: req.body.destroyed
-        }))
 
     }
 }

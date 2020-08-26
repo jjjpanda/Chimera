@@ -58,9 +58,9 @@ module.exports = {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: 'frontend/app.html',
+        template: 'frontend/reactTemplate.html',
         chunks : ['app'],
-        filename: 'index.html'
+        filename: 'app.html'
       }),
     ],
     devtool: 'cheap-module-source-map', 

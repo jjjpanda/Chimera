@@ -19,6 +19,7 @@ import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
 import ServerProcess from './ServerProcess.jsx';
 import alertModal from './Alert.jsx';
+import ScheduleMotion from './ScheduleMotion.jsx';
 
 class Processes extends React.Component{
 
@@ -131,6 +132,9 @@ class Processes extends React.Component{
                         <SaveProcess update={this.listProcesses}/>    
                     </Flex>
 
+                    <WhiteSpace size="sm" />
+
+                    <ScheduleMotion update ={this.listProcesses} />
                     <WhiteSpace size="sm" />
 
                     {this.state.processList.map(process => {
