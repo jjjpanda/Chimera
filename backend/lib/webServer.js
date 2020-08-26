@@ -77,12 +77,12 @@ if(process.env.fileServer == "on"){
     console.log("File Server On")
     app.use('/shared', serveStatic(path.join(process.env.filePath), {
         index: false,
-        'setHeaders': (res, path) => {
+        setHeaders: (res, path) => {
             res.setHeader('Content-Disposition', contentDisposition(path))
         },
     }),
     express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
-        'icons': true,
+        icons: true,
         stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
         template: path.resolve(__dirname, '../templates/fileTemplate.html')
     }))
@@ -122,14 +122,15 @@ if(process.env.commandServer == "on"){
     app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.sharedLocation}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
 
     app.post('/scheduleTask', validateBody, validateTaskRequest, validateTaskCron, scheduleTask, taskCheck)
+    app.post('/checkTask', validateBody, validateTaskRequest, taskCheck)
     app.post('/destroyTask', validateBody, validateTaskRequest, destroyTask, taskCheck)
 
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
-        index: "index.html"
+        index: "legacy.html"
     }))
 
     app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
-        index: "index.html"
+        index: "app.html"
     }))
 }
 
