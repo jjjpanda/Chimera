@@ -31,7 +31,7 @@ class TimeRangePicker extends React.Component{
                 use12Hours
             >
                 <List.Item arrow="horizontal">
-                    Start Date
+                    Start Time
                 </List.Item>
             </DatePicker>,
             <DatePicker
@@ -42,7 +42,7 @@ class TimeRangePicker extends React.Component{
                 use12Hours
             >
                 <List.Item arrow="horizontal">
-                    End Date
+                    End Time
                 </List.Item>
             </DatePicker>
         ]

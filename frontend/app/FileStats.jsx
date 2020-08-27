@@ -7,9 +7,11 @@ import {
     PullToRefresh,
     NoticeBar,
     Icon,
-    ActivityIndicator,
+    InputItem,
     Stepper
 } from 'antd-mobile';
+
+import enUs from 'antd-mobile/lib/input-item/locale/en_US';
 
 import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
@@ -190,19 +192,16 @@ class FileStats extends React.Component {
                                 <List.Item.Brief>File Count: {this.state.loading ? "---" : cam.count}</List.Item.Brief>
                             </List.Item>)
                         })}
-                        <List.Item extra= {
-                            <Stepper 
-                                showNumber 
-                                onChange={(val) => this.setState({days: val})} 
-                                min={1} 
-                                value={
-                                    this.state.days
-                                }
-                                style={{ width: '100%' }}
-                            />
-                        }>
+                        <InputItem 
+                            type="money" 
+                            moneyKeyboardAlign="right" 
+                            value={this.state.days} 
+                            onChange={(val) => this.setState(() => ({days: Math.max(Math.round(val), 1)}))}
+                            locale={enUs}
+                            autoAdjustHeight
+                        >
                             Days to Delete
-                        </List.Item>
+                        </InputItem>
                     </List>
 
                     <a href= "/shared">
