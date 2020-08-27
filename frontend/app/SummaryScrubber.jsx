@@ -88,8 +88,7 @@ class SummaryScrubber extends React.Component{
                 <Card.Header 
                     title = "Image Preview" 
                 />
-                <Card.Body>
-
+                <Card.Body>                    
                     {!this.state.loading ? (this.state.list.length > 0 ? this.state.list.map((frame, index) => {
                         return (
                             <img 

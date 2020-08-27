@@ -112,27 +112,23 @@ class Processes extends React.Component{
                             Refresh{this.state.loading ? "ing" : ""}
                     </Button>}
                 />
-                <Card.Body>
+                <Card.Body>                    
                     <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
                         Last Updated Date: {this.state.lastUpdated}
                     </NoticeBar>
+                    
                     <WhiteSpace size="sm" />
 
+                    <ScheduleMotion update ={this.listProcesses} />
+
                     <MotionProcess key={`motion${this.state.lastUpdated}`}/>
+
                     <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
                     <WhiteSpace size="sm" />
                     
-                    <Flex>
-                        <Flex.Item>
-                            <a href= "/shared">
-                                <Button icon="check-circle-o" >VIEW</Button>
-                            </a>
-                        </Flex.Item>
-                        <ScheduleMotion update ={this.listProcesses} />
-                        <SaveProcess update={this.listProcesses}/>    
-                    </Flex>
-
+                    <SaveProcess update={this.listProcesses}/>    
+                    
                     <WhiteSpace size="sm" />
 
                     {this.state.processList.map(process => {
