@@ -205,9 +205,9 @@ class ScheduleMotion extends React.Component{
                     }}/>
                     <TimeRangePicker 
                         startTime= {this.state.startTime}
-                        startChange = {date => this.setState({ startTime: date })}
+                        startChange = {time => this.setState({ startTime: time })}
                         endTime= {this.state.endTime}
-                        endChange = {date => this.setState({ endTime: date })}
+                        endChange = {time => this.setState({ endTime: time })}
                     />
                     
                 </List>

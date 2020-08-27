@@ -14,10 +14,12 @@ import {
     Slider,
     WingBlank,
     ActivityIndicator,
-    Progress
+    Progress,
+    InputItem
 } from 'antd-mobile';
 
-import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
+import enUsDate from 'antd-mobile/lib/date-picker/locale/en_US';
+import enUsNumber from 'antd-mobile/lib/input-item/locale/en_US';
 
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
@@ -132,6 +134,18 @@ class SummaryScrubber extends React.Component{
                                 </WingBlank>
                                 <br />
                             </List.Item>
+                        }
+                        post={
+                            <InputItem 
+                                type="money" 
+                                moneyKeyboardAlign="right" 
+                                value={this.state.numberOfFrames} 
+                                onChange={(val) => this.setState(() => ({numberOfFrames: Math.max(Math.round(val), 1)}))}
+                                locale={enUsNumber}
+                                autoAdjustHeight
+                            >
+                                Frames
+                            </InputItem>
                         }
                         camera={this.state.camera}
                         cameras={this.state.cameras}
