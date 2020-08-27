@@ -123,6 +123,9 @@ class Processes extends React.Component{
 
                     <WhiteSpace size="sm" />
 
+                    <ScheduleMotion update ={this.listProcesses} />
+                    <WhiteSpace size="sm" />
+
                     <Flex>
                         <Flex.Item>
                             <a href= "/shared">
@@ -132,9 +135,6 @@ class Processes extends React.Component{
                         <SaveProcess update={this.listProcesses}/>    
                     </Flex>
 
-                    <WhiteSpace size="sm" />
-
-                    <ScheduleMotion update ={this.listProcesses} />
                     <WhiteSpace size="sm" />
 
                     {this.state.processList.map(process => {

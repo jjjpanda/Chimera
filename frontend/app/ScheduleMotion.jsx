@@ -17,7 +17,7 @@ import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import TimeRangePicker from './TimeRangePicker.jsx';
 import WeekdayPicker from './WeekdayPicker.jsx';
-import cronString from '../js/lib/cronString.js'
+import { cronString, cronState } from '../js/lib/cronString.js'
 
 class ScheduleMotion extends React.Component{
 
@@ -25,19 +25,77 @@ class ScheduleMotion extends React.Component{
         super(props)
         this.state ={
             weekdays: {
-                Sunday:     false,
-                Monday:     false,
-                Tuesday:    false,
-                Wednesday:  false,
-                Thursday:   false,
-                Friday:     false,
-                Saturday:   false,
+                Sunday:     true,
+                Monday:     true,
+                Tuesday:    true,
+                Wednesday:  true,
+                Thursday:   true,
+                Friday:     true,
+                Saturday:   true,
             },
-            startTime: moment().subtract(1, "hour").toDate(),
+            startTime: moment().toDate(),
             endTime: moment().toDate(),
             visible: false,
-            loading: true,
+            running: false,
         }
+    }
+
+    componentDidMount = () => {
+        this.updateScheduling()
+    }
+
+    updateScheduling = () => {
+        request("/taskCheck", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStart"
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+                this.setState(() => {
+                    const {
+                        weekdays,
+                        date,
+                        running
+                    } = cronState(data.cronString)
+                    return {
+                        weekdays,
+                        startTime: date,
+                        running
+                    }
+                })
+            })
+        })
+        request("/taskCheck", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStop"
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+                this.setState(() => {
+                    const {
+                        weekdays,
+                        date,
+                        running
+                    } = cronState(data.cronString)
+                    return {
+                        weekdays,
+                        endTime: date,
+                        running
+                    }
+                })
+            
+            })
+        })
     }
 
     openModal = () => {
@@ -61,6 +119,7 @@ class ScheduleMotion extends React.Component{
             jsonProcessing(prom, (data) => {
                 console.log(data)
             })
+            this.updateScheduling()
         })
         request("/taskDestroy", {
             method: "POST",
@@ -74,6 +133,7 @@ class ScheduleMotion extends React.Component{
             jsonProcessing(prom, (data) => {
                 console.log(data)
             })
+            this.updateScheduling()
         })
     }
 
@@ -92,6 +152,7 @@ class ScheduleMotion extends React.Component{
             jsonProcessing(prom, (data) => {
                 console.log(data)
             })
+            this.updateScheduling()
         })
         request("/taskSchedule", {
             method: "POST",
@@ -106,6 +167,7 @@ class ScheduleMotion extends React.Component{
             jsonProcessing(prom, (data) => {
                 console.log(data)
             })
+            this.updateScheduling()
         })
     }
 
@@ -122,6 +184,9 @@ class ScheduleMotion extends React.Component{
                 animationType="slide-up"
             >
                 <List>
+                    <List.Item>
+                        Scheduling: {this.state.running ? "On" : "Off"}
+                    </List.Item>
                     <WeekdayPicker weekdays={this.state.weekdays} onChange = {(weekday, checked) => {
                         if(checked != undefined){
                             this.setState((oldState) => {
