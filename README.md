@@ -30,9 +30,12 @@
 |POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
 |POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
-|POST|/scheduleTask|Schedules a request for another command server request|`{ url: String, body: JSON, cronString: String }`|`{ cronString: String, set: Boolean, destroyed: Boolean }`|
-|POST|/checkTask|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`
-|POST|/destroyTask|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
+
+### Scheduling 
+
+|POST|/taskSchedule|Schedules a request for another command server request|`{ url: String, body: JSON, cronString: String }`|`{ cronString: String, set: Boolean, destroyed: Boolean }`|
+|POST|/taskCheck|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`
+|POST|/taskDestroy|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
 
 ### Video and Archive Conversions
 

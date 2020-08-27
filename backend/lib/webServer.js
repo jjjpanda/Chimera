@@ -121,9 +121,9 @@ if(process.env.commandServer == "on"){
     app.post('/pathDelete', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.sharedLocation}`, "DELETE PATH", undefined, true), formattedCommandResponse)
     app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.sharedLocation}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
 
-    app.post('/scheduleTask', validateBody, validateTaskRequest, validateTaskCron, scheduleTask, taskCheck)
-    app.post('/checkTask', validateBody, validateTaskRequest, taskCheck)
-    app.post('/destroyTask', validateBody, validateTaskRequest, destroyTask, taskCheck)
+    app.post('/taskSchedule', validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
+    app.post('/taskCheck', validateBody, validateTaskRequest, taskCheck)
+    app.post('/taskDestroy', validateBody, validateTaskRequest, destroyTask, taskCheck)
 
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
         index: "legacy.html"
