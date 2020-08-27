@@ -13,10 +13,11 @@ import {
     InputItem
 } from 'antd-mobile';
 
-import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
+import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import TimeRangePicker from './TimeRangePicker.jsx';
 import WeekdayPicker from './WeekdayPicker.jsx';
+import cronString from '../js/lib/cronString.js'
 
 class ScheduleMotion extends React.Component{
 
@@ -36,7 +37,6 @@ class ScheduleMotion extends React.Component{
             endTime: moment().toDate(),
             visible: false,
             loading: true,
-            
         }
     }
 
@@ -49,18 +49,63 @@ class ScheduleMotion extends React.Component{
     }
 
     stopTask = () => {
-        request("/destroyTask", {
-
-        }, () => {
-            
+        request("/taskDestroy", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStart"
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+            })
+        })
+        request("/taskDestroy", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStop"
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+            })
         })
     }
 
     startTask = () => {
-        request("/scheduleTask", {
-
-        }, () => {
-            
+        console.log(cronString(this.state.weekdays, this.state.startTime), cronString(this.state.weekdays, this.state.endTime))
+        request("/taskSchedule", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStart",
+                cronString: cronString(this.state.weekdays, this.state.startTime),
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+            })
+        })
+        request("/taskSchedule", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                url: "/motionStop",
+                cronString: cronString(this.state.weekdays, this.state.endTime),
+            })
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+            })
         })
     }
 
