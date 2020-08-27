@@ -108,7 +108,7 @@ class SaveProcess extends React.Component{
         return (
             <Flex.Item>
                 <Button icon="check-circle-o" onClick={this.openModal}>
-                    SAVE
+                    SAVE VIDEO/ZIP
                 </Button>
                 <Modal
                     popup

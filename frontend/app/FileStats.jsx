@@ -177,6 +177,7 @@ class FileStats extends React.Component {
                     <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
                         Last Updated Date: {this.state.lastUpdated}
                     </NoticeBar>
+                
                     <List >
                         {this.state.camera.map(cam => {
                             return (<List.Item arrow="horizontal" onClick={() => {
@@ -189,20 +190,27 @@ class FileStats extends React.Component {
                                 <List.Item.Brief>File Count: {this.state.loading ? "---" : cam.count}</List.Item.Brief>
                             </List.Item>)
                         })}
+                        <List.Item extra= {
+                            <Stepper 
+                                showNumber 
+                                onChange={(val) => this.setState({days: val})} 
+                                min={1} 
+                                value={
+                                    this.state.days
+                                }
+                                style={{ width: '100%' }}
+                            />
+                        }>
+                            Days to Delete
+                        </List.Item>
                     </List>
-                    <List.Item extra= {
-                        <Stepper 
-                            showNumber 
-                            onChange={(val) => this.setState({days: val})} 
-                            min={1} 
-                            value={
-                                this.state.days
-                            }
-                            style={{ width: '100%' }}
-                        />
-                    }>
-                        Days to Delete
-                    </List.Item>
+
+                    <a href= "/shared">
+                        <Button icon="check-circle-o" >
+                            VIEW FILES
+                        </Button>
+                    </a>
+
                 </Card.Body>
                 
             </Card>

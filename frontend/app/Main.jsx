@@ -8,7 +8,8 @@ import {
     NoticeBar,
     Icon,
     WingBlank,
-    WhiteSpace
+    WhiteSpace,
+    Tabs
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -22,16 +23,17 @@ class Main extends React.Component {
     render () {
         return (
             <WingBlank>
-            
-                <WhiteSpace size="md" />
-                <Processes />
+                <Tabs swipeable={false} animated tabs= {[
+                    {title: "Processes"},
+                    {title: "Image Preview"},
+                    {title: "File Stats"}
+                ]}>
+                    <Processes />
 
-                <WhiteSpace size="md" />
-                <SummaryScrubber />
+                    <SummaryScrubber />
 
-                <WhiteSpace size="md" />
-                <FileStats />
-
+                    <FileStats />
+                </Tabs>
             </WingBlank>
         )
     }
