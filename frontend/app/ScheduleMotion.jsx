@@ -184,7 +184,10 @@ class ScheduleMotion extends React.Component{
                 animationType="slide-up"
             >
                 <List>
-                    <List.Item>
+                    <List.Item
+                        arrow="down"
+                        onClick={this.closeModal}
+                    >
                         Scheduling: {this.state.running ? "On" : "Off"}
                     </List.Item>
                     <WeekdayPicker weekdays={this.state.weekdays} onChange = {(weekday, checked) => {
