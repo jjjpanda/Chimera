@@ -122,16 +122,14 @@ class Processes extends React.Component{
                     <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
                     <WhiteSpace size="sm" />
-
-                    <ScheduleMotion update ={this.listProcesses} />
-                    <WhiteSpace size="sm" />
-
+                    
                     <Flex>
                         <Flex.Item>
                             <a href= "/shared">
                                 <Button icon="check-circle-o" >VIEW</Button>
                             </a>
                         </Flex.Item>
+                        <ScheduleMotion update ={this.listProcesses} />
                         <SaveProcess update={this.listProcesses}/>    
                     </Flex>
 
