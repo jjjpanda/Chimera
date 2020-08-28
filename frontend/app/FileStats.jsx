@@ -196,11 +196,11 @@ class FileStats extends React.Component {
                             type="money" 
                             moneyKeyboardAlign="right" 
                             value={this.state.days} 
-                            onChange={(val) => this.setState(() => ({days: Math.max(Math.round(val), 1)}))}
+                            onChange={(val) => this.setState(() => ({days: Math.max(Math.round(val), 0)}))}
                             locale={enUs}
                             autoAdjustHeight
                         >
-                            Days to Delete
+                            Delete Days
                         </InputItem>
                     </List>
 
