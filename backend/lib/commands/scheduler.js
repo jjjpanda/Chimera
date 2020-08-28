@@ -1,6 +1,11 @@
-const cron = require('node-cron');
+const cron     = require('node-cron');
 const { validateRequestURL } = require('../tools/validators.js');
-const request = require('request');
+const request  = require('request');
+const moment   = require('moment')
+
+const {
+    sendAlert,
+}              = require('../tools/alerts.js');
 
 module.exports = {
     validateTaskRequest: (req, res, next) => {
@@ -49,6 +54,8 @@ module.exports = {
 
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
+            console.log( "CRON: ", url )
+            sendAlert(`Daemon Process: ${url} started at `+ moment().format("LLL"))
             request({
                 method: "POST",
                 url: `http://localhost:${process.env.PORT}${url}`,

@@ -6,11 +6,13 @@ var path       = require('path')
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
 const {
-    sendAlert,
     randomID,
     filterList,
     fileName,
 }              = require('./converter.js')
+const {
+    sendAlert,
+}              = require('../tools/alerts.js');
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)

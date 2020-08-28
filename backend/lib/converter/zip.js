@@ -5,11 +5,13 @@ var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
 const {
-    sendAlert,
     randomID,
     filterList,
     fileName,
 }              = require('./converter.js');
+const {
+    sendAlert,
+}              = require('../tools/alerts.js');
 
 const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
