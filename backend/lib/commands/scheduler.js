@@ -55,7 +55,7 @@ module.exports = {
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
             console.log( "CRON: ", url )
-            sendAlert(`Daemon Process: ${url} started at `+ moment().format("LLL"))
+            sendAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
                 url: `http://localhost:${process.env.PORT}${url}`,

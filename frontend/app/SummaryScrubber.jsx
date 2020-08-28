@@ -140,7 +140,7 @@ class SummaryScrubber extends React.Component{
                                 type="money" 
                                 moneyKeyboardAlign="right" 
                                 value={this.state.numberOfFrames} 
-                                onChange={(val) => this.setState(() => ({numberOfFrames: Math.max(Math.round(val), 1)}))}
+                                onChange={(val) => this.setState(() => ({numberOfFrames: Math.max(Math.round(val), 0)}))}
                                 locale={enUsNumber}
                                 autoAdjustHeight
                             >
