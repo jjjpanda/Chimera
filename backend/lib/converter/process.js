@@ -2,11 +2,13 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 const {
-    sendAlert,
     filterType,
     parseFileName,
     findFile
 }              = require('./converter.js');
+const {
+    sendAlert,
+}              = require('../tools/alerts.js');
 
 module.exports = {
     statusProcess: (req, res) => {

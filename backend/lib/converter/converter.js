@@ -2,31 +2,13 @@ require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 var shortid    = require("shortid")
-const request  = require('request');
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
 
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
 shortid.characters(charList)
 
-module.exports = {
-    sendAlert: (content) => {
-        request({
-            method: "POST",
-            url: process.env.alertURL,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                content
-            }),
-        }, (error, response, body) => {
-            if (!error) {
-                console.log('Alert Sent')
-            } else {
-                console.log("Error sending alert: ", error)
-            }
-        });
-    },
-    
+module.exports = {   
     randomID: () => {
         return shortid.generate() + "-" + moment().format(dateFormat);
     },
