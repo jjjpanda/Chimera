@@ -17,7 +17,7 @@ const {
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
-const imgDir = `${process.env.filePath}/captures`
+const imgDir = path.join(process.env.filePath, 'shared/captures')
 
 const createFrameList = (camera, start, end, limit) => {
     const filteredList = filterList(camera, start, end)

@@ -10,7 +10,7 @@ const {
     sendAlert,
 }              = require('../tools/alerts.js');
 
-const imgDir = `${process.env.filePath}/captures`
+const imgDir = path.join(process.env.filePath, 'shared/captures')
 
 module.exports = {
     statusProcess: (req, res) => {

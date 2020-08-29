@@ -82,13 +82,13 @@ if(process.env.converter == "on"){
     app.post('/listProcess', listProcess)
     app.post('/deleteProcess', validateBody, validateID, deleteProcess)
 
-    app.use('/shared', serveStatic(path.join(process.env.filePath), {
+    app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
         index: false,
         setHeaders: (res, path) => {
             res.setHeader('Content-Disposition', contentDisposition(path))
         },
     }),
-    express.static(path.join(process.env.filePath)), serveIndex(path.join(process.env.filePath), {
+    express.static(path.join(process.env.filePath, 'shared')), serveIndex(path.join(process.env.filePath, 'shared'), {
         icons: true,
         stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
         template: path.resolve(__dirname, '../templates/fileTemplate.html')

@@ -13,7 +13,7 @@ const {
     sendAlert,
 }              = require('../tools/alerts.js');
 
-const imgDir = `${process.env.filePath}/captures`
+const imgDir = path.join(process.env.filePath, 'shared/captures')
 
 const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
