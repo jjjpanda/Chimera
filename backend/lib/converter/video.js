@@ -17,6 +17,8 @@ const {
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
+const imgDir = `${process.env.filePath}/captures`
+
 const createFrameList = (camera, start, end, limit) => {
     const filteredList = filterList(camera, start, end)
 
@@ -27,7 +29,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.host}:${process.env.PORT}/shared/captures/${camera}/${item}`
+        return `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -48,7 +50,7 @@ const createVideoList = (camera, start, end, skip) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    fs.writeFileSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`), files)
+    fs.writeFileSync(path.resolve(imgDir, `mp4_${rand}.txt`), files)
     return { rand, frames }
 };
 
@@ -74,8 +76,8 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
             res.attachment(fileName(camera, start, end, rand, 'mp4'))
         }
     
-        let videoCreator = ffmpeg(process.env.imgDir+`/mp4_${rand}.txt`)
-            .inputFormat('concat') //ffmpeg(slash(path.join(process.env.imgDir,"img.txt"))).inputFormat('concat');
+        let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
+            .inputFormat('concat') //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
             .outputFPS(fps)
             .videoBitrate(Math.pow(2, 14))
             .videoCodec('libx264')
@@ -85,7 +87,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 if(save){
                     sendAlert(`Your video (${rand}) could not be completed.`)
                 }    
-                fs.unlinkSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`))
+                fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
             .on('progress', function(progress) {
                 console.log('Processing: ' + progress.frames + "/" + frames + ' done');
@@ -94,9 +96,9 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 console.log('Finished processing');
                 if(save){
                     console.log("SENDING END ALERT")
-                    sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
-                fs.unlinkSync(path.resolve(process.env.imgDir, `mp4_${rand}.txt`))
+                fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
 
         req.app.locals[rand] = videoCreator
@@ -104,12 +106,12 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
         const createVideo = (creator) => {
             if(save){
                 creator
-                    .mergeToFile(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, process.env.imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(process.env.imgDir)))
+                    .mergeToFile(`${imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(imgDir)))
                 
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{

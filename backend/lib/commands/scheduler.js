@@ -58,7 +58,7 @@ module.exports = {
             sendAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
-                url: `http://localhost:${process.env.PORT}${url}`,
+                url: `http://${process.env.commandHost}:${process.env.PORT}${url}`,
                 body
             }, (err, response, body) => {
                 if(!err && response.statusCode === 200){

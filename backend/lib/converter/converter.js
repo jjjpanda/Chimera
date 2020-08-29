@@ -8,13 +8,15 @@ var dateFormat = require('./dateFormat.js')
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
 shortid.characters(charList)
 
+const imgDir = `${process.env.filePath}/captures`
+
 module.exports = {   
     randomID: () => {
         return shortid.generate() + "-" + moment().format(dateFormat);
     },
     
     filterList: (camera, start, end, skipEvery=1) => {
-        let list = fs.readdirSync(path.resolve(process.env.imgDir, camera)).filter( file => file.includes(".jpg") && 
+        let list = fs.readdirSync(path.resolve(imgDir, camera)).filter( file => file.includes(".jpg") && 
             `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
             `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
         return skipEvery == 1 ? list : list.filter( (file, index) => {
@@ -23,7 +25,7 @@ module.exports = {
     },
 
     filterType: (type) => {
-        return fs.readdirSync(path.resolve(process.env.imgDir)).filter(file => file.includes(`.${type}`))
+        return fs.readdirSync(path.resolve(imgDir)).filter(file => file.includes(`.${type}`))
     },
 
     fileName: (camera, start, end, id, type) => {
@@ -34,7 +36,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         console.log(fileName)
         return {
-            link: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName}`,
+            link: `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],
@@ -44,7 +46,7 @@ module.exports = {
     },
 
     findFile: (id) => {
-        const fileName = fs.readdirSync(path.resolve(process.env.imgDir)).find(file => file.includes(id) && !file.includes('.txt'))
+        const fileName = fs.readdirSync(path.resolve(imgDir)).find(file => file.includes(id) && !file.includes('.txt'))
         return fileName == undefined ? "output_0_start_end_id.type" : fileName
     },
 

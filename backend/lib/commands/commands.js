@@ -4,9 +4,13 @@ var path       = require('path')
 var SSH        = require('simple-ssh');
 
 const sshAuth = {
-    host: process.env.host,
-    user: process.env.username,
-    pass: process.env.key
+    host: process.env.baseHost,
+    user: process.env.baseUsername,
+    ...{ 
+        pass: process.env.sshAuthType === "pass" ? process.env.baseAuth : undefined,
+        key: process.env.sshAuthType === "key" ? process.env.baseAuth : undefined
+    },
+    
 }
 
 const lines = (output, error) => {
@@ -91,7 +95,7 @@ module.exports = {
                 }
             }
         })
-        .exec(`sudo tmux new-session -d "motion -c ${process.env.sharedLocation}/shared/motion.conf"`, {
+        .exec(`sudo tmux new-session -d "motion -c ${process.env.filePath}/shared/motion.conf"`, {
             pty: true,
             ...lines(outputChanger, errorChanger),
             exit: (code) => {

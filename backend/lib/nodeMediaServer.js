@@ -10,33 +10,21 @@ const config = {
         ping_timeout: 60
     },
     http: {
-        port: process.env.streamPORT,
+        port: process.env.mediaPORT,
         allow_origin: '*'
     },
     relay: {
         ffmpeg: process.env.ffmpeg,
         tasks: [
-          {
-            app: 'cam',
-            mode: 'static',
-            edge: `rtsp://${process.env.name}:${process.env.password}@${process.env.rtspIp1}/cam/realmonitor?channel=1&subtype=0`,
-            name: 'cam1',
-            rtsp_transport : 'tcp' //['udp', 'tcp', 'udp_multicast', 'http']
-          },
-          {
-            app: 'cam',
-            mode: 'static',
-            edge: `rtsp://${process.env.name}:${process.env.password}@${process.env.rtspIp2}/cam/realmonitor?channel=1&subtype=0`,
-            name: 'cam2',
-            rtsp_transport : 'tcp' //['udp', 'tcp', 'udp_multicast', 'http']
-          },
-          {
-            app: 'cam',
-            mode: 'static',
-            edge: `rtsp://${process.env.name}:${process.env.password}@${process.env.rtspIp3}/cam/realmonitor?channel=1&subtype=0`,
-            name: 'cam3',
-            rtsp_transport : 'tcp' //['udp', 'tcp', 'udp_multicast', 'http']
-          }
+          ...process.env.cameraUsernames.split(',').map((username, index) => {
+            return {
+              app: 'cam',
+              mode: 'static',
+              edge: `rtsp://${username}:${process.env.cameraPasswords.split(',')[index]}@${process.env.cameraIPs.split(',')[index]}:${process.env.cameraPORTs.split(',')[index]}/cam/realmonitor?channel=1&subtype=0`,
+              name: `cam${index+1}`,
+              rtsp_transport : 'tcp' //['udp', 'tcp', 'udp_multicast', 'http']
+            }
+          })
         ]
     }
 }
