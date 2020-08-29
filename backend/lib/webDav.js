@@ -20,7 +20,7 @@ server.afterRequest((arg, next) => {
 });
 
 module.exports = () => {
-    server.setFileSystem('/shared', new webdav.PhysicalFileSystem(process.env.filePath), (success) => {
+    server.setFileSystem('/shared', new webdav.PhysicalFileSystem(process.env.webDavfilePath), (success) => {
         server.start(() => console.log('READY'));
     })
 }

@@ -10,6 +10,8 @@ const {
     sendAlert,
 }              = require('../tools/alerts.js');
 
+const imgDir = `${process.env.filePath}/captures`
+
 module.exports = {
     statusProcess: (req, res) => {
         const { id } = req.body
@@ -18,7 +20,7 @@ module.exports = {
 
         console.log(id)
         res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(process.env.imgDir, `${type}_${id}.txt`)),
+            running: fs.existsSync(path.resolve(imgDir, `${type}_${id}.txt`)),
             id
         }))
     },
@@ -62,7 +64,7 @@ module.exports = {
             return {
                 ...parseFileName(file),
                 requested: id.split('-')[1]+"-"+id.split('-')[2],
-                running: fs.existsSync(path.resolve(process.env.imgDir, `${type}_${id}.txt`))
+                running: fs.existsSync(path.resolve(imgDir, `${type}_${id}.txt`))
             }
         })
 
@@ -77,10 +79,10 @@ module.exports = {
         const file = findFile(id);
 
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(process.env.imgDir, file))
+        let deletable = fs.existsSync(path.resolve(imgDir, file))
 
         if(deletable){
-            fs.unlinkSync(path.resolve(process.env.imgDir, file))
+            fs.unlinkSync(path.resolve(imgDir, file))
         }
         
         res.send(JSON.stringify({

@@ -13,6 +13,8 @@ const {
     sendAlert,
 }              = require('../tools/alerts.js');
 
+const imgDir = `${process.env.filePath}/captures`
+
 const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
         zlib: {level: 9}
@@ -25,7 +27,7 @@ const createZipList = (camera, start, end, skip) => {
     console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
     
     for (const file of filteredList){
-        archive.file(path.resolve(process.env.imgDir, camera, file), {
+        archive.file(path.resolve(imgDir, camera, file), {
             name: file
         }) 
     }
@@ -50,15 +52,15 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
     }
     else{
         if(save){
-            var output = fs.createWriteStream(`${process.env.imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
+            var output = fs.createWriteStream(`${imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
         
             console.log("SENDING START ALERT")
             sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
-                fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`))
+                sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });    
 
             archive.on('error', function(err) {
@@ -66,10 +68,10 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
                 if(save){
                     sendAlert(`Your zip (${rand}) could not be completed.`)
                 }    
-                fs.unlinkSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`))
+                fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });
             
-            fs.writeFileSync(path.resolve(process.env.imgDir, `zip_${rand}.txt`), "progress")
+            fs.writeFileSync(path.resolve(imgDir, `zip_${rand}.txt`), "progress")
 
             archive.pipe(output)
 
@@ -78,7 +80,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.host}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{
