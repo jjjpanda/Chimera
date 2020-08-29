@@ -49,16 +49,20 @@ var app = express()
 //PROXY
 if(process.env.converter == "proxy"){
     console.log("Converter Proxied")
-    app.use(/\/.*Video|\/.*Zip|\/.*Process/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/.*Video|\/.*Zip|\/.*Process|\/shared/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST');
+        return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST') || pathname.match('/shared');
     }, {
         target: `http://${process.env.baseHost}:${process.env.PORT}/`,
     }))
+}
 
-    app.use("/shared", createProxyMiddleware((pathname, req) => {
-        return pathname.match('/shared');
-    },{
+if(process.env.scheduler == "proxy"){
+    console.log("Scheduler Proxied")
+    app.use(/\/task.*/, createProxyMiddleware((pathname, req) => {
+        console.log(pathname, req.method)
+        return (pathname.match(/\/task.*/) && req.method === 'POST');
+    }, {
         target: `http://${process.env.baseHost}:${process.env.PORT}/`,
     }))
 }
