@@ -23,7 +23,7 @@ class Main extends React.Component {
     render () {
         return (
             <WingBlank>
-                <Tabs swipeable={false} animated tabs= {[
+                <Tabs prerenderingSiblingsNumber={0} swipeable={false} animated tabs= {[
                     {title: "Processes"},
                     {title: "Image Preview"},
                     {title: "File Stats"}
