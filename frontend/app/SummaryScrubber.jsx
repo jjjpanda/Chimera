@@ -141,6 +141,7 @@ class SummaryScrubber extends React.Component{
                                 moneyKeyboardAlign="right" 
                                 value={this.state.numberOfFrames} 
                                 onChange={(val) => this.setState(() => ({numberOfFrames: Math.max(Math.round(val), 0)}))}
+                                onVirtualKeyboardConfirm={this.updateImages}
                                 locale={enUsNumber}
                                 autoAdjustHeight
                             >
