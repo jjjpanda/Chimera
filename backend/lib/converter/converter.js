@@ -8,7 +8,7 @@ var dateFormat = require('./dateFormat.js')
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
 shortid.characters(charList)
 
-const imgDir = `${process.env.filePath}/captures`
+const imgDir = path.join(process.env.filePath, 'shared/captures')
 
 module.exports = {   
     randomID: () => {
