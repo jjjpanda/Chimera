@@ -30,6 +30,14 @@ const config = {
 }
 
 var nms = new NodeMediaServer(config)
-module.exports = () => {
-  nms.run();
+module.exports = {
+  start: () => {
+    console.log("Media Server On", " >> PORT: ", process.env.mediaPORT)
+    nms.run()
+    return nms
+  },
+  
+  stop: (n) => {
+    n.stop()
+  }
 }

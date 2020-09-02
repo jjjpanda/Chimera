@@ -35,14 +35,14 @@ var {
     numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('./commands/commands.js')
+}              = require('./execTools/commands.js')
 var {
     validateTaskRequest,
     validateTaskCron,
     scheduleTask,
     destroyTask,
     taskCheck
-}              = require('./commands/scheduler.js')
+}              = require('./execTools/scheduler.js')
 
 var app = express()
 
@@ -73,6 +73,18 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json())
 
 //NON PROXY
+if(process.env.webdav == "on"){
+    console.log("WebDAV Controller On")
+
+    const dav = require('./subServers/webDav.js').start();
+}
+
+if(process.env.mediaServer == "on"){
+    console.log("Media Server Controller On")
+
+    const nms = require('./subServers/media.js').start()
+}
+
 if(process.env.converter == "on"){
     console.log("Converter On")
 
