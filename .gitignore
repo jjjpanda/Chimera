@@ -1,6 +1,7 @@
 node_modules
 .env
 img
+media
 output.mp4
 output_1.mp4
 output_2.mp4
