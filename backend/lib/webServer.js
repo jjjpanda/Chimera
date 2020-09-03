@@ -73,16 +73,16 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json())
 
 //NON PROXY
-if(process.env.webdav == "on"){
-    console.log("WebDAV Controller On")
-
-    const dav = require('./subServers/webDav.js').start();
-}
-
 if(process.env.mediaServer == "on"){
     console.log("Media Server Controller On")
 
     const nms = require('./subServers/media.js').start()
+}
+
+if(process.env.webdav == "on"){
+    console.log("WebDAV Controller On")
+
+    const dav = require('./subServers/webDav.js').start();
 }
 
 if(process.env.converter == "on"){
