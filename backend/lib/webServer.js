@@ -76,12 +76,14 @@ app.use(bodyParser.json())
 if(process.env.mediaServer == "on"){
     console.log("Media Server Controller On")
 
+    // req.app.locals['__nms']
     const nms = require('./subServers/media.js').start()
 }
 
 if(process.env.webdav == "on"){
     console.log("WebDAV Controller On")
 
+    // req.app.locals['__webdav']
     const dav = require('./subServers/webDav.js').start();
 }
 
