@@ -31,9 +31,9 @@ See ```Node Media Server``` for other routes.
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/webdavOn|Description|None|`{  }`|
-|POST|/webdavStatus|Description|None|`{  }`|
-|POST|/webdavOff|Description|None|`{  }`|
+|POST|/webdavOn|Turn WebDAV server on|None|`{ running: Boolean }`|
+|POST|/webdavStatus|Check WebDAV server status|None|`{ running: Boolean }`|
+|POST|/webdavOff|Turn WebDAV server off|None|`{ running: Boolean }`|
 |PROPFIND|/webdav|Serves WebDAV (Note: WebDav is on a different port)|Multi|Multi|
 
 ### Converter
