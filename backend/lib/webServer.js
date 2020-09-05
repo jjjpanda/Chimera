@@ -48,7 +48,7 @@ var app = express()
 
 //PROXY
 if(process.env.converter == "proxy"){
-    console.log("Converter Proxied")
+    console.log("Converter 🔁 Proxied")
     app.use(/\/.*Video|\/.*Zip|\/.*Process|\/shared/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
         return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST') || pathname.match('/shared');
@@ -58,7 +58,7 @@ if(process.env.converter == "proxy"){
 }
 
 if(process.env.scheduler == "proxy"){
-    console.log("Scheduler Proxied")
+    console.log("Scheduler ⌚ Proxied")
     app.use(/\/task.*/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
         return (pathname.match(/\/task.*/) && req.method === 'POST');
@@ -74,21 +74,27 @@ app.use(bodyParser.json())
 
 //NON PROXY
 if(process.env.mediaServer == "on"){
-    console.log("Media Server Controller On")
+    console.log("Media Server 📺 Controller On")
 
-    // req.app.locals['__nms']
-    const nms = require('./subServers/media.js').start()
+    const media = require('./subServers/media.js')
+    
+    app.post('/mediaOn', media.check(true, true), media.start, media.check(false))
+    app.post('/mediaStatus', media.check(false))
+    app.post('/mediaOff', media.check(true, false), media.stop, media.check(false))
 }
 
 if(process.env.webdav == "on"){
-    console.log("WebDAV Controller On")
+    console.log("WebDAV 📁 Controller On")
+    
+    const webDav = require('./subServers/webDav.js')
 
-    // req.app.locals['__webdav']
-    const dav = require('./subServers/webDav.js').start();
+    app.post('/webdavOn', webDav.check(true, true), webDav.start, webDav.check(false))
+    app.post('/webdavStatus', webDav.check(false))
+    app.post('/webdavOff', webDav.check(true, false), webDav.stop, webDav.check(false))
 }
 
 if(process.env.converter == "on"){
-    console.log("Converter On")
+    console.log("Converter 🔁 On")
 
     app.post('/createVideo', validateBody, validateRequest, createVideo)
     app.post('/listFramesVideo', validateBody, validateRequest, listOfFrames)
@@ -114,7 +120,7 @@ if(process.env.converter == "on"){
 }
 
 if(process.env.scheduler == "on"){
-    console.log("Scheduler On")
+    console.log("Scheduler ⌚ On")
 
     app.post('/taskSchedule', validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
     app.post('/taskCheck', validateBody, validateTaskRequest, taskCheck)
@@ -122,7 +128,7 @@ if(process.env.scheduler == "on"){
 }
 
 if(process.env.commander == "on"){
-    console.log("Motion Controls On")
+    console.log("Motion Controls 🎮 On")
 
     //scheduling requests with nodecron
 

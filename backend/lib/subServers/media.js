@@ -45,14 +45,36 @@ const config = (record=false) => {
 
 
 module.exports = {
-  start: (record=false) => {
-    var nms = new NodeMediaServer(config(record))
-    console.log("Media Server On", " >> PORT: ", process.env.mediaPORT)
-    nms.run()
-    return nms
+  start: (req, res, next) => {
+    let record = false
+    if(req.body != undefined && req.body.record){
+      record = req.body.record
+    }
+    //record=false
+    req.app.locals['__nms'] = {}
+    req.app.locals['__nms'].recording = record
+    req.app.locals['__nms'].nms = new NodeMediaServer(config(record))
+    console.log("Media Server On", " >> 🥰 PORT: ", process.env.mediaPORT)
+    req.app.locals['__nms'].nms.run()
+    next()
+  },
+
+  check: (nexted, switchingOn) => (req, res, next) => {
+    if(nexted && (switchingOn ? req.app.locals['__nms'] == undefined : req.app.locals['__nms'] != undefined)){
+      next()
+    }
+    else{
+      res.send(JSON.stringify({
+        running: req.app.locals['__nms'] != undefined,
+        recording: req.app.locals['__nms'] != undefined ? req.app.locals['__nms'].recording : false
+      }))
+    }
   },
   
-  stop: (n) => {
-    n.stop()
+  stop: (req, res, next) => {
+    console.log("Media Server Off", " >> 😪")
+    req.app.locals['__nms'].nms.stop()
+    req.app.locals['__nms'] = undefined
+    next()
   }
 }
