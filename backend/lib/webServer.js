@@ -47,6 +47,28 @@ var {
 var app = express()
 
 //PROXY
+if(process.env.mediaServer == "proxy"){
+    console.log("Media Server 📺 Controller Proxy")
+
+    app.use(/\/media.*/, createProxyMiddleware((pathname, req) => {
+        console.log(pathname, req.method)
+        return (pathname.match(/\/media.*/) && req.method === 'POST');
+    }, {
+        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+    }))
+}
+
+if(process.env.webdav == "proxy"){
+    console.log("WebDAV 📁 Controller Proxy")
+    
+    app.use(/\/webdav.*/, createProxyMiddleware((pathname, req) => {
+        console.log(pathname, req.method)
+        return (pathname.match(/\/webdav.*/) && req.method === 'POST');
+    }, {
+        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+    }))
+}
+
 if(process.env.converter == "proxy"){
     console.log("Converter 🔁 Proxied")
     app.use(/\/.*Video|\/.*Zip|\/.*Process|\/shared/, createProxyMiddleware((pathname, req) => {

@@ -3,6 +3,7 @@ import {
 } from 'antd-mobile';
 
 import { saveAs } from 'file-saver';
+import { call } from 'file-loader';
 
 const request = (url, opt, callback) => {
     callback(fetch(url, opt))
@@ -20,6 +21,7 @@ const jsonProcessing = (prom, callback) => {
       }
     })
     .then((data) => callback(data))
+    .catch(e => callback(undefined))
 }
 
 const downloadProcessing = (prom, callback) => {

@@ -14,7 +14,7 @@ import {
 
 import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
-import Processes from './Processes.jsx';
+import MotionRecording from './MotionRecording.jsx';
 import FileStats from './FileStats.jsx';
 import SummaryScrubber from './SummaryScrubber.jsx';
 import LiveVideo from './LiveVideo.jsx';
@@ -25,14 +25,14 @@ class Main extends React.Component {
         return (
             <WingBlank>
                 <Tabs prerenderingSiblingsNumber={0} swipeable={false} animated tabs= {[
-                    {title: "Live Video"},
-                    {title: "Processes"},
-                    {title: "Image Preview"},
-                    {title: "File Stats"}
+                    {title: "Live"},
+                    {title: "Motion"},
+                    {title: "Scrubber"},
+                    {title: "Files"}
                 ]}>
                     <LiveVideo />
 
-                    <Processes />
+                    <MotionRecording />
 
                     <SummaryScrubber />
 
