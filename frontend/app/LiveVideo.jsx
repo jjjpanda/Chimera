@@ -32,7 +32,7 @@ class LiveVideo extends React.Component{
             loading: true,
             videoList: []
         }, () => {
-            request(`http://localhost:${process.env.mediaPORT}/api/streams`, {
+            request(`http://${process.env.mediaHost}:${process.env.mediaPORT}/api/streams`, {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ class LiveVideo extends React.Component{
                         videoList: data != undefined ? Object.values(data.cam).map((camera, index)=> {
                             return {
                                 camera: index + 1,
-                                url: `http://localhost:${process.env.mediaPORT}/${camera.publisher.app}/${camera.publisher.stream}.flv`
+                                url: `http://${process.env.mediaHost}:${process.env.mediaPORT}/${camera.publisher.app}/${camera.publisher.stream}.flv`
                             }
                         }) : [],
                         lastUpdated: moment().format("h:mm:ss a")
