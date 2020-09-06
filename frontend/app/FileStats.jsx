@@ -18,7 +18,6 @@ import ServerProcess from './ServerProcess.jsx';
 import WebDAVProcess from './WebDAVProcess.jsx'
 import moment from 'moment';
 import alertModal from './Alert.jsx';
-import MediaServerProcess from './MediaServerProcess.jsx';
 
 class FileStats extends React.Component {
     constructor(props){
@@ -187,8 +186,6 @@ class FileStats extends React.Component {
                     <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
                     <WebDAVProcess key={`webdav${this.state.lastUpdated}`}/>
-
-                    <MediaServerProcess key={`media${this.state.lastUpdated}`}/>
 
                     <List >
                         {this.state.camera.map(cam => {
