@@ -11,13 +11,13 @@ import {
 import {request, jsonProcessing} from '../js/request.js'
 import ProcessCard from './ProcessCard.jsx';
 
-class MotionProcess extends React.Component {
+class MediaServerProcess extends React.Component {
     constructor(props){
         super(props)
         this.state = {
             status: {
                 running: false,
-                duration: "00:00:00"
+                recording: false,
             },
             loading: true
         }
@@ -27,73 +27,84 @@ class MotionProcess extends React.Component {
         this.status()
     }
 
-    status = () => {
-        request("/motionStatus", {
+    status = (callback=()=>{}) => {
+        request("/mediaStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
                 this.setState(() => ({
                     status: {
-                        running: data.running, 
-                        duration: data.duration
+                        running: data.running,
+                        recording: data.recording
                     },
                     loading: false
-                }))
+                }), callback)
             })
         })
     }
 
-    motionChange = (checked) => {
+    change = (checked, record=this.state.status.recording, callback=()=>{}) => {
         this.setState({
-            status: {
-                duration: "00:00:00"
-            }, 
             loading: true
         }, () => {
             if(!checked){
-                request("/motionStop", {
+                request("/mediaOff", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
                         setTimeout(() => {
-                            this.status()
-                        }, 2500)
+                            this.status(callback)
+                        }, 1000)
                     })
                 })
             }
             else{
-                request("/motionStart", {
-                    method: "POST"
+                request("/mediaOn", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        record: record
+                    })
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
                         setTimeout(() => {
-                            this.status()
-                        }, 2500)
+                            this.status(callback)
+                        }, 1000)
                     })
                 })
             }
         })   
     }
 
+    recordingChange= (checked) => {
+        this.change(false, false, ()=> {
+            this.change(true, checked)
+        })
+    }
+
     render() {
         return (
             <ProcessCard 
-                title= {"Motion Recording"}
+                title= {"Media Process Server"}
                 extra = {<div>
-                    <Switch checked = {this.state.status.running} disabled = {this.state.loading} onChange={this.motionChange} />
+                    <Switch checked = {this.state.status.running} disabled = {this.state.loading} onChange={this.change} />
                 </div>}
                 body= {<div>
                     Status: {this.state.loading ? <ActivityIndicator /> : (this.state.status.running ? "On": "Off")}
                 </div>}
                 footer={<div>
-                    CPU Time: {this.state.status.duration}
+                    Recording: {this.state.loading ? "---" : (this.state.status.recording ? "On": "Off")}
+                    <br />
+                    <Switch checked = {this.state.status.recording} disabled = {this.state.loading} onChange={this.recordingChange} />
                 </div>}
             />
         )
     }
 }
 
-export default MotionProcess
+export default MediaServerProcess

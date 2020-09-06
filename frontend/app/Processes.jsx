@@ -17,7 +17,6 @@ import {request, jsonProcessing} from './../js/request.js'
 import moment from 'moment';
 import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
-import ServerProcess from './ServerProcess.jsx';
 import alertModal from './Alert.jsx';
 import ScheduleMotion from './ScheduleMotion.jsx';
 
@@ -122,8 +121,6 @@ class Processes extends React.Component{
                     <ScheduleMotion update ={this.listProcesses} />
 
                     <MotionProcess key={`motion${this.state.lastUpdated}`}/>
-
-                    <ServerProcess key={`server${this.state.lastUpdated}`}/>
 
                     <WhiteSpace size="sm" />
                     

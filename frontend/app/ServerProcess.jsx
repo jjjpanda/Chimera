@@ -9,52 +9,55 @@ import {
 } from 'antd-mobile';
 
 import {request, jsonProcessing} from '../js/request.js'
+import ProcessCard from './ProcessCard.jsx';
 
 class ServerProcess extends React.Component {
     constructor(props){
         super(props)
         this.state = {
-            serverStatus: {
-                running: "loading",
+            status: {
+                running: false,
                 duration: "00:00:00"
             },
-            updatingOrInstalling: false,
+            loading: true,
         }
     }
 
     componentDidMount = () => {
-        this.serverStatus()
+        this.status()
     }
 
-    serverStatus = () => {
+    status = () => {
         request("/serverStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
                 this.setState(() => ({
-                    serverStatus: {
+                    status: {
                         running: data.running, 
                         duration: data.duration
-                    }
+                    },
+                    loading: false
                 }))
             })
         })
     }
 
     serverUpdate = () => {
-        this.setState({motionStatus: {
-                running: "loading",
+        this.setState({status: {
                 duration: "00:00:00"
-            }, updatingOrInstalling: true}, () => {
+        }, loading: true}, () => {
             request("/serverUpdate", {
                 method: "POST"
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
                     setTimeout(() => {
-                        this.setState({updatingOrInstalling: false})
-                        this.serverStatus()
+                        this.setState({loading: false}, () => {
+                            this.status()
+                        })
+                        
                     }, 1000)
                 })
             })
@@ -62,18 +65,19 @@ class ServerProcess extends React.Component {
     }
 
     serverInstall = () => {
-        this.setState({motionStatus: {
-                running: "loading",
+        this.setState({status: {
                 duration: "00:00:00"
-            }, updatingOrInstalling: true}, () => {
+        }, loading: true}, () => {
             request("/serverInstall", {
                 method: "POST"
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
                     setTimeout(() => {
-                        this.setState({updatingOrInstalling: false})
-                        this.serverStatus()
+                        this.setState({loading: false}, () => {
+                            this.status()
+                        })
+                        
                     }, 1000)
                 })
             })
@@ -82,21 +86,19 @@ class ServerProcess extends React.Component {
 
     render() {
         return ( 
-            <Card>
-                <Card.Header 
-                    title="Node Server" 
-                    extra={(this.state.updatingOrInstalling ? <ActivityIndicator />: <div>
-                        <Button type="ghost" size="small" inline onClick={this.serverUpdate}>Update</Button>
-                        <Button size="small" inline onClick={this.serverInstall}>Install</Button>
-                    </div>)}
-                />
-                <Card.Body>
-                    Status: {this.state.serverStatus.running == "loading" ? <ActivityIndicator /> : (this.state.serverStatus.running ? "On": "Off")}
-                </Card.Body>
-                <Card.Footer 
-                    content={<div>CPU Time: {this.state.serverStatus.duration} </div>} 
-                />                   
-            </Card>
+            <ProcessCard 
+                title= {"Node Server"}
+                extra = {(this.state.loading ? <ActivityIndicator />: <div>
+                    <Button type="ghost" size="small" inline onClick={this.serverUpdate}>Update</Button>
+                    <Button size="small" inline onClick={this.serverInstall}>Install</Button>
+                </div>)}
+                body= {<div>
+                    Status: {this.state.loading ? <ActivityIndicator /> : (this.state.status.running ? "On": "Off")}
+                </div>}
+                footer={<div>
+                    CPU Time: {this.state.status.duration}
+                </div>}
+            />
         )
     }
 }
