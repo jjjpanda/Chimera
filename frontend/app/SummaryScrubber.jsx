@@ -84,6 +84,24 @@ class SummaryScrubber extends React.Component{
         
     }
 
+    sliderPlaythrough = () => {
+        const setIterate = () => {
+            this.setState((oldState) => {
+                return {
+                    sliderIndex: oldState.sliderIndex+1
+                }
+            }, () => {
+                setTimeout(() => {
+                    if(this.state.sliderIndex < this.state.numberOfFrames - 1){
+                        setIterate()
+                    }
+                }, 125)
+            })
+        }
+        console.log("ITERATE")
+        setIterate()
+    }
+
     render() {
         return (
             <Card>
@@ -100,6 +118,9 @@ class SummaryScrubber extends React.Component{
                                     this.setState((oldState) => ({
                                         imagesLoaded: oldState.imagesLoaded + 1
                                     }), () => {
+                                        if(this.state.imagesLoaded >= this.state.list.length){
+                                            this.sliderPlaythrough()
+                                        }
                                         //console.log(Math.round(100 * this.state.imagesLoaded / this.state.list.length))
                                     })
                                 }}
