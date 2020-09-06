@@ -54,7 +54,7 @@ if(process.env.mediaServer == "proxy"){
         console.log(pathname, req.method)
         return (pathname.match(/\/media.*/) && req.method === 'POST');
     }, {
-        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+        target: `http://${process.env.mediaHost}:${process.env.PORT}/`,
     }))
 }
 
@@ -65,27 +65,29 @@ if(process.env.webdav == "proxy"){
         console.log(pathname, req.method)
         return (pathname.match(/\/webdav.*/) && req.method === 'POST');
     }, {
-        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+        target: `http://${process.env.webdavHost}:${process.env.PORT}/`,
     }))
 }
 
 if(process.env.converter == "proxy"){
     console.log("Converter 🔁 Proxied")
+
     app.use(/\/.*Video|\/.*Zip|\/.*Process|\/shared/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
         return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST') || pathname.match('/shared');
     }, {
-        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+        target: `http://${process.env.converterHost}:${process.env.PORT}/`,
     }))
 }
 
 if(process.env.scheduler == "proxy"){
     console.log("Scheduler ⌚ Proxied")
+
     app.use(/\/task.*/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
         return (pathname.match(/\/task.*/) && req.method === 'POST');
     }, {
-        target: `http://${process.env.baseHost}:${process.env.PORT}/`,
+        target: `http://${process.env.schedulerHost}:${process.env.PORT}/`,
     }))
 }
 

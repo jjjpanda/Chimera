@@ -11,7 +11,7 @@ const {
     fileName,
 }              = require('./converter.js')
 const {
-    sendAlert,
+    sendConvertAlert,
 }              = require('../tools/alerts.js');
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
@@ -29,7 +29,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${camera}/${item}`
+        return `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -58,7 +58,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
     if(frames == 0){
         if(save){
-            sendAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+            sendConvertAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
         }
         else{
             res.send(JSON.stringify({
@@ -70,7 +70,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
     else {
         if(save){
             console.log("SENDING START ALERT")
-            sendAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+            sendConvertAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
         }
         else{
             res.attachment(fileName(camera, start, end, rand, 'mp4'))
@@ -85,7 +85,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
             .on('error', function(err) {
                 console.log('An error occurred: ' + err.message);
                 if(save){
-                    sendAlert(`Your video (${rand}) could not be completed.`)
+                    sendConvertAlert(`Your video (${rand}) could not be completed.`)
                 }    
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
@@ -96,7 +96,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 console.log('Finished processing');
                 if(save){
                     console.log("SENDING END ALERT")
-                    sendAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    sendConvertAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
@@ -111,7 +111,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{

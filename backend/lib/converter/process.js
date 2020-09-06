@@ -7,7 +7,7 @@ const {
     findFile
 }              = require('./converter.js');
 const {
-    sendAlert,
+    sendConvertAlert,
 }              = require('../tools/alerts.js');
 
 const imgDir = path.join(process.env.filePath, 'shared/captures')
@@ -36,12 +36,12 @@ module.exports = {
             if(type == "mp4"){
                 req.app.locals[id].kill()
                 delete req.app.locals[id]
-                sendAlert(`Your video (${id}) was cancelled.`)
+                sendConvertAlert(`Your video (${id}) was cancelled.`)
             }
             else if(type == "zip"){
                 req.app.locals[id].abort()
                 delete req.app.locals[id]
-                sendAlert(`Your archive (${id}) was cancelled.`)
+                sendConvertAlert(`Your archive (${id}) was cancelled.`)
             }
             
         }
