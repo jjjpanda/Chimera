@@ -11,13 +11,12 @@ import {
 import {request, jsonProcessing} from '../js/request.js'
 import ProcessCard from './ProcessCard.jsx';
 
-class MotionProcess extends React.Component {
+class WebDAVProcess extends React.Component {
     constructor(props){
         super(props)
         this.state = {
             status: {
                 running: false,
-                duration: "00:00:00"
             },
             loading: true
         }
@@ -28,15 +27,14 @@ class MotionProcess extends React.Component {
     }
 
     status = () => {
-        request("/motionStatus", {
+        request("/webdavStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
                 this.setState(() => ({
                     status: {
-                        running: data.running, 
-                        duration: data.duration
+                        running: data.running,
                     },
                     loading: false
                 }))
@@ -44,34 +42,31 @@ class MotionProcess extends React.Component {
         })
     }
 
-    motionChange = (checked) => {
+    change = (checked) => {
         this.setState({
-            status: {
-                duration: "00:00:00"
-            }, 
             loading: true
         }, () => {
             if(!checked){
-                request("/motionStop", {
+                request("/webdavOff", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
                         setTimeout(() => {
                             this.status()
-                        }, 2500)
+                        }, 1000)
                     })
                 })
             }
             else{
-                request("/motionStart", {
+                request("/webdavOn", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
                         setTimeout(() => {
                             this.status()
-                        }, 2500)
+                        }, 1000)
                     })
                 })
             }
@@ -81,19 +76,19 @@ class MotionProcess extends React.Component {
     render() {
         return (
             <ProcessCard 
-                title= {"Motion Recording"}
+                title= {"WebDAV Server"}
                 extra = {<div>
-                    <Switch checked = {this.state.status.running} disabled = {this.state.loading} onChange={this.motionChange} />
+                    <Switch checked = {this.state.status.running} disabled = {this.state.loading} onChange={this.change} />
                 </div>}
                 body= {<div>
                     Status: {this.state.loading ? <ActivityIndicator /> : (this.state.status.running ? "On": "Off")}
                 </div>}
                 footer={<div>
-                    CPU Time: {this.state.status.duration}
+                    
                 </div>}
             />
         )
     }
 }
 
-export default MotionProcess
+export default WebDAVProcess

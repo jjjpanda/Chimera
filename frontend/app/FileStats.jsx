@@ -14,8 +14,11 @@ import {
 import enUs from 'antd-mobile/lib/input-item/locale/en_US';
 
 import {request, jsonProcessing} from './../js/request.js'
+import ServerProcess from './ServerProcess.jsx';
+import WebDAVProcess from './WebDAVProcess.jsx'
 import moment from 'moment';
 import alertModal from './Alert.jsx';
+import MediaServerProcess from './MediaServerProcess.jsx';
 
 class FileStats extends React.Component {
     constructor(props){
@@ -60,7 +63,8 @@ class FileStats extends React.Component {
     cameraUpdate = () => {
         let responseNumber = 0
         this.setState({
-            loading: true
+            loading: true,
+            lastUpdated: moment().format("h:mm:ss a")
         }, () => {
             this.state.camera.forEach((camera, index) => {
                 request("/pathSize", {
@@ -180,6 +184,12 @@ class FileStats extends React.Component {
                         Last Updated Date: {this.state.lastUpdated}
                     </NoticeBar>
                 
+                    <ServerProcess key={`server${this.state.lastUpdated}`}/>
+
+                    <WebDAVProcess key={`webdav${this.state.lastUpdated}`}/>
+
+                    <MediaServerProcess key={`media${this.state.lastUpdated}`}/>
+
                     <List >
                         {this.state.camera.map(cam => {
                             return (<List.Item arrow="horizontal" onClick={() => {
