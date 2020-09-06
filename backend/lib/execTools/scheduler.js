@@ -4,7 +4,7 @@ const request  = require('request');
 const moment   = require('moment')
 
 const {
-    sendAlert,
+    sendScheduleAlert,
 }              = require('../tools/alerts.js');
 
 module.exports = {
@@ -55,7 +55,7 @@ module.exports = {
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
             console.log( "CRON: ", url )
-            sendAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
+            sendScheduleAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
                 url: `http://${process.env.commandHost}:${process.env.PORT}${url}`,

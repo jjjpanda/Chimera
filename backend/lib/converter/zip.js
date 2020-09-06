@@ -10,7 +10,7 @@ const {
     fileName,
 }              = require('./converter.js');
 const {
-    sendAlert,
+    sendConvertAlert,
 }              = require('../tools/alerts.js');
 
 const imgDir = path.join(process.env.filePath, 'shared/captures')
@@ -41,7 +41,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
     if(frames == 0){
         if(save){
-            sendAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+            sendConvertAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
         }
         else{
             res.send(JSON.stringify({
@@ -55,18 +55,18 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             var output = fs.createWriteStream(`${imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
         
             console.log("SENDING START ALERT")
-            sendAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+            sendConvertAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                sendAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                sendConvertAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });    
 
             archive.on('error', function(err) {
                 console.log('An error occurred: ' + err.message);
                 if(save){
-                    sendAlert(`Your zip (${rand}) could not be completed.`)
+                    sendConvertAlert(`Your zip (${rand}) could not be completed.`)
                 }    
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });
@@ -80,7 +80,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.baseHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{
