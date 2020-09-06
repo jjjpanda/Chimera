@@ -13,15 +13,14 @@ import {
     WingBlank
 } from 'antd-mobile';
 
-import {request, jsonProcessing} from './../js/request.js'
+import {request, jsonProcessing} from '../js/request.js'
 import moment from 'moment';
 import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
-import MediaServerProcess from './MediaServerProcess.jsx'
 import alertModal from './Alert.jsx';
 import ScheduleMotion from './ScheduleMotion.jsx';
 
-class Processes extends React.Component{
+class MotionRecording extends React.Component{
 
     constructor(props){
         super(props)
@@ -123,8 +122,6 @@ class Processes extends React.Component{
 
                     <MotionProcess key={`motion${this.state.lastUpdated}`}/>
 
-                    <MediaServerProcess key={`media${this.state.lastUpdated}`}/>
-
                     <WhiteSpace size="sm" />
                     
                     <SaveProcess update={this.listProcesses}/>    
@@ -175,4 +172,4 @@ class Processes extends React.Component{
     }
 }
 
-export default Processes
+export default MotionRecording

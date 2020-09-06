@@ -7,11 +7,15 @@ class FLVPlayer extends React.Component{
             if (flvjs.isSupported()) {
                 let flvPlayer = flvjs.createPlayer({ ...this.props }, this.props.config);
                 flvPlayer.attachMediaElement(video);
-                flvPlayer.load();
-                flvPlayer.play();
                 this.flvPlayer = flvPlayer;
+                this.flvPlayer.load();
+                
+                this.flvPlayer.play();
             }
         }
+    }
+
+    componentDidMount = () =>  {
     }
 
     componentWillUnmount = () => {
@@ -25,7 +29,8 @@ class FLVPlayer extends React.Component{
     render() {
         return (
             <video
-                controls
+                muted
+                autoPlay
                 id={this.props.key}
                 ref={this.initFlv}
             />
