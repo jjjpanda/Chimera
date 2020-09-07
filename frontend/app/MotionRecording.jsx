@@ -152,7 +152,7 @@ class MotionRecording extends React.Component{
                                     }
                                     title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
                                 />
-                                    <WingBlank size="md">
+                                    <WingBlank size="sm">
                                         Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
                                         Camera: {process.camera} <br />
                                         Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
