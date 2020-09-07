@@ -23,7 +23,7 @@ class Main extends React.Component {
 
     render () {
         return (
-            <WingBlank>
+            <WingBlank size="sm">
                 <Tabs prerenderingSiblingsNumber={0} swipeable={false} animated tabs= {[
                     {title: "Live"},
                     {title: "Motion"},

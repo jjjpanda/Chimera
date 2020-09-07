@@ -5,7 +5,8 @@ import {
     Card, 
     Button, 
     WingBlank,
-    Icon 
+    Icon, 
+    Tabs
 } from 'antd-mobile';
 
 import FLVPlayer from './FLVPlayer.jsx';
@@ -43,7 +44,7 @@ class LiveVideo extends React.Component{
                     console.log(data)
                     this.setState({
                         loading: false,
-                        videoList: data != undefined ? Object.values(data.cam).map((camera, index)=> {
+                        videoList: data != undefined ? Object.entries(data.cam).sort((a, b) => { return a[0].localeCompare(b[0])}).map((v) => v[1]).map((camera, index)=> {
                             return {
                                 camera: index + 1,
                                 url: `http://${process.env.mediaHost}:${process.env.mediaPORT}/${camera.publisher.app}/${camera.publisher.stream}.flv`
@@ -72,27 +73,27 @@ class LiveVideo extends React.Component{
 
                     <MediaServerProcess key={`media${this.state.lastUpdated}`}/>
 
-                    {this.state.videoList.map((video) => {
-                        return (
-                            <Card>
-                                <Card.Header>
-
-                                </Card.Header>
-                                <Card.Body>
-                                    Camera {video.camera}
-                                    <FLVPlayer 
-                                        url={video.url} 
-                                        type="flv" 
-                                        key={`live_${video.camera}_${this.state.lastUpdated}`}
-                                        isLive={true} 
-                                        hasVideo={true} 
-                                        hasAudio={true} 
-                                        cors={true}
-                                    />
-                                </Card.Body>
-                            </Card>
-                        )
-                    })}
+                    <Tabs prerenderingSiblingsNumber={2} swipeable={true} animated tabs= {this.state.videoList.map(video => {
+                        return {title: video.camera}
+                    })}>
+                        {this.state.videoList.map((video) => {
+                            return (
+                                <FLVPlayer 
+                                    camera={video.camera}
+                                    url={video.url} 
+                                    type="flv" 
+                                    config={{
+                                        enableStashBuffer: false
+                                    }}
+                                    key={`live_${video.camera}_${this.state.lastUpdated}`}
+                                    isLive={true} 
+                                    hasVideo={true} 
+                                    hasAudio={true} 
+                                    cors={true}
+                                />
+                            )
+                        })} 
+                    </Tabs>
                 </Card.Body>
                 
 

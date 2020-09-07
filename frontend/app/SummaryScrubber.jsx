@@ -141,7 +141,7 @@ class SummaryScrubber extends React.Component{
                         pre ={
                             <List.Item>
                                 <br />
-                                <WingBlank>
+                                <WingBlank size="sm">
                                     <Slider 
                                         min={0}
                                         max={Math.min(this.state.numberOfFrames - 1, this.state.list.length - 1)}
