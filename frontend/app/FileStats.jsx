@@ -23,7 +23,7 @@ class FileStats extends React.Component {
     constructor(props){
         super(props)
         this.state = {
-            loading: true,
+            loading: "refreshing",
             camera: [
                 {
                     path: "shared/captures/1",
@@ -54,7 +54,7 @@ class FileStats extends React.Component {
         if(responseNumber >= responsesNeeded){
             this.setState({
                 lastUpdated: moment().format("h:mm:ss a"),
-                loading: false
+                loading: undefined
             })
         }
     }
@@ -62,7 +62,7 @@ class FileStats extends React.Component {
     cameraUpdate = () => {
         let responseNumber = 0
         this.setState({
-            loading: true,
+            loading: "refreshing",
             lastUpdated: moment().format("h:mm:ss a")
         }, () => {
             this.state.camera.forEach((camera, index) => {
@@ -113,7 +113,7 @@ class FileStats extends React.Component {
     deleteFiles = (path=undefined) => {
         if(path != undefined){
             this.setState({
-                loading: true
+                loading: "deleting"
             }, () => {
                 request("/pathClean", {
                     method: "POST",
@@ -135,7 +135,7 @@ class FileStats extends React.Component {
         else{
             let responseNumber = 0
             this.setState({
-                loading: true
+                loading: "deleting"
             }, () => {
                 this.state.camera.forEach((camera) => {
                     request("/pathClean", {
@@ -167,14 +167,14 @@ class FileStats extends React.Component {
                     title = "Camera Footage" 
                     extra={[
                         <Button style={{width: "50%"}} inline size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
-                            Refresh{this.state.loading ? "ing" : ""}
+                            Refresh{this.state.loading == "refreshing" ? "ing" : ""}
                         </Button>,
                         <Button style={{width: "50%"}} inline size="small" loading={this.state.loading} disabled={this.state.loading} onClick={() => {
                             alertModal("Delete", `Deleting files that are ${this.state.days} day old and older.`, () => {
                                 this.deleteFiles()
                             })
                         }}>
-                            Delet{this.state.loading ? "ing" : "e"}
+                            Delet{this.state.loading == "deleting" ? "ing" : "e"}
                         </Button>,
                     ]}
                 />
