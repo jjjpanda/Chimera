@@ -166,10 +166,10 @@ class FileStats extends React.Component {
                 <Card.Header
                     title = "Camera Footage" 
                     extra={[
-                        <Button style={{width: "50%"}} inline size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.cameraUpdate}>
+                        <Button style={{width: "50%"}} inline size="small" loading={this.state.loading == "refreshing"} disabled={this.state.loading} onClick={this.cameraUpdate}>
                             Refresh{this.state.loading == "refreshing" ? "ing" : ""}
                         </Button>,
-                        <Button style={{width: "50%"}} inline size="small" loading={this.state.loading} disabled={this.state.loading} onClick={() => {
+                        <Button style={{width: "50%"}} inline size="small" loading={this.state.loading == "deleting"} disabled={this.state.loading} onClick={() => {
                             alertModal("Delete", `Deleting files that are ${this.state.days} day old and older.`, () => {
                                 this.deleteFiles()
                             })
