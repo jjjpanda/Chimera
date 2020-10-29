@@ -1,5 +1,7 @@
 # Chimera
 
+![logo](frontend/res/logo.png)
+
 ## Variables
 
 req.app.locals will only have keys corresponding to  
