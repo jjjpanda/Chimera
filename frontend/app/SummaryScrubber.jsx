@@ -115,12 +115,14 @@ class SummaryScrubber extends React.Component{
                                 style={{ display: this.state.sliderIndex == index ? "inherit" : 'none'}} 
                                 src={frame}
                                 onLoad = {() => {
+                                    
                                     this.setState((oldState) => ({
                                         imagesLoaded: oldState.imagesLoaded + 1
                                     }), () => {
-                                        if(this.state.imagesLoaded >= this.state.list.length){
+                                        //comment out for no scrubbing autoplay
+                                        /* if(this.state.imagesLoaded >= this.state.list.length){
                                             this.sliderPlaythrough()
-                                        }
+                                        } */
                                         //console.log(Math.round(100 * this.state.imagesLoaded / this.state.list.length))
                                     })
                                 }}
