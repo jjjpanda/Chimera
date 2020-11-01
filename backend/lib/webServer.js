@@ -170,6 +170,8 @@ if(process.env.commander == "on"){
     app.post('/pathDelete', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.filePath}`, "DELETE PATH", undefined, true), formattedCommandResponse)
     app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.filePath}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
 
+    app.use('/res', express.static(path.join(__dirname, '../../frontend/res')));
+
     app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
         index: "legacy.html"
     }))
