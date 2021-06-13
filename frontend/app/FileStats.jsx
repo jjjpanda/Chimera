@@ -24,23 +24,13 @@ class FileStats extends React.Component {
         super(props)
         this.state = {
             loading: "refreshing",
-            camera: [
-                {
-                    path: "shared/captures/1",
-                    size: 0,
-                    count: 0
-                },
-                {
-                    path: "shared/captures/2",
-                    size: 0,
-                    count: 0
-                },
-                {
-                    path: "shared/captures/3",
+            camera: JSON.parse(process.env.cameras).map((element) => {
+                return {
+                    path: `shared/captures/${element}`,
                     size: 0,
                     count: 0
                 }
-            ],
+            }),
             days: 7,
             lastUpdated: moment().format("h:mm:ss a")
         }

@@ -33,7 +33,7 @@ class SummaryScrubber extends React.Component{
             sliderIndex: 0,
             numberOfFrames: 100,
             camera: 0,
-            cameras: ['1', '2', '3'],
+            cameras: JSON.parse(process.env.cameras),
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
             list: [],
