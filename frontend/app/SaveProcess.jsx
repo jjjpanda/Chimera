@@ -23,7 +23,7 @@ class SaveProcess extends React.Component{
         super(props)
         this.state ={
             camera: 0,
-            cameras: ['1', '2', '3'],
+            cameras: JSON.parse(process.env.cameras),
             visible: false,
             startDate: moment().subtract(1, "day").toDate(),
             endDate: moment().toDate(),
