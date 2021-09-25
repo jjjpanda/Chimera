@@ -11,12 +11,16 @@ const request = (url, opt, callback) => {
 
 const jsonProcessing = (prom, callback) => {
     prom
-    .then(res => res.text())
+    .then(res => {
+      console.log(res)
+      return res.text()
+    })
     .then((res) => {
       try {
         const resp = JSON.parse(res)
         return resp
       } catch (e) {
+        console.log("ERROR", e, res)
         return res
       }
     })
