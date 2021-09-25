@@ -38,7 +38,7 @@ class LiveVideo extends React.Component{
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                ...(process.env.mediaServer === "on" ? {} : {mode: 'cors'})
+                mode: (process.env.mediaServer === "on" ? "no-cors" : 'cors')
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
