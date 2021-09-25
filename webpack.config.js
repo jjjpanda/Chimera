@@ -12,7 +12,12 @@ module.exports = {
       path: path.resolve(__dirname, 'dist')
     },
     resolve: {
-      extensions: ['.js', '.jsx']
+      extensions: ['.js', '.jsx'],
+      alias: {
+        path: 'path-browserify',
+        crypto: 'crypto-browserify',
+        stream: 'stream-browserify'
+      }
     },
     module: {
       rules: [
