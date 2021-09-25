@@ -182,6 +182,8 @@ if(process.env.commander == "on"){
 // Listen
 module.exports = () => {
     
-    app.listen(process.env.PORT)
+    app.listen(process.env.PORT, '0.0.0.0', () => {
+        console.log(`Listening to port:  ${process.env.PORT}`);
+    })
 
 }
