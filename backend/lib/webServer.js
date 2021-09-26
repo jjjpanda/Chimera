@@ -85,7 +85,7 @@ app.use(express.json());
 
 //NON PROXY
 if(process.env.mediaServer == "on"){
-    console.log("Media Server 📺 Controller On")
+    console.log("Media Server 📺 On")
 
     const media = require('./subServers/media.js')
     
@@ -148,10 +148,6 @@ if(process.env.commander == "on"){
     app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.filePath}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
 
     app.use('/res', express.static(path.join(__dirname, '../../frontend/res')));
-
-    app.use('/legacy', express.static(path.resolve(__dirname, "../../frontend"), {
-        index: "legacy.html"
-    }))
 
     app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
         index: "app.html"
