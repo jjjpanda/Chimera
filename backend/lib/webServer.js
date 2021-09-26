@@ -58,17 +58,6 @@ if(process.env.mediaServer == "proxy"){
     }))
 }
 
-if(process.env.webdav == "proxy"){
-    console.log("WebDAV 📁 Controller Proxy")
-    
-    app.use(/\/webdav.*/, createProxyMiddleware((pathname, req) => {
-        console.log(pathname, req.method)
-        return (pathname.match(/\/webdav.*/) && req.method === 'POST');
-    }, {
-        target: `http://${process.env.webdavHost}:${process.env.PORT}/`,
-    }))
-}
-
 if(process.env.converter == "proxy"){
     console.log("Converter 🔁 Proxied")
 
@@ -103,16 +92,6 @@ if(process.env.mediaServer == "on"){
     app.post('/mediaOn', media.check(true, true), media.start, media.check(false))
     app.post('/mediaStatus', media.check(false))
     app.post('/mediaOff', media.check(true, false), media.stop, media.check(false))
-}
-
-if(process.env.webdav == "on"){
-    console.log("WebDAV 📁 Controller On")
-    
-    const webDav = require('./subServers/webDav.js')
-
-    app.post('/webdavOn', webDav.check(true, true), webDav.start, webDav.check(false))
-    app.post('/webdavStatus', webDav.check(false))
-    app.post('/webdavOff', webDav.check(true, false), webDav.stop, webDav.check(false))
 }
 
 if(process.env.converter == "on"){
