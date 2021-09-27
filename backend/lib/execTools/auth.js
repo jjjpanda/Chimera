@@ -8,8 +8,7 @@ const path = require('path');
 
 module.exports = {
     auth: (req, res, next) => {
-        const { id } = req.body;
-        if (id != undefined && req.header('authorization') != undefined && req.header('authorization').split(' ')[0] == 'Bearer') {
+        if (req.header('authorization') != undefined && req.header('authorization').split(' ')[0] == 'Bearer') {
             jwt.verify(req.header('authorization').split(' ')[1], secretKey, (err, decoded) => {
             if (err) {
                 res.status(401).send({ error: true, unauthorized: true });
@@ -22,10 +21,19 @@ module.exports = {
 
     login: (req, res) => {
         const { password } = req.body;
-        const isMatch = bcrypt.compareSync(password, hash)
+        
+        let hash
+        try{
+            hash = fs.readFileSync(path.resolve(process.env.passwordPath), {encoding:'utf8', flag:'r'});
+        } catch(e) {
+            console.log(`NO HASH FILE AT ${process.env.passwordPath}`)
+            res.status(400).json({ error: true, errors: 'Password Unable to Be Verified' });
+        }
+
+        const isMatch = bcrypt.compareSync(password == undefined ? "" : password, hash)
 
         const successfulResponse = (token) => ({
-            login: { success: true, token: `Bearer ${token}` }
+            error: false, token: `Bearer ${token}`
         })
 
         if (isMatch) {
@@ -39,18 +47,20 @@ module.exports = {
         }
     },
 
-    register: () => {
+    register: (successCallback, errorCallback) => {
         let password
         try{
-            password = fs.readFileSync(path.resolve(process.env.filePath), {encoding:'utf8', flag:'r'});
+            password = fs.readFileSync(path.resolve(process.env.passwordPath), {encoding:'utf8', flag:'r'});
         } catch(e) {
-            console.log(`NO PASSWORD FILE IN ${process.env.filePath}`)
-            return
+            console.log(`NO PASSWORD FILE AT ${process.env.passwordPath}`)
+            errorCallback()
         }
 
         const salt = bcrypt.genSaltSync(10)
         const hash = bcrypt.hashSync(password, salt)
 
-        fs.writeFileSync(path.resolve(process.env.filePath, hash))
+        fs.writeFileSync(path.resolve(process.env.passwordPath), hash)
+
+        successCallback()
     }
 }

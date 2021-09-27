@@ -43,6 +43,11 @@ var {
     destroyTask,
     taskCheck
 }              = require('./execTools/scheduler.js')
+const {
+    auth,
+    login,
+    register
+}              = require('./execTools/auth.js')
 
 var app = express()
 
@@ -147,6 +152,11 @@ if(process.env.commander == "on"){
     app.post('/pathDelete', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo rm -rf ${process.env.filePath}`, "DELETE PATH", undefined, true), formattedCommandResponse)
     app.post('/pathClean', validateBody, validatePath, pathCommandAppend, afterPath(" -mtime +$ -type f -delete"), numberSwitch("$"), oneCommand(`sudo find ${process.env.filePath}`, "CLEAN PATH", undefined, true), formattedCommandResponse)
 
+    app.post('/login', validateBody, login)
+    app.post('/verify', auth, (req, res) => {
+        res.json({error: false, token: req.header('authorization')})
+    })
+
     app.use('/res', express.static(path.join(__dirname, '../../frontend/res')));
 
     app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
@@ -157,6 +167,9 @@ if(process.env.commander == "on"){
 // Listen
 module.exports = () => {
     
-    app.listen(process.env.PORT)
+    register(
+        () => app.listen(process.env.PORT), 
+        () => console.log("😭 Server NOT started... 🥺")
+    );
 
 }
