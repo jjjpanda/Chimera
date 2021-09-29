@@ -53,7 +53,7 @@ module.exports = {
             password = fs.readFileSync(path.resolve(process.env.passwordPath), {encoding:'utf8', flag:'r'});
         } catch(e) {
             console.log(`NO PASSWORD FILE AT ${process.env.passwordPath}`)
-            errorCallback()
+            errorCallback("ERROR")
         }
 
         const salt = bcrypt.genSaltSync(10)

@@ -1,5 +1,5 @@
 require('dotenv').config()
-console.log("Starting Web Server", " >> PORT: ", process.env.PORT)
+console.log("Starting Servers")
 require('./lib/app.js')()
 
 
