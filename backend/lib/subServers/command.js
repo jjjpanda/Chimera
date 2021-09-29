@@ -1,4 +1,21 @@
-const express = require('express');
+require('dotenv').config()
+var express    = require('express')
+var { 
+    validateBody 
+}              = require('../tools/validators.js')
+var { 
+    startMotion, 
+    oneCommand,
+    afterPath,
+    validatePath,
+    numberSwitch,
+    formattedCommandResponse,
+    pathCommandAppend
+}              = require('../execTools/commands.js')
+const {
+    auth,
+    login
+}              = require('../execTools/auth.js')
 
 const app = express.Router();
 

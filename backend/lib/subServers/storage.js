@@ -1,4 +1,25 @@
-const express = require('express');
+require('dotenv').config()
+var express    = require('express')
+var { 
+    validateBody 
+}              = require('../tools/validators.js')
+var {
+    validateRequest,
+    validateID,
+}              = require('../converter/converter.js')
+var {
+    createVideo,
+    listOfFrames,
+}              = require('../converter/video.js')
+var {
+    createZip,
+}              = require('../converter/zip.js')
+var {
+    statusProcess,
+    cancelProcess,
+    listProcess,
+    deleteProcess
+}              = require('../converter/process.js')
 
 const app = express.Router();
 

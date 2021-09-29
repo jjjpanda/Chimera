@@ -1,9 +1,20 @@
-const express = require('express');
+require('dotenv').config()
+var express    = require('express')
+var { 
+    validateBody 
+}              = require('../tools/validators.js')
+var {
+    validateTaskRequest,
+    validateTaskCron,
+    scheduleTask,
+    destroyTask,
+    taskCheck
+}              = require('../execTools/scheduler.js')
 
 const app = express.Router();
 
-app.post('/taskSchedule', validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
-app.post('/taskCheck', validateBody, validateTaskRequest, taskCheck)
-app.post('/taskDestroy', validateBody, validateTaskRequest, destroyTask, taskCheck)
+app.post('/schedule', validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
+app.post('/check', validateBody, validateTaskRequest, taskCheck)
+app.post('/destroy', validateBody, validateTaskRequest, destroyTask, taskCheck)
 
 module.exports = app
