@@ -4,6 +4,10 @@ var express    = require('express')
 
 var app = express()
 
+var {
+    createProxyMiddleware
+}              = require('http-proxy-middleware')
+
 if(process.env.storageProxy == "on"){
     console.log("Converter 🔁 Proxied")
 

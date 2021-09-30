@@ -33,7 +33,7 @@ class App extends React.Component{
     }
 
     attemptLogin = (password) => {
-        return fetch("/login", {
+        return fetch("/command/login", {
             method: "POST",
             headers: {
                 "Accept": 'application/json',
@@ -48,7 +48,7 @@ class App extends React.Component{
     }
 
     attemptVerification = () => {
-        return fetch("/verify", {
+        return fetch("/command/verify", {
             method: "POST",
             headers: {
                 "Accept": 'application/json',
