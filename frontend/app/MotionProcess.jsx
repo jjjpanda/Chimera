@@ -28,7 +28,7 @@ class MotionProcess extends React.Component {
     }
 
     status = () => {
-        request("/motionStatus", {
+        request("/command/motionStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {

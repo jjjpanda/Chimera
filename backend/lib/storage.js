@@ -7,7 +7,7 @@ var contentDisposition = require('content-disposition')
 
 var app = express()
 
-app.use('/convert', require('./subServers/storage.js'))
+app.use('/storage', require('./subServers/storage.js'))
     
 app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
     index: false,
@@ -23,7 +23,8 @@ express.static(path.join(process.env.filePath, 'shared')), serveIndex(path.join(
 
 module.exports = () => {
     
-    console.log("Storage 📂 On")
-    app.listen(process.env.storagePORT)
+    app.listen(process.env.storagePORT, () => {
+        console.log(`Storage 📂 On ▶ ${process.env.storagePORT}`)
+    })
 
 }

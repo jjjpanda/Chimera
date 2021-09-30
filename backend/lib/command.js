@@ -9,24 +9,24 @@ var {
 }              = require('http-proxy-middleware')
 
 if(process.env.storageProxy == "on"){
-    console.log("Converter 🔁 Proxied")
+    console.log("Storage 📂 Proxied ◀")
 
-    app.use(/\/convert\/(.*Video|.*Zip|.*Process)|\/shared/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/storage\/(.*Video|.*Zip|.*Process)|\/shared/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/.*Video|\/.*Zip|\/.*Process/) && req.method === 'POST') || pathname.match('/shared');
+        return (pathname.match(/\/storage\/(.*Video|.*Zip|.*Process)|\/shared/) && req.method === 'POST') || pathname.match('/shared');
     }, {
-        target: `http://${process.env.converterHost}:${process.env.PORT}/`,
+        target: `http://${process.env.storageHost}:${process.env.storagePORT}/`,
     }))
 }
 
 if(process.env.scheduleProxy == "on"){
-    console.log("Scheduler ⌚ Proxied")
+    console.log("Scheduler ⌚ Proxied ◀")
 
-    app.use(/\/task\/.*/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/schedule\/.*/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/task.*/) && req.method === 'POST');
+        return (pathname.match(/\/schedule\/.*/) && req.method === 'POST');
     }, {
-        target: `http://${process.env.schedulerHost}:${process.env.PORT}/`,
+        target: `http://${process.env.scheduleHost}:${process.env.schedulePORT}/`,
     }))
 }
 
@@ -41,7 +41,8 @@ app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
 
 module.exports = () => {
 
-    console.log("Command 🎮 On")
-    app.listen(process.env.commandPORT)
+    app.listen(process.env.commandPORT, () => {
+        console.log(`Command 🎮 On ▶ ${process.env.commandPORT}`)
+    })
 
 }

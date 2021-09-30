@@ -8,8 +8,9 @@ if(process.env.schedule == "on"){
 }
 
 module.exports = () => {
-    
-    console.log("Schedule ⌚ On")
-    app.listen(process.env.schedulePORT)
+
+    app.listen(process.env.schedulePORT, () => {
+        console.log(`Schedule ⌚ On ▶ ${process.env.schedulePORT}`)
+    })
 
 }

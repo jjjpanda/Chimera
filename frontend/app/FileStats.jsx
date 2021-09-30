@@ -56,7 +56,7 @@ class FileStats extends React.Component {
             lastUpdated: moment().format("h:mm:ss a")
         }, () => {
             this.state.camera.forEach((camera, index) => {
-                request("/pathSize", {
+                request("/command/pathSize", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ class FileStats extends React.Component {
                         })
                     })
                 })
-                request("/pathFileCount", {
+                request("/command/pathFileCount", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',

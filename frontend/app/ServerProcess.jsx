@@ -28,7 +28,7 @@ class ServerProcess extends React.Component {
     }
 
     status = () => {
-        request("/serverStatus", {
+        request("/command/serverStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {

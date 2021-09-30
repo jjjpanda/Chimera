@@ -45,7 +45,7 @@ class ScheduleMotion extends React.Component{
     }
 
     updateScheduling = () => {
-        request("/taskCheck", {
+        request("/schedule/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ class ScheduleMotion extends React.Component{
                 })
             })
         })
-        request("/taskCheck", {
+        request("/schedule/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
