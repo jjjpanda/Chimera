@@ -7,6 +7,9 @@ var contentDisposition = require('content-disposition')
 
 var app = express()
 
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
 app.use('/storage', require('./subServers/storage.js'))
     
 app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
