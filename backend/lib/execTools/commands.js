@@ -4,7 +4,7 @@ var path       = require('path')
 var SSH        = require('simple-ssh');
 
 const sshAuth = {
-    host: process.env.converterHost,
+    host: process.env.storageHost,
     user: process.env.baseUsername,
     ...{ 
         pass: process.env.sshAuthType === "pass" ? process.env.baseAuth : undefined,

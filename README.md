@@ -1,5 +1,7 @@
 # Chimera
 
+# CURRENTLY UNDER v2 MIGRATION
+
 ![logo](frontend/res/logo.png)
 
 ## Variables
@@ -38,7 +40,7 @@ See ```Node Media Server``` for other routes.
 |POST|/webdavOff|Turn WebDAV server off|None|`{ running: Boolean }`|
 |PROPFIND|/webdav|Serves WebDAV (Note: WebDav is on a different port)|Multi|Multi|
 
-### Converter
+### 
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
