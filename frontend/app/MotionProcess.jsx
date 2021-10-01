@@ -52,7 +52,7 @@ class MotionProcess extends React.Component {
             loading: true
         }, () => {
             if(!checked){
-                request("/motionStop", {
+                request("/command/motionStop", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
@@ -64,7 +64,7 @@ class MotionProcess extends React.Component {
                 })
             }
             else{
-                request("/motionStart", {
+                request("/command/motionStart", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {

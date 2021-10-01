@@ -61,7 +61,7 @@ class MotionRecording extends React.Component{
     }
 
     cancelProcess = (id, type) => {
-        request("/cancelProcess", {
+        request("/storage/cancelProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ class MotionRecording extends React.Component{
     }
 
     deleteProcess = (id, type) => {
-        request("/deleteProcess", {
+        request("/storage/deleteProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

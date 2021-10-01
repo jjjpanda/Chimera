@@ -48,7 +48,7 @@ class ServerProcess extends React.Component {
         this.setState({status: {
                 duration: "00:00:00"
         }, loading: true}, () => {
-            request("/serverUpdate", {
+            request("/command/serverUpdate", {
                 method: "POST"
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
@@ -68,7 +68,7 @@ class ServerProcess extends React.Component {
         this.setState({status: {
                 duration: "00:00:00"
         }, loading: true}, () => {
-            request("/serverInstall", {
+            request("/command/serverInstall", {
                 method: "POST"
             }, (prom) => {
                 jsonProcessing(prom, (data) => {

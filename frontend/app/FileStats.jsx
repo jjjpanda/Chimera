@@ -105,7 +105,7 @@ class FileStats extends React.Component {
             this.setState({
                 loading: "deleting"
             }, () => {
-                request("/pathClean", {
+                request("/command/pathClean", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ class FileStats extends React.Component {
                 loading: "deleting"
             }, () => {
                 this.state.camera.forEach((camera) => {
-                    request("/pathClean", {
+                    request("/command/pathClean", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
@@ -174,8 +174,6 @@ class FileStats extends React.Component {
                     </NoticeBar>
                 
                     <ServerProcess key={`server${this.state.lastUpdated}`}/>
-
-                    <WebDAVProcess key={`webdav${this.state.lastUpdated}`}/>
 
                     <List >
                         {this.state.camera.map(cam => {
