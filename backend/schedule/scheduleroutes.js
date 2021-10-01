@@ -2,14 +2,14 @@ require('dotenv').config()
 var express    = require('express')
 var { 
     validateBody 
-}              = require('../tools/validators.js')
+}              = require('../lib/validators.js')
 var {
     validateTaskRequest,
     validateTaskCron,
     scheduleTask,
     destroyTask,
     taskCheck
-}              = require('../execTools/scheduler.js')
+}              = require('../schedule/scheduler.js')
 
 const app = express.Router();
 

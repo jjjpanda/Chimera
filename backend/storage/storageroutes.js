@@ -2,24 +2,24 @@ require('dotenv').config()
 var express    = require('express')
 var { 
     validateBody 
-}              = require('../tools/validators.js')
+}              = require('../lib/validators.js')
 var {
     validateRequest,
     validateID,
-}              = require('../converter/converter.js')
+}              = require('../storage/converts/converter.js')
 var {
     createVideo,
     listOfFrames,
-}              = require('../converter/video.js')
+}              = require('./converts/video.js')
 var {
     createZip,
-}              = require('../converter/zip.js')
+}              = require('./converts/zip.js')
 var {
     statusProcess,
     cancelProcess,
     listProcess,
     deleteProcess
-}              = require('../converter/process.js')
+}              = require('./converts/process.js')
 
 const app = express.Router();
 

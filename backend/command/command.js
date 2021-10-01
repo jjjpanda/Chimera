@@ -33,7 +33,7 @@ if(process.env.scheduleProxy == "on"){
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.use('/command', require('./subServers/command.js'))
+app.use('/command', require('./commandroutes.js'))
 app.use('/res', express.static(path.join(__dirname, '../../frontend/res')));
 app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
     index: "app.html"

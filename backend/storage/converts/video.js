@@ -12,7 +12,7 @@ const {
 }              = require('./converter.js')
 const {
     sendConvertAlert,
-}              = require('../tools/alerts.js');
+}              = require('../../lib/alerts.js');
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)

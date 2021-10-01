@@ -2,7 +2,7 @@ require('dotenv').config()
 var express    = require('express')
 var { 
     validateBody 
-}              = require('../tools/validators.js')
+}              = require('../lib/validators.js')
 var { 
     startMotion, 
     oneCommand,
@@ -11,11 +11,11 @@ var {
     numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('../execTools/commands.js')
+}              = require('./commands.js')
 const {
     auth,
     login
-}              = require('../execTools/auth.js')
+}              = require('../lib/auth.js')
 
 const app = express.Router();
 

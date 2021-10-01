@@ -1,11 +1,11 @@
 const cron     = require('node-cron');
-const { validateRequestURL } = require('../tools/validators.js');
+const { validateRequestURL } = require('../lib/validators.js');
 const request  = require('request');
 const moment   = require('moment')
 
 const {
     sendScheduleAlert,
-}              = require('../tools/alerts.js');
+}              = require('../lib/alerts.js');
 
 module.exports = {
     validateTaskRequest: (req, res, next) => {
