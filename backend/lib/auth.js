@@ -8,14 +8,20 @@ const path = require('path');
 
 module.exports = {
     auth: (req, res, next) => {
-        if (req.header('authorization') != undefined && req.header('authorization').split(' ')[0] == 'Bearer') {
-            jwt.verify(req.header('authorization').split(' ')[1], secretKey, (err, decoded) => {
-            if (err) {
-                res.status(401).send({ error: true, unauthorized: true });
-            } else {
-                next();
+        if (req.header('Cookie') != undefined) {
+            const cookies = req.header('Cookie').split(";")
+            for(const cookie of cookies){
+                let [key, value] = cookie.split("=")
+                if(key == "bearertoken" && value.includes('Bearer')){
+                    jwt.verify(req.header('authorization').split(' ')[1], secretKey, (err, decoded) => {
+                        if (err) {
+                            res.status(401).send({ error: true, unauthorized: true });
+                        } else {
+                            next();
+                        }
+                    });
+                }
             }
-            });
         } else res.status(401).send({ error: true, unauthorized: true });
     },
 
@@ -32,14 +38,11 @@ module.exports = {
 
         const isMatch = bcrypt.compareSync(password == undefined ? "" : password, hash)
 
-        const successfulResponse = (token) => ({
-            error: false, token: `Bearer ${token}`
-        })
-
         if (isMatch) {
             jwt.sign({payload: true}, secretKey, { expiresIn: 31556926 },
                 (err, token) => {
-                    res.json(successfulResponse(token));
+                    res.set("Set-Cookie", `bearertoken=Bearer ${token}; SameSite=Strict`)
+                    res.json({error: false});
                 }
             );
         } else {

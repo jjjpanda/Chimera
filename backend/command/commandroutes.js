@@ -12,7 +12,8 @@ const app = express.Router();
 
 app.post('/login', validateBody, login)
 app.post('/verify', auth, (req, res) => {
-    res.json({error: false, token: req.header('authorization')})
+    res.set("Set-Cookie", `bearertoken=${req.token}; SameSite=Strict`)
+    res.json({error: false })
 })
 
 module.exports = app
