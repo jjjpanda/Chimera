@@ -21,7 +21,7 @@ class LoginForm extends React.Component{
     render() {
         return (
             <WingBlank size="sm">
-                <InputItem type="text" value={this.state.password} onChange={this.onChange} hidden/>
+                <InputItem type="password" value={this.state.password} onChange={this.onChange}/>
                 <Button onClick ={this.onClick}>ENTER</Button>
             </WingBlank>
         )
