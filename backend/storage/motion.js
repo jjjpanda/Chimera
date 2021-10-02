@@ -12,6 +12,7 @@ while(process.env[`camera${cameraIndex}`] != undefined){
     const cameraURL = process.env[`camera${cameraIndex}`]
     console.log(`FOUND CAMERA INDEX: ${cameraIndex}`)
     exec(`ffmpeg -i "${cameraURL}" -fflags flush_packets -max_delay 2 -flags -global_header -hls_time 2 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.filePath}shared/captures/live/${cameraIndex}/video.m3u8`)
+    cameraIndex++
 }
 
 app.use("/status", (req, res) => {
