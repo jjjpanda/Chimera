@@ -51,6 +51,7 @@
     "path-browserify": "^1.0.1",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
+    "react-hls-player": "^3.0.7",
     "react-router-dom": "^5.1.2",
     "request": "^2.88.2",
     "serve-index": "^1.9.1",

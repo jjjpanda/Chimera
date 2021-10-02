@@ -13,6 +13,7 @@ import FLVPlayer from './FLVPlayer.jsx';
 import MediaServerProcess from './MediaServerProcess.jsx'
 import moment from 'moment'
 import { request, jsonProcessing } from '../js/request.js';
+import ReactHlsPlayer from 'react-hls-player';
 
 class LiveVideo extends React.Component{
     constructor(props){
@@ -58,7 +59,7 @@ class LiveVideo extends React.Component{
     }
 
     render () {
-        return (
+        /* return (
             <Card>
                 <Card.Header 
                     title= "Live Video"
@@ -98,6 +99,15 @@ class LiveVideo extends React.Component{
                 
 
             </Card>
+        ) */
+        return (
+            <ReactHlsPlayer
+                src="/shared/captures/live/1/video.m3u8"
+                autoPlay={false}
+                controls={true}
+                width="100%"
+                height="auto"
+            />
         )
     }
 }

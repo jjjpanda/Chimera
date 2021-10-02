@@ -11,6 +11,8 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 app.use('/storage', require('./storageroutes.js'))
+
+app.use('/motion', require('./motion.js'))
     
 app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
     index: false,

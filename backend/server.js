@@ -13,8 +13,6 @@ register(() => {
         require('./schedule/schedule.js')()
     }
     
-    //require('./lib/motion.js')()
-    
     if(process.env.command == "on"){
         require('./command/command.js')()
     }
