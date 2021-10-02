@@ -65,7 +65,7 @@ class App extends React.Component{
     handleLoginAttempt = (res, timestamp) => {
         console.log('response', res)
         if(!res.error){
-            Cookies.set("bearertoken", res.token, { secure: true })
+            Cookies.set("bearertoken", res.token)
         }
         this.setState(() => ({loaded: true, loggedIn: !res.error}), () => {
             setTimeout(() => {
