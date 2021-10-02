@@ -19,7 +19,7 @@ import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
 import alertModal from './Alert.jsx';
 import ScheduleMotion from './ScheduleMotion.jsx';
-
+import Cookies from 'js-cookie';
 class MotionRecording extends React.Component{
 
     constructor(props){
@@ -41,6 +41,7 @@ class MotionRecording extends React.Component{
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
+                    "Authorization": Cookies.get('bearertoken'),
                 }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
@@ -65,6 +66,7 @@ class MotionRecording extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 id
@@ -85,6 +87,7 @@ class MotionRecording extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 id

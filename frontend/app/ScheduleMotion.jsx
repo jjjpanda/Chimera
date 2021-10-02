@@ -18,7 +18,7 @@ import moment from 'moment';
 import TimeRangePicker from './TimeRangePicker.jsx';
 import WeekdayPicker from './WeekdayPicker.jsx';
 import { cronString, cronState } from '../js/lib/cronString.js'
-
+import Cookies from 'js-cookie';
 class ScheduleMotion extends React.Component{
 
     constructor(props){
@@ -49,6 +49,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart"
@@ -74,6 +75,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop"
@@ -111,6 +113,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart"
@@ -125,6 +128,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop"
@@ -143,6 +147,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart",
@@ -158,6 +163,7 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop",

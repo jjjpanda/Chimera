@@ -24,7 +24,7 @@ import enUsNumber from 'antd-mobile/lib/input-item/locale/en_US';
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
 import CameraDatePicker from './CameraDatePicker.jsx';
-
+import Cookies from 'js-cookie';
 class SummaryScrubber extends React.Component{
 
     constructor(props){
@@ -67,6 +67,7 @@ class SummaryScrubber extends React.Component{
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
+                    "Authorization": Cookies.get('bearertoken'),
                 },
                 body: this.processBody()
             }, (prom) => {

@@ -10,7 +10,7 @@ import {
 
 import {request, jsonProcessing} from '../js/request.js'
 import ProcessCard from './ProcessCard.jsx';
-
+import Cookies from 'js-cookie';
 class ServerProcess extends React.Component {
     constructor(props){
         super(props)
@@ -29,7 +29,10 @@ class ServerProcess extends React.Component {
 
     status = () => {
         request("/command/serverStatus", {
-            method: "POST"
+            method: "POST",
+            headers: {
+                "Authorization": Cookies.get('bearertoken'),
+            }
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -49,7 +52,10 @@ class ServerProcess extends React.Component {
                 duration: "00:00:00"
         }, loading: true}, () => {
             request("/command/serverUpdate", {
-                method: "POST"
+                method: "POST",
+                headers: {
+                    "Authorization": Cookies.get('bearertoken'),
+                }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
@@ -69,7 +75,10 @@ class ServerProcess extends React.Component {
                 duration: "00:00:00"
         }, loading: true}, () => {
             request("/command/serverInstall", {
-                method: "POST"
+                method: "POST",
+                headers: {
+                    "Authorization": Cookies.get('bearertoken'),
+                }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)

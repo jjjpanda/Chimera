@@ -16,7 +16,7 @@ import {
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
 import CameraDatePicker from './CameraDatePicker.jsx';
-
+import Cookies from 'js-cookie';
 class SaveProcess extends React.Component{
 
     constructor(props){
@@ -53,6 +53,7 @@ class SaveProcess extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken'),
             },
             body: this.processBody()
         }, (prom) => {
@@ -78,6 +79,7 @@ class SaveProcess extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
+                "Authorization": Cookies.get('bearertoken')
             },
             body: this.processBody()
         }, (prom) => {

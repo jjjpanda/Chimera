@@ -18,6 +18,7 @@ import ServerProcess from './ServerProcess.jsx';
 import WebDAVProcess from './WebDAVProcess.jsx'
 import moment from 'moment';
 import alertModal from './Alert.jsx';
+import Cookies from 'js-cookie';
 
 class FileStats extends React.Component {
     constructor(props){
@@ -60,6 +61,7 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
+                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path: camera.path
@@ -80,6 +82,7 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
+                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path: camera.path
@@ -109,6 +112,7 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
+                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path,
@@ -132,6 +136,7 @@ class FileStats extends React.Component {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
+                            "Authorization": Cookies.get('bearertoken'),
                         },
                         body: JSON.stringify({
                             path: camera.path,

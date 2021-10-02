@@ -12,11 +12,11 @@ var app = express()
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.use('/storage', require('./storageroutes.js'))
+app.use('/storage', [auth, require('./storageroutes.js')])
 
-app.use('/motion', require('./motion.js'))
+app.use('/motion', [auth, require('./motion.js')])
     
-app.use('/shared', auth, serveStatic(path.join(process.env.filePath, 'shared'), {
+app.use('/shared', [auth, serveStatic(path.join(process.env.filePath, 'shared'), {
     index: false,
     setHeaders: (res, path) => {
         res.setHeader('Content-Disposition', contentDisposition(path))
@@ -25,7 +25,7 @@ app.use('/shared', auth, serveStatic(path.join(process.env.filePath, 'shared'), 
     icons: true,
     stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
     template: path.resolve(__dirname, '../templates/fileTemplate.html')
-}))
+})])
 
 module.exports = () => {
     

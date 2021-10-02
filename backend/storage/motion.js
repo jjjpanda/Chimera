@@ -20,7 +20,7 @@ exec(`mkdir ${process.env.filePath}shared/captures/live`, () => {
     }
 })
 
-app.use("/status", auth, (req, res) => {
+app.post("/status", auth, (req, res) => {
     exec(`ps -e | grep motion`, (err, stdout, stderr) => {
         console.log(err, stdout, stderr)
         res.send({
