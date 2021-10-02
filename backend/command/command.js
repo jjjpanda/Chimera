@@ -11,9 +11,9 @@ var {
 if(process.env.storageProxy == "on"){
     console.log("Storage 📂 Proxied ◀")
 
-    app.use(/\/storage\/(.*Video|.*Zip|.*Process)|\/shared/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared/, createProxyMiddleware((pathname, req) => {
         console.log(pathname, req.method)
-        return (pathname.match(/\/storage\/(.*Video|.*Zip|.*Process)|\/shared/) && req.method === 'POST') || pathname.match('/shared');
+        return (pathname.match(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared/) && req.method === 'POST') || pathname.match('/shared');
     }, {
         target: `http://${process.env.storageHost}:${process.env.storagePORT}/`,
     }))
