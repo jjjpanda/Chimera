@@ -100,7 +100,7 @@ class LiveVideo extends React.Component{
 
             </Card>
         ) */
-        return process.env.cameras.map((i) => (<ReactHlsPlayer
+        return JSON.parse(process.env.cameras).map((i) => (<ReactHlsPlayer
             src={`/shared/captures/live/${i}/video.m3u8`}
             autoPlay={false}
             controls={true}
