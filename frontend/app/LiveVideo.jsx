@@ -34,7 +34,7 @@ class LiveVideo extends React.Component{
             loading: true,
             videoList: []
         }, () => {
-            request(`http://${process.env.mediaHost}:${process.env.mediaPORT}/api/streams`, {
+            /* request(`http://${process.env.mediaHost}:${process.env.mediaPORT}/api/streams`, {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ class LiveVideo extends React.Component{
                         lastUpdated: moment().format("h:mm:ss a")
                     })
                 })
-            })
+            }) */
         })
     }
 
@@ -100,15 +100,13 @@ class LiveVideo extends React.Component{
 
             </Card>
         ) */
-        return (
-            <ReactHlsPlayer
-                src="/shared/captures/live/1/video.m3u8"
-                autoPlay={false}
-                controls={true}
-                width="100%"
-                height="auto"
-            />
-        )
+        return process.env.cameras.map((i) => (<ReactHlsPlayer
+            src={`/shared/captures/live/${i}/video.m3u8`}
+            autoPlay={false}
+            controls={true}
+            width="auto"
+            height="50%"
+        />))
     }
 }
 
