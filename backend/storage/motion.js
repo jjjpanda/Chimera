@@ -4,6 +4,7 @@ const {exec} = require('child_process')
 
 const app = express.Router();
 
+console.log("STARTING MOTION 📸▶🚶‍♂️")
 exec(`motion -c ${process.env.motionConfPath}`)
 
 let cameraIndex = 1
