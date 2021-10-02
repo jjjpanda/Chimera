@@ -5,6 +5,8 @@ var serveIndex = require('serve-index')
 var serveStatic        = require('serve-static')
 var contentDisposition = require('content-disposition')
 
+const {auth} = require('../lib/auth');
+
 var app = express()
 
 app.use(express.urlencoded({ extended: false }));
@@ -14,13 +16,12 @@ app.use('/storage', require('./storageroutes.js'))
 
 app.use('/motion', require('./motion.js'))
     
-app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
+app.use('/shared', auth, serveStatic(path.join(process.env.filePath, 'shared'), {
     index: false,
     setHeaders: (res, path) => {
         res.setHeader('Content-Disposition', contentDisposition(path))
     },
-}),
-express.static(path.join(process.env.filePath, 'shared')), serveIndex(path.join(process.env.filePath, 'shared'), {
+}), express.static(path.join(process.env.filePath, 'shared')), serveIndex(path.join(process.env.filePath, 'shared'), {
     icons: true,
     stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
     template: path.resolve(__dirname, '../templates/fileTemplate.html')

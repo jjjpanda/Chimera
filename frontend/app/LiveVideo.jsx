@@ -6,7 +6,8 @@ import {
     Button, 
     WingBlank,
     Icon, 
-    Tabs
+    Tabs,
+    Flex,
 } from 'antd-mobile';
 
 import FLVPlayer from './FLVPlayer.jsx';
@@ -100,13 +101,57 @@ class LiveVideo extends React.Component{
 
             </Card>
         ) */
-        return JSON.parse(process.env.cameras).map((i) => (<ReactHlsPlayer
+        /* return JSON.parse(process.env.cameras).map((i) => (<ReactHlsPlayer
             src={`/shared/captures/live/${i}/video.m3u8`}
             autoPlay={false}
             controls={true}
             width="auto"
             height="50%"
-        />))
+        />)) */
+        return (
+        <>
+            <Flex>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/1/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/2/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+            </Flex>
+            <Flex>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/3/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/4/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+            </Flex>
+        </>
+        )
     }
 }
 
