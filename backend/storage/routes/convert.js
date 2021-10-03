@@ -2,24 +2,24 @@ require('dotenv').config()
 var express    = require('express')
 var { 
     validateBody 
-}              = require('../lib/validators.js')
+}              = require('../../lib/validators.js')
 var {
     validateRequest,
     validateID,
-}              = require('../storage/converts/converter.js')
+}              = require('./lib/converter.js')
 var {
     createVideo,
     listOfFrames,
-}              = require('./converts/video.js')
+}              = require('./lib/video.js')
 var {
     createZip,
-}              = require('./converts/zip.js')
+}              = require('./lib/zip.js')
 var {
     statusProcess,
     cancelProcess,
     listProcess,
     deleteProcess
-}              = require('./converts/process.js')
+}              = require('./lib/process.js')
 
 const app = express.Router();
 
@@ -33,6 +33,9 @@ app.post('/cancelProcess', validateBody, validateID, cancelProcess)
 app.post('/listProcess', listProcess)
 app.post('/deleteProcess', validateBody, validateID, deleteProcess)
 
+/**
+ * NEEDS TO BE MOVED
+ */
 var { 
     oneCommand,
     afterPath,
@@ -40,7 +43,7 @@ var {
     numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('../command/commands.js')
+}              = require('../../command/commands.js')
 
 app.post('/pathSize', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.filePath}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
 app.post('/pathFileCount', validateBody, validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.filePath}`, "FILE COUNT", undefined, true), formattedCommandResponse)

@@ -13,11 +13,12 @@ var {
 if(process.env.storageProxy == "on"){
     console.log("Storage 📂 Proxied ◀")
 
-    app.use(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/, [auth, createProxyMiddleware((pathname, req) => {
+    app.use(/\/convert\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/, [auth, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
-        return (pathname.match(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/) && req.method === 'POST') || pathname.match('/shared');
+        return (pathname.match(/\/convert\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/) && req.method === 'POST') || pathname.match('/shared');
     }, {
         target: `http://${process.env.storageHost}:${process.env.storagePORT}/`,
+        logLevel: "silent"
     })])
 }
 
@@ -35,7 +36,7 @@ if(process.env.scheduleProxy == "on"){
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.use('/command', require('./commandroutes.js'))
+app.use('/authorization', require('./routes/authorization.js'))
 app.use('/res', express.static(path.join(__dirname, '../../frontend/res')));
 app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
     index: "app.html"
@@ -45,6 +46,9 @@ module.exports = () => {
 
     app.listen(process.env.commandPORT, () => {
         console.log(`Command 🎮 On ▶ ${process.env.commandPORT}`)
+        console.log(`\t▶ Authorization Routes:\t /authorization`)
+        console.log(`\t▶ Resource Routes:\t /res`)
+        console.log(`\t▶ Web App Launched`)
     })
 
 }

@@ -3,14 +3,14 @@ var express    = require('express');
 
 var { 
     validateBody 
-}              = require('../lib/validators.js')
+}              = require('../../lib/validators.js')
 var {
     validateTaskRequest,
     validateTaskCron,
     scheduleTask,
     destroyTask,
     taskCheck
-}              = require('../schedule/scheduler.js')
+}              = require('./lib/scheduler.js')
 
 const app = express.Router();
 
