@@ -16,7 +16,7 @@ module.exports = {
                 return key == "bearertoken" && value.includes('Bearer')
             })
             const [key, bearerToken] = bearerTokenCookie.split("=")
-            jwt.verify(bearerToken, secretKey, (err, decoded) => {
+            jwt.verify(bearerToken.split("%20")[1], secretKey, (err, decoded) => {
                 if (err) {
                     res.status(401).send({ error: true, unauthorized: true });
                 } else {
