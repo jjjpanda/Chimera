@@ -13,7 +13,7 @@ if(process.env.schedule == "on"){
 module.exports = () => {
 
     app.listen(process.env.schedulePORT, () => {
-        console.log(`Schedule ⌚ On ▶ ${process.env.schedulePORT}`)
+        console.log(`⌚ Schedule On ▶ ${process.env.schedulePORT}`)
         console.log(`\t▶ Scheduler Routes:\t /schedule`)
     })
 

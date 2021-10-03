@@ -11,7 +11,7 @@ var {
 }              = require('http-proxy-middleware')
 
 if(process.env.storageProxy == "on"){
-    console.log("Storage 📂 Proxied ◀")
+    console.log("📂 Storage Proxied ◀")
 
     app.use(/\/convert\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/, [auth, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
@@ -23,7 +23,7 @@ if(process.env.storageProxy == "on"){
 }
 
 if(process.env.scheduleProxy == "on"){
-    console.log("Scheduler ⌚ Proxied ◀")
+    console.log("⌚ Scheduler Proxied ◀")
 
     app.use(/\/schedule\/.*/, [auth, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
@@ -45,7 +45,7 @@ app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
 module.exports = () => {
 
     app.listen(process.env.commandPORT, () => {
-        console.log(`Command 🎮 On ▶ ${process.env.commandPORT}`)
+        console.log(`🎮 Command On ▶ ${process.env.commandPORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
         console.log(`\t▶ Resource Routes:\t /res`)
         console.log(`\t▶ Web App Launched`)

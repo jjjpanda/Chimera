@@ -4,7 +4,7 @@ const {exec} = require('child_process');
 
 const app = express.Router();
 
-console.log("\t\t▶ Starting Live Stream Processes 👁")
+console.log("\t\t▶ 👁 Starting Live Stream Processes")
 exec(`motion -c ${process.env.motionConfPath}`)
 
 exec(`mkdir ${process.env.filePath}shared/captures/live`, () => {
