@@ -10,7 +10,6 @@ exec(`motion -c ${process.env.motionConfPath}`)
 exec(`mkdir ${process.env.filePath}shared/captures/live`, () => {
     let cameraIndex = 1
     while(process.env[`camera${cameraIndex}`] != undefined){
-        console.log(process.env[`camera${cameraIndex}`] )
         const cameraURL = process.env[`camera${cameraIndex}`]
         console.log(`FOUND CAMERA INDEX: ${cameraIndex}`)
         exec(`mkdir ${process.env.filePath}shared/captures/live/${cameraIndex}`, () => {
