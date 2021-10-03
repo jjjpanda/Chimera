@@ -4,6 +4,8 @@ var express    = require('express')
 
 var app = express()
 
+const {auth} = require('../lib/auth');
+
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
@@ -11,23 +13,23 @@ var {
 if(process.env.storageProxy == "on"){
     console.log("Storage 📂 Proxied ◀")
 
-    app.use(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/, [auth, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
         return (pathname.match(/\/storage\/(.*Video|.*Zip|.*Process|path.*)|\/shared|\/motion/) && req.method === 'POST') || pathname.match('/shared');
     }, {
         target: `http://${process.env.storageHost}:${process.env.storagePORT}/`,
-    }))
+    })])
 }
 
 if(process.env.scheduleProxy == "on"){
     console.log("Scheduler ⌚ Proxied ◀")
 
-    app.use(/\/schedule\/.*/, createProxyMiddleware((pathname, req) => {
+    app.use(/\/schedule\/.*/, [auth, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
         return (pathname.match(/\/schedule\/.*/) && req.method === 'POST');
     }, {
         target: `http://${process.env.scheduleHost}:${process.env.schedulePORT}/`,
-    }))
+    })])
 }
 
 app.use(express.urlencoded({ extended: false }));

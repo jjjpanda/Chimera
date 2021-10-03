@@ -1,7 +1,6 @@
 require('dotenv').config()
 var express    = require('express')
 const {exec} = require('child_process');
-const {auth} = require('../lib/auth');
 
 const app = express.Router();
 
@@ -20,7 +19,7 @@ exec(`mkdir ${process.env.filePath}shared/captures/live`, () => {
     }
 })
 
-app.post("/status", auth, (req, res) => {
+app.post("/status", (req, res) => {
     exec(`ps -e | grep motion`, (err, stdout, stderr) => {
         console.log(err, stdout, stderr)
         res.send({

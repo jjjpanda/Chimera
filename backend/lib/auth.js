@@ -13,7 +13,7 @@ module.exports = {
             for(const cookie of cookies){
                 let [key, value] = cookie.split("=")
                 if(key == "bearertoken" && value.includes('Bearer')){
-                    jwt.verify(req.header('authorization').split(' ')[1], secretKey, (err, decoded) => {
+                    jwt.verify(value.split('Bearer%20')[1], secretKey, (err, decoded) => {
                         if (err) {
                             res.status(401).send({ error: true, unauthorized: true });
                         } else {
@@ -35,13 +35,15 @@ module.exports = {
             console.log(`NO HASH FILE AT ${process.env.passwordPath}`)
             res.status(400).json({ error: true, errors: 'Password Unable to Be Verified' });
         }
-
+    
         const isMatch = bcrypt.compareSync(password == undefined ? "" : password, hash)
 
         if (isMatch) {
             jwt.sign({payload: true}, secretKey, { expiresIn: 31556926 },
                 (err, token) => {
-                    res.set("Set-Cookie", `bearertoken=Bearer ${token}; SameSite=Strict`)
+                    res.cookie(`bearertoken`, `Bearer ${token}`, {
+                        maxAge: 31556926000,
+                    })
                     res.json({error: false});
                 }
             );

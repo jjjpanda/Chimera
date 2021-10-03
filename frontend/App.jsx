@@ -37,8 +37,9 @@ class App extends React.Component{
             method: "POST",
             headers: {
                 "Accept": 'application/json',
-                "Content-Type": 'application/json'
+                "Content-Type": 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({password})
         }).then(res => {
             return res.json()
@@ -63,9 +64,6 @@ class App extends React.Component{
 
     handleLoginAttempt = (res, timestamp) => {
         console.log('response', res)
-        if(!res.error){
-            Cookies.set("bearertoken", res.token)
-        }
         this.setState(() => ({loaded: true, loggedIn: !res.error}), () => {
             setTimeout(() => {
                 this.setState((oldState) => ({
