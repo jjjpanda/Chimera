@@ -15,14 +15,17 @@ module.exports = {
                 let [key, value] = cookie.split("=")
                 return key == "bearertoken" && value.includes('Bearer')
             })
-            const [key, bearerToken] = bearerTokenCookie.split("=")
-            jwt.verify(bearerToken.split("%20")[1], secretKey, (err, decoded) => {
-                if (err) {
-                    res.status(401).send({ error: true, unauthorized: true });
-                } else {
-                    next();
-                }
-            });
+            if(bearerTokenCookie){
+                const [key, bearerToken] = bearerTokenCookie.split("=")
+                jwt.verify(bearerToken.split("%20")[1], secretKey, (err, decoded) => {
+                    if (err) {
+                        res.status(401).send({ error: true, unauthorized: true });
+                    } else {
+                        next();
+                    }
+                });
+            }
+            else res.status(401).send({ error: true, unauthorized: true });
         } else res.status(401).send({ error: true, unauthorized: true });
     },
 
