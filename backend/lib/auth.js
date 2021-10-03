@@ -8,20 +8,21 @@ const path = require('path');
 
 module.exports = {
     auth: (req, res, next) => {
+        
         if (req.header('Cookie') != undefined) {
             const cookies = req.header('Cookie').split(";")
-            for(const cookie of cookies){
+            const bearerTokenCookie = cookies.find((cookie) => {
                 let [key, value] = cookie.split("=")
-                if(key == "bearertoken" && value.includes('Bearer')){
-                    jwt.verify(value.split('Bearer%20')[1], secretKey, (err, decoded) => {
-                        if (err) {
-                            res.status(401).send({ error: true, unauthorized: true });
-                        } else {
-                            next();
-                        }
-                    });
+                return key == "bearertoken" && value.includes('Bearer')
+            })
+            const [key, bearerToken] = bearerTokenCookie.split("=")
+            jwt.verify(bearerToken, secretKey, (err, decoded) => {
+                if (err) {
+                    res.status(401).send({ error: true, unauthorized: true });
+                } else {
+                    next();
                 }
-            }
+            });
         } else res.status(401).send({ error: true, unauthorized: true });
     },
 
