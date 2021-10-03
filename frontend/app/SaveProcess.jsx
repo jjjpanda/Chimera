@@ -53,7 +53,6 @@ class SaveProcess extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: this.processBody()
         }, (prom) => {
@@ -79,7 +78,6 @@ class SaveProcess extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken')
             },
             body: this.processBody()
         }, (prom) => {

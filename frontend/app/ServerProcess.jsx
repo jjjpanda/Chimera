@@ -30,9 +30,6 @@ class ServerProcess extends React.Component {
     status = () => {
         request("/command/serverStatus", {
             method: "POST",
-            headers: {
-                "Authorization": Cookies.get('bearertoken'),
-            }
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -53,9 +50,6 @@ class ServerProcess extends React.Component {
         }, loading: true}, () => {
             request("/command/serverUpdate", {
                 method: "POST",
-                headers: {
-                    "Authorization": Cookies.get('bearertoken'),
-                }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
@@ -76,9 +70,6 @@ class ServerProcess extends React.Component {
         }, loading: true}, () => {
             request("/command/serverInstall", {
                 method: "POST",
-                headers: {
-                    "Authorization": Cookies.get('bearertoken'),
-                }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)

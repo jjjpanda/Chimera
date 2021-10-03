@@ -30,9 +30,6 @@ class MotionProcess extends React.Component {
     status = () => {
         request("/command/motionStatus", {
             method: "POST",
-            headers: {
-                "Authorization": Cookies.get('bearertoken'),
-            }
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -57,9 +54,6 @@ class MotionProcess extends React.Component {
             if(!checked){
                 request("/command/motionStop", {
                     method: "POST",
-                    headers: {
-                        "Authorization": Cookies.get('bearertoken'),
-                    }
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
@@ -72,9 +66,6 @@ class MotionProcess extends React.Component {
             else{
                 request("/command/motionStart", {
                     method: "POST",
-                    headers: {
-                        "Authorization": Cookies.get('bearertoken'),
-                    }
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)

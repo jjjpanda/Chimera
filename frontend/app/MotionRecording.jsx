@@ -41,7 +41,6 @@ class MotionRecording extends React.Component{
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
-                    "Authorization": Cookies.get('bearertoken'),
                 }
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
@@ -66,7 +65,6 @@ class MotionRecording extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 id
@@ -87,7 +85,6 @@ class MotionRecording extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 id

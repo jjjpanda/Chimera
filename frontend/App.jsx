@@ -52,7 +52,6 @@ class App extends React.Component{
             method: "POST",
             headers: {
                 "Accept": 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
                 "Content-Type": 'application/json'
             },
         }).then(res => {

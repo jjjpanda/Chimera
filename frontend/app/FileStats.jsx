@@ -61,7 +61,6 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
-                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path: camera.path
@@ -82,7 +81,6 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
-                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path: camera.path
@@ -112,7 +110,6 @@ class FileStats extends React.Component {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
-                        "Authorization": Cookies.get('bearertoken'),
                     },
                     body: JSON.stringify({
                         path,
@@ -136,7 +133,6 @@ class FileStats extends React.Component {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
-                            "Authorization": Cookies.get('bearertoken'),
                         },
                         body: JSON.stringify({
                             path: camera.path,

@@ -49,7 +49,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart"
@@ -75,7 +74,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop"
@@ -113,7 +111,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart"
@@ -128,7 +125,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop"
@@ -147,7 +143,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStart",
@@ -163,7 +158,6 @@ class ScheduleMotion extends React.Component{
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
-                "Authorization": Cookies.get('bearertoken'),
             },
             body: JSON.stringify({
                 url: "/motionStop",
