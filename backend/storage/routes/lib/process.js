@@ -8,7 +8,7 @@ const {
 }              = require('./converter.js');
 const {
     sendConvertAlert,
-}              = require('../../lib/alerts.js');
+}              = require('../../../lib/alerts.js');
 
 const imgDir = path.join(process.env.filePath, 'shared/captures')
 
