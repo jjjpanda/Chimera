@@ -12,7 +12,7 @@ const startLiveStream = (cameraNumber) => {
     })
 }
 
-console.log("\t▶ 📽 Starting Live Stream Processes")
+console.log("\t▶ Starting Live Stream Processes")
 exec(`mkdir ${process.env.filePath}shared/captures/live`, () => {
     let cameraIndex = 1
     while(`camera${cameraIndex}` in process.env){
