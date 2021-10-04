@@ -18,6 +18,7 @@ import ServerProcess from './ServerProcess.jsx';
 import WebDAVProcess from './WebDAVProcess.jsx'
 import moment from 'moment';
 import alertModal from './Alert.jsx';
+import Cookies from 'js-cookie';
 
 class FileStats extends React.Component {
     constructor(props){
@@ -56,7 +57,7 @@ class FileStats extends React.Component {
             lastUpdated: moment().format("h:mm:ss a")
         }, () => {
             this.state.camera.forEach((camera, index) => {
-                request("/pathSize", {
+                request("/command/pathSize", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -76,7 +77,7 @@ class FileStats extends React.Component {
                         })
                     })
                 })
-                request("/pathFileCount", {
+                request("/command/pathFileCount", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -105,7 +106,7 @@ class FileStats extends React.Component {
             this.setState({
                 loading: "deleting"
             }, () => {
-                request("/pathClean", {
+                request("/command/pathClean", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ class FileStats extends React.Component {
                 loading: "deleting"
             }, () => {
                 this.state.camera.forEach((camera) => {
-                    request("/pathClean", {
+                    request("/command/pathClean", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
@@ -174,8 +175,6 @@ class FileStats extends React.Component {
                     </NoticeBar>
                 
                     <ServerProcess key={`server${this.state.lastUpdated}`}/>
-
-                    <WebDAVProcess key={`webdav${this.state.lastUpdated}`}/>
 
                     <List >
                         {this.state.camera.map(cam => {

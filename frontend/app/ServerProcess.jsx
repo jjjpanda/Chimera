@@ -10,7 +10,7 @@ import {
 
 import {request, jsonProcessing} from '../js/request.js'
 import ProcessCard from './ProcessCard.jsx';
-
+import Cookies from 'js-cookie';
 class ServerProcess extends React.Component {
     constructor(props){
         super(props)
@@ -28,8 +28,8 @@ class ServerProcess extends React.Component {
     }
 
     status = () => {
-        request("/serverStatus", {
-            method: "POST"
+        request("/command/serverStatus", {
+            method: "POST",
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -48,8 +48,8 @@ class ServerProcess extends React.Component {
         this.setState({status: {
                 duration: "00:00:00"
         }, loading: true}, () => {
-            request("/serverUpdate", {
-                method: "POST"
+            request("/command/serverUpdate", {
+                method: "POST",
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)
@@ -68,8 +68,8 @@ class ServerProcess extends React.Component {
         this.setState({status: {
                 duration: "00:00:00"
         }, loading: true}, () => {
-            request("/serverInstall", {
-                method: "POST"
+            request("/command/serverInstall", {
+                method: "POST",
             }, (prom) => {
                 jsonProcessing(prom, (data) => {
                     console.log(data)

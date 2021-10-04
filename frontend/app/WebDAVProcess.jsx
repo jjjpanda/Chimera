@@ -27,7 +27,7 @@ class WebDAVProcess extends React.Component {
     }
 
     status = () => {
-        request("/webdavStatus", {
+        fetch("/webdavStatus", {
             method: "POST"
         }, (prom) => {
             jsonProcessing(prom, (data) => {
@@ -39,7 +39,7 @@ class WebDAVProcess extends React.Component {
                     loading: false
                 }))
             })
-        })
+        });
     }
 
     change = (checked) => {
@@ -47,7 +47,7 @@ class WebDAVProcess extends React.Component {
             loading: true
         }, () => {
             if(!checked){
-                request("/webdavOff", {
+                fetch("/webdavOff", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
@@ -59,7 +59,7 @@ class WebDAVProcess extends React.Component {
                 })
             }
             else{
-                request("/webdavOn", {
+                fetch("/webdavOn", {
                     method: "POST"
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {

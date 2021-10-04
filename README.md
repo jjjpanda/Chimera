@@ -2,6 +2,11 @@
 
 ![logo](frontend/res/logo.png)
 
+
+## Note
+
+⚠⚠⚠ This documentation is probably (definitely) outdated. ⚠⚠⚠
+
 ## Variables
 
 req.app.locals will only have keys corresponding to  
@@ -38,7 +43,7 @@ See ```Node Media Server``` for other routes.
 |POST|/webdavOff|Turn WebDAV server off|None|`{ running: Boolean }`|
 |PROPFIND|/webdav|Serves WebDAV (Note: WebDav is on a different port)|Multi|Multi|
 
-### Converter
+### 
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|

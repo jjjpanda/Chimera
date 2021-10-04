@@ -18,7 +18,7 @@ import moment from 'moment';
 import TimeRangePicker from './TimeRangePicker.jsx';
 import WeekdayPicker from './WeekdayPicker.jsx';
 import { cronString, cronState } from '../js/lib/cronString.js'
-
+import Cookies from 'js-cookie';
 class ScheduleMotion extends React.Component{
 
     constructor(props){
@@ -45,7 +45,7 @@ class ScheduleMotion extends React.Component{
     }
 
     updateScheduling = () => {
-        request("/taskCheck", {
+        request("/schedule/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ class ScheduleMotion extends React.Component{
                 })
             })
         })
-        request("/taskCheck", {
+        request("/schedule/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ class ScheduleMotion extends React.Component{
     }
 
     stopTask = () => {
-        request("/taskDestroy", {
+        request("/schedule/destroy", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ class ScheduleMotion extends React.Component{
             })
             this.updateScheduling()
         })
-        request("/taskDestroy", {
+        request("/schedule/destroy", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ class ScheduleMotion extends React.Component{
 
     startTask = () => {
         console.log(cronString(this.state.weekdays, this.state.startTime), cronString(this.state.weekdays, this.state.endTime))
-        request("/taskSchedule", {
+        request("/schedule/schedule", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ class ScheduleMotion extends React.Component{
             })
             this.updateScheduling()
         })
-        request("/taskSchedule", {
+        request("/schedule/schedule", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

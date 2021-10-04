@@ -6,13 +6,15 @@ import {
     Button, 
     WingBlank,
     Icon, 
-    Tabs
+    Tabs,
+    Flex,
 } from 'antd-mobile';
 
 import FLVPlayer from './FLVPlayer.jsx';
 import MediaServerProcess from './MediaServerProcess.jsx'
 import moment from 'moment'
 import { request, jsonProcessing } from '../js/request.js';
+import ReactHlsPlayer from 'react-hls-player';
 
 class LiveVideo extends React.Component{
     constructor(props){
@@ -33,7 +35,7 @@ class LiveVideo extends React.Component{
             loading: true,
             videoList: []
         }, () => {
-            request(`http://${process.env.mediaHost}:${process.env.mediaPORT}/api/streams`, {
+            /* request(`http://${process.env.mediaHost}:${process.env.mediaPORT}/api/streams`, {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
@@ -53,12 +55,12 @@ class LiveVideo extends React.Component{
                         lastUpdated: moment().format("h:mm:ss a")
                     })
                 })
-            })
+            }) */
         })
     }
 
     render () {
-        return (
+        /* return (
             <Card>
                 <Card.Header 
                     title= "Live Video"
@@ -98,6 +100,57 @@ class LiveVideo extends React.Component{
                 
 
             </Card>
+        ) */
+        /* return JSON.parse(process.env.cameras).map((i) => (<ReactHlsPlayer
+            src={`/shared/captures/live/${i}/video.m3u8`}
+            autoPlay={false}
+            controls={true}
+            width="auto"
+            height="50%"
+        />)) */
+        return (
+        <>
+            <Flex>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/1/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/2/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+            </Flex>
+            <Flex>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/3/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+                <Flex.Item>
+                    <ReactHlsPlayer
+                        src={`/shared/captures/live/4/video.m3u8`}
+                        autoPlay={false}
+                        controls={true}
+                        width="auto"
+                        height="40%"
+                    />
+                </Flex.Item>
+            </Flex>
+        </>
         )
     }
 }

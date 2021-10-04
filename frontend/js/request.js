@@ -6,7 +6,7 @@ import { saveAs } from 'file-saver';
 import { call } from 'file-loader';
 
 const request = (url, opt, callback) => {
-    callback(fetch(url, opt))
+    return callback(fetch(url, opt))
 }
 
 const jsonProcessing = (prom, callback) => {

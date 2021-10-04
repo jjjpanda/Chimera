@@ -12,7 +12,7 @@ const {
 }              = require('./converter.js')
 const {
     sendConvertAlert,
-}              = require('../tools/alerts.js');
+}              = require('../../../lib/alerts.js');
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
@@ -29,7 +29,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${camera}/${item}`
+        return `http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -96,7 +96,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 console.log('Finished processing');
                 if(save){
                     console.log("SENDING END ALERT")
-                    sendConvertAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    sendConvertAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
@@ -111,7 +111,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{

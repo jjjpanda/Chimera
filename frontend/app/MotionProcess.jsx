@@ -10,7 +10,7 @@ import {
 
 import {request, jsonProcessing} from '../js/request.js'
 import ProcessCard from './ProcessCard.jsx';
-
+import Cookies from 'js-cookie';
 class MotionProcess extends React.Component {
     constructor(props){
         super(props)
@@ -28,8 +28,8 @@ class MotionProcess extends React.Component {
     }
 
     status = () => {
-        request("/motionStatus", {
-            method: "POST"
+        request("/command/motionStatus", {
+            method: "POST",
         }, (prom) => {
             jsonProcessing(prom, (data) => {
                 console.log(data)
@@ -52,8 +52,8 @@ class MotionProcess extends React.Component {
             loading: true
         }, () => {
             if(!checked){
-                request("/motionStop", {
-                    method: "POST"
+                request("/command/motionStop", {
+                    method: "POST",
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)
@@ -64,8 +64,8 @@ class MotionProcess extends React.Component {
                 })
             }
             else{
-                request("/motionStart", {
-                    method: "POST"
+                request("/command/motionStart", {
+                    method: "POST",
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
                         console.log(data)

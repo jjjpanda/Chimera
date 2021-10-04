@@ -24,7 +24,7 @@ import enUsNumber from 'antd-mobile/lib/input-item/locale/en_US';
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
 import CameraDatePicker from './CameraDatePicker.jsx';
-
+import Cookies from 'js-cookie';
 class SummaryScrubber extends React.Component{
 
     constructor(props){
@@ -63,7 +63,7 @@ class SummaryScrubber extends React.Component{
             list: [],
             loading: true
         }, () => {
-            request("/listFramesVideo", {
+            request("/convert/listFramesVideo", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',

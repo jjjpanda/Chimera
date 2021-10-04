@@ -16,7 +16,7 @@ import {
 import {request, jsonProcessing, downloadProcessing} from './../js/request.js'
 import moment from 'moment';
 import CameraDatePicker from './CameraDatePicker.jsx';
-
+import Cookies from 'js-cookie';
 class SaveProcess extends React.Component{
 
     constructor(props){
@@ -49,7 +49,7 @@ class SaveProcess extends React.Component{
         if(this.state.download){
             Toast.loading("Generating", 0)
         }
-        request("/createVideo", {
+        request("/convert/createVideo", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ class SaveProcess extends React.Component{
         if(this.state.download){
             Toast.loading("Generating", 0)
         }
-        request("/createZip", {
+        request("/convert/createZip", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

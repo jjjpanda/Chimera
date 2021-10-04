@@ -19,7 +19,7 @@ import SaveProcess from './SaveProcess.jsx';
 import MotionProcess from './MotionProcess.jsx';
 import alertModal from './Alert.jsx';
 import ScheduleMotion from './ScheduleMotion.jsx';
-
+import Cookies from 'js-cookie';
 class MotionRecording extends React.Component{
 
     constructor(props){
@@ -37,7 +37,7 @@ class MotionRecording extends React.Component{
 
     listProcesses = () => {
         this.setState({ processList: [], loading: true }, () => {
-            request("/listProcess", {
+            request("/convert/listProcess", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ class MotionRecording extends React.Component{
     }
 
     cancelProcess = (id, type) => {
-        request("/cancelProcess", {
+        request("/convert/cancelProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ class MotionRecording extends React.Component{
     }
 
     deleteProcess = (id, type) => {
-        request("/deleteProcess", {
+        request("/convert/deleteProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

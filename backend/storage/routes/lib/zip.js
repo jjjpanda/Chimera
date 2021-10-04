@@ -11,7 +11,7 @@ const {
 }              = require('./converter.js');
 const {
     sendConvertAlert,
-}              = require('../tools/alerts.js');
+}              = require('../../../lib/alerts.js');
 
 const imgDir = path.join(process.env.filePath, 'shared/captures')
 
@@ -59,7 +59,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                sendConvertAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                sendConvertAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });    
 
@@ -80,7 +80,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.converterHost}:${process.env.PORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{
