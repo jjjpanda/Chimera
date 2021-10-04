@@ -1,8 +1,11 @@
 # Chimera
 
-# CURRENTLY UNDER v2 MIGRATION
-
 ![logo](frontend/res/logo.png)
+
+
+## Note
+
+⚠⚠⚠ This documentation is probably (definitely) outdated. ⚠⚠⚠
 
 ## Variables
 
