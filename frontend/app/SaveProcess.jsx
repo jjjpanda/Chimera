@@ -49,7 +49,7 @@ class SaveProcess extends React.Component{
         if(this.state.download){
             Toast.loading("Generating", 0)
         }
-        request("/storage/createVideo", {
+        request("/convert/createVideo", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ class SaveProcess extends React.Component{
         if(this.state.download){
             Toast.loading("Generating", 0)
         }
-        request("/storage/createZip", {
+        request("/convert/createZip", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

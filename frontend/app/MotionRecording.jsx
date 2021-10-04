@@ -37,7 +37,7 @@ class MotionRecording extends React.Component{
 
     listProcesses = () => {
         this.setState({ processList: [], loading: true }, () => {
-            request("/storage/listProcess", {
+            request("/convert/listProcess", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ class MotionRecording extends React.Component{
     }
 
     cancelProcess = (id, type) => {
-        request("/storage/cancelProcess", {
+        request("/convert/cancelProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ class MotionRecording extends React.Component{
     }
 
     deleteProcess = (id, type) => {
-        request("/storage/deleteProcess", {
+        request("/convert/deleteProcess", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

@@ -63,7 +63,7 @@ class SummaryScrubber extends React.Component{
             list: [],
             loading: true
         }, () => {
-            request("/storage/listFramesVideo", {
+            request("/convert/listFramesVideo", {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',

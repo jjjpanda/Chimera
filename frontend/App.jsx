@@ -11,6 +11,8 @@ import Main from "./app/Main.jsx"
 import './css/style.less'
 import Cookies from 'js-cookie';
 
+import { request } from './js/request.js'
+
 const timeout = 500
 
 import * as FastClick from 'fastclick'
@@ -33,7 +35,7 @@ class App extends React.Component{
     }
 
     attemptLogin = (password) => {
-        return fetch("/command/login", {
+        return request("/authorization/login", {
             method: "POST",
             headers: {
                 "Accept": 'application/json',
@@ -41,24 +43,28 @@ class App extends React.Component{
             },
             credentials: 'include',
             body: JSON.stringify({password})
-        }).then(res => {
-            return res.json()
-        }, (err)=> {
-            return {error: true}
+        }, (prom) => {
+            return prom.then(res => {
+                return res.json()
+            }, (err)=> {
+                return {error: true}
+            }) 
         })
     }
 
     attemptVerification = () => {
-        return fetch("/command/verify", {
+        return request("/authorization/verify", {
             method: "POST",
             headers: {
                 "Accept": 'application/json',
-                "Content-Type": 'application/json'
+                "Content-Type": 'application/json',
             },
-        }).then(res => {
-            return res.json()
-        }, (err)=> {
-            return {error: true}
+        }, (prom) => {
+            return prom.then(res => {
+                return res.json()
+            }, (err)=> {
+                return {error: true}
+            }) 
         })
     }
 
