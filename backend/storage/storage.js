@@ -30,7 +30,7 @@ app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
 module.exports = () => {
     
     app.listen(process.env.storagePORT, () => {
-        console.log(`📂 Storage On ▶ ${process.env.storagePORT}`)
+        console.log(`📂 Storage On ▶ PORT ${process.env.storagePORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
         console.log(`\t▶ Motion Routes:\t /motion`)
         console.log(`\t▶ Live Stream Routes:\t /livestream`)

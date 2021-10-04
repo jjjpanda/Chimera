@@ -4,7 +4,7 @@ const {
 }              = require('./lib/auth.js')
 
 register(() => {
-    console.log("Starting Servers")
+    console.log("--- Starting Servers ---")
     if(process.env.storage == "on"){
         require('./storage/storage.js')()
     }

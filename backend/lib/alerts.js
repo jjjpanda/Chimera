@@ -11,9 +11,9 @@ module.exports = {
             }),
         }, (error, response, body) => {
             if (!error) {
-                console.log('Alert Sent')
+                console.log('Video alert sent')
             } else {
-                console.log("Error sending alert: ", error)
+                console.log("Error sending video alert: ", error)
             }
         });
     },
@@ -28,9 +28,9 @@ module.exports = {
             }),
         }, (error, response, body) => {
             if (!error) {
-                console.log('Alert Sent')
+                console.log('Zip alert sent')
             } else {
-                console.log("Error sending alert: ", error)
+                console.log("Error sending zip alert: ", error)
             }
         });
     },

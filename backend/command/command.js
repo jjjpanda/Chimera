@@ -45,7 +45,7 @@ app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
 module.exports = () => {
 
     app.listen(process.env.commandPORT, () => {
-        console.log(`🎮 Command On ▶ ${process.env.commandPORT}`)
+        console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
         console.log(`\t▶ Resource Routes:\t /res`)
         console.log(`\t▶ Web App Launched`)
