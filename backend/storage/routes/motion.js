@@ -4,7 +4,7 @@ const {exec} = require('child_process');
 
 const app = express.Router();
 
-console.log("\t\t▶ 🚶‍♂️ Starting Motion Process")
+console.log("\t▶ 🔍 Starting Motion Process")
 exec(`motion -c ${process.env.motionConfPath}`)
 
 app.post("/status", (req, res) => {
