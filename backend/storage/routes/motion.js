@@ -1,11 +1,7 @@
 require('dotenv').config()
 var express    = require('express')
-const {exec} = require('child_process');
 
 const app = express.Router();
-
-console.log("\t▶ Starting Motion Process")
-exec(`motion -c ${process.env.motionConfPath}`)
 
 app.post("/status", (req, res) => {
     exec(`ps -e | grep motion`, (err, stdout, stderr) => {

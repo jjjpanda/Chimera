@@ -22,8 +22,8 @@ app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
         }
     }), express.static(path.join(process.env.filePath, 'shared')), serveIndex(path.join(process.env.filePath, 'shared'), {
         icons: true,
-        stylesheet: path.resolve(__dirname, '../templates/fileStyle.css'),
-        template: path.resolve(__dirname, '../templates/fileTemplate.html')
+        stylesheet: path.resolve(__dirname, './routes/lib/templates/fileStyle.css'),
+        template: path.resolve(__dirname, './routes/lib/templates/fileTemplate.html')
     })
 )
 

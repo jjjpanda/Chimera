@@ -43,7 +43,7 @@ var {
     numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('../../command/commands.js')
+}              = require('./commands.js')
 
 app.post('/pathSize', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.filePath}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
 app.post('/pathFileCount', validateBody, validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.filePath}`, "FILE COUNT", undefined, true), formattedCommandResponse)
