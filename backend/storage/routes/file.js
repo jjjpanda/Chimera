@@ -16,7 +16,7 @@ const app = express.Router();
     numberSwitch,
     formattedCommandResponse,
     pathCommandAppend
-}              = require('./commands.js')
+}              = require('./lib/commands.js')
 
 app.post('/pathSize', validateBody, validatePath, pathCommandAppend, oneCommand(`sudo du -sh ${process.env.filePath}`, "SIZE CHECK", undefined, true), formattedCommandResponse)
 app.post('/pathFileCount', validateBody, validatePath, pathCommandAppend, afterPath(' | wc -l'), oneCommand(`ls ${process.env.filePath}`, "FILE COUNT", undefined, true), formattedCommandResponse)

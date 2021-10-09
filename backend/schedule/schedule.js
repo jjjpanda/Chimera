@@ -6,7 +6,7 @@ var app = express()
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.use('/task', require('./routes/schedule.js'))
+app.use('/task', require('./routes/task.js'))
 
 module.exports = () => {
 
