@@ -16,9 +16,7 @@ module.exports = {
         console.log(`\t▶ Starting Live Stream Processes`)
         let cameraIndex = 1
         while(`camera${cameraIndex}` in process.env){
-            createLiveStreamDirectories(cameraIndex, () => {
-                startLiveStream(cameraIndex)
-            })
+            createLiveStreamDirectories(cameraIndex, startLiveStream)
             cameraIndex++
         }
     },
@@ -40,7 +38,7 @@ const createLiveStreamDirectories = (cameraNumber, callback) => {
         name: `directory_creation_cam_${cameraNumber}`
     }, (err, apps) => {
         console.log(`\tSetup Directory: Cam ${cameraNumber} ◀`)
-        callback()
+        callback(cameraNumber)
     })
 }
 
