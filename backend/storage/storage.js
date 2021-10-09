@@ -12,6 +12,8 @@ app.use(express.json());
 
 app.use('/convert', require('./routes/convert.js'))
 
+app.use('/file', require('./routes/file.js'))
+
 app.use('/motion', require('./routes/motion.js'))
 app.use('/livestream', require('./routes/livestream.js'))
     

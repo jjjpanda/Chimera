@@ -6,9 +6,7 @@ var app = express()
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-if(process.env.schedule == "on"){
-    app.use('/schedule', require('./routes/schedule.js'))
-}
+app.use('/task', require('./routes/schedule.js'))
 
 module.exports = () => {
 
