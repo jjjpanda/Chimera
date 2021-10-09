@@ -1,5 +1,4 @@
 require('dotenv').config()
-const {exec} = require('child_process');
 const pm2 = require('pm2')
 
 module.exports = {
@@ -24,9 +23,13 @@ module.exports = {
         }
     },
 
-    processList: (callback) => {
-        pm2.list((err, list) => {
-            callback(err ? [] : list)
+    processListMiddleware: (req, res) => {
+        const {processName} = req
+        processList((list) => {
+            const processRunning = list.find((p) => {
+                return p.name && p.name == processName
+            }).length > 0
+            res.send({processRunning})
         })
     }
 }
@@ -48,5 +51,11 @@ const startLiveStream = (cameraNumber) => {
         name: `live_stream_cam_${cameraNumber}`
     }, (err, apps) => {
         console.log(`\tStarted Live Stream: Cam ${cameraNumber} ◀`)
+    })
+}
+
+const processList = (callback) => {
+    pm2.list((err, list) => {
+        callback(err ? [] : list)
     })
 }
