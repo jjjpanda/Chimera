@@ -3,14 +3,13 @@
   "version": "1.0.0",
   "description": "schedule server",
   "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "dependencies": {
+    "lib": "file:../lib",
+    "node-cron": "^2.0.3"
   },
   "peerDependencies": {
     "express": "^4.17.1",
-    "lib": "file:../lib",
     "moment": "^2.29.1",
-    "node-cron": "^2.0.3",
     "request": "^2.88.2"
   }
 }

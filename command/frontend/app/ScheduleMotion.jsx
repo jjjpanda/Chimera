@@ -45,7 +45,7 @@ class ScheduleMotion extends React.Component{
     }
 
     updateScheduling = () => {
-        request("/schedule/check", {
+        request("/task/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -70,7 +70,7 @@ class ScheduleMotion extends React.Component{
                 })
             })
         })
-        request("/schedule/check", {
+        request("/task/check", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ class ScheduleMotion extends React.Component{
     }
 
     stopTask = () => {
-        request("/schedule/destroy", {
+        request("/task/destroy", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -121,7 +121,7 @@ class ScheduleMotion extends React.Component{
             })
             this.updateScheduling()
         })
-        request("/schedule/destroy", {
+        request("/task/destroy", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ class ScheduleMotion extends React.Component{
 
     startTask = () => {
         console.log(cronString(this.state.weekdays, this.state.startTime), cronString(this.state.weekdays, this.state.endTime))
-        request("/schedule/schedule", {
+        request("/task/schedule", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ class ScheduleMotion extends React.Component{
             })
             this.updateScheduling()
         })
-        request("/schedule/schedule", {
+        request("/task/schedule", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',

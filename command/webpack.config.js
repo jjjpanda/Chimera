@@ -5,7 +5,7 @@ const Dotenv = require('dotenv-webpack');
 module.exports = {
     mode: 'development',
     entry: {
-      app: './frontend/App.jsx',
+      app: path.resolve(__dirname, './frontend/App.jsx'),
     },
     output: {
       filename: '[name].js',
@@ -66,11 +66,15 @@ module.exports = {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: 'frontend/reactTemplate.html',
+        template: path.resolve(__dirname, 'frontend/reactTemplate.html'),
         chunks : ['app'],
         filename: 'app.html'
       }),
-      new Dotenv()
+      new Dotenv({
+        path: path.resolve(__dirname, '../.env'),
+        safe: path.resolve(__dirname, '../env.example'),
+        allowEmptyValues: true
+      })
     ],
     devtool: 'cheap-module-source-map', 
 }

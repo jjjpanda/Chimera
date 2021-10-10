@@ -9,5 +9,5 @@ auth.register(() => {
     require('command')()
     
 }, (err) => {
-    console.log(err, "😭 Server NOT started... 🥺")
+    console.log(err, "Server NOT started... 😭")
 })

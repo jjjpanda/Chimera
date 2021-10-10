@@ -11,6 +11,9 @@ module.exports = {
                 script: `motion -c ${process.env.motionConfPath}`,
                 name: "motion"
             }, (err, apps) => {
+                if(err){
+                    console.log("\tCouldn't Start Motion Process ⚠")
+                }
                 processes.push({name: 'motion', log: "Motion Off"})
             })
         })
@@ -50,10 +53,15 @@ const startLiveStream = (cameraNumber) => {
     const cameraURL = process.env[`camera${cameraNumber}`]
     pm2.stop('`live_stream_cam_${cameraNumber}`', () => {
         pm2.start({
-            script: `ffmpeg -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.filePath}shared/captures/live/${cameraNumber}/video.m3u8`,
+            script: `ffmpeg -loglevel quiet -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.filePath}shared/captures/live/${cameraNumber}/video.m3u8`,
             name: `live_stream_cam_${cameraNumber}`
         }, (err, apps) => {
-            console.log(`\tStarted Live Stream: Cam ${cameraNumber} ◀`)
+            if(err){
+                console.log(`\tCouldn't Start Live Stream: Cam ${cameraNumber} ⚠`)
+            }            
+            else{
+                console.log(`\tStarted Live Stream: Cam ${cameraNumber} ◀`)
+            }
             processes.push({name: `live_stream_cam_${cameraNumber}`, log: `Live Stream ${cameraNumber} Off`})
         })
     })
