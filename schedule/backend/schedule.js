@@ -9,13 +9,19 @@ app.use(express.json());
 
 app.use('/task', require('./routes/task.js'))
 
-module.exports = () => {
-
-    handle(app, process.env.schedulePORT, () => {
+module.exports = (on) => {
+    const onLog = () => {
         console.log(`⌚ Schedule On ▶ PORT ${process.env.schedulePORT}`)
         console.log(`\t▶ Scheduler Routes:\t /schedule`)
-    }, () => {
+    }
+    const offLog = () => {
         console.log(`⌚ Schedule Off ❌`)
-    })
+    }
 
+    if(on){
+        handle(app, process.env.schedulePORT, onLog, offLog)
+    }
+    else{
+        offLog()
+    }
 }

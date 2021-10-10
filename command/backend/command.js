@@ -44,15 +44,21 @@ app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
     index: "app.html"
 }))
 
-module.exports = () => {
-
-    handle(app, process.env.commandPORT, () => {
+module.exports = (on) => {
+    const onLog = () => {
         console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
         console.log(`\t▶ Resource Routes:\t /res`)
         console.log(`\t▶ Web App Launched`)
-    }, () => {
+    }
+    const offLog = () => {
         console.log(`🎮 Command Off ❌`)
-    })
+    }
 
+    if(on){
+        handle(app, process.env.commandPORT, onLog, offLog)
+    }
+    else{
+        offLog()
+    }
 }

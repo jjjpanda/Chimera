@@ -1,4 +1,3 @@
-require('dotenv').config()
 var path       = require('path')
 var express    = require('express')
 var serveIndex = require('serve-index')
@@ -30,16 +29,22 @@ app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
     })
 )
 
-module.exports = () => {
-    
-    handle(app, process.env.storagePORT, () => {
+module.exports = (on) => {
+    const onLog = () => {
         console.log(`📂 Storage On ▶ PORT ${process.env.storagePORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
         console.log(`\t▶ Motion Routes:\t /motion`)
         console.log(`\t▶ Live Stream Routes:\t /livestream`)
         console.log(`\t▶ Shared File Routes:\t /shared`)
-    }, () => {
+    }
+    const offLog = () => {
         console.log(`📂 Storage Off ❌`)
-    })
+    }
 
+    if(on){
+        handle(app, process.env.storagePORT, onLog, offLog)
+    }
+    else{
+        offLog()
+    }
 }
