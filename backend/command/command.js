@@ -1,6 +1,7 @@
 require('dotenv').config()
 var path       = require('path')
 var express    = require('express')
+const handle = require('../lib/handle.js')
 
 var app = express()
 
@@ -45,11 +46,13 @@ app.use('/', express.static(path.resolve(__dirname, "../../dist/"), {
 
 module.exports = () => {
 
-    app.listen(process.env.commandPORT, () => {
+    handle(app, process.env.commandPORT, () => {
         console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
         console.log(`\t▶ Resource Routes:\t /res`)
         console.log(`\t▶ Web App Launched`)
+    }, () => {
+        console.log(`🎮 Command Off ❌`)
     })
 
 }

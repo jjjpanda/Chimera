@@ -4,6 +4,7 @@ var express    = require('express')
 var serveIndex = require('serve-index')
 var serveStatic        = require('serve-static')
 var contentDisposition = require('content-disposition')
+const handle = require('../lib/handle.js')
 
 var app = express()
 
@@ -31,12 +32,14 @@ app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
 
 module.exports = () => {
     
-    app.listen(process.env.storagePORT, () => {
+    handle(app, process.env.storagePORT, () => {
         console.log(`📂 Storage On ▶ PORT ${process.env.storagePORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
         console.log(`\t▶ Motion Routes:\t /motion`)
         console.log(`\t▶ Live Stream Routes:\t /livestream`)
         console.log(`\t▶ Shared File Routes:\t /shared`)
+    }, () => {
+        console.log(`📂 Storage Off ❌`)
     })
 
 }
