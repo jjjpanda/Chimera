@@ -4,7 +4,7 @@
   "description": "playback",
   "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
+    "start": "npx pm2 start backend/server.js",
     "startCont": "nodemon backend/server.js",
     "build": "npx webpack --progress",
     "buildNoProgress": "npx webpack --display=none",
