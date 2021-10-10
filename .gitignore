@@ -1,7 +1,6 @@
 node_modules
 *.env
-img
 notes.txt
-dist
-pass.txt
-.pass.txt
+command/dist
+.pass
+shared

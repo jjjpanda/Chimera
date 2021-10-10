@@ -3,7 +3,8 @@ var express    = require('express')
 var serveIndex = require('serve-index')
 var serveStatic        = require('serve-static')
 var contentDisposition = require('content-disposition')
-const handle = require('../lib/handle.js')
+const { handleServerStart } = require('lib')
+const { startMotion, startAllLiveStreams } = require('./routes/lib/subprocess')
 
 var app = express()
 
@@ -42,7 +43,9 @@ module.exports = (on) => {
     }
 
     if(on){
-        handle(app, process.env.storagePORT, onLog, offLog)
+        startMotion();
+        startAllLiveStreams();
+        handleServerStart(app, process.env.storagePORT, onLog, offLog)
     }
     else{
         offLog()

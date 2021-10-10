@@ -1,8 +1,5 @@
-require('dotenv').config()
 var express    = require('express')
-var { 
-    validateBody 
-}              = require('../../lib/validators.js')
+var {validateBody} = require('lib')
 var {
     validateRequest,
     validateID,

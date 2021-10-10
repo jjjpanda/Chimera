@@ -1,10 +1,7 @@
-require('dotenv').config()
 var express    = require('express')
-const { startAllLiveStreams, processListMiddleware } = require('./lib/subprocess.js')
+const { processListMiddleware } = require('./lib/subprocess.js')
 
 const app = express.Router();
-
-startAllLiveStreams();
 
 app.get("/status", (req, res, next) => {
     const {camera} = req.query;

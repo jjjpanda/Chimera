@@ -1,11 +1,35 @@
 const cron     = require('node-cron');
-const { validateRequestURL } = require('../../../lib/validators.js');
+const validateRequestURL = (url) => {
+    switch (url){
+        case "/createVideo":
+        case "/listFramesVideo":
+        case "/createZip":
+        case "/statusProcess":
+        case "/cancelProcess":
+        case "/listProcess":
+        case "/deleteProcess":
+        case "/motionStart":
+        case "/motionStatus":
+        case "/motionStop":
+        case "/serverUpdate":
+        case "/serverStatus":
+        case "/serverInstall":
+        case "/serverStop":
+        case "/pathSize":
+        case "/pathFileCount":
+        case "/pathDelete":
+        case "/pathClean":
+        case "/scheduleTask":
+        case "/destroyTask":
+            return true
+        default: 
+            return false
+    }
+}
 const request  = require('request');
 const moment   = require('moment')
 
-const {
-    sendScheduleAlert,
-}              = require('../../../lib/alerts.js');
+const { webhookAlert } = require('lib')
 
 module.exports = {
     validateTaskRequest: (req, res, next) => {
@@ -55,7 +79,7 @@ module.exports = {
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
             console.log( "CRON: ", url )
-            sendScheduleAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
+            webhookAlert(process.env.scheduleURL, `Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
                 url: `http://${process.env.commandHost}:${process.env.PORT}${url}`,

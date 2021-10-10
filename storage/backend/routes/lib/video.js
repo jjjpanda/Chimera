@@ -1,4 +1,3 @@
-require('dotenv').config()
 var ffmpeg     = require('fluent-ffmpeg');
 const slash    = require('./slash.js')
 var fs         = require('fs')
@@ -10,9 +9,7 @@ const {
     filterList,
     fileName,
 }              = require('./converter.js')
-const {
-    sendConvertAlert,
-}              = require('../../../lib/alerts.js');
+const {webhookAlert} = require('lib')
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
@@ -58,7 +55,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
     if(frames == 0){
         if(save){
-            sendConvertAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+            webhookAlert(process.env.alertURL, `Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
         }
         else{
             res.send(JSON.stringify({
@@ -70,7 +67,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
     else {
         if(save){
             console.log("SENDING START ALERT")
-            sendConvertAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+            webhookAlert(process.env.alertURL, `Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
         }
         else{
             res.attachment(fileName(camera, start, end, rand, 'mp4'))
@@ -85,7 +82,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
             .on('error', function(err) {
                 console.log('An error occurred: ' + err.message);
                 if(save){
-                    sendConvertAlert(`Your video (${rand}) could not be completed.`)
+                    webhookAlert(process.env.alertURL, `Your video (${rand}) could not be completed.`)
                 }    
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
@@ -96,7 +93,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 console.log('Finished processing');
                 if(save){
                     console.log("SENDING END ALERT")
-                    sendConvertAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    webhookAlert(process.env.alertURL, `Your video (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })

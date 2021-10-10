@@ -1,9 +1,7 @@
 require('dotenv').config()
-const {
-    register
-}              = require('./lib/auth.js')
+const {auth} = require('lib')
 
-register(() => {
+auth.register(() => {
     console.log("--- Starting Servers ---")
     
     require('storage')()

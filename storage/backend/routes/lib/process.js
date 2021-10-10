@@ -1,4 +1,3 @@
-require('dotenv').config()
 var fs         = require('fs')
 var path       = require('path')
 const {
@@ -6,9 +5,7 @@ const {
     parseFileName,
     findFile
 }              = require('./converter.js');
-const {
-    sendConvertAlert,
-}              = require('../../../lib/alerts.js');
+const {webhookAlert} = require('lib')
 
 const imgDir = path.join(process.env.filePath, 'shared/captures')
 
@@ -36,12 +33,12 @@ module.exports = {
             if(type == "mp4"){
                 req.app.locals[id].kill()
                 delete req.app.locals[id]
-                sendConvertAlert(`Your video (${id}) was cancelled.`)
+                webhookAlert(process.env.alertURL, `Your video (${id}) was cancelled.`)
             }
             else if(type == "zip"){
                 req.app.locals[id].abort()
                 delete req.app.locals[id]
-                sendConvertAlert(`Your archive (${id}) was cancelled.`)
+                webhookAlert(process.env.alertURL, `Your archive (${id}) was cancelled.`)
             }
             
         }

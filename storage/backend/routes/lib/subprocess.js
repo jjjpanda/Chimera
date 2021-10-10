@@ -1,4 +1,3 @@
-require('dotenv').config()
 const pm2 = require('pm2')
 const process = require('process')
 

@@ -1,17 +1,10 @@
-require('dotenv').config()
 var express    = require('express')
-var { 
-    validateBody 
-}              = require('../../lib/validators.js')
-const {
-    auth,
-    login
-}              = require('../../lib/auth.js')
+var { validateBody, auth } = require('lib')
 
 const app = express.Router();
 
-app.post('/login', validateBody, login)
-app.post('/verify', auth, (req, res) => {
+app.post('/login', validateBody, auth.login)
+app.post('/verify', auth.auth, (req, res) => {
     res.json({error: false })
 })
 

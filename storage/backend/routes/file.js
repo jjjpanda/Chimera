@@ -1,15 +1,12 @@
-require('dotenv').config()
 var express    = require('express')
-var { 
-    validateBody 
-}              = require('../../lib/validators.js')
+var {validateBody} = require('lib')
 
 const app = express.Router();
 
 /**
  * NEEDS TO BE MOVED
  */
- var { 
+var { 
     oneCommand,
     afterPath,
     validatePath,

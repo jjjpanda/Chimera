@@ -1,6 +1,5 @@
-require('dotenv').config()
 var express    = require('express')
-const handle = require('../lib/handle.js')
+const {handleServerStart} = require('lib')
 
 var app = express()
 
@@ -19,7 +18,7 @@ module.exports = (on) => {
     }
 
     if(on){
-        handle(app, process.env.schedulePORT, onLog, offLog)
+        handleServerStart(app, process.env.schedulePORT, onLog, offLog)
     }
     else{
         offLog()
