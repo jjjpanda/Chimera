@@ -38,7 +38,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
     if(frames == 0){
         if(save){
-            webhookAlert(process.env.alertURL,  `Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+            webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
         }
         else{
             res.send(JSON.stringify({
@@ -52,18 +52,18 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             var output = fs.createWriteStream(`${imgDir}/${fileName(camera, start, end, rand, 'zip')}`)
         
             console.log("SENDING START ALERT")
-            webhookAlert(process.env.alertURL,  `ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+            webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                webhookAlert(process.env.alertURL,  `Your zip archive (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });    
 
             archive.on('error', function(err) {
                 console.log('An error occurred: ' + err.message);
                 if(save){
-                    webhookAlert(process.env.alertURL,  `Your zip (${rand}) could not be completed.`)
+                    webhookAlert(`Your zip (${rand}) could not be completed.`)
                 }    
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });

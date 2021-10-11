@@ -1,7 +1,11 @@
 var express    = require('express')
-const { processListMiddleware } = require('./lib/subprocess.js')
+const { startAllLiveStreams, processListMiddleware } = require('./lib/subprocess.js')
 
 const app = express.Router();
+
+if(process.env.storage == "on"){
+    startAllLiveStreams();
+}
 
 app.get("/status", (req, res, next) => {
     const {camera} = req.query;

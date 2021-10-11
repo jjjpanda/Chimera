@@ -79,7 +79,7 @@ module.exports = {
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
             console.log( "CRON: ", url )
-            webhookAlert(process.env.scheduleURL, `Daemon Process: ${url} started at ${moment().format("LLL")}`)
+            webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
                 url: `http://${process.env.commandHost}:${process.env.PORT}${url}`,

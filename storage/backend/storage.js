@@ -4,7 +4,6 @@ var serveIndex = require('serve-index')
 var serveStatic        = require('serve-static')
 var contentDisposition = require('content-disposition')
 const { handleServerStart } = require('lib')
-const { startMotion, startAllLiveStreams } = require('./routes/lib/subprocess')
 
 var app = express()
 
@@ -42,10 +41,5 @@ module.exports = (isOn) => {
         console.log(`📂 Storage Off ❌`)
     }
 
-    if(isOn){
-        startMotion();
-        startAllLiveStreams();
-    }
     handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog, process.env.storageProxy == "on" ? process.env.commandHost : undefined)
-
 }

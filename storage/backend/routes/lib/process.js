@@ -33,12 +33,12 @@ module.exports = {
             if(type == "mp4"){
                 req.app.locals[id].kill()
                 delete req.app.locals[id]
-                webhookAlert(process.env.alertURL, `Your video (${id}) was cancelled.`)
+                webhookAlert(`Your video (${id}) was cancelled.`)
             }
             else if(type == "zip"){
                 req.app.locals[id].abort()
                 delete req.app.locals[id]
-                webhookAlert(process.env.alertURL, `Your archive (${id}) was cancelled.`)
+                webhookAlert(`Your archive (${id}) was cancelled.`)
             }
             
         }
