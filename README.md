@@ -1,3 +1,3 @@
-# Chimera
+# Chimera 
 
-<img src="command/frontend/res/logo.png" alt="logo" width="200"/>
+<img src="command/frontend/res/logo.png" alt="logo" width="100"/>
