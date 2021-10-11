@@ -4,8 +4,6 @@ const { handleServerStart, auth } = require('lib')
 
 var app = express()
 
-const {auth} = require('lib')
-
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')

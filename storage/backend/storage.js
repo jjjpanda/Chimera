@@ -46,6 +46,6 @@ module.exports = (isOn) => {
         startMotion();
         startAllLiveStreams();
     }
-    handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog)
+    handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog, process.env.storageProxy == "on" ? process.env.commandHost : undefined)
 
 }

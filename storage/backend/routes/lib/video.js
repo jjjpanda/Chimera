@@ -21,7 +21,7 @@ const createFrameList = (camera, start, end, limit) => {
 
     const limitIteration = Math.ceil(filteredList.length/limit)
 
-    console.log(filteredList.length, limitIteration)
+    //console.log(filteredList.length, limitIteration)
 
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
