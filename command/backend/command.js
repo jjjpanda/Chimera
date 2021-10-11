@@ -1,10 +1,8 @@
 var path       = require('path')
 var express    = require('express')
-const {handleServerStart} = require('lib')
+const { handleServerStart, auth } = require('lib')
 
 var app = express()
-
-const {auth} = require('lib')
 
 var {
     createProxyMiddleware
@@ -43,7 +41,7 @@ app.use('/', express.static(path.resolve(__dirname, "../dist/"), {
     index: "app.html"
 }))
 
-module.exports = (on) => {
+module.exports = (isOn) => {
     const onLog = () => {
         console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
@@ -53,11 +51,11 @@ module.exports = (on) => {
     const offLog = () => {
         console.log(`🎮 Command Off ❌`)
     }
-
-    if(on){
-        handleServerStart(app, process.env.commandPORT, onLog, offLog)
-    }
-    else{
+    
+    auth.register(() => {
+        handleServerStart(app, process.env.commandPORT, isOn, onLog, offLog)
+    }, (err) => {
+        console.log(err)
         offLog()
-    }
+    })
 }

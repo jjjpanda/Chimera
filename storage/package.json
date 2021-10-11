@@ -1,19 +1,14 @@
 {
   "name": "storage",
-  "version": "1.0.0",
-  "description": "storage server",
   "main": "server.js",
   "dependencies": {
     "archiver": "^4.0.2",
     "content-disposition": "^0.5.3",
-    
-    "fluent-ffmpeg": "^2.1.2", 
-    
+    "fluent-ffmpeg": "^2.1.2",
     "lib": "file:../lib",
     "serve-index": "^1.9.1",
     "serve-static": "^1.14.1",
-    "shortid": "^2.2.16",
-    "simple-ssh": "^1.0.0"
+    "shortid": "^2.2.16"
   },
   "peerDependencies": {
     "express": "^4.17.1",

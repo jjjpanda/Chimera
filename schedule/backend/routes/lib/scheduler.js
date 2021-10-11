@@ -79,10 +79,10 @@ module.exports = {
         req.app.locals[url].cronString = cronString
         req.app.locals[url].task = cron.schedule(cronString, () => {
             console.log( "CRON: ", url )
-            webhookAlert(process.env.scheduleURL, `Daemon Process: ${url} started at ${moment().format("LLL")}`)
+            webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
-                url: `http://${process.env.commandHost}:${process.env.PORT}${url}`,
+                url: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}${url}`,
                 body
             }, (err, response, body) => {
                 if(!err && response.statusCode === 200){

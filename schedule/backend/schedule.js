@@ -8,7 +8,7 @@ app.use(express.json());
 
 app.use('/task', require('./routes/task.js'))
 
-module.exports = (on) => {
+module.exports = (isOn) => {
     const onLog = () => {
         console.log(`⌚ Schedule On ▶ PORT ${process.env.schedulePORT}`)
         console.log(`\t▶ Scheduler Routes:\t /schedule`)
@@ -17,10 +17,5 @@ module.exports = (on) => {
         console.log(`⌚ Schedule Off ❌`)
     }
 
-    if(on){
-        handleServerStart(app, process.env.schedulePORT, onLog, offLog)
-    }
-    else{
-        offLog()
-    }
+    handleServerStart(app, process.env.schedulePORT, isOn, onLog, offLog, process.env.scheduleProxy == "on" ? process.env.commandHost : undefined)
 }
