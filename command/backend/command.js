@@ -42,19 +42,20 @@ app.use('/', express.static(path.resolve(__dirname, "../dist/"), {
 }))
 
 module.exports = (isOn) => {
+    const onLog = () => {
+        console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
+        console.log(`\t▶ Authorization Routes:\t /authorization`)
+        console.log(`\t▶ Resource Routes:\t /res`)
+        console.log(`\t▶ Web App Launched`)
+    }
+    const offLog = () => {
+        console.log(`🎮 Command Off ❌`)
+    }
+    
     auth.register(() => {
-        const onLog = () => {
-            console.log(`🎮 Command On ▶ PORT ${process.env.commandPORT}`)
-            console.log(`\t▶ Authorization Routes:\t /authorization`)
-            console.log(`\t▶ Resource Routes:\t /res`)
-            console.log(`\t▶ Web App Launched`)
-        }
-        const offLog = () => {
-            console.log(`🎮 Command Off ❌`)
-        }
-
         handleServerStart(app, process.env.commandPORT, isOn, onLog, offLog)
     }, (err) => {
-        console.log(err, "Server NOT started... 😭")
+        console.log(err)
+        offLog()
     })
 }
