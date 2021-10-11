@@ -77,7 +77,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{
