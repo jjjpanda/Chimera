@@ -15,12 +15,16 @@ module.exports = {
     },
     
     filterList: (camera, start, end, skipEvery=1) => {
-        let list = fs.readdirSync(path.resolve(imgDir, camera)).filter( file => file.includes(".jpg") && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
-            `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
-        return skipEvery == 1 ? list : list.filter( (file, index) => {
-            return (index % skipEvery === 0 )
-        })
+        try {
+            let list = fs.readdirSync(path.resolve(imgDir, camera)).filter( file => file.includes(".jpg") && 
+                `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
+                `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
+            return skipEvery == 1 ? list : list.filter( (file, index) => {
+                return (index % skipEvery === 0 )
+            })
+        } catch(e) {
+            return []
+        }
     },
 
     filterType: (type) => {
