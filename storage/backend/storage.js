@@ -30,7 +30,7 @@ app.use('/shared', serveStatic(path.join(process.env.filePath, 'shared'), {
     })
 )
 
-module.exports = (on) => {
+module.exports = (isOn) => {
     const onLog = () => {
         console.log(`📂 Storage On ▶ PORT ${process.env.storagePORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
@@ -42,12 +42,10 @@ module.exports = (on) => {
         console.log(`📂 Storage Off ❌`)
     }
 
-    if(on){
+    if(isOn){
         startMotion();
         startAllLiveStreams();
-        handleServerStart(app, process.env.storagePORT, onLog, offLog)
     }
-    else{
-        offLog()
-    }
+    handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog)
+
 }
