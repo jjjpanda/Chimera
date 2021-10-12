@@ -1,5 +1,23 @@
 # Storage <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
+The storage server is the heartbeat of Chimera. It handles 5 main sections regarding file storage:
+1. Motion detection to save images from cameras ◀
+2. Live Stream transcoding to create videos ◀
+3. Convert and generate videos and archives for download ◀
+4. Handling file deletion, metrics, and stats ◀
+5. Serving all of the files mentioned above ◀
+
+## ▶ /motion
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/status| | | |
+## ▶ /livestream
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/status| | | |
+|POST|/list| | | |
 ## ▶ /convert
 
 |Type|Route|Description|Parameters|Returns|
@@ -43,17 +61,6 @@
 |POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
 |POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
 
-## ▶ /motion
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/status| | | |
-## ▶ /livestream
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/status| | | |
-|POST|/list| | | |
 ## ▶ /shared
 
 |Type|Route|Description|Parameters|Returns|

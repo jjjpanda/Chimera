@@ -1,5 +1,7 @@
 # Schedule <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
+The scheduler is pretty self explanatory. You need a task scheduled? Done.
+
 ## ▶ /task
 
 |Type|Route|Description|Parameters|Returns|
