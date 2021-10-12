@@ -1,17 +1,6 @@
 # Storage <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/motionStart|Start motion recording|None|`{ sent: Boolean }`|
-|POST|/motionStatus|Get motion status|None|`{ running: Boolean, duration: String }`|
-|POST|/motionStop|Stop motion recording|None|`{ sent: Boolean }`|
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
-|POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
-|POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
-|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
+## ▶ /convert
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
@@ -22,9 +11,6 @@
 |POST|/cancelProcess|Cancel running video or zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
 |POST|/listProcess|Get list of all processes|None|`{ list: [ ProcessObj ] }`|
 |POST|/deleteProcess|Delete video or zip by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
-|GET|/shared|Link to file storage|None|html|
-|GET|/shared/example.mp4|Downloads the specified file|None|mp4|
-
 
 ### ProcessObj
 
@@ -47,3 +33,30 @@
     running: Boolean
 }
 ```
+
+## ▶ /file
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
+|POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
+|POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
+|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
+
+## ▶ /motion
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/status| | | |
+## ▶ /livestream
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/status| | | |
+|POST|/list| | | |
+## ▶ /shared
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|GET|/directory|Opens 'directory' as web page|None|html|
+|GET|/directory/example.mp4|Downloads the specified file|None|mp4|

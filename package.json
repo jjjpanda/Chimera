@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "description": "playback",
   "main": "server.js",
   "scripts": {
