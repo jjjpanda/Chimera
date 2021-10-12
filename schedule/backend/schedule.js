@@ -17,5 +17,5 @@ module.exports = (isOn) => {
         console.log(`⌚ Schedule Off ❌`)
     }
 
-    handleServerStart(app, process.env.schedulePORT, isOn, onLog, offLog, process.env.scheduleProxy == "on" ? process.env.commandHost : undefined)
+    handleServerStart(app, process.env.schedulePORT, isOn, onLog, offLog)
 }

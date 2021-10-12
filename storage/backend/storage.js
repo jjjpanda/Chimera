@@ -41,5 +41,5 @@ module.exports = (isOn) => {
         console.log(`📂 Storage Off ❌`)
     }
 
-    handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog, process.env.storageProxy == "on" ? process.env.commandHost : undefined)
+    handleServerStart(app, process.env.storagePORT, isOn, onLog, offLog)
 }

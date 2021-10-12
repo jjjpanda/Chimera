@@ -28,7 +28,9 @@ if(process.env.scheduleProxy == "on"){
         return (pathname.match(scheduleRoutesRegex) && req.method === 'POST');
     }, {
         target: `http://${process.env.scheduleHost}:${process.env.schedulePORT}/`,
-        logLevel: "silent"
+        logLevel: "silent",
+        //headers: req.headers,
+        //auth: "" //user:password
     })])
 }
 
