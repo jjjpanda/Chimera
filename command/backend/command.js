@@ -1,29 +1,31 @@
 var path       = require('path')
 var express    = require('express')
 const { handleServerStart, auth } = require('lib')
-
-var app = express()
-
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
 
+var app = express()
+
+app.use(require('cookie-parser')())
+app.use(auth.auth)
+
 if(process.env.storageProxy == "on"){
     console.log("📂 Storage Proxied ◀")
     const convertRoutesRegex = /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/shared|\/livestream|\/motion/
-    app.use(convertRoutesRegex, [auth.auth, createProxyMiddleware((pathname, req) => {
+    app.use(convertRoutesRegex, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
         return (pathname.match(convertRoutesRegex) && req.method === 'POST') || pathname.match('/shared');
     }, {
         target: `http://${process.env.storageHost}:${process.env.storagePORT}/`,
         logLevel: "silent"
-    })])
+    }))
 }
 
 if(process.env.scheduleProxy == "on"){
     console.log("⌚ Scheduler Proxied ◀")
     const scheduleRoutesRegex = /\/task\/.*/
-    app.use(scheduleRoutesRegex, [auth.auth, createProxyMiddleware((pathname, req) => {
+    app.use(scheduleRoutesRegex, createProxyMiddleware((pathname, req) => {
         //console.log(pathname, req.method)
         return (pathname.match(scheduleRoutesRegex) && req.method === 'POST');
     }, {
@@ -31,7 +33,7 @@ if(process.env.scheduleProxy == "on"){
         logLevel: "silent",
         //headers: req.headers,
         //auth: "" //user:password
-    })])
+    }))
 }
 
 app.use(express.urlencoded({ extended: false }));

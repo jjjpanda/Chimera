@@ -3,6 +3,8 @@ const {handleServerStart} = require('lib')
 
 var app = express()
 
+app.use(require('cookie-parser')())
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
