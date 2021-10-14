@@ -2,47 +2,39 @@ const pm2 = require('pm2')
 const process = require('process')
 const mkdirp = require('mkdirp')
 
-let processes = []
-
 module.exports = {
     startMotion: () => {
-        mkdirp(`${process.env.storage_FILEPATH}shared/captures`).then(made => {
-            console.log("\t▶ Starting Motion Process")
-            pm2.stop("motion", () => {
-                pm2.start({
-                    script: `motion -c ${process.env.storage_MOTION_CONFPATH}`,
-                    name: "motion"
-                }, (err, apps) => {
-                    if(err){
-                        console.log("\tCouldn't Start Motion Process ⚠")
-                    }
-                    processes.push({name: 'motion', log: "Motion Off"})
-                })
-            })
-        })
-    },
-
-    processListMiddleware: (req, res) => {
-        const {processName} = req
-        processList((list) => {
-            const processRunning = list.find((p) => {
-                return p.name && p.name == processName
-            }).length > 0
-            res.send({processRunning})
-        })
+        console.log("\t▶ Starting Motion Process")
+        createMotionDirectory(safeStartMotionProcess)
     }
 }
 
-const processList = (callback) => {
-    pm2.list((err, list) => {
-        callback(err ? [] : list)
-    })
+const createMotionDirectory = (callback) => {
+    mkdirp(`${process.env.storage_FILEPATH}shared/captures`).then(callback)
 }
 
-process.on('SIGINT', () => {
-    processes.forEach((p) => {
-        pm2.stop(p.name, () => {
-            console.log(p.log)
-        })
-    })
-})
+const safeStartMotionProcess = () => {
+    stopMotion(startMotionProcess)
+}
+
+const startMotionProcess = () => {
+    pm2.start({
+        script: `motion -c ${process.env.storage_MOTION_CONFPATH}`,
+        name: "motion"
+    }, onMotionStart)
+}
+
+const onMotionStart = (err, apps) => {
+    if(err){
+        console.log("\tCouldn't Start Motion Process ⚠")
+    }
+    process.on('SIGINT', stopMotion)
+}
+
+const stopMotion = (callback=defaultStopMotionCallback) => {
+    pm2.stop("motion", callback)
+}
+
+const defaultStopMotionCallback = () => {
+    console.log("Motion Off")
+}

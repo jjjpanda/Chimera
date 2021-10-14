@@ -18,20 +18,20 @@ app.use('/', express.static(path.resolve(__dirname, "../dist/"), {
 }))
 
 module.exports = (isOn) => {
-    const onLog = () => {
+    const successCallback = () => {
         console.log(`🎮 Command On ▶ PORT ${process.env.command_PORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
         console.log(`\t▶ Resource Routes:\t /res`)
         console.log(`\t▶ Web App Launched`)
     }
-    const offLog = () => {
+    const failureCallback = () => {
         console.log(`🎮 Command Off ❌`)
     }
     
     auth.register(() => {
-        handleServerStart(app, process.env.command_PORT, isOn, onLog, offLog)
+        handleServerStart(app, process.env.command_PORT, isOn, successCallback, failureCallback)
     }, (err) => {
         console.log(err)
-        offLog()
+        failureCallback()
     })
 }

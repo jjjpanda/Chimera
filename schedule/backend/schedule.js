@@ -13,13 +13,13 @@ app.use(auth.auth);
 app.use('/task', require('./routes/task.js'))
 
 module.exports = (isOn) => {
-    const onLog = () => {
+    const successCallback = () => {
         console.log(`⌚ Schedule On ▶ PORT ${process.env.schedule_PORT}`)
         console.log(`\t▶ Scheduler Routes:\t /task`)
     }
-    const offLog = () => {
+    const failureCallback = () => {
         console.log(`⌚ Schedule Off ❌`)
     }
 
-    handleServerStart(app, process.env.schedule_PORT, isOn, onLog, offLog)
+    handleServerStart(app, process.env.schedule_PORT, isOn, successCallback, failureCallback)
 }

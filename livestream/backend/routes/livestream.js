@@ -2,7 +2,9 @@ var express    = require('express')
 const path = require('path')
 var serveStatic        = require('serve-static')
 var contentDisposition = require('content-disposition')
-const { startAllLiveStreams, processListMiddleware } = require('./lib/subprocess.js')
+const { startAllLiveStreams } = require('./lib/subprocess.js')
+const pm2 = require('pm2')
+const { processListMiddleware } = require('lib')
 
 const app = express.Router();
 
@@ -14,21 +16,12 @@ app.get("/status", (req, res, next) => {
     const {camera} = req.query;
     if(camera){
         req.processName = `live_stream_cam_${camera}`
-        next()
     }
     else{
-        next('list')
+        req.processName = `live_stream_cam`
     }
-}, processListMiddleware)
-
-app.get('/list', (req, res) => {
-    processList((list) => {
-        const liveStreamProcessList = list.filter((p) => {
-            return p.name && p.name.includes(`live_stream_cam_`)
-        }).map(({name, status}) => ({name , status}))
-        res.send({liveStreamProcessList})
-    })
-})
+    next()
+}, processListMiddleware(pm2))
 
 app.use('/feed', serveStatic(path.join(process.env.livestream_FILEPATH, 'feed'), {
     index: false,

@@ -14,13 +14,13 @@ app.use(auth.auth)
 app.use('/livestream', require('./routes/livestream.js'))
     
 module.exports = (isOn) => {
-    const onLog = () => {
+    const successCallback = () => {
         console.log(`👀 Livestream On ▶ PORT ${process.env.livestream_PORT}`)
         console.log(`\t▶ Livestream Routes:\t /livestream`)
     }
-    const offLog = () => {
+    const failureCallback = () => {
         console.log(`👀 Livestream Off ❌`)
     }
 
-    handleServerStart(app, process.env.livestream_PORT, isOn, onLog, offLog)
+    handleServerStart(app, process.env.livestream_PORT, isOn, successCallback, failureCallback)
 }

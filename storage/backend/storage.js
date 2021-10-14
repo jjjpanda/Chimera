@@ -28,15 +28,15 @@ app.use('/shared', serveStatic(path.join(process.env.storage_FILEPATH, 'shared')
 )
 
 module.exports = (isOn) => {
-    const onLog = () => {
+    const successCallback = () => {
         console.log(`📂 Storage On ▶ PORT ${process.env.storage_PORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
         console.log(`\t▶ Motion Routes:\t /motion`)
         console.log(`\t▶ File Routes:\t /shared`)
     }
-    const offLog = () => {
+    const failureCallback = () => {
         console.log(`📂 Storage Off ❌`)
     }
 
-    handleServerStart(app, process.env.storage_PORT, isOn, onLog, offLog)
+    handleServerStart(app, process.env.storage_PORT, isOn, successCallback, failureCallback)
 }
