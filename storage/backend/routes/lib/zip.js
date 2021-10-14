@@ -10,7 +10,7 @@ const {
 }              = require('./converter.js');
 const {webhookAlert} = require('lib')
 
-const imgDir = path.join(process.env.filePath, 'shared/captures')
+const imgDir = path.join(process.env.storage_FILEPATH, 'sharedcaptures')
 
 const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
@@ -56,7 +56,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}:${process.env.command_PORT}/sharedcaptures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
             });    
 
@@ -77,7 +77,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.command_HOST}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/sharedcaptures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{

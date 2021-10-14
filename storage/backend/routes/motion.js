@@ -3,7 +3,7 @@ const { startMotion, processListMiddleware } = require('./lib/subprocess.js')
 
 const app = express.Router();
 
-if(process.env.storage == "on"){
+if(process.env.storage_ON === "true"){
     startMotion();
 }
 

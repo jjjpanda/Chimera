@@ -113,7 +113,7 @@ class LiveVideo extends React.Component{
             <Flex>
                 <Flex.Item>
                     <ReactHlsPlayer
-                        src={`/shared/captures/live/1/video.m3u8`}
+                        src={`/livestream/feed/1/video.m3u8`}
                         autoPlay={false}
                         controls={true}
                         width="auto"
@@ -122,7 +122,7 @@ class LiveVideo extends React.Component{
                 </Flex.Item>
                 <Flex.Item>
                     <ReactHlsPlayer
-                        src={`/shared/captures/live/2/video.m3u8`}
+                        src={`/livestream/feed/2/video.m3u8`}
                         autoPlay={false}
                         controls={true}
                         width="auto"
@@ -133,7 +133,7 @@ class LiveVideo extends React.Component{
             <Flex>
                 <Flex.Item>
                     <ReactHlsPlayer
-                        src={`/shared/captures/live/3/video.m3u8`}
+                        src={`/livestream/feed/3/video.m3u8`}
                         autoPlay={false}
                         controls={true}
                         width="auto"
@@ -142,7 +142,7 @@ class LiveVideo extends React.Component{
                 </Flex.Item>
                 <Flex.Item>
                     <ReactHlsPlayer
-                        src={`/shared/captures/live/4/video.m3u8`}
+                        src={`/livestream/feed/4/video.m3u8`}
                         autoPlay={false}
                         controls={true}
                         width="auto"

@@ -82,7 +82,7 @@ module.exports = {
             webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
-                url: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}${url}`,
+                url: `http://${process.env.command_HOST}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}${url}`,
                 body
             }, (err, response, body) => {
                 if(!err && response.statusCode === 200){

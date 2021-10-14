@@ -1,23 +1,16 @@
 # Storage <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-The storage server is the heartbeat of Chimera. It handles 5 main sections regarding file storage:
+The storage server is the heartbeat of Chimera. It handles 4 main sections regarding file storage:
 1. Motion detection to save images from cameras ◀
-2. Live Stream transcoding to create videos ◀
-3. Convert and generate videos and archives for download ◀
-4. Handling file deletion, metrics, and stats ◀
-5. Serving all of the files mentioned above ◀
+2. Convert and generate videos and archives for download ◀
+3. Handling file deletion, metrics, and stats ◀
+4. Serving all of the files mentioned above ◀
 
 ## ▶ /motion
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/status| | | |
-## ▶ /livestream
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/status| | | |
-|POST|/list| | | |
+|GET|/status| | | |
 ## ▶ /convert
 
 |Type|Route|Description|Parameters|Returns|
