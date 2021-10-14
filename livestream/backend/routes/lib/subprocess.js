@@ -1,5 +1,6 @@
 const pm2 = require('pm2')
 const process = require('process')
+const mkdirp = require('mkdirp')
 
 let processes = []
 
@@ -26,10 +27,7 @@ module.exports = {
 }
 
 const createLiveStreamDirectories = (cameraNumber, callback) => {
-    pm2.start({
-        script: `mkdir -p ${process.env.storage_FILEPATH}feed/${cameraNumber}`,
-        name: `directory_creation_cam_${cameraNumber}`
-    }, (err, apps) => {
+    mkdirp(`${process.env.livestream_FILEPATH}feed/${cameraNumber}`).then(made => {
         console.log(`\tSetup Directory: Cam ${cameraNumber} ◀`)
         callback(cameraNumber)
     })
@@ -37,9 +35,9 @@ const createLiveStreamDirectories = (cameraNumber, callback) => {
 
 const startLiveStream = (cameraNumber) => {
     const cameraURL = process.env[`livestream_CAMERA_URL_${cameraNumber}`]
-    pm2.stop('`live_stream_cam_${cameraNumber}`', () => {
+    pm2.stop(`live_stream_cam_${cameraNumber}`, () => {
         pm2.start({
-            script: `ffmpeg -loglevel quiet -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.storage_FILEPATH}feed/${cameraNumber}/video.m3u8`,
+            script: `ffmpeg -loglevel quiet -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.livestream_FILEPATH}feed/${cameraNumber}/video.m3u8`,
             name: `live_stream_cam_${cameraNumber}`
         }, (err, apps) => {
             if(err){

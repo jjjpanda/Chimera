@@ -1,20 +1,23 @@
 const pm2 = require('pm2')
 const process = require('process')
+const mkdirp = require('mkdirp')
 
 let processes = []
 
 module.exports = {
     startMotion: () => {
-        console.log("\t▶ Starting Motion Process")
-        pm2.stop("motion", () => {
-            pm2.start({
-                script: `motion -c ${process.env.storage_MOTION_CONFPATH}`,
-                name: "motion"
-            }, (err, apps) => {
-                if(err){
-                    console.log("\tCouldn't Start Motion Process ⚠")
-                }
-                processes.push({name: 'motion', log: "Motion Off"})
+        mkdirp(`${process.env.storage_FILEPATH}shared/captures`).then(made => {
+            console.log("\t▶ Starting Motion Process")
+            pm2.stop("motion", () => {
+                pm2.start({
+                    script: `motion -c ${process.env.storage_MOTION_CONFPATH}`,
+                    name: "motion"
+                }, (err, apps) => {
+                    if(err){
+                        console.log("\tCouldn't Start Motion Process ⚠")
+                    }
+                    processes.push({name: 'motion', log: "Motion Off"})
+                })
             })
         })
     },
