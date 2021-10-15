@@ -6,3 +6,4 @@ command/dist
 shared
 feed
 *.log
+*.conf
