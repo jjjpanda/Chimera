@@ -22,7 +22,7 @@ const createLiveStreamDirectories = (cameraNumber, callback) => {
 }
 
 const safeStartLiveStream = (cameraNumber) => {
-    stopLiveStream(cameraNumber, startLiveStream(cameraNumber))
+    stopLiveStream(cameraNumber, startLiveStream(cameraNumber))()
 }
 
 const startLiveStream = (cameraNumber) => () => {
