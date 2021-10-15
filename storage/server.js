@@ -1,3 +1,3 @@
 module.exports = () => {
-    require('./backend/storage.js')(process.env.storage == "on")
+    require('./backend/storage.js')(process.env.storage_ON === "true")
 }

@@ -14,7 +14,7 @@ const {webhookAlert} = require('lib')
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
-const imgDir = path.join(process.env.filePath, 'shared/captures')
+const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
 const createFrameList = (camera, start, end, limit) => {
     const filteredList = filterList(camera, start, end)
@@ -26,7 +26,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/shared/captures/${camera}/${item}`
+        return `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -93,7 +93,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 console.log('Finished processing');
                 if(save){
                     console.log("SENDING END ALERT")
-                    webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.commandHost}:${process.env.commandPORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.command_HOST}:${process.env.command_PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
@@ -108,7 +108,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{

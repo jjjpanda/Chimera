@@ -7,7 +7,7 @@ var dateFormat = require('./dateFormat.js')
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
 shortid.characters(charList)
 
-const imgDir = path.join(process.env.filePath, 'shared/captures')
+const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
 module.exports = {   
     randomID: () => {
@@ -39,7 +39,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         console.log(fileName)
         return {
-            link: `http://${process.env.commandHost}${process.env.PORT == 80 ? ":"+process.env.PORT : ""}/shared/captures/${fileName}`,
+            link: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],

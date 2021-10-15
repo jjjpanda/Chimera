@@ -57,7 +57,7 @@ class FileStats extends React.Component {
             lastUpdated: moment().format("h:mm:ss a")
         }, () => {
             this.state.camera.forEach((camera, index) => {
-                request("/command/pathSize", {
+                request("/file/pathSize", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ class FileStats extends React.Component {
                         })
                     })
                 })
-                request("/command/pathFileCount", {
+                request("/file/pathFileCount", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ class FileStats extends React.Component {
             this.setState({
                 loading: "deleting"
             }, () => {
-                request("/command/pathClean", {
+                request("/file/pathClean", {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ class FileStats extends React.Component {
                 loading: "deleting"
             }, () => {
                 this.state.camera.forEach((camera) => {
-                    request("/command/pathClean", {
+                    request("/file/pathClean", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',

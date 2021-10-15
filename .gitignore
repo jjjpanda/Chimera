@@ -4,4 +4,6 @@ notes.txt
 command/dist
 .pass
 shared
+feed
 *.log
+*.conf

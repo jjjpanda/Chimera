@@ -7,7 +7,7 @@ const {
 }              = require('./converter.js');
 const {webhookAlert} = require('lib')
 
-const imgDir = path.join(process.env.filePath, 'shared/captures')
+const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
 module.exports = {
     statusProcess: (req, res) => {

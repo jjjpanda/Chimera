@@ -1,15 +1,17 @@
 var express    = require('express')
-const { startMotion, processListMiddleware } = require('./lib/subprocess.js')
+const { startMotion } = require('./lib/subprocess.js')
+const pm2 = require('pm2')
+const { processListMiddleware } = require('lib')
 
 const app = express.Router();
 
-if(process.env.storage == "on"){
+if(process.env.storage_ON === "true"){
     startMotion();
 }
 
 app.get("/status", (req, res, next) => {
     req.processName = "motion"
     next()
-}, processListMiddleware)
+}, processListMiddleware(pm2))
 
 module.exports = app

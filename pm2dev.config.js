@@ -4,8 +4,8 @@ module.exports = {
   apps : [{
     script: 'server.js',
     name: "chimeraContinuous",
-    log: "./chimera.log",
+    log: "./chimera.dev.log",
     watch: ['.'],
-    ignore_watch: ["shared", "./chimera.log", process.env.passwordPath]
+    ignore_watch: ["shared", "feed", "*.log", process.env.password_FILEPATH]
   }]
 };
