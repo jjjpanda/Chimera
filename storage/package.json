@@ -3,6 +3,7 @@
   "main": "server.js",
   "dependencies": {
     "archiver": "^4.0.2",
+    "cli-progress": "^3.9.1",
     "content-disposition": "^0.5.3",
     "fluent-ffmpeg": "^2.1.2",
     "lib": "file:../lib",

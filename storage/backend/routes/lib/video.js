@@ -4,6 +4,7 @@ var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
+const cliProgress = require('cli-progress')
 const {
     randomID,
     filterList,
@@ -72,7 +73,11 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
         else{
             res.attachment(fileName(camera, start, end, rand, 'mp4'))
         }
-    
+
+        const bar = new cliProgress.SingleBar({
+            format: `Video Generation ID: ${rand} [{bar}] {percentage}% | Time Elapsed: {duration}s`
+        }, cliProgress.Presets.shades_classic)
+
         let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
             .inputFormat('concat') //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
             .outputFPS(fps)
@@ -87,15 +92,14 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
             })
             .on('progress', function(progress) {
-                console.log('Processing: ' + progress.frames + "/" + frames + ' done');
+                bar.update(Math.round((progress.frames/frames)*100))
             })
             .on('end', function() {
-                console.log('Finished processing');
                 if(save){
-                    console.log("SENDING END ALERT")
                     webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.command_HOST}:${process.env.command_PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
+                bar.stop()
             })
 
         req.app.locals[rand] = videoCreator
@@ -105,6 +109,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 creator
                     .mergeToFile(`${imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(imgDir)))
                 
+                bar.start(100, 0)
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
