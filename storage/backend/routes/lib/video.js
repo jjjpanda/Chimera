@@ -75,7 +75,8 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
         }
 
         const bar = new cliProgress.SingleBar({
-            format: `Video Generation ID: ${rand} [{bar}] {percentage}% | Time Elapsed: {duration}s`
+            format: `Video Generation ID: ${rand} [{bar}] {percentage}% | Time Elapsed: {duration}s`,
+            noTTYOutput: true,
         }, cliProgress.Presets.shades_classic)
 
         let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)

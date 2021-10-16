@@ -6,6 +6,9 @@ module.exports = {
     name: "chimeraContinuous",
     log: "./chimera.dev.log",
     watch: ['.'],
-    ignore_watch: ["shared", "feed", "*.log", process.env.password_FILEPATH]
+    ignore_watch: ["shared", "feed", "*.log", process.env.password_FILEPATH],
+    env: {
+      "NODE_ENV": "development",
+    }
   }]
 };
