@@ -87,14 +87,19 @@ class App extends React.Component{
     }
 
     render() {
+        const LoginPage = <LoginForm loginReq={this.attemptLogin} handler ={this.handleLoginAttempt} timestamp={this.state.timestamp} />
         if(this.state.loaded){
             return (
                 <Router>
                     <Route 
                         path="/" 
                         render={({location}) => {
-                            if(location.search == "?loginForm") return this.state.loggedIn ? <Redirect to="/" /> : <LoginForm loginReq={this.attemptLogin} handler ={this.handleLoginAttempt} timestamp={this.state.timestamp} />
-                            else return this.state.loggedIn ? <Main /> : <Redirect to="/?loginForm" />
+                            if(location.search == "?loginForm") {
+                                return this.state.loggedIn ? <Redirect to="/" /> : LoginPage
+                            }
+                            else {
+                                return this.state.loggedIn ? <Main /> : <Redirect to="/?loginForm" /> 
+                            } 
                         }} />
                 </Router>
             )
