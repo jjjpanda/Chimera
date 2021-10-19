@@ -4,6 +4,7 @@ var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
+const isIp = require('is-ip');
 const cliProgress = require('cli-progress')
 const {
     randomID,
@@ -27,7 +28,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${camera}/${item}`
+        return `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -48,7 +49,7 @@ const createVideoList = (camera, start, end, skip) => {
         files += `file '${camera}/${file}'\r\n` 
     }
     
-    fs.writeFileSync(path.resolve(imgDir, `mp4_${rand}.txt`), files)
+    fs.writeFileSync(path.join(imgDir, `mp4_${rand}.txt`), files)
     return { rand, frames }
 };
 
@@ -90,16 +91,16 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 if(save){
                     webhookAlert(`Your video (${rand}) could not be completed.`)
                 }    
-                fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
+                fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
             })
             .on('progress', function(progress) {
                 bar.update(Math.round((progress.frames/frames)*100))
             })
             .on('end', function() {
                 if(save){
-                    webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.command_HOST}:${process.env.command_PORT}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
-                fs.unlinkSync(path.resolve(imgDir, `mp4_${rand}.txt`))
+                fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
                 bar.stop()
             })
 
@@ -108,13 +109,13 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
         const createVideo = (creator) => {
             if(save){
                 creator
-                    .mergeToFile(`${imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.resolve(imgDir)))
+                    .mergeToFile(`${imgDir}/${fileName(camera, start, end, rand, 'mp4')}`, imgDir+'/') //.mergeToFile('output.mp4', path.relative(__dirname, path.join(imgDir)))
                 
                 bar.start(100, 0)
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{

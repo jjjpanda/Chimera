@@ -17,7 +17,7 @@ module.exports = {
 
         console.log(id)
         res.send(JSON.stringify({
-            running: fs.existsSync(path.resolve(imgDir, `${type}_${id}.txt`)),
+            running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`)),
             id
         }))
     },
@@ -61,7 +61,7 @@ module.exports = {
             return {
                 ...parseFileName(file),
                 requested: id.split('-')[1]+"-"+id.split('-')[2],
-                running: fs.existsSync(path.resolve(imgDir, `${type}_${id}.txt`))
+                running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`))
             }
         })
 
@@ -76,10 +76,10 @@ module.exports = {
         const file = findFile(id);
 
         console.log(id)
-        let deletable = fs.existsSync(path.resolve(imgDir, file))
+        let deletable = fs.existsSync(path.join(imgDir, file))
 
         if(deletable){
-            fs.unlinkSync(path.resolve(imgDir, file))
+            fs.unlinkSync(path.join(imgDir, file))
         }
         
         res.send(JSON.stringify({
