@@ -3,6 +3,7 @@ var dateFormat = require('./dateFormat.js')
 var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
+const isIp = require('is-ip');
 const {
     randomID,
     filterList,
@@ -10,7 +11,7 @@ const {
 }              = require('./converter.js');
 const {webhookAlert} = require('lib')
 
-const imgDir = path.join(process.env.storage_FILEPATH, 'sharedcaptures')
+const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
 const createZipList = (camera, start, end, skip) => {
     var archive = archiver('zip', {
@@ -24,7 +25,7 @@ const createZipList = (camera, start, end, skip) => {
     console.log(start.split('-')[0], start.split('-')[1], end.split('-')[0], end.split('-')[1])
     
     for (const file of filteredList){
-        archive.file(path.resolve(imgDir, camera, file), {
+        archive.file(path.join(imgDir, camera, file), {
             name: file
         }) 
     }
@@ -56,8 +57,8 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}:${process.env.command_PORT}/sharedcaptures/${fileName(camera, start, end, rand, 'zip')}`)
-                fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
+                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
             });    
 
             archive.on('error', function(err) {
@@ -65,10 +66,10 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
                 if(save){
                     webhookAlert(`Your zip (${rand}) could not be completed.`)
                 }    
-                fs.unlinkSync(path.resolve(imgDir, `zip_${rand}.txt`))
+                fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
             });
             
-            fs.writeFileSync(path.resolve(imgDir, `zip_${rand}.txt`), "progress")
+            fs.writeFileSync(path.join(imgDir, `zip_${rand}.txt`), "progress")
 
             archive.pipe(output)
 
@@ -77,7 +78,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/sharedcaptures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{

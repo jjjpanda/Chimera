@@ -2,6 +2,7 @@ var fs         = require('fs')
 var path       = require('path')
 var shortid    = require("shortid")
 var moment     = require('moment')
+const isIp = require('is-ip');
 var dateFormat = require('./dateFormat.js')
 
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
@@ -16,7 +17,7 @@ module.exports = {
     
     filterList: (camera, start, end, skipEvery=1) => {
         try {
-            let list = fs.readdirSync(path.resolve(imgDir, camera)).filter( file => file.includes(".jpg") && 
+            let list = fs.readdirSync(path.join(imgDir, camera)).filter( file => file.includes(".jpg") && 
                 `${file.split("-")[0]}-${file.split('-')[1]}` > start && 
                 `${file.split("-")[0]}-${file.split('-')[1]}` <= end )
             return skipEvery == 1 ? list : list.filter( (file, index) => {
@@ -28,7 +29,7 @@ module.exports = {
     },
 
     filterType: (type) => {
-        return fs.readdirSync(path.resolve(imgDir)).filter(file => file.includes(`.${type}`))
+        return fs.readdirSync(path.join(imgDir)).filter(file => file.includes(`.${type}`))
     },
 
     fileName: (camera, start, end, id, type) => {
@@ -39,7 +40,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         console.log(fileName)
         return {
-            link: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName}`,
+            link: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],
@@ -49,7 +50,7 @@ module.exports = {
     },
 
     findFile: (id) => {
-        const fileName = fs.readdirSync(path.resolve(imgDir)).find(file => file.includes(id) && !file.includes('.txt'))
+        const fileName = fs.readdirSync(path.join(imgDir)).find(file => file.includes(id) && !file.includes('.txt'))
         return fileName == undefined ? "output_0_start_end_id.type" : fileName
     },
 

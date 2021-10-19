@@ -12,7 +12,7 @@ const app = express.Router();
 const validateCameraAndAppendToPath = (req, res, next) => {
     const {camera} = req.body
     if(camera){
-        req.body.appendedPath = path.resolve(process.env.storage_FILEPATH, "./shared/captures/", camera)
+        req.body.appendedPath = path.join(process.env.storage_FILEPATH, "./shared/captures/", camera)
         next()
     }
     else{

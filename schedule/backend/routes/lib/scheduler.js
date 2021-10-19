@@ -1,4 +1,5 @@
 const cron     = require('node-cron');
+const isIp = require('is-ip');
 const validateRequestURL = (url) => {
     switch (url){
         case "/createVideo":
@@ -82,7 +83,7 @@ module.exports = {
             webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
-                url: `http://${process.env.command_HOST}${process.env.command_PORT == 80 ? ":"+process.env.command_PORT : ""}${url}`,
+                url: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}${url}`,
                 body
             }, (err, response, body) => {
                 if(!err && response.statusCode === 200){

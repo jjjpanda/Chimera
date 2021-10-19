@@ -13,7 +13,7 @@ app.use(express.json());
 
 app.use('/authorization', require('./routes/authorization.js'))
 app.use('/res', express.static(path.join(__dirname, '../frontend/res')));
-app.use('/', express.static(path.resolve(__dirname, "../dist/"), {
+app.use('/', express.static(path.join(__dirname, "../dist/"), {
     index: "app.html"
 }))
 

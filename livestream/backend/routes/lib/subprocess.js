@@ -1,6 +1,7 @@
 const pm2 = require('pm2')
 const process = require('process')
 const mkdirp = require('mkdirp')
+const path = require('path')
 
 module.exports = {
 
@@ -28,7 +29,7 @@ const safeStartLiveStream = (cameraNumber) => {
 const startLiveStream = (cameraNumber) => () => {
     const cameraURL = process.env[`livestream_CAMERA_URL_${cameraNumber}`]
     pm2.start({
-        script: `ffmpeg -loglevel quiet -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${process.env.livestream_FILEPATH}feed/${cameraNumber}/video.m3u8`,
+        script: `ffmpeg -loglevel quiet -i "${cameraURL}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${path.join(process.env.livestream_FILEPATH, "feed", cameraNumber.toString(), "video.m3u8")}`,
         name: `live_stream_cam_${cameraNumber}`
     }, onLiveStreamStart(cameraNumber))
 }
