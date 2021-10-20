@@ -61,10 +61,26 @@ const deleteFiles = (req, res) => {
 
 const deleteFilesBasedOnList = (req, res) => {
     const list = req.body.directoryList
-    for(const file of list){
+    /* for(const file of list){
         fs.unlinkSync(path.join(req.body.appendedPath, file))
-    }
-    res.send({deleted: list.length > 0})
+    } */
+    Promise.all(list.map(file =>
+        new Promise((resolve, reject) => {
+            fs.unlink(path.join(req.body.appendedPath, file), err => { 
+                if (err) {
+                    reject(err)
+                }
+                else{
+                    resolve('nice')
+                }
+            })
+        }).then(() => {
+            res.send({deleted: list.length > 0})
+        }, () => {
+            res.send({error: true})
+        })
+    ))
+    
 }
 
 const directoryFilter = (req, res, next) => {
