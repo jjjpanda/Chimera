@@ -49,10 +49,10 @@ The storage server is the heartbeat of Chimera. It handles 4 main sections regar
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|POST|/pathSize|Gets folder or file size|`{ path: String }`|`{ size: String }`|
-|POST|/pathFileCount|Gets folder's file count|`{ path: String }`|`{ count: Number }`|
-|POST|/pathDelete|Delete folder or file by path|`{ path: String }`|`{ deleted: Boolean }`|
-|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ path: String, days: Number }`|`{ deleted: Boolean }`|
+|POST|/pathSize|Gets folder or file size|`{ camera: Number }`|`{ size: String }`|
+|POST|/pathFileCount|Gets folder's file count|`{ camera: Number }`|`{ count: Number }`|
+|POST|/pathDelete|Delete folder or file by path|`{ camera: Number }`|`{ deleted: Boolean }`|
+|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ camera: Number, days: Number }`|`{ deleted: Boolean }`|
 
 ## ▶ /shared
 
