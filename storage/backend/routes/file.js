@@ -66,14 +66,12 @@ const deleteFilesBasedOnCreationTime = (req, res) => {
         Promise.all(list.map(file =>
             new Promise((resolve, reject) => {
                 fs.stat(path.join(req.body.appendedPath, file), (error, stats) => {
-                    console.log(file, stats)
                     if(!error && moment(stats.birthtime).isBefore(checkDate)){
                         fs.unlink(path.join(req.body.appendedPath, file), (err) => { 
                             if (err) {
                                 reject('deletion error')
                             }
                             else{
-                                console.log('deleted', file)
                                 resolve('nice')
                             }
                         })
