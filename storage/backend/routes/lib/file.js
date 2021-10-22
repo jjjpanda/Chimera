@@ -2,6 +2,26 @@ const path = require('path')
 const fs = require('fs')
 const rimraf = require('rimraf')
 const moment = require('moment')
+const cron = require('node-cron')
+
+createFile(path.join(process.env.storage_FILEPATH, "./shared/additionStats.json"))
+const folderPaths = JSON.parse(process.env.cameras).map((name, i) => {
+    const camera = i+1
+    return path.join(process.env.storage_FILEPATH, "./shared/captures/", camera)
+})
+cron.schedule('*/10 * * * *', () => {
+    const stats = {}
+    
+    folderPaths.forEach((pathToDir, i) => {
+        stats[JSON.parse(process.env.cameras)[i]] = {}
+        listFilesInDirectory(pathToDir, (fileList) => {
+            stats[JSON.parse(process.env.cameras)[i]].count = fileList.length
+            getDirectorySize(fileList, (directoryFileStats) => {
+                stats[JSON.parse(process.env.cameras)[i]].size = directoryFileStats.bytes
+            })
+        })
+    })
+})
 
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
@@ -26,20 +46,15 @@ module.exports = {
     },
     
     directoryList: (req, res, next) => {
-        listFilesInDirectory(req.body.appendedPath, (err, files) => {
-            if(!err) {
-                req.body.directoryList = files.map(file => path.join(req.body.appendedPath, file))
-                next()
-            }
-            else{
-                res.send({error: true})
-            }
+        listFilesInDirectory(req.body.appendedPath, (fileList) => {
+            req.body.directoryList = fileList
+            next()
         })
     },
     
     fileSize: (req, res) => {
         const list = req.body.directoryList
-        getFileSize(list, (fileSize) => {
+        getDirectorySize(list, (fileSize) => {
             res.send({size: fileSize.size, confidence: fileSize.confidence})
         })
     },
@@ -69,10 +84,16 @@ module.exports = {
 }
 
 const listFilesInDirectory = (pathToDir, callback)=> {
-    fs.readdir(pathToDir, callback)
+    fs.readdir(pathToDir, (err, files) => {
+        let list = []
+        if(!err) {
+            list = files.map(file => path.join(pathToDir, file))
+        }
+        callback(list)
+    })
 }
 
-const getFileSize = (fileList, callback) => {
+const getDirectorySize = (fileList, callback) => {
     let size = 0
     let numberOfFilesCounted = 0
     Promise.all(fileList.map(file => {
@@ -119,3 +140,18 @@ const checkIfFileWasCreatedBefore = (checkDate) => (file, callback) => {
         callback(!error && moment(stats.birthtime).isBefore(checkDate))
     })
 }
+
+const createFile = (filePath) => {
+    fs.open(filePath,'r',function(err){
+      if (err) {
+        fs.writeFile(filePath, '', function(err) {
+            if(err) {
+                console.log(err);
+            }
+            console.log("The file was saved!");
+        });
+      } else {
+        console.log("The file exists!");
+      }
+    });
+  }
