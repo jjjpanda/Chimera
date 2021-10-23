@@ -4,25 +4,6 @@ const rimraf = require('rimraf')
 const moment = require('moment')
 const cron = require('node-cron')
 
-createFile(path.join(process.env.storage_FILEPATH, "./shared/additionStats.json"))
-const folderPaths = JSON.parse(process.env.cameras).map((name, i) => {
-    const camera = i+1
-    return path.join(process.env.storage_FILEPATH, "./shared/captures/", camera)
-})
-cron.schedule('*/10 * * * *', () => {
-    const stats = {}
-    
-    folderPaths.forEach((pathToDir, i) => {
-        stats[JSON.parse(process.env.cameras)[i]] = {}
-        listFilesInDirectory(pathToDir, (fileList) => {
-            stats[JSON.parse(process.env.cameras)[i]].count = fileList.length
-            getDirectorySize(fileList, (directoryFileStats) => {
-                stats[JSON.parse(process.env.cameras)[i]].size = directoryFileStats.bytes
-            })
-        })
-    })
-})
-
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
         const {camera} = req.body
@@ -46,7 +27,7 @@ module.exports = {
     },
     
     directoryList: (req, res, next) => {
-        listFilesInDirectory(req.body.appendedPath, (fileList) => {
+        listFilesInDirectory(req.body.appendedPath).then((fileList) => {
             req.body.directoryList = fileList
             next()
         })
@@ -54,7 +35,7 @@ module.exports = {
     
     fileSize: (req, res) => {
         const list = req.body.directoryList
-        getDirectorySize(list, (fileSize) => {
+        getDirectorySize(list).then((fileSize) => {
             res.send({size: fileSize.size, confidence: fileSize.confidence})
         })
     },
@@ -73,7 +54,7 @@ module.exports = {
         const list = req.body.directoryList
         const checkDate = moment().subtract(req.body.days, "days")
         if(list.length > 0){
-            deleteFilesBasedOnCondition(list, checkIfFileWasCreatedBefore(checkDate), (stats) => {
+            deleteFilesBasedOnCondition(list, checkIfFileWasCreatedBefore(checkDate)).then((stats) => {
                 res.send({deleted: list.length > 0, confidence: stats.successful})
             })
         }
@@ -83,20 +64,20 @@ module.exports = {
     }
 }
 
-const listFilesInDirectory = (pathToDir, callback)=> {
-    fs.readdir(pathToDir, (err, files) => {
+const listFilesInDirectory = (pathToDir) => {
+    return new Promise((resolve) => fs.readdir(pathToDir, (err, files) => {
         let list = []
         if(!err) {
             list = files.map(file => path.join(pathToDir, file))
         }
-        callback(list)
-    })
+        resolve(list)
+    }))
 }
 
-const getDirectorySize = (fileList, callback) => {
+const getDirectorySize = (fileList) => {
     let size = 0
     let numberOfFilesCounted = 0
-    Promise.all(fileList.map(file => {
+    return Promise.all(fileList.map(file => {
         return new Promise((resolve) => {
             fs.stat(file, (err, stats) => {
                 if(!err){
@@ -107,19 +88,19 @@ const getDirectorySize = (fileList, callback) => {
             })
         })
     })).then(() => {
-        callback({
+        return {
             size: size.toString(), 
             confidence: 100*numberOfFilesCounted/fileList.length,
             bytes: size
-        })
+        }
     })
 }
 
-const deleteFilesBasedOnCondition = (fileList, conditionalCheck, callback) => {
+const deleteFilesBasedOnCondition = (fileList, conditionalCheck) => {
     let numberOfFilesDeleted = 0
-    Promise.all(fileList.map(file =>
+    return Promise.all(fileList.map(file =>
         new Promise((resolve) => {
-            conditionalCheck(file, (conditionMet) => {
+            conditionalCheck(file).then((conditionMet) => {
                 if(conditionMet){
                     fs.unlink(file, (err) => { 
                         if (!err) {
@@ -131,27 +112,80 @@ const deleteFilesBasedOnCondition = (fileList, conditionalCheck, callback) => {
             })
         })
     )).then(() => {
-        callback({successful: 100*numberOfFilesDeleted/fileList.length})
+        return {successful: 100*numberOfFilesDeleted/fileList.length}
     })
 }
 
-const checkIfFileWasCreatedBefore = (checkDate) => (file, callback) => {
-    fs.stat(file, (error, stats) => {
-        callback(!error && moment(stats.birthtime).isBefore(checkDate))
-    })
+// stats is unnecessary because of timestamp in filename, 
+// and can be replaced with simple array filter
+const checkIfFileWasCreatedBefore = (checkDate) => (file) => {
+    return new Promise((resolve) => fs.stat(file, (error, stats) => {
+        resolve(!error && moment(stats.birthtime).isBefore(checkDate))
+    }))
 }
 
-const createFile = (filePath) => {
-    fs.open(filePath,'r',function(err){
-      if (err) {
-        fs.writeFile(filePath, '', function(err) {
+const isStringJSON = (str) => {
+    try {
+        JSON.parse(str);
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
+const createStatsJSON = (filePath) => {
+    fs.readFile(filePath, (err, data) => {
+      if (err || !isStringJSON(data)) {
+        fs.writeFile(filePath, JSON.stringify([]), (err) => {
             if(err) {
                 console.log(err);
             }
-            console.log("The file was saved!");
         });
-      } else {
-        console.log("The file exists!");
-      }
+      } 
     });
-  }
+}
+
+const pathToStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
+createStatsJSON(pathToStatsJSON)
+
+const currentStats = {}
+JSON.parse(process.env.cameras).forEach((name) => {
+    currentStats[name] = {}
+})
+
+const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
+    const camera = i+1
+    return {name, pathToDir: path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())}
+}).reduce(function (accumulator, {name, pathToDir}) {
+    return accumulator.concat([
+        new Promise(resolve => {
+            listFilesInDirectory(pathToDir).then((fileList) => {
+                currentStats[name].count = fileList.length
+                resolve()
+            })
+        }),
+        new Promise(resolve => {
+            listFilesInDirectory(pathToDir).then((fileList) => {
+                getDirectorySize(fileList).then(({bytes}) => {
+                    currentStats[name].size = bytes
+                })
+                resolve()
+            })
+        })
+    ]);
+}, [])
+
+cron.schedule('*/10 * * * *', () => {
+    Promise.all(promiseTasks).then(() => {
+        fs.readFile(pathToStatsJSON, (err, data) => {
+            let jsonData = []
+            if(!err && isStringJSON(data)){
+                jsonData = JSON.parse(data)
+            }
+            jsonData.push(currentStats)
+            fs.writeFile(pathToStatsJSON, JSON.stringify(jsonData), (err) => {
+                console.log("\twriting file stats to JSON | Error:", err)
+            })
+        })
+    })
+})
