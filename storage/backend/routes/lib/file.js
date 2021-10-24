@@ -199,6 +199,8 @@ JSON.parse(process.env.cameras).forEach((name) => {
     currentStats[name] = {}
 })
 
+const cronMinutes = 10
+
 const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
     const camera = i+1
     return {name, pathToDir: path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())}
@@ -206,14 +208,15 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
     return accumulator.concat([
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
-                
-                currentStats[name].count = fileList.length
+                filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
+                currentStats[name].count = filteredFileList.length
                 resolve()
             })
         }),
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
-                getDirectorySize(fileList).then(({bytes}) => {
+                filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
+                getDirectorySize(filteredFileList).then(({bytes}) => {
                     currentStats[name].size = bytes
                 })
                 resolve()
@@ -222,7 +225,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
     ]);
 }, [])
 
-cron.schedule('*/10 * * * *', () => {
+cron.schedule(`*/${cronMinutes} * * * *`, () => {
     Promise.all(promiseTasks).then(() => {
         fs.readFile(pathToStatsJSON, (err, data) => {
             let jsonData = []
