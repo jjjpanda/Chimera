@@ -44,17 +44,35 @@ module.exports = {
         res.send({count: req.body.directoryList.length})
     },
     
-    deleteFiles: (req, res) => {
+    deleteFileDirectory: (req, res) => {
         rimraf(req.body.appendedPath, (err) => {
             res.send({deleted: !err})
         })
     },
     
-    deleteFilesBasedOnCreationTime: (req, res) => {
+    /* deleteFilesBasedOnCreationTime: (req, res) => {
         const list = req.body.directoryList
         const checkDate = moment().subtract(req.body.days, "days")
         if(list.length > 0){
             deleteFilesBasedOnCondition(list, checkIfFileWasCreatedBefore(checkDate)).then((stats) => {
+                res.send({deleted: list.length > 0, confidence: stats.successful})
+            })
+        }
+        else{
+            res.send({error: true})
+        }
+    }, */
+
+    filterList: (timeCheck) => (req, res, next) => {
+        const list = req.body.directoryList
+        const checkDate = moment().subtract(req.body.days, "days")
+        req.body.directoryList = filterFilesByTime(list, checkDate, timeCheck)
+    },
+
+    deleteFileList: (req, res) => {
+        const list = req.body.directoryList
+        if(list.length > 0){
+            deleteFiles(list).then((stats) => {
                 res.send({deleted: list.length > 0, confidence: stats.successful})
             })
         }
@@ -96,7 +114,7 @@ const getDirectorySize = (fileList) => {
     })
 }
 
-const deleteFilesBasedOnCondition = (fileList, conditionalCheck) => {
+/* const deleteFilesBasedOnCondition = (fileList, conditionalCheck) => {
     let numberOfFilesDeleted = 0
     return Promise.all(fileList.map(file =>
         new Promise((resolve) => {
@@ -114,14 +132,42 @@ const deleteFilesBasedOnCondition = (fileList, conditionalCheck) => {
     )).then(() => {
         return {successful: 100*numberOfFilesDeleted/fileList.length}
     })
+} */
+
+const deleteFiles = (fileList) => {
+    let numberOfFilesDeleted = 0
+    return Promise.all(fileList.map(file =>
+        new Promise((resolve) => {
+            fs.unlink(file, (err) => { 
+                if (!err) {
+                    numberOfFilesDeleted++
+                }
+                resolve()
+            })
+        })
+    )).then(() => {
+        return {successful: 100*numberOfFilesDeleted/fileList.length}
+    })
 }
 
-// stats is unnecessary because of timestamp in filename, 
-// and can be replaced with simple array filter
-const checkIfFileWasCreatedBefore = (checkDate) => (file) => {
+/* const checkIfFileWasCreatedBefore = (checkDate) => (file) => {
     return new Promise((resolve) => fs.stat(file, (error, stats) => {
         resolve(!error && moment(stats.birthtime).isBefore(checkDate))
     }))
+} */
+
+const filterFilesByTime = (fileList, checkDate, timeCheck="before") => {
+    return fileList.filter(timeCheck == "before" ? filterFileCreatedBefore(checkDate) : filterFileCreatedAfter(checkDate))
+}
+
+const filterFileCreatedBefore = (checkDate) => (file) => {
+    const fileName = path.parse(path.basename(file)).name
+    return moment(fileName, require('./dateFormat.js')).isBefore(checkDate)
+}
+
+const filterFileCreatedAfter = (checkDate) => (file) => {
+    const fileName = path.parse(path.basename(file)).name
+    return moment(fileName, require('./dateFormat.js')).isAfter(checkDate)
 }
 
 const isStringJSON = (str) => {
@@ -160,6 +206,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
     return accumulator.concat([
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
+                
                 currentStats[name].count = fileList.length
                 resolve()
             })

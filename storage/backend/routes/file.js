@@ -8,14 +8,15 @@ const {
     directoryList, 
     fileSize, 
     fileCount, 
-    deleteFiles, 
+    deleteFileDirectory, 
     validateDays, 
-    deleteFilesBasedOnCreationTime
+    filterList,
+    deleteFileList
 } = require('./lib/file.js')
 
 app.post('/pathSize', validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
 app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
-app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFiles) 
-app.post('/pathClean', validateBody, validateCameraAndAppendToPath, validateDays, directoryList, deleteFilesBasedOnCreationTime) 
+app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
+app.post('/pathClean', validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList) 
 
 module.exports = app
