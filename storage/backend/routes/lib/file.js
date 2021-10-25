@@ -197,15 +197,15 @@ const createStatsJSON = (filePath) => {
 const pathToStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
 createStatsJSON(pathToStatsJSON)
 
-const currentStats = createTimestampedStatObject()
-
-createTimestampedStatObject = () => {
+const createTimestampedStatObject = () => {
     let stats = {}
     JSON.parse(process.env.cameras).forEach((name) => {
-        currentStats[name] = {timestamp: moment().format(require('./dateFormat.js'))}
+        stats[name] = {timestamp: moment().format(require('./dateFormat.js'))}
     })
     return stats
 }
+
+let currentStats = createTimestampedStatObject()
 
 const cronMinutes = 10
 
@@ -234,6 +234,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
 }, [])
 
 cron.schedule(`*/${cronMinutes} * * * *`, () => {
+    let currentStats = createTimestampedStatObject()
     Promise.all(promiseTasks).then(() => {
         fs.readFile(pathToStatsJSON, (err, data) => {
             let jsonData = []
