@@ -63,7 +63,7 @@ class FileStats extends React.Component {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        path: camera.path
+                        camera: index+1
                     })
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
@@ -83,7 +83,7 @@ class FileStats extends React.Component {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        path: camera.path
+                        camera: index+1
                     })
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {

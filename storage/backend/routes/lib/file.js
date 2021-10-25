@@ -2,13 +2,14 @@ const path = require('path')
 const fs = require('fs')
 const rimraf = require('rimraf')
 const moment = require('moment')
+const mkdirp = require('mkdirp')
 const cron = require('node-cron')
 
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
         const {camera} = req.body
-        if(camera){
-            req.body.appendedPath = path.join(process.env.storage_FILEPATH, "./shared/captures/", camera)
+        if(camera || parseInt(camera) == camera){
+            req.body.appendedPath = path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())
             next()
         }
         else{
@@ -180,24 +181,31 @@ const isStringJSON = (str) => {
 }
 
 const createStatsJSON = (filePath) => {
-    fs.readFile(filePath, (err, data) => {
-      if (err || !isStringJSON(data)) {
-        fs.writeFile(filePath, JSON.stringify([]), (err) => {
-            if(err) {
-                console.log(err);
-            }
+    mkdirp(`${process.env.storage_FILEPATH}shared`).then(() => {
+        fs.readFile(filePath, (err, data) => {
+            if (err || !isStringJSON(data)) {
+              fs.writeFile(filePath, JSON.stringify([]), (err) => {
+                  if(err) {
+                      console.log(err);
+                  }
+              });
+            } 
         });
-      } 
-    });
+    })
 }
 
 const pathToStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
 createStatsJSON(pathToStatsJSON)
 
-const currentStats = {}
-JSON.parse(process.env.cameras).forEach((name) => {
-    currentStats[name] = {}
-})
+const currentStats = createTimestampedStatObject()
+
+createTimestampedStatObject = () => {
+    let stats = {}
+    JSON.parse(process.env.cameras).forEach((name) => {
+        currentStats[name] = {timestamp: moment().format(require('./dateFormat.js'))}
+    })
+    return stats
+}
 
 const cronMinutes = 10
 
