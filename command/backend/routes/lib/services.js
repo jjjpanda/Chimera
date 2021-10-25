@@ -3,7 +3,7 @@ module.exports = [{
     log: "📂 Storage Proxied ◀",
     baseURL: `http://${process.env.storage_HOST}:${process.env.storage_PORT}/`,
     postPathRegex: /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/motion\/.*/,
-    getPathRegex: /\/shared\/.*|\/motion\/.*/
+    getPathRegex: /\/shared\/.*|\/file\/path.*|\/motion\/.*/
 }, {
     serviceOn: process.env.schedule_PROXY_ON === "true",
     log: "⌚ Scheduler Proxied ◀",

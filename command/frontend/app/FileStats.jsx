@@ -11,6 +11,19 @@ import {
     Stepper
 } from 'antd-mobile';
 
+import {
+    LineChart,
+    CartesianGrid,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
+    Line,
+    ResponsiveContainer
+} from 'recharts'
+
+import { formatBytes } from 'lib'
+
 import enUs from 'antd-mobile/lib/input-item/locale/en_US';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -19,6 +32,17 @@ import WebDAVProcess from './WebDAVProcess.jsx'
 import moment from 'moment';
 import alertModal from './Alert.jsx';
 import Cookies from 'js-cookie';
+
+const colorArray = ['#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', 
+		  '#E6B333', '#3366E6', '#999966', '#99FF99', '#B34D4D',
+		  '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A', 
+		  '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A', '#33FFCC',
+		  '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC', 
+		  '#66664D', '#991AFF', '#E666FF', '#4DB3FF', '#1AB399',
+		  '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680', 
+		  '#4D8066', '#809980', '#E6FF80', '#1AFF33', '#999933',
+		  '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3', 
+		  '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'];
 
 class FileStats extends React.Component {
     constructor(props){
@@ -33,12 +57,14 @@ class FileStats extends React.Component {
                 }
             }),
             days: 7,
-            lastUpdated: moment().format("h:mm:ss a")
+            lastUpdated: moment().format("h:mm:ss a"),
+            stats: []
         }
     }
 
     componentDidMount = () => {
         this.cameraUpdate()
+        this.statsUpdate()
     }
 
     loadingStatus = (responseNumber, responsesNeeded=this.state.camera.length * (Object.keys(this.state.camera).length - 1)) => {
@@ -48,6 +74,18 @@ class FileStats extends React.Component {
                 loading: undefined
             })
         }
+    }
+
+    statsUpdate = () => {
+        request('/file/pathStats', {
+            method: "GET"
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                this.setState(() => ({
+                    stats: data
+                }))
+            })
+        })
     }
 
     cameraUpdate = () => {
@@ -63,7 +101,7 @@ class FileStats extends React.Component {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        path: camera.path
+                        camera: index+1
                     })
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
@@ -83,7 +121,7 @@ class FileStats extends React.Component {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        path: camera.path
+                        camera: index+1
                     })
                 }, (prom) => {
                     jsonProcessing(prom, (data) => {
@@ -174,7 +212,35 @@ class FileStats extends React.Component {
                         Last Updated Date: {this.state.lastUpdated}
                     </NoticeBar>
                 
-                    <ServerProcess key={`server${this.state.lastUpdated}`}/>
+                    {/* <ServerProcess key={`server${this.state.lastUpdated}`}/> */}
+
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart width={730} height={250} data={this.state.stats}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="timestamp" type="number" tickFormatter={timeStr => moment(timeStr).format('MM/DD HH:mm')} domain={['auto', 'auto']} hide/>
+                            <YAxis />
+                            <Legend />
+                            <Tooltip />
+                            {JSON.parse(process.env.cameras).map((name, index) => {
+                                return <Line type="monotone" dataKey={`${name} count`} stroke={colorArray[index]} />
+                            })}
+                        </LineChart>
+                    </ResponsiveContainer>
+
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart width={730} height={250} data={this.state.stats}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="timestamp" type="number" tickFormatter={timeStr => moment(timeStr).format('MM/DD HH:mm')} domain={['auto', 'auto']} hide/>
+                            <YAxis tickFormatter={val => formatBytes(val)}/>
+                            <Legend />
+                            <Tooltip />
+                            {JSON.parse(process.env.cameras).map((name, index) => {
+                                return <Line type="monotone" dataKey={`${name} size`} stroke={colorArray[index]} />
+                            })}
+                        </LineChart>
+                    </ResponsiveContainer>
 
                     <List >
                         {this.state.camera.map(cam => {
