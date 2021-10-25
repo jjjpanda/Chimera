@@ -11,8 +11,11 @@ const {
     deleteFileDirectory, 
     validateDays, 
     filterList,
-    deleteFileList
+    deleteFileList,
+    fileStats
 } = require('./lib/file.js')
+
+app.get('/pathStats', fileStats)
 
 app.post('/pathSize', validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
 app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, directoryList, fileCount)

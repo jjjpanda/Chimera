@@ -4,6 +4,7 @@ const rimraf = require('rimraf')
 const moment = require('moment')
 const mkdirp = require('mkdirp')
 const cron = require('node-cron')
+const { formatBytes } = require('lib')
 
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
@@ -43,6 +44,10 @@ module.exports = {
     
     fileCount: (req, res) => {
         res.send({count: req.body.directoryList.length})
+    },
+
+    fileStats: (req, res) => {
+        res.redirect('/shared/additionStats.json')
     },
     
     deleteFileDirectory: (req, res) => {
@@ -108,7 +113,7 @@ const getDirectorySize = (fileList) => {
         })
     })).then(() => {
         return {
-            size: size.toString(), 
+            size: formatBytes(size), 
             confidence: 100*numberOfFilesCounted/fileList.length,
             bytes: size
         }
@@ -198,18 +203,17 @@ const pathToStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additi
 createStatsJSON(pathToStatsJSON)
 
 const createTimestampedStatObject = () => {
-    let stats = {}
+    let stats = { timestamp: moment().unix() }
     JSON.parse(process.env.cameras).forEach((name) => {
-        stats[name] = {timestamp: moment().format(require('./dateFormat.js'))}
+        stats[`${name} count`] = 0
+        stats[`${name} size`] = 0
     })
     return stats
 }
 
-let currentStats = createTimestampedStatObject()
+const cronMinutes = 15
 
-const cronMinutes = 10
-
-const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
+const promiseTasks = (statsObj) => JSON.parse(process.env.cameras).map((name, i) => {
     const camera = i+1
     return {name, pathToDir: path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())}
 }).reduce(function (accumulator, {name, pathToDir}) {
@@ -217,7 +221,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
                 filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
-                currentStats[name].count = filteredFileList.length
+                statsObj[`${name} count`] = filteredFileList.length
                 resolve()
             })
         }),
@@ -225,7 +229,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
             listFilesInDirectory(pathToDir).then((fileList) => {
                 filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
                 getDirectorySize(filteredFileList).then(({bytes}) => {
-                    currentStats[name].size = bytes
+                    statsObj[`${name} size`] = bytes
                 })
                 resolve()
             })
@@ -235,7 +239,7 @@ const promiseTasks = JSON.parse(process.env.cameras).map((name, i) => {
 
 cron.schedule(`*/${cronMinutes} * * * *`, () => {
     let currentStats = createTimestampedStatObject()
-    Promise.all(promiseTasks).then(() => {
+    Promise.all(promiseTasks(currentStats)).then(() => {
         fs.readFile(pathToStatsJSON, (err, data) => {
             let jsonData = []
             if(!err && isStringJSON(data)){
