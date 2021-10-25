@@ -13,11 +13,10 @@ app.use(express.json());
 
 app.use(auth.auth)
 
-app.use('/convert', require('./routes/convert.js'))
-
-app.use('/file', require('./routes/file.js'))
-
 app.use('/motion', require('./routes/motion.js'))
+
+app.use('/convert', require('./routes/convert.js'))
+app.use('/file', require('./routes/file.js'))
     
 app.use('/shared', serveStatic(path.join(process.env.storage_FILEPATH, 'shared'), {
         index: false,
