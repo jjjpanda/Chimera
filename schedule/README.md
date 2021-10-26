@@ -9,3 +9,9 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
 |POST|/schedule|Schedules a request for another command server request|`{ url: String, body: JSON, cronString: String }`|`{ cronString: String, set: Boolean, destroyed: Boolean }`|
 |POST|/check|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`
 |POST|/destroy|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
+
+## ▶ /schedule
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|GET|/health|Confirms server alive|N/A|N/A|

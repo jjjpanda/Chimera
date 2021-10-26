@@ -15,3 +15,9 @@ Plus, the command server can proxy the [storage](../storage) and [schedule](../s
 | :-|:- |:-:|:-:|:-:|
 |GET|/res|res|N/A|N/A|
 |GET|/|Serves main website|None|html|
+
+## ▶ /command
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|GET|/health|Confirms server alive|N/A|N/A|

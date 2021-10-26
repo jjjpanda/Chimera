@@ -61,3 +61,9 @@ The storage server is the heartbeat of Chimera. It handles 4 main sections regar
 | :-|:- |:-:|:-:|:-:|
 |GET|/directory|Opens 'directory' as web page|None|html|
 |GET|/directory/example.mp4|Downloads the specified file|None|mp4|
+
+## ▶ /storage
+
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|GET|/health|Confirms server alive|N/A|N/A|
