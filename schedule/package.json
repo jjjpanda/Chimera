@@ -2,13 +2,13 @@
   "name": "schedule",
   "main": "server.js",
   "dependencies": {
-    "lib": "file:../lib",
-    "node-cron": "^2.0.3"
+    "lib": "file:../lib"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "moment": "^2.29.1",
+    "node-cron": "^2.0.3",
     "request": "^2.88.2"
   }
 }

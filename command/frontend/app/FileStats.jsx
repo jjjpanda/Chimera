@@ -11,6 +11,19 @@ import {
     Stepper
 } from 'antd-mobile';
 
+import {
+    LineChart,
+    CartesianGrid,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
+    Line,
+    ResponsiveContainer
+} from 'recharts'
+
+import { formatBytes } from 'lib'
+
 import enUs from 'antd-mobile/lib/input-item/locale/en_US';
 
 import {request, jsonProcessing} from './../js/request.js'
@@ -20,6 +33,17 @@ import moment from 'moment';
 import alertModal from './Alert.jsx';
 import Cookies from 'js-cookie';
 
+const colorArray = ['#FF6633', '#FFB399', '#FF33FF', '#FFFF99', '#00B3E6', 
+		  '#E6B333', '#3366E6', '#999966', '#99FF99', '#B34D4D',
+		  '#80B300', '#809900', '#E6B3B3', '#6680B3', '#66991A', 
+		  '#FF99E6', '#CCFF1A', '#FF1A66', '#E6331A', '#33FFCC',
+		  '#66994D', '#B366CC', '#4D8000', '#B33300', '#CC80CC', 
+		  '#66664D', '#991AFF', '#E666FF', '#4DB3FF', '#1AB399',
+		  '#E666B3', '#33991A', '#CC9999', '#B3B31A', '#00E680', 
+		  '#4D8066', '#809980', '#E6FF80', '#1AFF33', '#999933',
+		  '#FF3380', '#CCCC00', '#66E64D', '#4D80CC', '#9900B3', 
+		  '#E64D66', '#4DB380', '#FF4D4D', '#99E6E6', '#6666FF'];
+
 class FileStats extends React.Component {
     constructor(props){
         super(props)
@@ -28,81 +52,93 @@ class FileStats extends React.Component {
             camera: JSON.parse(process.env.cameras).map((element, index) => {
                 return {
                     path: `shared/captures/${index + 1}`,
+                    index: index+1,
                     size: 0,
                     count: 0
                 }
             }),
             days: 7,
-            lastUpdated: moment().format("h:mm:ss a")
+            lastUpdated: moment().format("h:mm:ss a"),
+            countStats: [],
+            sizeStats: []
         }
     }
 
     componentDidMount = () => {
         this.cameraUpdate()
+        this.statsUpdate()
     }
 
-    loadingStatus = (responseNumber, responsesNeeded=this.state.camera.length * (Object.keys(this.state.camera).length - 1)) => {
-        if(responseNumber >= responsesNeeded){
-            this.setState({
-                lastUpdated: moment().format("h:mm:ss a"),
-                loading: undefined
-            })
-        }
+    doneLoading = () => {
+        this.setState(() => ({
+            lastUpdated: moment().format("h:mm:ss a"),
+            loading: undefined
+        }))
     }
 
-    cameraUpdate = () => {
-        let responseNumber = 0
-        this.setState({
-            loading: "refreshing",
-            lastUpdated: moment().format("h:mm:ss a")
-        }, () => {
-            this.state.camera.forEach((camera, index) => {
-                request("/file/pathSize", {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        path: camera.path
-                    })
-                }, (prom) => {
-                    jsonProcessing(prom, (data) => {
-                        console.log(data)
-                        responseNumber++
-                        this.setState((oldState) => {
-                            oldState.camera[index].size = data.size
-                            return oldState
-                        }, () => {
-                            this.loadingStatus(responseNumber)
-                        })
-                    })
-                })
-                request("/file/pathFileCount", {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        path: camera.path
-                    })
-                }, (prom) => {
-                    jsonProcessing(prom, (data) => {
-                        console.log(data)
-                        responseNumber++
-                        this.setState((oldState) => {
-                            oldState.camera[index].count = data.count
-                            return oldState
-                        }, () => {
-                            this.loadingStatus(responseNumber)
-                        })
-                    })
-                })
+    statsUpdate = () => {
+        request('/file/pathStats', {
+            method: "GET"
+        }, (prom) => {
+            jsonProcessing(prom, (data) => {
+                if(data != undefined && count in data && size in data){
+                    this.setState(() => ({
+                        countStats: data.count,
+                        sizeStats: data.size
+                    }))
+                }
             })
         })
     }
 
-    deleteFiles = (path=undefined) => {
-        if(path != undefined){
+    cameraUpdate = () => {
+        this.setState({
+            loading: "refreshing",
+            lastUpdated: moment().format("h:mm:ss a")
+        }, () => {
+            Promise.all([].concat(
+                new Promise(resolve => this.state.camera.map((camera, index) => {
+                    request("/file/pathSize", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            camera: camera.index
+                        })
+                    }, (prom) => {
+                        jsonProcessing(prom, (data) => {
+                            this.setState((oldState) => {
+                                oldState.camera[index].size = data.size
+                                return oldState
+                            }, resolve)
+                        })
+                    })
+                })),
+                this.state.camera.map((camera, index) => {
+                    new Promise(resolve => request("/file/pathFileCount", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            camera: camera.index
+                        })
+                    }, (prom) => {
+                        jsonProcessing(prom, (data) => {
+                            this.setState((oldState) => {
+                                oldState.camera[index].count = data.count
+                                return oldState
+                            }, resolve)
+                        })
+                    }))
+                })
+            )).then(this.doneLoading)
+        })
+    }
+
+    deleteFiles = (camera=undefined) => {
+        if(camera != undefined){
             this.setState({
                 loading: "deleting"
             }, () => {
@@ -112,7 +148,7 @@ class FileStats extends React.Component {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        path,
+                        camera,
                         days: this.state.days
                     })
                 }, (prom) => {
@@ -124,28 +160,26 @@ class FileStats extends React.Component {
             })
         }
         else{
-            let responseNumber = 0
             this.setState({
                 loading: "deleting"
             }, () => {
-                this.state.camera.forEach((camera) => {
+                Promise.all(this.state.camera.map((camera) => {
                     request("/file/pathClean", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            path: camera.path,
+                            camera: camera.index,
                             days: this.state.days
                         })
                     }, (prom) => {
                         jsonProcessing(prom, (data) => {
                             console.log(data)
-                            responseNumber++
-                            this.loadingStatus(responseNumber, this.state.camera.length)
+                            resolve()
                         })
                     }) 
-                })
+                })).then(this.doneLoading)
             })
         }
     }
@@ -174,13 +208,42 @@ class FileStats extends React.Component {
                         Last Updated Date: {this.state.lastUpdated}
                     </NoticeBar>
                 
-                    <ServerProcess key={`server${this.state.lastUpdated}`}/>
+                    {/* <ServerProcess key={`server${this.state.lastUpdated}`}/> */}
+
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart width={730} height={250} data={this.state.countStats}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="timestamp" type="number" tickFormatter={timeStr => moment(timeStr, "x").format('MM/DD HH:mm')} domain={['auto', 'auto']} hide/>
+                            <YAxis />
+                            <Legend />
+                            <Tooltip />
+                            {JSON.parse(process.env.cameras).map((name, index) => {
+                                return <Line type="monotone" dataKey={name} stroke={colorArray[index]} />
+                            })}
+                        </LineChart>
+                    </ResponsiveContainer>
+
+                    <br />
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart width={730} height={250} data={this.state.sizeStats}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="timestamp" type="number" tickFormatter={timeStr => moment(timeStr, "x").format('MM/DD HH:mm')} domain={['auto', 'auto']} hide/>
+                            <YAxis tickFormatter={val => formatBytes(val)}/>
+                            <Legend />
+                            <Tooltip />
+                            {JSON.parse(process.env.cameras).map((name, index) => {
+                                return <Line type="monotone" dataKey={name} stroke={colorArray[index]} />
+                            })}
+                        </LineChart>
+                    </ResponsiveContainer>
 
                     <List >
                         {this.state.camera.map(cam => {
                             return (<List.Item arrow="horizontal" onClick={() => {
                                 alertModal(`Delete Files`, `Deleting files that are ${this.state.days} day old and older for ${cam.path}.`, () => {
-                                    this.deleteFiles(cam.path)
+                                    this.deleteFiles(cam.index)
                                 })
                             }} multipleLine>
                                 {cam.path} 
