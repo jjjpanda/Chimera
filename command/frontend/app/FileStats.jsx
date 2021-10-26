@@ -81,7 +81,7 @@ class FileStats extends React.Component {
             method: "GET"
         }, (prom) => {
             jsonProcessing(prom, (data) => {
-                if(data != undefined && count in data && size in data){
+                if(data != undefined && "count" in data && "size" in data){
                     this.setState(() => ({
                         countStats: data.count,
                         sizeStats: data.size
