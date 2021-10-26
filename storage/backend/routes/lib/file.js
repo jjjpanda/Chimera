@@ -73,6 +73,7 @@ module.exports = {
         const list = req.body.directoryList
         const checkDate = moment().subtract(req.body.days, "days")
         req.body.directoryList = filterFilesByTime(list, checkDate, timeCheck)
+        next()
     },
 
     deleteFileList: (req, res) => {
@@ -189,7 +190,7 @@ const createStatsJSON = (filePath) => {
     mkdirp(`${process.env.storage_FILEPATH}shared`).then(() => {
         fs.readFile(filePath, (err, data) => {
             if (err || !isStringJSON(data)) {
-              fs.writeFile(filePath, JSON.stringify([]), (err) => {
+              fs.writeFile(filePath, JSON.stringify({}), (err) => {
                   if(err) {
                       console.log(err);
                   }
@@ -203,10 +204,11 @@ const pathToStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additi
 createStatsJSON(pathToStatsJSON)
 
 const createTimestampedStatObject = () => {
-    let stats = { timestamp: moment().unix() }
+    const timestamp = moment().format('x')
+    let stats = { count: {timestamp}, size: {timestamp} }
     JSON.parse(process.env.cameras).forEach((name) => {
-        stats[`${name} count`] = 0
-        stats[`${name} size`] = 0
+        stats.count[`${name}`] = 0
+        stats.size[`${name}`] = 0
     })
     return stats
 }
@@ -220,16 +222,18 @@ const promiseTasks = (statsObj) => JSON.parse(process.env.cameras).map((name, i)
     return accumulator.concat([
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
-                filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
-                statsObj[`${name} count`] = filteredFileList.length
+                filteredFileList = filterFilesByTime(fileList, moment(statsObj.count.timestamp, "x").subtract(cronMinutes, "minutes"), "after")
+                filteredFileList = filterFilesByTime(filteredFileList, moment(statsObj.count.timestamp, "x"), "before")
+                statsObj.count[`${name}`] = filteredFileList.length
                 resolve()
             })
         }),
         new Promise(resolve => {
             listFilesInDirectory(pathToDir).then((fileList) => {
-                filteredFileList = filterFilesByTime(fileList, moment().subtract(cronMinutes, "minutes"), "after")
+                filteredFileList = filterFilesByTime(fileList, moment(statsObj.count.timestamp, "x").subtract(cronMinutes, "minutes"), "after")
+                filteredFileList = filterFilesByTime(filteredFileList, moment(statsObj.count.timestamp, "x"), "before")
                 getDirectorySize(filteredFileList).then(({bytes}) => {
-                    statsObj[`${name} size`] = bytes
+                    statsObj.size[`${name}`] = bytes
                 })
                 resolve()
             })
@@ -241,11 +245,16 @@ cron.schedule(`*/${cronMinutes} * * * *`, () => {
     let currentStats = createTimestampedStatObject()
     Promise.all(promiseTasks(currentStats)).then(() => {
         fs.readFile(pathToStatsJSON, (err, data) => {
-            let jsonData = []
+            let jsonData = {}
             if(!err && isStringJSON(data)){
                 jsonData = JSON.parse(data)
             }
-            jsonData.push(currentStats)
+            for(const metric in currentStats){
+                if(!(metric in jsonData)){
+                    jsonData[metric] = []
+                }
+                jsonData[metric].push(currentStats[metric])
+            }
             fs.writeFile(pathToStatsJSON, JSON.stringify(jsonData), (err) => {
                 console.log("\twriting file stats to JSON | Error:", err)
             })
