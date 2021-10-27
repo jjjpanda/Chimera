@@ -11,6 +11,8 @@ app.use(require('cookie-parser')())
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+app.use('/storage/health', require('heartbeat').healthcheck)
+
 app.use(auth.auth)
 
 app.use('/motion', require('./routes/motion.js'))

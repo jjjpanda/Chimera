@@ -11,6 +11,8 @@ app.use(require('./routes/gateway.js'));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+app.use('/command/health', require('heartbeat').healthcheck)
+
 app.use('/authorization', require('./routes/authorization.js'))
 app.use('/res', express.static(path.join(__dirname, '../frontend/res')));
 app.use('/', express.static(path.join(__dirname, "../dist/"), {

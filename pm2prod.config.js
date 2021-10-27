@@ -7,5 +7,10 @@ module.exports = {
     env: {
       "NODE_ENV": "production",
     }
+  }, {
+    script: 'npx heartbeat',
+    name: "heartbeat",
+    log: "./heartbeat.log",
+    log_date_format:"YYYY-MM-DD HH:mm:ss"
   }]
 };
