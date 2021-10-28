@@ -9,6 +9,6 @@ module.exports = {
         storage: `${baseUrl}/storage/health`
     },
     webhookUrl: process.env.alert_URL,
-    cronString: "*/10 * * * * *",
+    cronString: "*/10 * * * *",
     consoleOutput: true
 }
