@@ -13,6 +13,7 @@
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
+    "heartbeat": "github:jjjpanda/heartbeat",
     "moment": "^2.29.1",
     "pm2": "^5.1.2"
   }

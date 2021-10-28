@@ -9,6 +9,8 @@ app.use(require('cookie-parser')())
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+app.use('/livestream/health', require('heartbeat').heart)
+
 app.use(auth.auth)
 
 app.use('/livestream', require('./routes/livestream.js'))
