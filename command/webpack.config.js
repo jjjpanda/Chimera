@@ -75,6 +75,5 @@ module.exports = {
         safe: path.resolve(__dirname, '../env.example'),
         allowEmptyValues: true
       })
-    ],
-    devtool: 'cheap-module-source-map', 
+    ]
 }

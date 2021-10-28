@@ -8,7 +8,7 @@ app.use(require('cookie-parser')())
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-app.use('/schedule/health', require('heartbeat').healthcheck)
+app.use('/schedule/health', require('heartbeat').heart)
 
 app.use(auth.auth);
 
