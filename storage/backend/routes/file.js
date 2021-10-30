@@ -12,7 +12,8 @@ const {
     validateDays, 
     filterList,
     deleteFileList,
-    fileStats
+    fileStats,
+    summaryMetrics
 } = require('./lib/file.js')
 
 app.get('/pathStats', fileStats)
@@ -21,5 +22,7 @@ app.post('/pathSize', validateBody, validateCameraAndAppendToPath, directoryList
 app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
 app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
 app.post('/pathClean', validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList) 
+
+app.post('/pathMetrics', validateBody, summaryMetrics)
 
 module.exports = app

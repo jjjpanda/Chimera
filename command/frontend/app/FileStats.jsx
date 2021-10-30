@@ -49,10 +49,11 @@ class FileStats extends React.Component {
         super(props)
         this.state = {
             loading: "refreshing",
-            camera: JSON.parse(process.env.cameras).map((element, index) => {
+            cameras: JSON.parse(process.env.cameras).map((element, index) => {
                 return {
                     path: `shared/captures/${index + 1}`,
-                    index: index+1,
+                    number: index+1,
+                    name: element,
                     size: 0,
                     count: 0
                 }
@@ -96,44 +97,27 @@ class FileStats extends React.Component {
             loading: "refreshing",
             lastUpdated: moment().format("h:mm:ss a")
         }, () => {
-            Promise.all([].concat(
-                new Promise(resolve => this.state.camera.map((camera, index) => {
-                    request("/file/pathSize", {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            camera: camera.index
-                        })
-                    }, (prom) => {
-                        jsonProcessing(prom, (data) => {
-                            this.setState((oldState) => {
-                                oldState.camera[index].size = data.size
-                                return oldState
-                            }, resolve)
-                        })
-                    })
-                })),
-                this.state.camera.map((camera, index) => {
-                    new Promise(resolve => request("/file/pathFileCount", {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            camera: camera.index
-                        })
-                    }, (prom) => {
-                        jsonProcessing(prom, (data) => {
-                            this.setState((oldState) => {
-                                oldState.camera[index].count = data.count
-                                return oldState
-                            }, resolve)
-                        })
-                    }))
+            request('/file/pathMetrics', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            }, (prom) => {
+                jsonProcessing(prom, (data) => {
+                    if("count" in data && "size" in data){
+                        this.setState((oldState) => {
+                            oldState.cameras.forEach((camera, index) => {
+                                oldState.cameras[index].size = formatBytes(data.size[camera.name])
+                                oldState.cameras[index].count = data.count[camera.name]
+                            })
+                            return oldState
+                        }, this.doneLoading)
+                    }
+                    else{
+                        this.doneLoading()
+                    }
                 })
-            )).then(this.doneLoading)
+            })
         })
     }
 
@@ -163,14 +147,14 @@ class FileStats extends React.Component {
             this.setState({
                 loading: "deleting"
             }, () => {
-                Promise.all(this.state.camera.map((camera) => {
+                Promise.all(this.state.cameras.map((camera) => {
                     request("/file/pathClean", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            camera: camera.index,
+                            camera: camera.number,
                             days: this.state.days
                         })
                     }, (prom) => {
@@ -179,7 +163,7 @@ class FileStats extends React.Component {
                             resolve()
                         })
                     }) 
-                })).then(this.doneLoading)
+                })).then(this.cameraUpdate)
             })
         }
     }
@@ -240,10 +224,10 @@ class FileStats extends React.Component {
                     </ResponsiveContainer>
 
                     <List >
-                        {this.state.camera.map(cam => {
+                        {this.state.cameras.map(cam => {
                             return (<List.Item arrow="horizontal" onClick={() => {
                                 alertModal(`Delete Files`, `Deleting files that are ${this.state.days} day old and older for ${cam.path}.`, () => {
-                                    this.deleteFiles(cam.index)
+                                    this.deleteFiles(cam.number)
                                 })
                             }} multipleLine>
                                 {cam.path} 
