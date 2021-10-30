@@ -109,7 +109,7 @@ class FileStats extends React.Component {
                     }, (prom) => {
                         jsonProcessing(prom, (data) => {
                             this.setState((oldState) => {
-                                oldState.camera[index].size = data.size
+                                oldState.camera[index].size = data && data.size ? data.size : "-"
                                 return oldState
                             }, resolve)
                         })
@@ -127,7 +127,7 @@ class FileStats extends React.Component {
                     }, (prom) => {
                         jsonProcessing(prom, (data) => {
                             this.setState((oldState) => {
-                                oldState.camera[index].count = data.count
+                                oldState.camera[index].count = data && data.count ? data.count : "-"
                                 return oldState
                             }, resolve)
                         })
