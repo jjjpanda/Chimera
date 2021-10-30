@@ -3,7 +3,6 @@ var dateFormat = require('./dateFormat.js')
 var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
-const isIp = require('is-ip');
 const {
     randomID,
     filterList,
@@ -57,7 +56,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
             });    
 
@@ -78,7 +77,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
             res.send(JSON.stringify({
                 id: rand,
                 frameLimitMet: req.body.frameLimitMet,
-                url: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
+                url: `http://${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`
             }))
         }
         else{

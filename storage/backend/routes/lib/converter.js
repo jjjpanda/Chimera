@@ -2,7 +2,6 @@ var fs         = require('fs')
 var path       = require('path')
 var shortid    = require("shortid")
 var moment     = require('moment')
-const isIp = require('is-ip');
 var dateFormat = require('./dateFormat.js')
 
 const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
@@ -40,7 +39,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         console.log(fileName)
         return {
-            link: `http://${process.env.command_HOST}${isIp(process.env.command_HOST) ? ":"+process.env.command_PORT : ""}/shared/captures/${fileName}`,
+            link: `http://${process.env.command_HOST}/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],
