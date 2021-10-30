@@ -27,7 +27,7 @@ const createFrameList = (camera, start, end, limit) => {
     const limitedList = filteredList.filter((item, index) => {
         return (index % limitIteration === 0)
     }).map((item) => {
-        return `http://${process.env.command_HOST}/shared/captures/${camera}/${item}`
+        return `/shared/captures/${camera}/${item}`
     })
 
     return limitedList
@@ -114,7 +114,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
                 res.send(JSON.stringify({
                     id: rand,
                     frameLimitMet: req.body.frameLimitMet,
-                    url: `http://${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
+                    url: `/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`
                 }))
             }
             else{
