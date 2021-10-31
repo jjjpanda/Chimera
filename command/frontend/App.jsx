@@ -13,7 +13,7 @@ import Cookies from 'js-cookie';
 
 import { request } from './js/request.js'
 
-const timeout = 500
+const timeout = 750
 
 import * as FastClick from 'fastclick'
 import LoginForm from './app/LoginForm.jsx';
@@ -68,15 +68,16 @@ class App extends React.Component{
         })
     }
 
-    handleLoginAttempt = (res, timestamp) => {
-        console.log('response', res)
-        this.setState(() => ({loaded: true, loggedIn: !res.error}), () => {
+    handleLoginAttempt = (res, timestamp, callback=()=>{}) => {
+        console.log('login attempt', res)
+        callback(res.error)
+        setTimeout(() => this.setState(() => ({loaded: true, loggedIn: !res.error}), () => {
             setTimeout(() => {
                 this.setState((oldState) => ({
                     key: oldState.key + 1
                 }), () => console.log("APP KEY", this.state.key))
             }, Math.max(0, timeout - (new Date() - timestamp)))
-        })
+        }), 500)
     }
 
     componentDidMount() {
