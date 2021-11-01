@@ -1,6 +1,6 @@
 var express    = require('express');
 
-var { validateBody } = require('lib')
+var { validateBody, tempMiddleware } = require('lib')
 var {
     validateTaskRequest,
     validateTaskCron,
@@ -11,8 +11,8 @@ var {
 
 const app = express.Router();
 
-app.post('/schedule', validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
-app.post('/check', validateBody, validateTaskRequest, taskCheck)
-app.post('/destroy', validateBody, validateTaskRequest, destroyTask, taskCheck)
+app.post('/schedule', tempMiddleware.deprecation, validateBody, validateTaskRequest, validateTaskCron, destroyTask, scheduleTask, taskCheck)
+app.post('/check', tempMiddleware.deprecation,  validateBody, validateTaskRequest, taskCheck)
+app.post('/destroy', tempMiddleware.deprecation,  validateBody, validateTaskRequest, destroyTask, taskCheck)
 
 module.exports = app

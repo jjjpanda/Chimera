@@ -3,6 +3,9 @@ var {validateBody} = require('lib')
 
 const app = express.Router();
 
+const {tempMiddleware} = require('lib')
+const {deprecation, construction} = tempMiddleware
+
 const {
     validateCameraAndAppendToPath, 
     directoryList, 
@@ -18,10 +21,15 @@ const {
 
 app.get('/pathStats', fileStats)
 
-app.post('/pathSize', validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
-app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
-app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
-app.post('/pathClean', validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList) 
+app.post('/pathSizeDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
+app.post('/pathFileCountDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
+app.post('/pathDeleteDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
+app.post('/pathCleanDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList)
+
+app.post('/pathSize', construction) 
+app.post('/pathFileCount', construction)
+app.post('/pathDelete', construction) 
+app.post('/pathClean', construction)
 
 app.post('/pathMetrics', validateBody, summaryMetrics)
 
