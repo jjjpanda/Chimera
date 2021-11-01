@@ -6,7 +6,8 @@ class LoginForm extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            password: ""
+            password: "",
+            passwordStatus: null
         }
     }
 
@@ -15,14 +16,23 @@ class LoginForm extends React.Component{
     }
 
     onClick = () => {
-        this.props.loginReq(this.state.password).then(req => this.props.handler(req, this.props.timestamp))
+        this.props.loginReq(this.state.password).then(req => this.props.handler(req, this.props.timestamp, (err) => {
+            this.setState(() => ({
+                passwordStatus: !err ? "right" : "wrong"
+            }))
+        }))
     }
 
     render() {
         return (
             <WingBlank size="sm">
                 <InputItem type="password" value={this.state.password} onChange={this.onChange}/>
-                <Button onClick ={this.onClick}>ENTER</Button>
+                <Button 
+                    icon={this.state.passwordStatus == null ? "right" : (this.state.passwordStatus == "wrong" ? "cross-circle" : "check-circle")} 
+                    onClick ={this.onClick}
+                >
+                    ENTER
+                </Button>
             </WingBlank>
         )
     }
