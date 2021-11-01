@@ -49,9 +49,11 @@ class LiveVideo extends React.Component{
                     if(processList){
                         this.setState({
                             loading: false,
-                            videoList: processList.map((cam) => ({
-                                camera: this.state.cameras[parseInt(cam.name.split("_")[3])-1],
-                                url: `/livestream/feed/${parseInt(cam.name.split("_")[3])}/video.m3u8`
+                            videoList: processList.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
+                                return camNumA - camNumB
+                            }).map((num) => ({
+                                camera: this.state.cameras[num - 1],
+                                url: `/livestream/feed/${num}/video.m3u8`
                             })),
                             lastUpdated: moment().format("h:mm:ss a")
                         })
