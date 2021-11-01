@@ -219,7 +219,7 @@ const isStringJSON = (str) => {
 }
 
 const createStatsJSON = (filePath) => {
-    mkdirp(`${process.env.storage_FILEPATH}shared`).then(() => {
+    mkdirp(path.join(process.env.storage_FILEPATH, `./shared`)).then(() => {
         fs.readFile(filePath, (err, data) => {
             if (err || !isStringJSON(data)) {
               fs.writeFile(filePath, JSON.stringify({}), (err) => {
