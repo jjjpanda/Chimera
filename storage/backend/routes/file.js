@@ -31,6 +31,6 @@ app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, getCache
 app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
 app.post('/pathClean', construction)
 
-app.post('/pathMetrics', validateBody, summaryMetrics)
+app.post('/pathMetrics', validateBody, getCachedFileData('all'))
 
 module.exports = app

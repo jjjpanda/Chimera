@@ -8,7 +8,7 @@ const { formatBytes } = require('lib')
 
 const pathToAdditionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
 const pathToCumulativeStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/cumulativeStats.json")
-const cronMinutes = 15
+const cronMinutes = process.env.storage_fileStatsUpdateTime
 
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
@@ -75,15 +75,24 @@ module.exports = {
     getCachedFileData: (metric) => (req, res) => {
         const cameras = JSON.parse(process.env.cameras)
         const {camera} = req.body
-        fs.readFile(pathToCumulativeStatsJSON, (err, data) => { 
+        res.send({bruh: true})
+        /* fs.readFile(pathToCumulativeStatsJSON, (err, data) => { 
             if(!err && isStringJSON(data)){
                 const cachedData = JSON.parse(data)
-                res.send(cachedData[metric][cameras[camera]])
+                if(metric === "all"){
+                    res.send(cachedData)
+                }
+                else if(metric in cachedData){
+                    res.send({[metric]: cachedData[metric][cameras[camera]]})
+                }
+                else{
+                    res.send({error: true})
+                }
             }
             else{
                 res.send({error: true})
             }
-        })
+        }) */
     },
 
     fileStats: (req, res) => {
