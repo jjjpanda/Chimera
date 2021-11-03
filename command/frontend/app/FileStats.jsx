@@ -189,7 +189,7 @@ class FileStats extends React.Component {
                 />
                 <Card.Body>
                     <NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
-                        Last Updated Date: {this.state.lastUpdated}
+                        Last Updated Date: {this.state.lastUpdated} ⚠️ File Size Data is updated every {process.env.storage_fileStatsUpdateTime} minutes.
                     </NoticeBar>
                 
                     {/* <ServerProcess key={`server${this.state.lastUpdated}`}/> */}
