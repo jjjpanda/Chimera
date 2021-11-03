@@ -30,7 +30,7 @@ class SummaryScrubber extends React.Component{
     constructor(props){
         super(props)
         this.state ={
-            sliderIndex: 0,
+            sliderIndex: 100,
             numberOfFrames: 100,
             camera: 0,
             cameras: JSON.parse(process.env.cameras),
@@ -61,7 +61,8 @@ class SummaryScrubber extends React.Component{
     updateImages = () => {
         this.setState({
             list: [],
-            loading: true
+            loading: true,
+            imagesLoaded: 0
         }, () => {
             request("/convert/listFramesVideo", {
                 method: "POST",
@@ -153,6 +154,7 @@ class SummaryScrubber extends React.Component{
                                                 sliderIndex: val
                                             }))
                                         }}
+                                        disabled={this.state.loading}
                                     />
                                 </WingBlank>
                                 <br />
