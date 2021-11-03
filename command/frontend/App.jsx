@@ -10,6 +10,7 @@ import Main from "./app/Main.jsx"
 
 import './css/style.less'
 import Cookies from 'js-cookie';
+import LoadingIcon from './app/LoadingIcon.jsx';
 
 import { request } from './js/request.js'
 
@@ -106,7 +107,7 @@ class App extends React.Component{
             )
         }
         else{
-            return <div>Loading...</div>
+            return <LoadingIcon />
         }
     }
 }
