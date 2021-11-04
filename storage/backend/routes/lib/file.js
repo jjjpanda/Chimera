@@ -7,6 +7,7 @@ const cron = require('node-cron')
 const { formatBytes } = require('lib')
 
 const pathToAdditionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
+const pathToDeletionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/deletionStats.json")
 const pathToCumulativeStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/cumulativeStats.json")
 const cronMinutes = process.env.storage_fileStatsUpdateTime
 
@@ -100,6 +101,9 @@ module.exports = {
     
     deleteFileDirectory: (req, res) => {
         rimraf(req.body.appendedPath, (err) => {
+            /* fs.readFile(pathToDeletionStatsJSON, (err, data) => {
+
+            }) */
             res.send({deleted: !err})
         })
     },
@@ -219,6 +223,7 @@ const createStatsJSON = (filePath) => {
 
 mkdirp(path.join(process.env.storage_FILEPATH, `./shared`)).then(() => {
     createStatsJSON(pathToAdditionStatsJSON)
+    createStatsJSON(pathToDeletionStatsJSON)
     createStatsJSON(pathToCumulativeStatsJSON)
 })
 

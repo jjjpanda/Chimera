@@ -22,8 +22,6 @@ const {
 
 app.get('/pathStats', fileStats)
 
-app.post('/pathSizeDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
-app.post('/pathFileCountDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
 app.post('/pathCleanDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList)
 
 app.post('/pathSize', validateBody, validateCameraAndAppendToPath, getCachedFileData("size")) 
