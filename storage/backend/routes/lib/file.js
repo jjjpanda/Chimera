@@ -4,7 +4,8 @@ const rimraf = require('rimraf')
 const moment = require('moment')
 const mkdirp = require('mkdirp')
 const cron = require('node-cron')
-const { formatBytes } = require('lib')
+const { formatBytes, jsonFileHanding } = require('lib')
+const {readJSON, writeJSON} = jsonFileHanding
 
 const pathToAdditionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
 const pathToDeletionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/deletionStats.json")
@@ -76,22 +77,19 @@ module.exports = {
     getCachedFileData: (metric) => (req, res) => {
         const cameras = JSON.parse(process.env.cameras)
         const {camera} = req.body
-        fs.readFile(pathToCumulativeStatsJSON, (err, data) => { 
-            if(!err && isStringJSON(data)){
-                const cachedData = JSON.parse(data)
-                if(metric === "all"){
-                    res.send(cachedData)
-                }
-                else if(metric in cachedData){
-                    res.send({[metric]: cachedData[metric][cameras[camera-1]]})
-                }
-                else{
-                    res.send({error: true})
-                }
+        readJSON(pathToCumulativeStatsJSON, () => {
+            const cachedData = JSON.parse(data)
+            if(metric === "all"){
+                res.send(cachedData)
+            }
+            else if(metric in cachedData){
+                res.send({[metric]: cachedData[metric][cameras[camera-1]]})
             }
             else{
                 res.send({error: true})
             }
+        }, (err) => {
+            res.send({error: true})
         })
     },
 
@@ -101,9 +99,9 @@ module.exports = {
     
     deleteFileDirectory: (req, res) => {
         rimraf(req.body.appendedPath, (err) => {
-            /* fs.readFile(pathToDeletionStatsJSON, (err, data) => {
+            readJSON(pathToDeletionStatsJSON, (data) => {
 
-            }) */
+            })
             res.send({deleted: !err})
         })
     },
@@ -210,15 +208,11 @@ const isStringJSON = (str) => {
 }
 
 const createStatsJSON = (filePath) => {
-    fs.readFile(filePath, (err, data) => {
-        if (err || !isStringJSON(data)) {
-            fs.writeFile(filePath, JSON.stringify({}), (err) => {
-                if(err) {
-                    console.log(err);
-                }
-            });
-        } 
-    });
+    readJSON(filePath, (data) => {
+        writeJSON(filePath, {}, ()=>{}, (err) => {
+            console.log(err);
+        })
+    })
 }
 
 mkdirp(path.join(process.env.storage_FILEPATH, `./shared`)).then(() => {
@@ -274,41 +268,37 @@ const promiseMetricTasks = (statsObj, cronMinutes=undefined) => JSON.parse(proce
 cron.schedule(`*/${cronMinutes} * * * *`, () => {
     let currentStats = createTimestampedStatObject()
     Promise.all(promiseMetricTasks(currentStats, cronMinutes)).then(() => {
-        fs.readFile(pathToAdditionStatsJSON, (err, data) => {
-            let jsonData = {}
-            if(!err && isStringJSON(data)){
-                jsonData = JSON.parse(data)
-            }
+        readJSON(pathToAdditionStatsJSON, (data) => {
             for(const metric in currentStats){
-                if(!(metric in jsonData)){
-                    jsonData[metric] = []
+                if(!(metric in data)){
+                    data[metric] = []
                 }
-                jsonData[metric].push(currentStats[metric])
+                data[metric].push(currentStats[metric])
             }
-            fs.writeFile(pathToAdditionStatsJSON, JSON.stringify(jsonData), (err) => {
-                console.log("\twriting file stats to addition JSON | Error:", err)
+            writeJSON(pathToAdditionStatsJSON, data, (err) => {
+                if(err){
+                    console.log("\twriting file stats to addition JSON | Error:", err)
+                }
             })
         })
-        fs.readFile(pathToCumulativeStatsJSON, (err, data) => {
-            let jsonData = {}
-            if(!err && isStringJSON(data)){
-                jsonData = JSON.parse(data)
-            }
+        readJSON(pathToCumulativeStatsJSON, (data) => {
             for(const metric in currentStats){
-                if(!(metric in jsonData)){
-                    jsonData[metric] = {}
+                if(!(metric in data)){
+                    data[metric] = {}
                 }
                 for(const camera of JSON.parse(process.env.cameras)){
-                    if(jsonData[metric][camera] != undefined){
-                        jsonData[metric][camera] += currentStats[metric][camera]
+                    if(data[metric][camera] != undefined){
+                        data[metric][camera] += currentStats[metric][camera]
                     }
                     else{
-                        jsonData[metric][camera] = currentStats[metric][camera]
+                        data[metric][camera] = currentStats[metric][camera]
                     }
                 }
             }
-            fs.writeFile(pathToCumulativeStatsJSON, JSON.stringify(jsonData), (err) => {
-                console.log("\twriting file stats to cumulative JSON | Error:", err)
+            writeJSON(pathToCumulativeStatsJSON, data, (err) => {
+                if(err){
+                    console.log("\twriting file stats to cumulative JSON | Error:", err)
+                }    
             })
         })
     }, (err) => {
