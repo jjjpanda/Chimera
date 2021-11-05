@@ -1,6 +1,7 @@
 var path       = require('path')
 var express    = require('express')
 const { handleServerStart, auth } = require('lib')
+const mkdirp = require('mkdirp')
 
 var app = express()
 
@@ -12,6 +13,10 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 app.use('/command/health', require('heartbeat').heart)
+
+app.use('/.well-known/acme-challenge/', express.static(path.join(__dirname, '../../.well-known/acme-challenge'), {
+    dotfiles: "allow"
+}))
 
 app.use('/authorization', require('./routes/authorization.js'))
 app.use('/res', express.static(path.join(__dirname, '../frontend/res')));
@@ -31,7 +36,13 @@ module.exports = (isOn) => {
     }
     
     auth.register(() => {
-        handleServerStart(app, process.env.command_PORT, isOn, successCallback, failureCallback)
+        mkdirp(path.join(__dirname, '../../.well-known/acme-challenge')).then((made) => {
+            handleServerStart(app, process.env.command_PORT, isOn, successCallback, failureCallback)
+            //https server start, need 2nd port 
+        }, (err) => {
+            console.log(err)
+            failureCallback()
+        })
     }, (err) => {
         console.log(err)
         failureCallback()

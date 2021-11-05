@@ -6,13 +6,13 @@
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
     "lib": "file:../lib",
-    "mkdirp": "^1.0.4",
     "shortid": "^2.2.16"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
+    "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
     "node-cron": "^2.0.3",
     "pm2": "^5.1.2"
