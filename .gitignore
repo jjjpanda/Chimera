@@ -7,3 +7,4 @@ shared
 feed
 *.log
 *.conf
+.well-known

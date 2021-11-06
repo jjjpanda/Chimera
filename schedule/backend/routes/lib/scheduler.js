@@ -82,7 +82,7 @@ module.exports = {
             webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
             request({
                 method: "POST",
-                url: `http://${process.env.command_HOST}${url}`,
+                url: `${process.env.command_HOST}${url}`,
                 body
             }, (err, response, body) => {
                 if(!err && response.statusCode === 200){

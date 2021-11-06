@@ -1,6 +1,6 @@
 require('dotenv').config()
 
-const baseUrl = `http://${process.env.command_HOST}`
+const baseUrl = process.env.command_HOST
 module.exports = {
     checkUrl: {
         command: `${baseUrl}/command/health`,

@@ -97,7 +97,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
             })
             .on('end', function() {
                 if(save){
-                    webhookAlert(`Your video (${rand}) is finished. Download it at: http://${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
+                    webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'mp4')}`)
                 }
                 fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
                 bar.stop()
