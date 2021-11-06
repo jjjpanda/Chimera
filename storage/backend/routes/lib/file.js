@@ -190,6 +190,13 @@ module.exports = {
         else{
             res.send({error: true})
         }
+    },
+
+    generateBeforeDateGlob: (req, res) => {
+        const {camera, days} = req.body
+        const now = moment()
+        const beforeDate = now.subtract(days, "days")
+        arr = f(now, beforeDate)
     }
 }
 
@@ -201,6 +208,36 @@ const listFilesInDirectory = (pathToDir) => {
         }
         resolve(list)
     }))
+}
+
+f = (now, beforeDate, arr=[]) => {
+    if(now.year() > beforeDate.year()){
+        const str = `${now.year()}`
+        return [...arr, str, ...f(now.subtract(1, "year"), beforeDate)]
+    }
+    else if(now.month() > beforeDate.month()){
+        const str = `${now.year()}${now.month()}`
+        return [...arr, str, ...f(now.subtract(1, "month"), beforeDate)]
+    }
+    else if(now.date() > beforeDate.date()){
+        const str = `${now.year()}${now.month()}${now.date()}`
+        return [...arr, str, ...f(now.subtract(1, "date"), beforeDate)]
+    }
+    else if(now.hour() > beforeDate.hour()){
+        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}`
+        return [...arr, str, ...f(now.subtract(1, "hour"), beforeDate)]
+    }
+    else if(now.minute() > beforeDate.minute()){
+        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}`
+        return [...arr, str, ...f(now.subtract(1, "minute"), beforeDate)]
+    }
+    else if(now.second() > beforeDate.second()){
+        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}${now.second()}`
+        return [...arr, str, ...f(now.subtract(1, "second"), beforeDate)]
+    }
+    else{
+        return arr
+    }
 }
 
 const getDirectorySize = (fileList) => {
