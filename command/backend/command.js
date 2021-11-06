@@ -1,6 +1,6 @@
 var path       = require('path')
 var express    = require('express')
-const { handleServerStart, auth } = require('lib')
+const { handleServerStart, handleSecureServerStart, auth } = require('lib')
 const mkdirp = require('mkdirp')
 
 var app = express()
