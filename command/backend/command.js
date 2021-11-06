@@ -34,17 +34,23 @@ module.exports = (isOn) => {
     const failureCallback = () => {
         console.log(`🎮 Command Off ❌`)
     }
-    
+
+    const failCall = (err) => {
+        console.log(err)
+        failureCallback()
+    }
+
+    const successCallbackSecure = () => {
+        console.log(`🎮🔒 Secure Command On ▶ PORT ${process.env.command_PORT_SECURE}`)
+    }
+    const failureCallbackSecure = () => {
+        console.log(`🎮🔒 Secure Command Off ❌`)
+    }
+
     auth.register(() => {
         mkdirp(path.join(__dirname, '../../.well-known/acme-challenge')).then((made) => {
             handleServerStart(app, process.env.command_PORT, isOn, successCallback, failureCallback)
-            //https server start, need 2nd port 
-        }, (err) => {
-            console.log(err)
-            failureCallback()
-        })
-    }, (err) => {
-        console.log(err)
-        failureCallback()
-    })
+            handleSecureServerStart(app, process.env.command_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
+        }, failCall)
+    }, failCall)
 }

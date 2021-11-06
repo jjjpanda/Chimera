@@ -56,7 +56,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
             output.on('close', function() {
                 console.log("SENDING END ALERT")
-                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: http://${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
+                webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.command_HOST}/shared/captures/${fileName(camera, start, end, rand, 'zip')}`)
                 fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
             });    
 
