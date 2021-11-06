@@ -99,10 +99,77 @@ module.exports = {
     
     deleteFileDirectory: (req, res) => {
         rimraf(req.body.appendedPath, (err) => {
-            readJSON(pathToDeletionStatsJSON, (data) => {
+            if(err){
+                res.send({deleted: false, msg: "delete failed"})
+            }
+            else{
+                const cameras = JSON.parse(process.env.cameras)
+                const readPromises = [
+                    new Promise((resolve, reject) => {
+                        readJSON(pathToDeletionStatsJSON, (data, err) => {
+                            if(!err){
+                                resolve(data)
+                            }
+                            else{
+                                reject()
+                            }
+                        })
+                    }),
+                    new Promise((resolve, reject) => {
+                        readJSON(pathToCumulativeStatsJSON, (data, err) => {
+                            if(!err){
+                                resolve(data)
+                            }
+                            else{
+                                reject()
+                            }
+                        })
+                    })
+                ]
+                const writePromises = (deletionData, cumulativeData) => [
+                    new Promise((resolve, reject) => {
+                        writeJSON(pathToDeletionStatsJSON, deletionData, (err) => {
+                            if(!err){
+                                resolve()
+                            }
+                            else{
+                                reject(err)
+                            }
+                        })
+                    }),
+                    new Promise((resolve, reject) => {
+                        writeJSON(pathToCumulativeStatsJSON, cumulativeData, (err) => {
+                            if(!err){
+                                resolve()
+                            }
+                            else{
+                                reject(err)
+                            }
+                        })
+                    })
+                ]
+                Promise.all(readPromises).then(([deletionData, cumulativeData]) => {
+                    const deletionObj = {timestamp: moment().format('x'), camera: req.body.camera}
+                    for(const metric in cumulativeData){
+                        deletionObj[metric] = cumulativeData[metric][cameras[req.body.camera]]
+                        cumulativeData[metric][cameras[req.body.camera]] = 0
+                    }
+                    if("deletions" in deletionData){
+                        deletionData.deletions.push(deletionObj)
+                    }
+                    else{
+                        deletionData.deletions = [deletionObj]
+                    }
+                    Promise.all(writePromises(deletionData, cumulativeData)).then(() => {
+                        res.send({deleted: true})
+                    }, (err) => {
+                        res.send({deleted: true, msg: "JSON write failed"})
+                    })
+                }, (err) => {
+                    res.send({deleted: true, msg: "JSON read failed"})
+                })
 
-            })
-            res.send({deleted: !err})
+            }
         })
     },
 
@@ -196,15 +263,6 @@ const filterFileCreatedBefore = (checkDate) => (file) => {
 const filterFileCreatedAfter = (checkDate) => (file) => {
     const fileName = path.parse(path.basename(file)).name
     return moment(fileName, require('./dateFormat.js')).isAfter(checkDate)
-}
-
-const isStringJSON = (str) => {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
-    }
-    return true;
 }
 
 const createStatsJSON = (filePath) => {
