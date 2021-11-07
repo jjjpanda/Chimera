@@ -138,8 +138,7 @@ module.exports = {
         }
         else{
             const glob = `./!(${clobArr.join('|')})*.jpg`
-            const percentageDeleted = req.body.directoryListBeforeFilter.length/req.body.directoryList.length
-            console.log(path.join(req.body.appendedPath, glob), percentageDeleted)
+            const percentageDeleted = req.body.directoryList.length/req.body.directoryListBeforeFilter.length
             rimraf(path.join(req.body.appendedPath, glob), (err) => {
                 if(err){
                     res.send({deleted: false})
@@ -255,27 +254,27 @@ const deletionWritePromises = (deletionData, cumulativeData) => [
 
 const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {
     if(now.year() > beforeDate.year()){
-        const str = `${now.year()}`
+        const str = now.format("YYYY")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "year"), beforeDate)]
     }
     else if(now.month() > beforeDate.month()){
-        const str = `${now.year()}${now.month()}`
+        const str = now.format("YYYYMM")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "month"), beforeDate)]
     }
     else if(now.date() > beforeDate.date()){
-        const str = `${now.year()}${now.month()}${now.date()}`
+        const str = now.format("YYYYMMDD")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "day"), beforeDate)]
     }
     else if(now.hour() > beforeDate.hour()){
-        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}`
+        const str = now.format("YYYYMM-HH")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "hour"), beforeDate)]
     }
     else if(now.minute() > beforeDate.minute()){
-        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}`
+        const str = now.format("YYYYMM-HHmm")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "minute"), beforeDate)]
     }
     else if(now.second() > beforeDate.second()){
-        const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}${now.second()}`
+        const str = now.format("YYYYMM-HHmmss")
         return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "second"), beforeDate)]
     }
     else{
