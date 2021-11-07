@@ -77,13 +77,12 @@ module.exports = {
     getCachedFileData: (metric) => (req, res) => {
         const cameras = JSON.parse(process.env.cameras)
         const {camera} = req.body
-        readJSON(pathToCumulativeStatsJSON, () => {
-            const cachedData = JSON.parse(data)
+        readJSON(pathToCumulativeStatsJSON, (data) => {
             if(metric === "all"){
-                res.send(cachedData)
+                res.send(data)
             }
-            else if(metric in cachedData){
-                res.send({[metric]: cachedData[metric][cameras[camera-1]]})
+            else if(metric in data){
+                res.send({[metric]: data[metric][cameras[camera-1]]})
             }
             else{
                 res.send({error: true})
@@ -98,77 +97,13 @@ module.exports = {
     },
     
     deleteFileDirectory: (req, res) => {
+        const {camera} = req.body
         rimraf(req.body.appendedPath, (err) => {
             if(err){
                 res.send({deleted: false, msg: "delete failed"})
             }
             else{
-                const cameras = JSON.parse(process.env.cameras)
-                const readPromises = [
-                    new Promise((resolve, reject) => {
-                        readJSON(pathToDeletionStatsJSON, (data, err) => {
-                            if(!err){
-                                resolve(data)
-                            }
-                            else{
-                                reject()
-                            }
-                        })
-                    }),
-                    new Promise((resolve, reject) => {
-                        readJSON(pathToCumulativeStatsJSON, (data, err) => {
-                            if(!err){
-                                resolve(data)
-                            }
-                            else{
-                                reject()
-                            }
-                        })
-                    })
-                ]
-                const writePromises = (deletionData, cumulativeData) => [
-                    new Promise((resolve, reject) => {
-                        writeJSON(pathToDeletionStatsJSON, deletionData, (err) => {
-                            if(!err){
-                                resolve()
-                            }
-                            else{
-                                reject(err)
-                            }
-                        })
-                    }),
-                    new Promise((resolve, reject) => {
-                        writeJSON(pathToCumulativeStatsJSON, cumulativeData, (err) => {
-                            if(!err){
-                                resolve()
-                            }
-                            else{
-                                reject(err)
-                            }
-                        })
-                    })
-                ]
-                Promise.all(readPromises).then(([deletionData, cumulativeData]) => {
-                    const deletionObj = {timestamp: moment().format('x'), camera: req.body.camera}
-                    for(const metric in cumulativeData){
-                        deletionObj[metric] = cumulativeData[metric][cameras[req.body.camera]]
-                        cumulativeData[metric][cameras[req.body.camera]] = 0
-                    }
-                    if("deletions" in deletionData){
-                        deletionData.deletions.push(deletionObj)
-                    }
-                    else{
-                        deletionData.deletions = [deletionObj]
-                    }
-                    Promise.all(writePromises(deletionData, cumulativeData)).then(() => {
-                        res.send({deleted: true})
-                    }, (err) => {
-                        res.send({deleted: true, msg: "JSON write failed"})
-                    })
-                }, (err) => {
-                    res.send({deleted: true, msg: "JSON read failed"})
-                })
-
+                updateCacheAfterDeletion(res, allDeleteStatsObjHandler, camera)
             }
         })
     },
@@ -176,6 +111,7 @@ module.exports = {
     filterList: (timeCheck) => (req, res, next) => {
         const list = req.body.directoryList
         const checkDate = moment().subtract(req.body.days, "days")
+        req.body.directoryListBeforeFilter = req.body.directoryList
         req.body.directoryList = filterFilesByTime(list, checkDate, timeCheck)
         next()
     },
@@ -192,11 +128,27 @@ module.exports = {
         }
     },
 
-    generateBeforeDateGlob: (req, res) => {
-        const {camera, days} = req.body
+    deleteFilesBeforeDateGlob: (req, res) => {
+        const {days, camera} = req.body
         const now = moment()
-        const beforeDate = now.subtract(days, "days")
-        arr = f(now, beforeDate)
+        const beforeDate = moment().subtract(days, "days")
+        const clobArr = generateBeforeDateGlobNotPatternsArray(now, beforeDate)
+        if(clobArr.length == 0){
+            res.send({deleted: false})
+        }
+        else{
+            const glob = `./!(${clobArr.join('|')})*.jpg`
+            const percentageDeleted = req.body.directoryListBeforeFilter.length/req.body.directoryList.length
+            console.log(path.join(req.body.appendedPath, glob), percentageDeleted)
+            rimraf(path.join(req.body.appendedPath, glob), (err) => {
+                if(err){
+                    res.send({deleted: false})
+                }
+                else{
+                    updateCacheAfterDeletion(res, filterDeleteStatsObjHandler, percentageDeleted, camera)
+                }
+            })
+        }
     }
 }
 
@@ -210,30 +162,121 @@ const listFilesInDirectory = (pathToDir) => {
     }))
 }
 
-f = (now, beforeDate, arr=[]) => {
+const updateCacheAfterDeletion = (res, cacheUpdatingFunction, ...args) => {
+    Promise.all(deletionReadPromises).then(([deletionData, cumulativeData]) => {
+        ({deletionData, cumulativeData} = cacheUpdatingFunction(deletionData, cumulativeData, ...args))
+        Promise.all(deletionWritePromises(deletionData, cumulativeData)).then(() => {
+            res.send({deleted: true})
+        }, (err) => {
+            res.send({deleted: true, msg: "JSON write failed"})
+        })
+    }, (err) => {
+        res.send({deleted: true, msg: "JSON read failed"})
+    })
+}
+
+const allDeleteStatsObjHandler = (deletionData, cumulativeData, camera) => {
+    const cameras = JSON.parse(process.env.cameras)
+    const deletionObj = {timestamp: moment().format('x'), camera}
+    for(const metric in cumulativeData){
+        deletionObj[metric] = cumulativeData[metric][cameras[camera]]
+        cumulativeData[metric][cameras[camera]] = 0
+    }
+    if("deletions" in deletionData){
+        deletionData.deletions.push(deletionObj)
+    }
+    else{
+        deletionData.deletions = [deletionObj]
+    }
+    return {deletionData, cumulativeData}
+}
+
+const filterDeleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, camera) => {
+    const cameras = JSON.parse(process.env.cameras)
+    const deletionObj = {timestamp: moment().format('x'), camera}
+    for(const metric in cumulativeData){
+        const metricDeleted = Math.round(cumulativeData[metric][cameras[camera]] * percentageDeleted)
+        deletionObj[metric] = metricDeleted
+        cumulativeData[metric][cameras[camera]] = cumulativeData[metric][cameras[camera]] - metricDeleted
+    }
+    if("deletions" in deletionData){
+        deletionData.deletions.push(deletionObj)
+    }
+    else{
+        deletionData.deletions = [deletionObj]
+    }
+    return {deletionData, cumulativeData}
+}
+
+const deletionReadPromises = [
+    new Promise((resolve, reject) => {
+        readJSON(pathToDeletionStatsJSON, (data, err) => {
+            if(!err){
+                resolve(data)
+            }
+            else{
+                reject()
+            }
+        })
+    }),
+    new Promise((resolve, reject) => {
+        readJSON(pathToCumulativeStatsJSON, (data, err) => {
+            if(!err){
+                resolve(data)
+            }
+            else{
+                reject()
+            }
+        })
+    })
+]
+const deletionWritePromises = (deletionData, cumulativeData) => [
+    new Promise((resolve, reject) => {
+        writeJSON(pathToDeletionStatsJSON, deletionData, (err) => {
+            if(!err){
+                resolve()
+            }
+            else{
+                reject(err)
+            }
+        })
+    }),
+    new Promise((resolve, reject) => {
+        writeJSON(pathToCumulativeStatsJSON, cumulativeData, (err) => {
+            if(!err){
+                resolve()
+            }
+            else{
+                reject(err)
+            }
+        })
+    })
+]
+
+const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {
     if(now.year() > beforeDate.year()){
         const str = `${now.year()}`
-        return [...arr, str, ...f(now.subtract(1, "year"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "year"), beforeDate)]
     }
     else if(now.month() > beforeDate.month()){
         const str = `${now.year()}${now.month()}`
-        return [...arr, str, ...f(now.subtract(1, "month"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "month"), beforeDate)]
     }
     else if(now.date() > beforeDate.date()){
         const str = `${now.year()}${now.month()}${now.date()}`
-        return [...arr, str, ...f(now.subtract(1, "date"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "day"), beforeDate)]
     }
     else if(now.hour() > beforeDate.hour()){
         const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}`
-        return [...arr, str, ...f(now.subtract(1, "hour"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "hour"), beforeDate)]
     }
     else if(now.minute() > beforeDate.minute()){
         const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}`
-        return [...arr, str, ...f(now.subtract(1, "minute"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "minute"), beforeDate)]
     }
     else if(now.second() > beforeDate.second()){
         const str = `${now.year()}${now.month()}${now.date()}-${now.hour()}${now.minute()}${now.second()}`
-        return [...arr, str, ...f(now.subtract(1, "second"), beforeDate)]
+        return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, "second"), beforeDate)]
     }
     else{
         return arr
@@ -303,10 +346,12 @@ const filterFileCreatedAfter = (checkDate) => (file) => {
 }
 
 const createStatsJSON = (filePath) => {
-    readJSON(filePath, (data) => {
-        writeJSON(filePath, {}, ()=>{}, (err) => {
-            console.log(err);
-        })
+    readJSON(filePath, (data, err) => {
+        if(err){
+            writeJSON(filePath, {}, ()=>{}, (err) => {
+                console.log(err);
+            })
+        }
     })
 }
 
