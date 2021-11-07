@@ -1,7 +1,5 @@
 var path       = require('path')
 var express    = require('express')
-var serveStatic        = require('serve-static')
-var contentDisposition = require('content-disposition')
 const { handleServerStart, auth } = require('lib')
 
 var app = express()
@@ -20,13 +18,7 @@ app.use('/motion', require('./routes/motion.js'))
 app.use('/convert', require('./routes/convert.js'))
 app.use('/file', require('./routes/file.js'))
     
-app.use('/shared', serveStatic(path.join(process.env.storage_FILEPATH, 'shared'), {
-        index: false,
-        setHeaders: (res, path) => {
-            res.setHeader('Content-Disposition', contentDisposition(path))
-        }
-    }), express.static(path.join(process.env.storage_FILEPATH, 'shared'))
-)
+app.use('/shared', express.static(path.join(process.env.storage_FILEPATH, 'shared')))
 
 module.exports = (isOn) => {
     const successCallback = () => {
