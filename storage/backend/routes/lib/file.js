@@ -104,7 +104,7 @@ module.exports = {
                 res.send({deleted: false, msg: "delete failed"})
             }
             else{
-                updateCacheAfterDeletion(res, deleteStatsObjHandler, 1, camera)
+                updateCacheAfterDeletion(res, deleteStatsObjHandler, 1, camera-1)
             }
         })
     },
@@ -145,7 +145,7 @@ module.exports = {
                     res.send({deleted: false})
                 }
                 else{
-                    updateCacheAfterDeletion(res, deleteStatsObjHandler, percentageDeleted, camera)
+                    updateCacheAfterDeletion(res, deleteStatsObjHandler, percentageDeleted, camera-1)
                 }
             })
         }
@@ -162,10 +162,10 @@ const listFilesInDirectory = (pathToDir) => {
     }))
 }
 
-const updateCacheAfterDeletion = (res, cacheUpdatingFunction, percentageDeleted, camera) => {
+const updateCacheAfterDeletion = (res, cacheUpdatingFunction, percentageDeleted, cameraIndex) => {
     Promise.all(deletionReadPromises()).then(([deletionData, cumulativeData]) => {
-        ({deletionData, cumulativeData}) = cacheUpdatingFunction(deletionData, percentageDeleted, camera)
-        Promise.all(deletionWritePromises(deletionData, cumulativeData)).then(() => {
+        const {newDeletionData, newCumulativeData} = cacheUpdatingFunction(deletionData, cumulativeData, percentageDeleted, cameraIndex)
+        Promise.all(deletionWritePromises(newDeletionData, newCumulativeData)).then(() => {
             res.send({deleted: true})
         }, (err) => {
             res.send({deleted: true, msg: "JSON write failed"})
@@ -176,13 +176,13 @@ const updateCacheAfterDeletion = (res, cacheUpdatingFunction, percentageDeleted,
     })
 }
 
-const deleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, camera) => {
+const deleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, cameraIndex) => {
     const cameras = JSON.parse(process.env.cameras)
-    const deletionObj = {timestamp: moment().format('x'), camera}
+    const deletionObj = {timestamp: moment().format('x'), camera: cameraIndex}
     for(const metric in cumulativeData){
-        const metricDeleted = Math.round(parseInt(cumulativeData[metric][cameras[camera]]) * percentageDeleted)
+        const metricDeleted = Math.round(parseInt(cumulativeData[metric][cameras[cameraIndex]]) * percentageDeleted)
         deletionObj[metric] = metricDeleted
-        cumulativeData[metric][cameras[camera]] = cumulativeData[metric][cameras[camera]] - metricDeleted
+        cumulativeData[metric][cameras[cameraIndex]] = cumulativeData[metric][cameras[cameraIndex]] - metricDeleted
     }
     if("deletions" in deletionData){
         deletionData.deletions.push(deletionObj)
@@ -190,7 +190,7 @@ const deleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, 
     else{
         deletionData.deletions = [deletionObj]
     }
-    return {deletionData, cumulativeData}
+    return {newDeletionData: deletionData, newCumulativeData: cumulativeData}
 }
 
 const deletionReadPromises = () => [pathToDeletionStatsJSON, pathToCumulativeStatsJSON].map(pathToStats => new Promise((resolve, reject) => {
