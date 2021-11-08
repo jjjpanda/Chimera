@@ -6,10 +6,12 @@
   "scripts": {
     "prestart": "cd command && npm run build",
     "start": "npx pm2 start pm2prod.config.js",
+    "server": "node server.js",
     "list": "npx pm2 list",
     "monitor": "npx pm2 monit",
     "kill": "npx pm2 stop all",
     "delete": "npx pm2 delete all",
+    "stop": "npm run kill && npm run delete && pkill PM2",
     "logs": "npx pm2 logs",
     "command_install": "cd command && npm install",
     "lib_install": "cd lib && npm install",

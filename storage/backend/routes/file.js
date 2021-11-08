@@ -17,19 +17,18 @@ const {
     deleteFileList,
     fileStats,
     summaryMetrics,
-    getCachedFileData
+    getCachedFileData,
+    deleteFilesBeforeDateGlob, 
 } = require('./lib/file.js')
 
 app.get('/pathStats', fileStats)
 
-app.post('/pathSizeDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileSize) 
-app.post('/pathFileCountDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, directoryList, fileCount)
 app.post('/pathCleanDeprecated', deprecation, validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFileList)
 
 app.post('/pathSize', validateBody, validateCameraAndAppendToPath, getCachedFileData("size")) 
 app.post('/pathFileCount', validateBody, validateCameraAndAppendToPath, getCachedFileData("count"))
 app.post('/pathDelete', validateBody, validateCameraAndAppendToPath, deleteFileDirectory) 
-app.post('/pathClean', construction)
+app.post('/pathClean', validateBody, validateCameraAndAppendToPath, validateDays, directoryList, filterList("before"), deleteFilesBeforeDateGlob)
 
 app.post('/pathMetrics', validateBody, getCachedFileData('all'))
 

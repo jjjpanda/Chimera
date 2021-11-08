@@ -54,7 +54,7 @@ The storage server is the heartbeat of Chimera. It handles 4 main sections regar
 |POST|/pathFileCount|Gets folder's file count|`{ camera: Number }`|`{ count: Number }`|
 |POST|/pathMetrics| | | |
 |POST|/pathDelete|Delete folder or file by path|`{ camera: Number }`|`{ deleted: Boolean }`|
-|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ camera: Number, days: Number }`|`{ deleted: Boolean, confidence: Number }`|
+|POST|/pathClean|Deletes older files or files in directory given a number of days|`{ camera: Number, days: Number }`|`{ deleted: Boolean }`|
 
 ## ▶ /shared
 
