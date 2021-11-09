@@ -5,8 +5,7 @@
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
-    "lib": "file:../lib",
-    "shortid": "^2.2.16"
+    "lib": "file:../lib"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",

@@ -29,7 +29,7 @@ const validateRequestURL = (url) => {
 const request  = require('request');
 const moment   = require('moment')
 
-const { webhookAlert } = require('lib')
+const { webhookAlert, randomID } = require('lib')
 
 module.exports = {
     validateTaskRequest: (req, res, next) => {
@@ -142,5 +142,15 @@ module.exports = {
             }))
         }
 
+    },
+
+    taskList: (req, res) => {
+        res.send(req.app.locals.filter(local => {
+            return local.id && local.id.includes("task")
+        }).map(({id, url, cronString}) => {
+            return {
+                id, url, cronString, body
+            }
+        }))
     }
 }
