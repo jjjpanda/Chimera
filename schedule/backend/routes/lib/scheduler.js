@@ -144,13 +144,18 @@ module.exports = {
 
     },
 
-    taskList: (req, res) => {
-        res.send(req.app.locals.filter(local => {
-            return local.id && local.id.includes("task")
-        }).map(({id, url, cronString}) => {
+    taskList: (req, res, next) => {
+        req.body.list = Object.entries(req.app.locals).filter(([id, entry]) => {
+            return id && id.includes("task")
+        }).map(([id, {url, cronString}]) => {
             return {
                 id, url, cronString, body
             }
-        }))
+        })
+        next()
+    },
+
+    sendList: (req, res) => {
+        res.send(req.body.list)
     }
 }
