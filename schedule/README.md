@@ -10,6 +10,20 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
 |POST|/check|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`
 |POST|/destroy|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
 
+```javascript
+// id = task-[RandomAlphaNumeric]
+
+//TaskObj
+{
+    id: String, // id
+    url: String,
+    body: Object,
+    cookies: String,
+    cronString: String,
+    task: Object //node-cron object
+}
+```
+
 ## ▶ /schedule
 
 |Type|Route|Description|Parameters|Returns|
