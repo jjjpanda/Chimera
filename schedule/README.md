@@ -10,6 +10,14 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
 |POST|/check|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`
 |POST|/destroy|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
 
+⚠️⚠️⚠️ Under Construction ⚠️⚠️⚠️
+|Type|Route|Description|Parameters|Returns|
+| :-|:- |:-:|:-:|:-:|
+|POST|/create|Schedules a request for another command server request|`{ url: String, body: JSON, cronString: String }`|`{ cronString: String, set: Boolean, destroyed: Boolean }`|
+|POST|/list|Checks details of tasks|`{ url: String }`|`{ cronString: String, set: Boolean }`|
+|POST|/stop|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
+|POST|/delete|Destroys a scheduled request process|`{ url: String }`|`{ set: Boolean, destroyed: Boolean }`|
+
 ```javascript
 // id = task-[RandomAlphaNumeric]
 
@@ -20,6 +28,7 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
     body: Object,
     cookies: String,
     cronString: String,
+    running: Boolean,
     task: Object //node-cron object
 }
 ```
