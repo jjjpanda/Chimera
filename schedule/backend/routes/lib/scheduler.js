@@ -54,93 +54,46 @@ module.exports = {
         }
     },
 
-    scheduleTask: (req, res) => {
-        const { url, body, cookies, cronString } = req.body
-        const id = `task-${randomID.generate()}`
-        req.app.locals[id] = {id, url, body, cookies, cronString, running: true}
-        req.app.locals[id].task = cron.schedule(cronString, () => {
-            console.log( "CRON: ", url )
-            webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
-            request({
-                method: "POST",
-                url: `${process.env.command_HOST}${url}`,
-                body,
-                headers: {
-                    "Cookies": cookies
-                }
-            }, (err, response, body) => {
-                if(!err && response.statusCode === 200){
-                    console.log(body)
-                }
-                else{
-                    console.log(err)
-                }
+    startTask: (req, res) => {
+        let { url, body, cookies, cronString, id } = req.body
+        
+        if(id != undefined && id.includes('task') && id in req.app.locals && !req.app.locals[id].running){
+            req.app.locals[id].task.start()
+        }
+        else{
+            id = `task-${randomID.generate()}`
+            req.app.locals[id] = {id, url, body, cookies, cronString, running: true}
+            req.app.locals[id].task = cron.schedule(cronString, generateTask(url, body, cookies), {
+                scheduled: true
             })
-        }, {
-            scheduled: true
-        })
-        req.app.locals[id].task.start()
+            req.app.locals[id].task.start()
+        }
         res.send({
-            set: true
+            running: req.app.locals[id].running
         })
     },
 
     stopTask: (req, res) => {
-
         const { id } = req.body
-        let stopped = false
-
         if(id in req.app.locals){
             req.app.locals[id].task.stop()
             req.app.locals[id].running = false
-            req.body.stopped = true
         }
-
         res.send({
-            stopped
+            stopped: !req.app.locals[id].running
         })
 
     },
 
     destroyTask: (req, res) => {
-
         const { id } = req.body
-        let destroyed = false
-
         if(id in req.app.locals){
             req.app.locals[id].task.destroy()
             req.app.locals[id] = undefined
-            req.body.destroyed = true
         }
-
         res.send({
-            destroyed
+            destroyed: id in req.app.locals
         })
-
-    },
-
-    taskCheck: (req, res) => {
-
-        //check req.app.locals[url]
-
-        const { url } = req.body
-
-        if(req.app.locals[url] != undefined){
-            console.log("URL Cron Defined")
-            res.send(JSON.stringify({
-                set: req.body.set,
-                cronString: req.app.locals[url].cronString,
-                destroyed: req.body.destroyed
-            }))
-        }
-        else{
-            console.log("URL Cron Not Defined")
-            res.send(JSON.stringify({
-                set: req.body.set,
-                destroyed: req.body.destroyed
-            }))
-        }
-
     },
 
     taskList: (req, res, next) => {
@@ -162,4 +115,26 @@ module.exports = {
 const validateRequestURL = (url) => {
     const validateUrls = ["/convert/listProcess"]
     return validateUrls.includes(url)
+}
+
+const generateTask = (url, body, cookies) => () => {
+    console.log( "CRON: ", url )
+    webhookAlert(`Task: ${url} started at ${moment().format("LLL")}`)
+    request({
+        method: "POST",
+        url: `${process.env.command_HOST}${url}`,
+        body,
+        headers: {
+            "Cookies": cookies
+        }
+    }, (e, r, b) => {
+        if(!e && r.statusCode === 200){
+            webhookAlert(`Task: ${url} response ${b}`)
+            console.log(b)
+        }
+        else{
+            webhookAlert(`Task: ${url} error ${e}`)
+            console.log(e)
+        }
+    })
 }
