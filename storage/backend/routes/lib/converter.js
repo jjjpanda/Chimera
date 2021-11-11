@@ -39,7 +39,7 @@ module.exports = {
         const fileInfo = fileName.split('_');
         console.log(fileName)
         return {
-            link: `${process.env.command_HOST}/shared/captures/${fileName}`,
+            link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
             type: fileInfo[4].split('.')[1],
             id: fileInfo[4].split('.')[0],
             camera: fileInfo[1],

@@ -24,7 +24,6 @@
     "file-saver": "^2.0.5",
     "flv.js": "^1.5.0",
     "html-webpack-plugin": "^5.3.2",
-    "http-proxy-middleware": "^1.0.6",
     "js-cookie": "^3.0.1",
     "less": "^3.13.1",
     "less-loader": "^10.0.0",
@@ -44,7 +43,6 @@
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
-    "mkdirp": "^1.0.4",
     "moment": "^2.29.1"
   }
 }
