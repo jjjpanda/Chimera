@@ -122,7 +122,7 @@ const generateTask = (url, body, cookies) => () => {
     webhookAlert(`Task: ${url} started at ${moment().format("LLL")}`)
     request({
         method: "POST",
-        url: `${process.env.command_HOST}${url}`,
+        url: `${process.env.gateway_HOST}${url}`,
         body,
         headers: {
             "Cookies": cookies
