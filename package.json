@@ -28,6 +28,7 @@
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
+    "http-proxy-middleware": "^1.0.6",
     "lib": "file:./lib",
     "livestream": "file:./livestream",
     "mkdirp": "^1.0.4",

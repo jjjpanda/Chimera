@@ -16,4 +16,10 @@ module.exports = [{
     baseURL: process.env.livestream_HOST,
     postPathRegex: /\/livestream\/.*/,
     getPathRegex: /\/livestream\/.*/
+}, {
+    serviceOn: process.env.command_PROXY_ON === "true",
+    log: "🎮 Command Proxied ◀",
+    baseURL: process.env.command_HOST,
+    postPathRegex: /\/.*/,
+    getPathRegex: /\/.*/
 }]
