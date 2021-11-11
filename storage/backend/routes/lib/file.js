@@ -178,7 +178,7 @@ const updateCacheAfterDeletion = (res, cacheUpdatingFunction, percentageDeleted,
 
 const deleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, cameraIndex) => {
     const cameras = JSON.parse(process.env.cameras)
-    const deletionObj = {timestamp: moment().format('x'), camera: cameraIndex}
+    const deletionObj = {timestamp: moment().format('x'), camera: cameraIndex+1}
     for(const metric in cumulativeData){
         const metricDeleted = Math.round(parseInt(cumulativeData[metric][cameras[cameraIndex]]) * percentageDeleted)
         deletionObj[metric] = metricDeleted
