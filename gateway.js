@@ -1,18 +1,21 @@
 var express    = require('express')
 const mkdirp = require('mkdirp')
+const path = require('path')
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
 const { handleServerStart, handleSecureServerStart } = require('lib')
 
-var app = express.Router();
+var app = express();
+
+let logs = []
 
 const services = require('./services.js')
 for(const apiService of services){
     const {serviceOn, log, postPathRegex, getPathRegex, baseURL} = apiService
 
     if(serviceOn){
-        console.log(log)
+        logs.push(log)
         app.use(new RegExp(postPathRegex.source + "|" + getPathRegex.source), createProxyMiddleware((pathname, req) => {
             return (pathname.match(postPathRegex) && req.method === 'POST') || (pathname.match(getPathRegex) && req.method === "GET");
         }, {
@@ -29,6 +32,9 @@ app.use('/.well-known/acme-challenge/', express.static(path.join(__dirname, './.
 module.exports = () => {
     const successCallback = () => {
         console.log(`🗺️ Gateway On ▶ PORT ${process.env.gateway_PORT}`)
+        for(const log of logs){
+            console.log(log)
+        }
     }
     const failureCallback = (err) => {
         if(err != undefined){
@@ -45,7 +51,7 @@ module.exports = () => {
     }
 
     mkdirp(path.join(__dirname, './.well-known/acme-challenge')).then((made) => {
-        handleServerStart(app, process.env.gateway_PORT, isOn, successCallback, failureCallback)
+        handleServerStart(app, process.env.gateway_PORT, true, successCallback, failureCallback)
         handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
     }, failureCallback)
 }
