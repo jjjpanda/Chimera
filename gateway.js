@@ -1,0 +1,51 @@
+var express    = require('express')
+const mkdirp = require('mkdirp')
+var {
+    createProxyMiddleware
+}              = require('http-proxy-middleware')
+const { handleServerStart, handleSecureServerStart } = require('lib')
+
+var app = express.Router();
+
+const services = require('./services.js')
+for(const apiService of services){
+    const {serviceOn, log, postPathRegex, getPathRegex, baseURL} = apiService
+
+    if(serviceOn){
+        console.log(log)
+        app.use(new RegExp(postPathRegex.source + "|" + getPathRegex.source), createProxyMiddleware((pathname, req) => {
+            return (pathname.match(postPathRegex) && req.method === 'POST') || (pathname.match(getPathRegex) && req.method === "GET");
+        }, {
+            target: baseURL,
+            logLevel: "silent",
+        }))
+    }
+}
+
+app.use('/.well-known/acme-challenge/', express.static(path.join(__dirname, './.well-known/acme-challenge'), {
+    dotfiles: "allow"
+}))
+
+module.exports = () => {
+    const successCallback = () => {
+        console.log(`🗺️ Gateway On ▶ PORT ${process.env.gateway_PORT}`)
+    }
+    const failureCallback = (err) => {
+        if(err != undefined){
+            console.log(err)
+        }
+        console.log(`🗺️ Gateway Off ❌`)
+    }
+
+    const successCallbackSecure = () => {
+        console.log(`🗺️🔒 Secure Gateway On ▶ PORT ${process.env.gateway_PORT_SECURE}`)
+    }
+    const failureCallbackSecure = () => {
+        console.log(`🗺️🔒 Secure Gateway Off ❌`)
+    }
+
+    mkdirp(path.join(__dirname, './.well-known/acme-challenge')).then((made) => {
+        handleServerStart(app, process.env.gateway_PORT, isOn, successCallback, failureCallback)
+        handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
+    }, failureCallback)
+}
