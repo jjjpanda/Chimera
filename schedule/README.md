@@ -7,7 +7,7 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
 |POST|/start|Schedules a task|`{ id: String, url: String, body: JSON, cronString: String }`|`{ running: Boolean }`|
-|POST|/list|Checks details of tasks|None|`{ tasks: [TaskObj] }`|
+|GET|/list|Checks details of tasks|None|`{ tasks: [TaskObj] }`|
 |POST|/stop|Stops a task|`{ url: String }`|`{ destroyed: Boolean }`|
 |POST|/delete|Destroys a task|`{ url: String }`|`{ destroyed: Boolean }`|
 

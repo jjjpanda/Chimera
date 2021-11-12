@@ -13,7 +13,7 @@ module.exports = {
                 error: "no url"
             }))
         }
-        else if(body != undefined && body instanceof Object){
+        else if(body != undefined){
             res.send(JSON.stringify({
                 error: "no body"
             }))
