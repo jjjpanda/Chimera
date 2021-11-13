@@ -2,36 +2,44 @@ const cron     = require('node-cron');
 const request  = require('request');
 const moment   = require('moment')
 
-const { webhookAlert, randomID } = require('lib')
+const { webhookAlert, randomID, jsonFileHanding } = require('lib')
 
 module.exports = {
-    validateTaskRequest: (req, res, next) => {
-        const { url, body, cookies } = req.body
-        const isValidURL = validateRequestURL(url);
-        if(!isValidURL){
+    validateStartableTask: (req, res, next) => {
+        const { url, body, id } = req.body
+        if(isValidId(id, true)){
+            next()
+        }
+        const cookies = req.header('Cookie').split(";")
+        const bearerTokenCookie = cookies.find((cookie) => {
+            let [key, value] = cookie.split("=")
+            return key == "bearertoken" && value.includes('Bearer')
+        })
+        req.body.cookie = bearerTokenCookie
+        if(!validateRequestURL(url)){
             res.send(JSON.stringify({
                 error: "no url"
             }))
         }
-        else if(body != undefined){
+        else if(body == undefined || !(jsonFileHanding.isStringJSON(body))){
             res.send(JSON.stringify({
                 error: "no body"
             }))
         }
-        else if(cookies != undefined && cookies.length > 0){
+        else if(bearerTokenCookie == undefined || bearerTokenCookie.length == 0){
             res.send(JSON.stringify({
-                error: "no cookies"
+                error: "no cookie"
             }))
         }
         else{
+            req.body.body = JSON.parse(body)
             next()
         }
     },
 
     validateTaskCron: (req, res, next) => {
         const { cronString } = req.body
-        const isValidCron = cron.validate(cronString);
-        if(isValidCron){
+        if(cron.validate(cronString)){
             next()
         }
         else{
@@ -43,8 +51,7 @@ module.exports = {
 
     validateId: (req, res, next) => {
         const { id } = req.body
-        
-        if(id != undefined && id.includes('task')){
+        if(isValidId(id)){
             next()
         }
         else{
@@ -55,15 +62,15 @@ module.exports = {
     },
 
     startTask: (req, res) => {
-        let { url, body, cookies, cronString, id } = req.body
+        let { url, body, cookie, cronString, id } = req.body
         
-        if(id != undefined && id.includes('task') && id in req.app.locals && !req.app.locals[id].running){
+        if(isValidId(id, true)){
             req.app.locals[id].task.start()
         }
         else{
             id = `task-${randomID.generate()}`
-            req.app.locals[id] = {id, url, body, cookies, cronString, running: true}
-            req.app.locals[id].task = cron.schedule(cronString, generateTask(url, body, cookies), {
+            req.app.locals[id] = {id, url, body, cookie, cronString, running: true}
+            req.app.locals[id].task = cron.schedule(cronString, generateTask(url, id, body, cookie), {
                 scheduled: true
             })
             req.app.locals[id].task.start()
@@ -75,10 +82,8 @@ module.exports = {
 
     stopTask: (req, res) => {
         const { id } = req.body
-        if(id in req.app.locals){
-            req.app.locals[id].task.stop()
-            req.app.locals[id].running = false
-        }
+        req.app.locals[id].task.stop()
+        req.app.locals[id].running = false
         res.send({
             stopped: !req.app.locals[id].running
         })
@@ -87,10 +92,8 @@ module.exports = {
 
     destroyTask: (req, res) => {
         const { id } = req.body
-        if(id in req.app.locals){
-            req.app.locals[id].task.destroy()
-            req.app.locals[id] = undefined
-        }
+        req.app.locals[id].task.destroy()
+        req.app.locals[id] = undefined
         res.send({
             destroyed: id in req.app.locals
         })
@@ -99,9 +102,9 @@ module.exports = {
     taskList: (req, res, next) => {
         req.body.list = Object.entries(req.app.locals).filter(([id, entry]) => {
             return id && id.includes("task")
-        }).map(([id, {url, cronString}]) => {
+        }).map(([id, {url, cronString, body, running}]) => {
             return {
-                id, url, cronString, body
+                id, url, cronString, body, running
             }
         })
         next()
@@ -117,24 +120,44 @@ const validateRequestURL = (url) => {
     return validateUrls.includes(url)
 }
 
-const generateTask = (url, body, cookies) => () => {
-    console.log( "CRON: ", url )
-    webhookAlert(`Task: ${url} started at ${moment().format("LLL")}`)
-    request({
-        method: "POST",
-        url: `${process.env.gateway_HOST}${url}`,
-        body,
-        headers: {
-            "Cookies": cookies
-        }
-    }, (e, r, b) => {
-        if(!e && r.statusCode === 200){
-            webhookAlert(`Task: ${url} response ${b}`)
-            console.log(b)
+const generateTask = (url, id, body, cookie) => () => {
+    console.log( "CRON: ", url)
+    webhookAlert(`Task: ${url} started at ${moment().format("LLL")}`, () => {
+        request({
+            method: "POST",
+            url: `${process.env.gateway_HOST}${url}`,
+            body,
+            headers: {
+                "Cookie": cookie
+            }
+        }, (e, r, b) => {
+            if(!e && r.statusCode === 200){
+                webhookAlert(`Task: ${id} ${url}\nresponse ${b}`)
+                console.log(b)
+            }
+            else{
+                webhookAlert(`Task: ${id} ${url}\nerror ${e} | code ${r.statusCode}`)
+                console.log(`code ${r.statusCode} | error ${e}`)
+            }
+        })
+    })
+}
+
+const isValidId = (id, stoppedTaskValidationNecessary=false) => {
+    if(id != undefined && id.includes('task') && id in req.app.locals){
+        if(stoppedTaskValidationNecessary){
+            if(!req.app.locals[id].running){
+                return true
+            }
+            else{
+                false
+            }
         }
         else{
-            webhookAlert(`Task: ${url} error ${e}`)
-            console.log(e)
+            return true
         }
-    })
+    }
+    else{
+        return false
+    }
 }
