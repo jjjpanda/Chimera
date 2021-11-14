@@ -19,7 +19,6 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
     id: String, // id
     url: String,
     body: Object,
-    cookies: String,
     cronString: String,
     running: Boolean,
     task: Object //node-cron object
