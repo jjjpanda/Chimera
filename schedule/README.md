@@ -8,8 +8,8 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
 | :-|:- |:-:|:-:|:-:|
 |POST|/start|Schedules a task|`{ id: String, url: String, body: JSON, cronString: String }`|`{ running: Boolean }`|
 |GET|/list|Checks details of tasks|None|`{ tasks: [TaskObj] }`|
-|POST|/stop|Stops a task|`{ url: String }`|`{ destroyed: Boolean }`|
-|POST|/delete|Destroys a task|`{ url: String }`|`{ destroyed: Boolean }`|
+|POST|/stop|Stops a task|`{ url: String }`|`{ stopped: Boolean }`|
+|POST|/destroy|Destroys a task|`{ url: String }`|`{ destroyed: Boolean }`|
 
 ```javascript
 // id = task-[RandomAlphaNumeric]

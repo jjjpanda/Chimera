@@ -6,8 +6,8 @@ const { webhookAlert, randomID, jsonFileHanding } = require('lib')
 
 module.exports = {
     validateStartableTask: (req, res, next) => {
-        const { url, body, id } = req.body
-        if(isValidId(id, true)){
+        const { url, body, id, cronString } = req.body
+        if(isValidId(id, req.app.locals, true)){
             next()
         }
         const cookies = req.header('Cookie').split(";")
@@ -31,27 +31,20 @@ module.exports = {
                 error: "no cookie"
             }))
         }
+        else if(!cron.validate(cronString)){
+            res.send(JSON.stringify({
+                error: "cron invalid"
+            }))
+        }
         else{
             req.body.body = JSON.parse(body)
             next()
         }
     },
 
-    validateTaskCron: (req, res, next) => {
-        const { cronString } = req.body
-        if(cron.validate(cronString)){
-            next()
-        }
-        else{
-            res.send(JSON.stringify({
-                error: "cron invalid"
-            }))
-        }
-    },
-
     validateId: (req, res, next) => {
         const { id } = req.body
-        if(isValidId(id)){
+        if(isValidId(id, req.app.locals)){
             next()
         }
         else{
@@ -64,8 +57,9 @@ module.exports = {
     startTask: (req, res) => {
         let { url, body, cookie, cronString, id } = req.body
         
-        if(isValidId(id, true)){
+        if(isValidId(id, req.app.locals, true)){
             req.app.locals[id].task.start()
+            req.app.locals[id].running = true
         }
         else{
             id = `task-${randomID.generate()}`
@@ -101,7 +95,7 @@ module.exports = {
 
     taskList: (req, res, next) => {
         req.body.list = Object.entries(req.app.locals).filter(([id, entry]) => {
-            return id && id.includes("task")
+            return id && entry && id.includes("task")
         }).map(([id, {url, cronString, body, running}]) => {
             return {
                 id, url, cronString, body, running
@@ -143,10 +137,10 @@ const generateTask = (url, id, body, cookie) => () => {
     })
 }
 
-const isValidId = (id, stoppedTaskValidationNecessary=false) => {
-    if(id != undefined && id.includes('task') && id in req.app.locals){
+const isValidId = (id, locals, stoppedTaskValidationNecessary=false) => {
+    if(id != undefined && id.includes('task') && id in locals){
         if(stoppedTaskValidationNecessary){
-            if(!req.app.locals[id].running){
+            if(!locals[id].running){
                 return true
             }
             else{
