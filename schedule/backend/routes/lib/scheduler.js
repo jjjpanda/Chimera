@@ -1,146 +1,147 @@
 const cron     = require('node-cron');
-const validateRequestURL = (url) => {
-    switch (url){
-        case "/createVideo":
-        case "/listFramesVideo":
-        case "/createZip":
-        case "/statusProcess":
-        case "/cancelProcess":
-        case "/listProcess":
-        case "/deleteProcess":
-        case "/motionStart":
-        case "/motionStatus":
-        case "/motionStop":
-        case "/serverUpdate":
-        case "/serverStatus":
-        case "/serverInstall":
-        case "/serverStop":
-        case "/pathSize":
-        case "/pathFileCount":
-        case "/pathDelete":
-        case "/pathClean":
-        case "/scheduleTask":
-        case "/destroyTask":
-            return true
-        default: 
-            return false
-    }
-}
 const request  = require('request');
 const moment   = require('moment')
 
-const { webhookAlert } = require('lib')
+const { webhookAlert, randomID, jsonFileHanding, auth } = require('lib')
+
+const {schedulableUrls} = auth
 
 module.exports = {
-    validateTaskRequest: (req, res, next) => {
-
-        const { url } = req.body
-
-        const isValidURL = validateRequestURL(url);
-        
-        if(isValidURL){
+    validateStartableTask: (req, res, next) => {
+        const { url, body, id, cronString } = req.body
+        if(isValidId(id, req.app.locals, true)){
             next()
         }
-        else{
+        if(!validateRequestURL(url)){
             res.send(JSON.stringify({
-                set: false, 
-                destroyed: false,
                 error: "no url"
             }))
         }
-
+        else if(body == undefined || !(jsonFileHanding.isStringJSON(body))){
+            res.send(JSON.stringify({
+                error: "no body"
+            }))
+        }
+        else if(!cron.validate(cronString)){
+            res.send(JSON.stringify({
+                error: "cron invalid"
+            }))
+        }
+        else{
+            req.body.body = JSON.parse(body)
+            next()
+        }
     },
 
-    validateTaskCron: (req, res, next) => {
-
-        const { cronString } = req.body
-
-        const isValidCron = cron.validate(cronString);
-        
-        if(isValidCron){
+    validateId: (req, res, next) => {
+        const { id } = req.body
+        if(isValidId(id, req.app.locals)){
             next()
         }
         else{
             res.send(JSON.stringify({
-                set: false, 
-                destroyed: false,
-                error: "cron invalid"
+                error: "id invalid"
             }))
         }
-
     },
 
-    scheduleTask: (req, res, next) => {
-
-        const { url, body, cronString } = req.body
-
-        req.app.locals[url] = {}
-
-        req.app.locals[url].cronString = cronString
-        req.app.locals[url].task = cron.schedule(cronString, () => {
-            console.log( "CRON: ", url )
-            webhookAlert(`Daemon Process: ${url} started at ${moment().format("LLL")}`)
-            request({
-                method: "POST",
-                url: `${process.env.gateway_HOST}${url}`,
-                body
-            }, (err, response, body) => {
-                if(!err && response.statusCode === 200){
-                    console.log(body)
-                }
-                else{
-                    console.log(err)
-                }
+    startTask: (req, res) => {
+        let { url, body, cronString, id } = req.body
+        
+        if(isValidId(id, req.app.locals, true)){
+            req.app.locals[id].task.start()
+            req.app.locals[id].running = true
+        }
+        else{
+            id = `task-${randomID.generate()}`
+            req.app.locals[id] = {id, url, body, cronString, running: true}
+            req.app.locals[id].task = cron.schedule(cronString, generateTask(url, id, body), {
+                scheduled: true
             })
-        }, {
-            scheduled: true
+            req.app.locals[id].task.start()
+        }
+        res.send({
+            running: req.app.locals[id].running
+        })
+    },
+
+    stopTask: (req, res) => {
+        const { id } = req.body
+        req.app.locals[id].task.stop()
+        req.app.locals[id].running = false
+        res.send({
+            stopped: !req.app.locals[id].running
         })
 
-        req.app.locals[url].task.start()
-        req.body.set = true
-
-        next()
-
     },
 
-    destroyTask: (req, res, next) => {
-
-        const { url } = req.body
-
-        if(req.app.locals[url] != undefined){
-            req.app.locals[url].task.destroy()
-            req.app.locals[url] = undefined
-            req.body.destroyed = true
-        }
-        else{
-            req.body.destroyed = false
-        }
-
-        next()
-
+    destroyTask: (req, res) => {
+        const { id } = req.body
+        req.app.locals[id].task.destroy()
+        req.app.locals[id] = undefined
+        res.send({
+            destroyed: id in req.app.locals
+        })
     },
 
-    taskCheck: (req, res) => {
+    taskList: (req, res, next) => {
+        req.body.list = Object.entries(req.app.locals).filter(([id, entry]) => {
+            return id && entry && id.includes("task")
+        }).map(([id, {url, cronString, body, running}]) => {
+            return {
+                id, url, cronString, body, running
+            }
+        })
+        next()
+    },
 
-        //check req.app.locals[url]
+    sendList: (req, res) => {
+        res.send(req.body.list)
+    }
+}
 
-        const { url } = req.body
+const validateRequestURL = (url) => {
+    return schedulableUrls.includes(url)
+}
 
-        if(req.app.locals[url] != undefined){
-            console.log("URL Cron Defined")
-            res.send(JSON.stringify({
-                set: req.body.set,
-                cronString: req.app.locals[url].cronString,
-                destroyed: req.body.destroyed
-            }))
+const generateTask = (url, id, body) => () => {
+    console.log( "CRON: ", url)
+    webhookAlert(`Task: ${url} started at ${moment().format("LLL")}`, () => {
+        request({
+            method: "POST",
+            url: `${process.env.gateway_HOST}${url}`,
+            body,
+            headers: {
+                "Authorization": process.env.scheduler_AUTH
+            }
+        }, (e, r, b) => {
+            if(!e && r.statusCode === 200){
+                webhookAlert(`Task: ${id} ${url}\nresponse ${JSON.stringify(JSON.parse(b), null, 2)}`)
+                console.log(JSON.parse(b))
+            }
+            else{
+                webhookAlert(`Task: ${id} ${url}\nerror ${e} | code ${r.statusCode}`)
+                console.log(`code ${r.statusCode} | error ${e}`)
+            }
+        })
+    })
+}
+
+const isValidId = (id, locals, stoppedTaskValidationNecessary=false) => {
+    if(id != undefined && id.includes('task') && id in locals){
+        if(stoppedTaskValidationNecessary){
+            if(!locals[id].running){
+                return true
+            }
+            else{
+                false
+            }
         }
         else{
-            console.log("URL Cron Not Defined")
-            res.send(JSON.stringify({
-                set: req.body.set,
-                destroyed: req.body.destroyed
-            }))
+            return true
         }
-
+    }
+    else{
+        return false
     }
 }

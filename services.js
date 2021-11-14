@@ -9,7 +9,7 @@ module.exports = [{
     log: "⌚ Scheduler Proxied ◀",
     baseURL: process.env.schedule_HOST,
     postPathRegex: /\/task\/.*/,
-    getPathRegex: /\/schedule\/health/
+    getPathRegex: /\/schedule\/health|\/task\/list/
 }, {
     serviceOn: process.env.livestream_PROXY_ON === "true",
     log: "👀 Livestream Proxied ◀",

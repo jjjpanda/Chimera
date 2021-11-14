@@ -1,8 +1,10 @@
 var express    = require('express')
 const {handleServerStart, auth} = require('lib')
+const helmet = require("helmet");
 
 var app = express()
 
+app.use(helmet())
 app.use(require('cookie-parser')())
 
 app.use(express.urlencoded({ extended: false }));

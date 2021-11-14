@@ -5,13 +5,13 @@
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
-    "lib": "file:../lib",
-    "shortid": "^2.2.16"
+    "lib": "file:../lib"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
+    "helmet": "^4.6.0",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
     "node-cron": "^2.0.3",

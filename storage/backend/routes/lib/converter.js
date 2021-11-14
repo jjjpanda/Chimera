@@ -1,11 +1,8 @@
 var fs         = require('fs')
 var path       = require('path')
-var shortid    = require("shortid")
 var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
-
-const charList = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()'
-shortid.characters(charList)
+var {randomID}    = require('lib')
 
 const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
