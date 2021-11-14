@@ -94,7 +94,7 @@ module.exports = {
     },
 
     fileStats: (req, res) => {
-        res.redirect('/shared/additionStats.json')
+        res.redirect(303, '/shared/additionStats.json')
     },
     
     deleteFileDirectory: (req, res) => {

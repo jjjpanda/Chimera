@@ -1,14 +1,28 @@
 var express    = require('express')
 const mkdirp = require('mkdirp')
 const path = require('path')
+const helmet = require('helmet')
 var {
     createProxyMiddleware
 }              = require('http-proxy-middleware')
-const { handleServerStart, handleSecureServerStart } = require('lib')
+const { handleServerStart, handleSecureServerStart, helmetOptions } = require('lib')
 
 var app = express();
 
 let logs = []
+
+app.use(helmet(helmetOptions))
+
+if(process.env.gateway_HTTPS_Redirect == "true"){
+    app.use((req, res, next) => {
+        if(req.secure || req.path.split("/")[1] == ".well-known"){
+            next()
+        }
+        else{
+            res.redirect(`https://${req.headers.host}${req.url}`)
+        }
+    })
+}
 
 const services = require('./services.js')
 for(const apiService of services){
