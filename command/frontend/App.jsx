@@ -2,22 +2,23 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import {
     BrowserRouter as Router,
-    Link,
     Route,
-    Redirect
+    Routes,
+    Navigate
 } from 'react-router-dom';
 import Main from "./app/Main.jsx"
 
 import './css/style.less'
 import Cookies from 'js-cookie';
 import LoadingIcon from './app/LoadingIcon.jsx';
+import LoginPage from './app/LoginPage.jsx';
 
 import { request } from './js/request.js'
 
 const timeout = 750
 
 import * as FastClick from 'fastclick'
-import LoginForm from './app/LoginForm.jsx';
+
 if ('addEventListener' in document) {
     document.addEventListener('DOMContentLoaded', function() {
         FastClick.attach(document.body);
@@ -82,36 +83,65 @@ class App extends React.Component{
     }
 
     componentDidMount() {
-        console.log(`TOKEN ${Cookies.get('bearertoken')}`);
-        (Cookies.get('bearertoken') == undefined ? this.attemptLogin: this.attemptVerification)("").then(res => {
-            this.handleLoginAttempt(res, this.state.timestamp)
-        })
+        if(Cookies.get('bearertoken') != undefined){
+            this.attemptVerification().then(res => {
+                this.handleLoginAttempt(res, this.state.timestamp)
+            })
+        }
+        else{
+            this.setState(() => ({
+                loaded: true,
+                loggedIn: false
+            }))
+        }
     }
 
     render() {
-        const LoginPage = <LoginForm loginReq={this.attemptLogin} handler ={this.handleLoginAttempt} timestamp={this.state.timestamp} />
-        if(this.state.loaded){
-            return (
-                <Router>
-                    <Route 
-                        path="/" 
-                        render={({location}) => {
-                            if(location.search == "?loginForm") {
-                                return this.state.loggedIn ? <Redirect to="/" /> : LoginPage
-                            }
-                            else {
-                                return this.state.loggedIn ? <Main /> : <Redirect to="/?loginForm" /> 
-                            } 
-                        }} />
-                </Router>
-            )
+        const loginProps = {
+            loginReq: this.attemptLogin,
+            handler: this.handleLoginAttempt,
+            timestamp: this.state.timestamp
         }
-        else{
-            return <LoadingIcon />
-        }
+        return (
+            <Router>
+                {this.state.loaded ? <Routes>
+                    <Route path="/login/:password" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage withPassword {...loginProps} />}
+                    />
+                    <Route path="/login" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage {...loginProps} />}
+                    />
+                    <Route path="/" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
+                </Routes> : <LoadingIcon />}
+            </Router>
+        )
     }
 }
 
 ReactDOM.render(<App />,
     document.getElementById('root'),
 );
+
+/* 
+    const [key, value] = location.search.split('=')
+    console.log(key, value, this.state.loggedIn)
+    if(key == "?loginForm") {
+        if(this.state.loggedIn){
+            return <div>bruh</div>//this.props.history.push({pathname: "/"}) 
+        }
+        else{
+            if(value == undefined){
+                return <LoginForm  />
+            }
+            else{
+                return <div>bruh</div>//this.props.history.push({pathname: "/", state: { otp: value }})
+            }
+        }
+    }
+    else {
+        if(this.state.loggedIn) {
+            return <Main /> 
+        }
+        else{
+            return <div>bruh</div>//this.props.history.push({pathname: "/?loginForm"})
+        }
+    }  
+*/

@@ -22,6 +22,19 @@ class LoginForm extends React.Component{
             }))
         }))
     }
+    
+    componentDidMount() {
+        const {passwordAttempt} = this.props
+        if(passwordAttempt != undefined){
+            this.props.loginReq(passwordAttempt).then(res => {
+                this.props.handler(res, this.props.timestamp, (err) => {
+                    this.setState(() => ({
+                        passwordStatus: !err ? "right" : "wrong"
+                    }))
+                })
+            })
+        }
+    }
 
     render() {
         return (

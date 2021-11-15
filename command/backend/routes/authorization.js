@@ -3,7 +3,7 @@ var { validateBody, auth } = require('lib')
 
 const app = express.Router();
 
-app.post('/login', validateBody, auth.login)
+app.post('/login', validateBody, auth.passwordCheck, auth.login)
 app.post('/verify', auth.auth, (req, res) => {
     res.json({error: false })
 })

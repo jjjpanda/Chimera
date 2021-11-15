@@ -15,9 +15,11 @@ app.use('/command/health', require('heartbeat').heart)
 
 app.use('/authorization', require('./routes/authorization.js'))
 app.use('/res', express.static(path.join(__dirname, '../frontend/res')));
-app.use('/', express.static(path.join(__dirname, "../dist/"), {
-    index: "app.html"
-}))
+for(const webpath of ["/", "/login", "/login/:password"]){
+    app.use(webpath, express.static(path.join(__dirname, "../dist/"), {
+        index: "app.html"
+    }))
+}
 
 module.exports = (isOn) => {
     const successCallback = () => {
