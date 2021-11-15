@@ -109,6 +109,7 @@ class App extends React.Component{
                     />
                     <Route path="/login" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage {...loginProps} />}
                     />
+                    <Route path="/:route" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
                     <Route path="/" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
                 </Routes> : <LoadingIcon />}
             </Router>
