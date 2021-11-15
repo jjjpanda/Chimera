@@ -14,7 +14,7 @@ class LoadingIcon extends React.Component{
             left: "50%",
             transform: "translate(-50%, -50%)"
         }}>
-            <img alt="icon" src={`res/logo.png`} className={'spin'} />
+            <img alt="icon" src={`/res/logo.png`} className={'spin'} />
         </div>)
     }
 }

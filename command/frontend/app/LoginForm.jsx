@@ -1,39 +1,84 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { InputItem, WingBlank, Button } from 'antd-mobile';
-
+import { Card, WingBlank, Button, Modal, LocaleProvider, Icon, Toast } from 'antd-mobile';
+import enUS from 'antd-mobile/lib/locale-provider/en_US';
 class LoginForm extends React.Component{
     constructor(props){
         super(props)
         this.state = {
-            password: "",
-            passwordStatus: null
+            loginStatus: null
         }
     }
 
-    onChange = (newValue) => {
-        this.setState(() => ({ password: newValue }))
+    statusHandler = (err) => {
+        this.setState(() => ({
+            loginStatus: !err ? "right" : "wrong"
+        }))
     }
 
-    onClick = () => {
-        this.props.loginReq(this.state.password).then(req => this.props.handler(req, this.props.timestamp, (err) => {
+    onPasswordEnter = (password) => {
+        this.props.loginReq(password).then(req => this.props.handler(req, this.props.timestamp, this.statusHandler))
+    }
+
+    onPINEnter = (pin) => {
+        this.props.loginReq(pin, "/authorization/requestLink", {pin}).then(({error}) => {
             this.setState(() => ({
-                passwordStatus: !err ? "right" : "wrong"
-            }))
-        }))
+                loginStatus: !error ? "right" : "wrong"
+            }), () => {
+                if(!error){
+                    Toast.success("Request for temporary link was successful.\nCheck your messages!", 20)
+                }
+                else{
+                    Toast.fail("Request for temporary link failed.", 4)
+                }
+            })
+        })
+    }
+    
+    componentDidMount() {
+        const {passwordAttempt} = this.props
+        if(passwordAttempt != undefined){
+            this.props.loginReq(passwordAttempt).then(res => {
+                this.props.handler(res, this.props.timestamp, this.statusHandler)
+            })
+        }
     }
 
     render() {
         return (
-            <WingBlank size="sm">
-                <InputItem type="password" value={this.state.password} onChange={this.onChange}/>
-                <Button 
-                    icon={this.state.passwordStatus == null ? "right" : (this.state.passwordStatus == "wrong" ? "cross-circle" : "check-circle")} 
-                    onClick ={this.onClick}
-                >
-                    ENTER
-                </Button>
-            </WingBlank>
+            <LocaleProvider locale={enUS}>
+                <WingBlank size="sm">
+                    <Card>
+                        <Card.Header
+                            title={"  ---Login---"}
+                            thumb={<Icon type={this.state.loginStatus == null ? "right" : (this.state.loginStatus == "wrong" ? "cross-circle" : "check-circle")}  />}
+                        />
+                        <Card.Body>
+                            <WingBlank size="sm">
+                                <Button 
+                                    onClick={
+                                        () => Modal.prompt('Password', '', [{text: "Cancel"}, {text: "Enter", onPress: this.onPasswordEnter}], 'secure-text')
+                                    }
+                                    type="primary"
+                                >
+                                    Password
+                                </Button>
+                                <Button 
+                                    onClick={
+                                        () => Modal.prompt('PIN', '', [{text: "Cancel"}, {text: "Enter", onPress: this.onPINEnter}], 'secure-text')
+                                    }
+                                    type="ghost"
+                                >
+                                    PIN
+                                </Button>
+                            </WingBlank>
+                        </Card.Body>
+                        <Card.Footer
+                            extra={"2 methods to sign in"}
+                        />
+                    </Card>
+                </WingBlank>
+            </LocaleProvider>
         )
     }
 }
