@@ -36,15 +36,15 @@ class App extends React.Component{
         }
     }
 
-    attemptLogin = (password) => {
-        return request("/authorization/login", {
+    attemptLogin = (password, url="/authorization/login", body={password}) => {
+        return request(url, {
             method: "POST",
             headers: {
                 "Accept": 'application/json',
                 "Content-Type": 'application/json',
             },
             credentials: 'include',
-            body: JSON.stringify({password})
+            body: JSON.stringify(body)
         }, (prom) => {
             return prom.then(res => {
                 return res.json()
