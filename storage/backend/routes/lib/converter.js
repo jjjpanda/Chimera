@@ -7,8 +7,8 @@ var {randomID}    = require('lib')
 const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
 
 module.exports = {   
-    randomID: () => {
-        return shortid.generate() + "-" + moment().format(dateFormat);
+    generateID: () => {
+        return randomID.generate() + "-" + moment().format(dateFormat);
     },
     
     filterList: (camera, start, end, skipEvery=1) => {

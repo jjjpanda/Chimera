@@ -6,7 +6,7 @@ var moment     = require('moment')
 var dateFormat = require('./dateFormat.js')
 const cliProgress = require('cli-progress')
 const {
-    randomID,
+    generateID,
     filterList,
     fileName,
 }              = require('./converter.js')
@@ -34,7 +34,7 @@ const createFrameList = (camera, start, end, limit) => {
 }
 
 const createVideoList = (camera, start, end, skip) => {
-    const rand = randomID()
+    const rand = generateID()
 
     const filteredList = filterList(camera, start, end, skip)
 
