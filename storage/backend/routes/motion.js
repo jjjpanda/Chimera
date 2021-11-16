@@ -5,9 +5,7 @@ const { subprocess } = require('lib')
 
 const app = express.Router();
 
-if(process.env.storage_ON === "true"){
-    startMotion();
-}
+startMotion();
 
 app.get("/status", (req, res, next) => {
     req.processName = "motion"

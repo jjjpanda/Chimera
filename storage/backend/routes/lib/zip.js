@@ -4,7 +4,7 @@ var fs         = require('fs')
 var path       = require('path')
 var moment     = require('moment')
 const {
-    randomID,
+    generateID,
     filterList,
     fileName,
 }              = require('./converter.js');
@@ -34,7 +34,7 @@ const createZipList = (camera, start, end, skip) => {
 
 const zip = (archive, camera, frames, start, end, save, req, res) => {
 
-    const rand = randomID()
+    const rand = generateID()
 
     if(frames == 0){
         if(save){
