@@ -15,7 +15,7 @@ const routeToIndex = (r) => {
     switch(r){
         case "live":
             return 0
-        case "motion":
+        case "process":
             return 1
         case "scrub":
             return 2
@@ -34,7 +34,7 @@ const Main = () => {
         <WingBlank size="sm">
             <Tabs prerenderingSiblingsNumber={0} initialPage={index} swipeable={false} tabBarPosition="bottom" animated tabs= {[
                 {title: "Live", routeName:"live"},
-                {title: "Motion", routeName:"motion"},
+                {title: "Motion", routeName:"process"},
                 {title: "Scrubber", routeName:"scrub"},
                 {title: "Files", routeName:"stats"}
             ]} onChange={({routeName}) => {
