@@ -13,6 +13,8 @@
     "delete": "npx pm2 delete all",
     "stop": "npm run kill && npm run delete && pkill PM2",
     "logs": "npx pm2 logs",
+    "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
+    "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
     "command_install": "cd command && npm install",
     "lib_install": "cd lib && npm install",
     "livestream_install": "cd livestream && npm install",
@@ -40,5 +42,9 @@
     "rimraf": "^3.0.2",
     "schedule": "file:./schedule",
     "storage": "file:./storage"
+  },
+  "devDependencies": {
+    "eslint": "^8.2.0",
+    "eslint-plugin-react": "^7.27.0"
   }
 }
