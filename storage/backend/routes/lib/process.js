@@ -1,90 +1,90 @@
-var fs         = require('fs')
-var path       = require('path')
+var fs         = require("fs")
+var path       = require("path")
 const {
-    filterType,
-    parseFileName,
-    findFile
-}              = require('./converter.js');
-const {webhookAlert} = require('lib')
+	filterType,
+	parseFileName,
+	findFile
+}              = require("./converter.js")
+const {webhookAlert} = require("lib")
 
-const imgDir = path.join(process.env.storage_FILEPATH, 'shared/captures')
+const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
 module.exports = {
-    statusProcess: (req, res) => {
-        const { id } = req.body
+	statusProcess: (req, res) => {
+		const { id } = req.body
 
-        const { type } = parseFileName(findFile(id))
+		const { type } = parseFileName(findFile(id))
 
-        console.log(id)
-        res.send(JSON.stringify({
-            running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`)),
-            id
-        }))
-    },
+		console.log(id)
+		res.send(JSON.stringify({
+			running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`)),
+			id
+		}))
+	},
 
-    cancelProcess: (req, res) => {
-        const { id } = req.body
+	cancelProcess: (req, res) => {
+		const { id } = req.body
 
-        const { type } = parseFileName(findFile(id))
+		const { type } = parseFileName(findFile(id))
 
-        let cancelled = true
+		let cancelled = true
 
-        if(req.app.locals[id] != undefined){
-            if(type == "mp4"){
-                req.app.locals[id].kill()
-                delete req.app.locals[id]
-                webhookAlert(`Your video (${id}) was cancelled.`)
-            }
-            else if(type == "zip"){
-                req.app.locals[id].abort()
-                delete req.app.locals[id]
-                webhookAlert(`Your archive (${id}) was cancelled.`)
-            }
+		if(req.app.locals[id] != undefined){
+			if(type == "mp4"){
+				req.app.locals[id].kill()
+				delete req.app.locals[id]
+				webhookAlert(`Your video (${id}) was cancelled.`)
+			}
+			else if(type == "zip"){
+				req.app.locals[id].abort()
+				delete req.app.locals[id]
+				webhookAlert(`Your archive (${id}) was cancelled.`)
+			}
             
-        }
-        else{
-            cancelled = false;
-        }
+		}
+		else{
+			cancelled = false
+		}
 
-        res.send(JSON.stringify({
-            cancelled,
-            id
-        }))
-    },
+		res.send(JSON.stringify({
+			cancelled,
+			id
+		}))
+	},
    
-    listProcess: (req, res) => {
-        let list = [...filterType('zip'), ...filterType('mp4')]
+	listProcess: (req, res) => {
+		let list = [...filterType("zip"), ...filterType("mp4")]
 
-        list = list.map(file => {
-            const { id, type } = parseFileName(file)
+		list = list.map(file => {
+			const { id, type } = parseFileName(file)
 
-            return {
-                ...parseFileName(file),
-                requested: id.split('-')[1]+"-"+id.split('-')[2],
-                running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`))
-            }
-        })
+			return {
+				...parseFileName(file),
+				requested: id.split("-")[1]+"-"+id.split("-")[2],
+				running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`))
+			}
+		})
 
-        res.send({
-            list
-        })
-    },
+		res.send({
+			list
+		})
+	},
 
-    deleteProcess: (req, res) => {
-        const { id } = req.body
+	deleteProcess: (req, res) => {
+		const { id } = req.body
 
-        const file = findFile(id);
+		const file = findFile(id)
 
-        console.log(id)
-        let deletable = fs.existsSync(path.join(imgDir, file))
+		console.log(id)
+		let deletable = fs.existsSync(path.join(imgDir, file))
 
-        if(deletable){
-            fs.unlinkSync(path.join(imgDir, file))
-        }
+		if(deletable){
+			fs.unlinkSync(path.join(imgDir, file))
+		}
         
-        res.send(JSON.stringify({
-            deleted: deletable,
-            id
-        }))
-    }
+		res.send(JSON.stringify({
+			deleted: deletable,
+			id
+		}))
+	}
 }

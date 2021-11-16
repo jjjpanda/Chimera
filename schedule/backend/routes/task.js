@@ -1,20 +1,20 @@
-var express    = require('express');
+var express    = require("express")
 
-var { validateBody } = require('lib')
+var { validateBody } = require("lib")
 var {
-    validateStartableTask,
-    validateId,
-    startTask,
-    stopTask,
-    destroyTask,
-    taskList,
-    sendList
-}              = require('./lib/scheduler.js')
+	validateStartableTask,
+	validateId,
+	startTask,
+	stopTask,
+	destroyTask,
+	taskList,
+	sendList
+}              = require("./lib/scheduler.js")
 
-const app = express.Router();
+const app = express.Router()
 
 app.post("/start", validateBody, validateStartableTask, startTask)
-app.get('/list', taskList, sendList)
+app.get("/list", taskList, sendList)
 app.post("/stop", validateBody, validateId, stopTask)
 app.post("/destroy", validateBody, validateId, destroyTask)
 

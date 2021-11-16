@@ -1,3 +1,3 @@
 module.exports = () => {
-    require('./backend/schedule.js')()
+	require("./backend/schedule.js")()
 }

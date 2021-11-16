@@ -1,72 +1,72 @@
-import React from 'react';
-import flvjs from 'flv.js';
+import React from "react"
+import flvjs from "flv.js"
 
 import{
-    Card, Button, WhiteSpace
+	Card, Button, WhiteSpace
 } from "antd-mobile"
 
 class FLVPlayer extends React.Component{
-    initFlv = (video) => {
-        if (video) {
-            if (flvjs.isSupported()) {
-                let flvPlayer = flvjs.createPlayer({ ...this.props }, this.props.config);
-                flvPlayer.attachMediaElement(video);
-                this.flvPlayer = flvPlayer;
-                this.flvPlayer.load();
+	initFlv = (video) => {
+		if (video) {
+			if (flvjs.isSupported()) {
+				let flvPlayer = flvjs.createPlayer({ ...this.props }, this.props.config)
+				flvPlayer.attachMediaElement(video)
+				this.flvPlayer = flvPlayer
+				this.flvPlayer.load()
 
-                setInterval(() => {
-                    if (!video.buffered.length) {
-                        return;
-                    }
-                    let end = video.buffered.end(0);
-                    let timeDifference = end - video.currentTime;
+				setInterval(() => {
+					if (!video.buffered.length) {
+						return
+					}
+					let end = video.buffered.end(0)
+					let timeDifference = end - video.currentTime
     
-                    if (timeDifference >= 1.125){
-                        video.currentTime = end;
-                    }
-                }, 60000);
+					if (timeDifference >= 1.125){
+						video.currentTime = end
+					}
+				}, 60000)
                 
-                this.flvPlayer.play();
-            }
-        }
-    }
+				this.flvPlayer.play()
+			}
+		}
+	}
 
-    componentDidMount = () =>  {
-    }
+	componentDidMount = () =>  {
+	}
 
-    componentWillUnmount = () => {
-        if (this.flvPlayer) {
-            this.flvPlayer.unload();
-            this.flvPlayer.detachMediaElement();
-            this.flvPlayer.destroy();
-        }
-    }
+	componentWillUnmount = () => {
+		if (this.flvPlayer) {
+			this.flvPlayer.unload()
+			this.flvPlayer.detachMediaElement()
+			this.flvPlayer.destroy()
+		}
+	}
 
-    render() {
-        return (
-            <Card>
-                <Card.Header
-                    title={`Camera ${this.props.camera}`}
-                    extra={<div>
-                    </div>}
-                />
-                <Card.Body>
-                    <video
-                        muted
-                        autoPlay
-                        controls
-                        id={this.props.key}
-                        ref={this.initFlv}
-                    />
-                </Card.Body>
-                <Card.Footer extra={<Button size="small">
+	render() {
+		return (
+			<Card>
+				<Card.Header
+					title={`Camera ${this.props.camera}`}
+					extra={<div>
+					</div>}
+				/>
+				<Card.Body>
+					<video
+						muted
+						autoPlay
+						controls
+						id={this.props.key}
+						ref={this.initFlv}
+					/>
+				</Card.Body>
+				<Card.Footer extra={<Button size="small">
 
-                </Button>}>
-                    <WhiteSpace size="xl" />
-                </Card.Footer>
-            </Card>
-        )
-    }
+				</Button>}>
+					<WhiteSpace size="xl" />
+				</Card.Footer>
+			</Card>
+		)
+	}
 }
 
 export default FLVPlayer
