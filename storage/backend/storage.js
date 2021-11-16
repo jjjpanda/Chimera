@@ -22,7 +22,7 @@ app.use('/file', require('./routes/file.js'))
     
 app.use('/shared', express.static(path.join(process.env.storage_FILEPATH, 'shared')))
 
-module.exports = (isOn) => {
+module.exports = () => {
     const successCallback = () => {
         console.log(`📂 Storage On ▶ PORT ${process.env.storage_PORT}`)
         console.log(`\t▶ Converter Routes:\t /converter`)
@@ -33,5 +33,5 @@ module.exports = (isOn) => {
         console.log(`📂 Storage Off ❌`)
     }
 
-    handleServerStart(app, process.env.storage_PORT, isOn, successCallback, failureCallback)
+    handleServerStart(app, process.env.storage_PORT, successCallback, failureCallback)
 }

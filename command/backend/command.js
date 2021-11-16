@@ -21,7 +21,7 @@ for(const webpath of ["/login", "/login/:password", "/", "/live", "/process", "/
     }))
 }
 
-module.exports = (isOn) => {
+module.exports = () => {
     const successCallback = () => {
         console.log(`🎮 Command On ▶ PORT ${process.env.command_PORT}`)
         console.log(`\t▶ Authorization Routes:\t /authorization`)
@@ -36,6 +36,6 @@ module.exports = (isOn) => {
     } 
 
     auth.register(() => {
-        handleServerStart(app, process.env.command_PORT, isOn, successCallback, failureCallback)
+        handleServerStart(app, process.env.command_PORT, successCallback, failureCallback)
     }, failureCallback)
 }

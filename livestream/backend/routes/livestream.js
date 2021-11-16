@@ -6,9 +6,7 @@ const { subprocess } = require('lib')
 
 const app = express.Router();
 
-if(process.env.livestream_ON === "true"){
-    startAllLiveStreams();
-}
+startAllLiveStreams()
 
 app.get("/status", (req, res, next) => {
     const {camera} = req.query;
