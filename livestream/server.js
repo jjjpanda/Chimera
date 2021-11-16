@@ -1,3 +1,3 @@
 module.exports = () => {
-    require('./backend/livestream.js')
+    require('./backend/livestream.js')()
 }
