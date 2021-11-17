@@ -1,3 +1,3 @@
 module.exports = () => {
-    require('./backend/command.js')()
+	require("./backend/command.js")()
 }

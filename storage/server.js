@@ -1,3 +1,3 @@
 module.exports = () => {
-    require('./backend/storage.js')()
+	require("./backend/storage.js")()
 }

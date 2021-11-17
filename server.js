@@ -1,20 +1,20 @@
-require('dotenv').config()
+require("dotenv").config()
 
 console.log("--- Starting Servers ---")
 
 if(process.env.storage_ON === "true"){
-    require('storage')()
+	require("storage")()
 }
 if(process.env.livestream_ON === "true"){
-    require('livestream')()
+	require("livestream")()
 }
 if(process.env.schedule_ON === "true"){
-    require('schedule')()
+	require("schedule")()
 }
 if(process.env.command_ON === "true"){
-    require('command')()
+	require("command")()
 }
 
 console.log("--- Starting Gateway ---")
 
-require('./gateway.js')()
+require("./gateway.js")()

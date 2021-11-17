@@ -7,4 +7,5 @@ shared
 feed
 *.log
 *.conf
+eslint
 .well-known

@@ -1,52 +1,52 @@
-import React from 'react';
+import React from "react"
 
 import { 
-    Flex,
-    Modal, 
-    Button,
-    SegmentedControl,
-    DatePicker,
-    List,
-    Checkbox,
-    WhiteSpace,
-    Toast,
-    InputItem
-} from 'antd-mobile';
+	Flex,
+	Modal, 
+	Button,
+	SegmentedControl,
+	DatePicker,
+	List,
+	Checkbox,
+	WhiteSpace,
+	Toast,
+	InputItem
+} from "antd-mobile"
 
-import enUs from 'antd-mobile/lib/date-picker/locale/en_US';
+import enUs from "antd-mobile/lib/date-picker/locale/en_US"
 
 class TimeRangePicker extends React.Component{
 
-    constructor(props){
-        super(props)
-    }
+	constructor(props){
+		super(props)
+	}
 
-    render() {
-        return [
-            <DatePicker
-                mode="time"
-                value={this.props.startTime}
-                locale={enUs}
-                onChange={this.props.startChange}
-                use12Hours
-            >
-                <List.Item arrow="horizontal">
+	render() {
+		return [
+			<DatePicker
+				mode="time"
+				value={this.props.startTime}
+				locale={enUs}
+				onChange={this.props.startChange}
+				use12Hours
+			>
+				<List.Item arrow="horizontal">
                     Start Time
-                </List.Item>
-            </DatePicker>,
-            <DatePicker
-                mode='time'
-                value={this.props.endTime}
-                locale={enUs}
-                onChange={this.props.endChange}
-                use12Hours
-            >
-                <List.Item arrow="horizontal">
+				</List.Item>
+			</DatePicker>,
+			<DatePicker
+				mode='time'
+				value={this.props.endTime}
+				locale={enUs}
+				onChange={this.props.endChange}
+				use12Hours
+			>
+				<List.Item arrow="horizontal">
                     End Time
-                </List.Item>
-            </DatePicker>
-        ]
-    }
+				</List.Item>
+			</DatePicker>
+		]
+	}
 }
 
 export default TimeRangePicker
