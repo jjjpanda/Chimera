@@ -65,7 +65,7 @@ module.exports = () => {
 	}
 
 	mkdirp(path.join(__dirname, "./.well-known/acme-challenge")).then((made) => {
-		handleServerStart(app, process.env.gateway_PORT, true, successCallback, failureCallback)
+		handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
 		handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
 	}, failureCallback)
 }

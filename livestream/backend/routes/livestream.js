@@ -1,12 +1,15 @@
 var express    = require("express")
 const path = require("path")
-const { startAllLiveStreams } = require("./lib/subprocess.js")
 const pm2 = require("pm2")
 const { subprocess } = require("lib")
 
 const app = express.Router()
 
-startAllLiveStreams()
+subprocess.checkProcess(pm2, "live_stream_cam", () => {
+	console.log("▶ Livestream process detected ✅")
+}, () => {
+	console.log("▶ Livestream server needs a livestream process ⚠️")
+})
 
 app.get("/status", (req, res, next) => {
 	const {camera} = req.query

@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { handleServerStart, auth, helmetOptions } = require("lib")
+const { handleServerStart, helmetOptions } = require("lib")
 const helmet = require("helmet")
 
 var app = express()
@@ -21,21 +21,6 @@ for(const webpath of ["/login", "/login/:password", "/", "/live", "/process", "/
 	}))
 }
 
-module.exports = () => {
-	const successCallback = () => {
-		console.log(`🎮 Command On ▶ PORT ${process.env.command_PORT}`)
-		console.log("\t▶ Authorization Routes:\t /authorization")
-		console.log("\t▶ Resource Routes:\t /res")
-		console.log("\t▶ Web App Launched")
-	}
-	const failureCallback = (err) => {
-		if(err != undefined){
-			console.log(err)
-		}
-		console.log("🎮 Command Off ❌")
-	} 
-
-	auth.register(() => {
-		handleServerStart(app, process.env.command_PORT, successCallback, failureCallback)
-	}, failureCallback)
+module.exports = (successCallback, failureCallback) => {
+	return handleServerStart(app, process.env.command_PORT, successCallback, failureCallback)
 }
