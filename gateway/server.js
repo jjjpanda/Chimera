@@ -63,6 +63,12 @@ module.exports = () => {
 		console.log("🗺️🔒 Secure Gateway Off ❌")
 	}
 
-	handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
-	handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
+	if(process.env.gateway_ON == "true"){
+		handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
+		handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
+	}
+	else{
+		failureCallback()
+		failureCallbackSecure()
+	}
 }

@@ -4,11 +4,11 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
-    "helmet": "^4.6.0",
     "http-proxy-middleware": "^1.0.6",
     "lib": "file:../lib"
   },
   "peerDependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "helmet": "^4.6.0"
   }
 }

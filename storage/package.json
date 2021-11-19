@@ -5,7 +5,8 @@
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
-    "lib": "file:../lib"
+    "lib": "file:../lib",
+    "memory": "file:../memory"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
@@ -13,8 +14,6 @@
     "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
     "mkdirp": "^1.0.4",
-    "moment": "^2.29.1",
-    "node-cron": "^2.0.3",
-    "pm2": "^5.1.2"
+    "moment": "^2.29.1"
   }
 }

@@ -5,6 +5,10 @@
   "main": "server.js",
   "dependencies": {
     "socket.io": "^4.4.0",
-    "socket.io-client": "^4.4.0"
+    "socket.io-client": "^4.4.0",
+    "lib": "file:../lib"
+  },
+  "peerDependencies": {
+    "node-cron": "^2.0.3"
   }
 }

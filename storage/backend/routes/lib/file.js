@@ -3,8 +3,7 @@ const fs = require("fs")
 const rimraf = require("rimraf")
 const moment = require("moment")
 const mkdirp = require("mkdirp")
-const cron = require("node-cron")
-const { formatBytes, jsonFileHanding } = require("lib")
+const { formatBytes, jsonFileHanding, isPrimeInstance } = require("lib")
 const {readJSON, writeJSON} = jsonFileHanding
 
 const pathToAdditionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
@@ -308,12 +307,6 @@ const createStatsJSON = (filePath) => {
 	})
 }
 
-mkdirp(path.join(process.env.storage_FILEPATH, "./shared")).then(() => {
-	createStatsJSON(pathToAdditionStatsJSON)
-	createStatsJSON(pathToDeletionStatsJSON)
-	createStatsJSON(pathToCumulativeStatsJSON)
-})
-
 const createTimestampedStatObject = () => {
 	const timestamp = moment().format("x")
 	let stats = { count: {timestamp}, size: {timestamp} }
@@ -358,7 +351,7 @@ const promiseMetricTasks = (statsObj, cronMinutes=undefined) => JSON.parse(proce
 	])
 }, [])
 
-cron.schedule(`*/${cronMinutes} * * * *`, () => {
+const cronTask = () => {
 	let currentStats = createTimestampedStatObject()
 	Promise.all(promiseMetricTasks(currentStats, cronMinutes)).then(() => {
 		readJSON(pathToAdditionStatsJSON, (data) => {
@@ -397,4 +390,16 @@ cron.schedule(`*/${cronMinutes} * * * *`, () => {
 	}, (err) => {
 		console.log("\tcouldn't write file stats to JSONs | Error:", err)
 	})
-})
+}
+
+const cronString = `*/${cronMinutes} * * * *`
+
+if(isPrimeInstance){
+	const client = require('memory').client("FILE STATS")
+	mkdirp(path.join(process.env.storage_FILEPATH, "./shared")).then(() => {
+		createStatsJSON(pathToAdditionStatsJSON)
+		createStatsJSON(pathToDeletionStatsJSON)
+		createStatsJSON(pathToCumulativeStatsJSON)
+	})
+	client.emit('cron', cronString, cronTask)
+}
