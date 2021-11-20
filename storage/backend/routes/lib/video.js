@@ -85,13 +85,6 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			.videoBitrate(Math.pow(2, 14))
 			.videoCodec("libx264")
 			.toFormat("mp4")
-			.on("error", function(err) {
-				console.log("An error occurred: " + err.message)
-				if(save){
-					webhookAlert(`Your video (${rand}) could not be completed.`)
-				}    
-				fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
-			})
 			.on("progress", function(progress) {
 				bar.update(Math.round((progress.frames/frames)*100))
 			})
@@ -103,8 +96,18 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.stop()
 			})
 
-		client.emit('saveProcess', rand, videoCreator, () => {
+		videoCreator.on("error", function(err) {
+			console.log("An error occurred: " + err.message)
+			if(save){
+				webhookAlert(`Your video (${rand}) could not be completed.`)
+			}
+			fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
+			fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+		})
 
+		client.emit('saveProcessEnder', rand, () => {
+			videoCreator.on('end', () => {})
+			videoCreator.kill()
 		})
 
 		const createVideo = (creator) => {

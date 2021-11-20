@@ -62,22 +62,25 @@ module.exports = {
                     callback(scheduledTaskConfigs)
                 })
 
-                client.on('saveProcess', (id, process, callback=()=>{}) => {
-                    converterProcesses[id] = process
+                client.on('saveProcessEnder', (id, converterProcessEnder, callback=()=>{}) => {
+                    converterProcesses[id] = converterProcessEnder
                     callback(id)
                 })
                 client.on('cancelProcess', (id, type, callback=()=>{}) => {
                     let msg = 'not cancelled'
-                    if(type == "mp4"){
-                        converterProcesses[id].kill()
-                        delete converterProcesses[id]
-                        msg = `Your video (${id}) was cancelled.`
+                    try{
+                        converterProcesses[id]()
+                        if(type == "mp4"){
+                            msg = `Your video (${id}) was cancelled.`
+                        }
+                        else if(type == "zip"){
+                            msg = `Your archive (${id}) was cancelled.`
+                        }
                     }
-                    else if(type == "zip"){
-                        converterProcesses[id].abort()
-                        delete converterProcesses[id]
-                        msg = `Your archive (${id}) was cancelled.`
+                    catch(e){
+                        console.log(`failed to delete converter process ${id}`)
                     }
+                    delete converterProcesses[id]
                     callback(msg)
                 })
                 client.on('disconnect', () => { /* ... */ });
