@@ -1,18 +1,15 @@
 
 const { Server } = require("socket.io")
 const ioClient = require("socket.io-client")
-
-const cron = require("node-cron")
 const { isPrimeInstance } = require("lib")
-
-let scheduledTaskConfigs = {}
-let scheduledTask={}
-
-let converterProcesses = {}
 
 module.exports = {
 	server: () => {
 		if(process.env.memory_ON == "true" && isPrimeInstance){
+			
+			const {createTask, startTask, stopTask, destroyTask, listTasks} = require('./lib/scheduledTasks.js')
+			const {saveProcessEnder, cancelProcess} = require('./lib/converterProcesses.js')
+
 			const io = new Server(process.env.memory_PORT, { 
 				cors: {
 					origin: false,
@@ -29,61 +26,27 @@ module.exports = {
             
 			io.on("connection", client => {
 				client.on("log", data => console.log(data))
-				client.on("cron", (cronString, cronTask) => { 
-					const fileStatsCron = cron.schedule(cronString, cronTask)
-					fileStatsCron.start()
-				})
-				client.on("createTask", (taskObject, task) => {
-					scheduledTaskConfigs[taskObject.id] = taskObject
-					scheduledTask[taskObject.id] = cron.schedule(
-						taskObject.cronString, 
-						task, 
-						{ scheduled: true }
-					)
-					scheduledTask[taskObject.id].start()
-				})
-				client.on("startTask", (id, callback=()=>{}) => {
-					scheduledTask[id].start()
-					scheduledTaskConfigs[id].running = true
-					callback(scheduledTaskConfigs)
-				})
-				client.on("stopTask", (id, callback=()=>{}) => {
-					scheduledTask[id].stop()
-					scheduledTaskConfigs[id].running = false
-					callback(scheduledTaskConfigs)
-				})
-				client.on("destroyTask", (id, callback=()=>{}) => {
-					scheduledTask[id].destroy()
-					delete scheduledTask[id]
-					delete scheduledTaskConfigs[id]
-					callback(scheduledTaskConfigs)
-				})
-				client.on("listTask", (callback=()=>{}) => {
-					callback(scheduledTaskConfigs)
-				})
 
-				client.on("saveProcessEnder", (id, converterProcessEnder, callback=()=>{}) => {
-					converterProcesses[id] = converterProcessEnder
-					callback(id)
+				client.on("cron", require('./lib/cron.js'))
+				
+				client.on("createTask", createTask)
+				client.on("startTask", startTask)
+				client.on("stopTask", stopTask)
+				client.on("destroyTask", destroyTask)
+				client.on("listTask", listTasks)
+
+				client.on("saveProcessEnder", saveProcessEnder)
+				client.on("cancelProcess", cancelProcess)
+
+				client.on("disconnect", () => {
+					console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)
 				})
-				client.on("cancelProcess", (id, type, callback=()=>{}) => {
-					let msg = "not cancelled"
-					try{
-						converterProcesses[id]()
-						if(type == "mp4"){
-							msg = `Your video (${id}) was cancelled.`
-						}
-						else if(type == "zip"){
-							msg = `Your archive (${id}) was cancelled.`
-						}
-					}
-					catch(e){
-						console.log(`failed to delete converter process ${id}`)
-					}
-					delete converterProcesses[id]
-					callback(msg)
+			})
+
+			process.on("SIGINT", () => {
+				io.close(()=> {
+					console.log(`🧠 Memory Off ❌`)
 				})
-				client.on("disconnect", () => { /* ... */ })
 			})
 		}
 	},
