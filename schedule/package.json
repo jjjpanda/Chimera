@@ -2,7 +2,8 @@
   "name": "schedule",
   "main": "server.js",
   "dependencies": {
-    "lib": "file:../lib"
+    "lib": "file:../lib",
+    "memory": "file:../memory"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",

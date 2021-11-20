@@ -15,14 +15,14 @@ const {webhookAlert} = require("lib")
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
+const client = require("memory").client("VIDEO PROCESS")
+
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
 const createFrameList = (camera, start, end, limit) => {
 	const filteredList = filterList(camera, start, end)
 
 	const limitIteration = Math.ceil(filteredList.length/limit)
-
-	//console.log(filteredList.length, limitIteration)
 
 	const limitedList = filteredList.filter((item, index) => {
 		return (index % limitIteration === 0)
@@ -85,13 +85,6 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			.videoBitrate(Math.pow(2, 14))
 			.videoCodec("libx264")
 			.toFormat("mp4")
-			.on("error", function(err) {
-				console.log("An error occurred: " + err.message)
-				if(save){
-					webhookAlert(`Your video (${rand}) could not be completed.`)
-				}    
-				fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
-			})
 			.on("progress", function(progress) {
 				bar.update(Math.round((progress.frames/frames)*100))
 			})
@@ -103,7 +96,19 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.stop()
 			})
 
-		req.app.locals[rand] = videoCreator
+		videoCreator.on("error", function(err) {
+			console.log("An error occurred: " + err.message)
+			if(save){
+				webhookAlert(`Your video (${rand}) could not be completed.`)
+			}
+			fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
+			fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+		})
+
+		client.emit("saveProcessEnder", rand, () => {
+			videoCreator.on("end", () => {})
+			videoCreator.kill()
+		})
 
 		const createVideo = (creator) => {
 			if(save){

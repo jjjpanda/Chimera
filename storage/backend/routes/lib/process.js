@@ -7,6 +7,8 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
+const client = require("memory").client("PROCESS")
+
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
 module.exports = {
@@ -29,22 +31,14 @@ module.exports = {
 
 		let cancelled = true
 
-		if(req.app.locals[id] != undefined){
-			if(type == "mp4"){
-				req.app.locals[id].kill()
-				delete req.app.locals[id]
-				webhookAlert(`Your video (${id}) was cancelled.`)
+		client.emit("cancelProcess", id, type, (msg) => {
+			if(msg == undefined || msg === "not cancelled"){
+				cancelled = false
 			}
-			else if(type == "zip"){
-				req.app.locals[id].abort()
-				delete req.app.locals[id]
-				webhookAlert(`Your archive (${id}) was cancelled.`)
+			else{
+				webhookAlert(msg)
 			}
-            
-		}
-		else{
-			cancelled = false
-		}
+		})
 
 		res.send(JSON.stringify({
 			cancelled,

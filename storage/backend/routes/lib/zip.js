@@ -10,6 +10,8 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
+const client = require("memory").client("ZIP PROCESS")
+
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
 const createZipList = (camera, start, end, skip) => {
@@ -58,21 +60,25 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				console.log("SENDING END ALERT")
 				webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
 				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
-			})    
+			})
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
 				if(save){
 					webhookAlert(`Your zip (${rand}) could not be completed.`)
-				}    
+				}
 				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
+				fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "zip")))
 			})
             
 			fs.writeFileSync(path.join(imgDir, `zip_${rand}.txt`), "progress")
 
 			archive.pipe(output)
 
-			req.app.locals[rand] = archive
+			client.emit("saveProcessEnder", rand, () => {
+				output.on("close", () => {})
+				archive.abort()
+			})
 
 			res.send(JSON.stringify({
 				id: rand,

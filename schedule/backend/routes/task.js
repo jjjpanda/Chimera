@@ -4,7 +4,7 @@ var { validateBody } = require("lib")
 var {
 	validateStartableTask,
 	validateId,
-	startTask,
+	startNewTask,
 	stopTask,
 	destroyTask,
 	taskList,
@@ -13,7 +13,7 @@ var {
 
 const app = express.Router()
 
-app.post("/start", validateBody, validateStartableTask, startTask)
+app.post("/start", validateBody, validateStartableTask, taskList, startNewTask)
 app.get("/list", taskList, sendList)
 app.post("/stop", validateBody, validateId, stopTask)
 app.post("/destroy", validateBody, validateId, destroyTask)

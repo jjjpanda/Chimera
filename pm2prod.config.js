@@ -1,5 +1,5 @@
 require("dotenv").config()
-const path = require('path')
+const path = require("path")
 
 const config = {
 	apps : [{
@@ -7,6 +7,7 @@ const config = {
 		name: "chimera",
 		log: "./log/chimera.log",
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
+		instances: process.env.chimeraInstances,
 		env: {
 			"NODE_ENV": "production",
 		}

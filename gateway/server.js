@@ -1,5 +1,4 @@
 var express    = require("express")
-const mkdirp = require("mkdirp")
 const path = require("path")
 const helmet = require("helmet")
 var {
@@ -64,8 +63,12 @@ module.exports = () => {
 		console.log("🗺️🔒 Secure Gateway Off ❌")
 	}
 
-	mkdirp(path.join(__dirname, "./.well-known/acme-challenge")).then((made) => {
+	if(process.env.gateway_ON == "true"){
 		handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
 		handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
-	}, failureCallback)
+	}
+	else{
+		failureCallback()
+		failureCallbackSecure()
+	}
 }

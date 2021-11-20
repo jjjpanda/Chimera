@@ -1,10 +1,9 @@
 var express    = require("express")
-const pm2 = require("pm2")
 const { subprocess } = require("lib")
 
 const app = express.Router()
 
-subprocess.checkProcess(pm2, "motion", () => {
+subprocess.checkProcess("motion", () => {
 	console.log("▶ Motion process detected ✅")
 }, () => {
 	console.log("▶ Motion server needs a motion process ⚠️")
@@ -13,6 +12,6 @@ subprocess.checkProcess(pm2, "motion", () => {
 app.get("/status", (req, res, next) => {
 	req.processName = "motion"
 	next()
-}, subprocess.processListMiddleware(pm2))
+}, subprocess.processListMiddleware)
 
 module.exports = app

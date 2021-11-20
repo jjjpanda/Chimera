@@ -7,6 +7,10 @@ require("livestream")()
 require("schedule")()
 require("command")()
 
+console.log("--- Starting Socket ---")
+
+require("memory").server()
+
 console.log("--- Starting Gateway ---")
 
-require("./gateway.js")()
+require("gateway")()
