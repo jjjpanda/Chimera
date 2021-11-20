@@ -395,11 +395,11 @@ const cronTask = () => {
 const cronString = `*/${cronMinutes} * * * *`
 
 if(isPrimeInstance){
-	const client = require('memory').client("FILE STATS")
+	const client = require("memory").client("FILE STATS")
 	mkdirp(path.join(process.env.storage_FILEPATH, "./shared")).then(() => {
 		createStatsJSON(pathToAdditionStatsJSON)
 		createStatsJSON(pathToDeletionStatsJSON)
 		createStatsJSON(pathToCumulativeStatsJSON)
 	})
-	client.emit('cron', cronString, cronTask)
+	client.emit("cron", cronString, cronTask)
 }

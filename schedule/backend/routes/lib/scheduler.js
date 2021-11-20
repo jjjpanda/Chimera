@@ -6,12 +6,12 @@ const { webhookAlert, randomID, jsonFileHanding, auth } = require("lib")
 
 const {schedulableUrls} = auth
 
-const client = require('memory').client("TASK SCHEDULER")
+const client = require("memory").client("TASK SCHEDULER")
 
 module.exports = {
 	validateStartableTask: (req, res, next) => {
 		const { url, body, id, cronString } = req.body
-		client.emit('listTask', tasks => {
+		client.emit("listTask", tasks => {
 			if(isValidId(id, tasks, true)){
 				client.emit("startTask", id, (scheduledTasks) => {
 					res.send({
@@ -45,7 +45,7 @@ module.exports = {
 
 	validateId: (req, res, next) => {
 		const { id } = req.body
-		client.emit('listTask', (tasks) => {
+		client.emit("listTask", (tasks) => {
 			if(isValidId(id, tasks)){
 				next()
 			}
@@ -74,7 +74,7 @@ module.exports = {
 
 	stopTask: (req, res) => {
 		const { id } = req.body
-		client.emit('stopTask', id, tasks=>{
+		client.emit("stopTask", id, tasks=>{
 			res.send({
 				stopped: !tasks[id].running
 			})
@@ -83,7 +83,7 @@ module.exports = {
 
 	destroyTask: (req, res) => {
 		const { id } = req.body
-		client.emit('destroyTask', id, tasks=>{
+		client.emit("destroyTask", id, tasks=>{
 			res.send({
 				destroyed: id in tasks
 			})
@@ -91,7 +91,7 @@ module.exports = {
 	},
 
 	taskList: (req, res, next) => {
-		client.emit('listTask', tasks => {
+		client.emit("listTask", tasks => {
 			req.body.list = Object.entries(tasks).filter(([id, entry]) => {
 				return id && entry && id.includes("task")
 			}).map(([id, {url, cronString, body, running}]) => {

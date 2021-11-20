@@ -10,7 +10,7 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
-const client = require('memory').client("ZIP PROCESS")
+const client = require("memory").client("ZIP PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
@@ -75,7 +75,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			archive.pipe(output)
 
-			client.emit('saveProcessEnder', rand, () => {
+			client.emit("saveProcessEnder", rand, () => {
 				output.on("close", () => {})
 				archive.abort()
 			})

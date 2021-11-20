@@ -7,7 +7,7 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
-const client = require('memory').client("PROCESS")
+const client = require("memory").client("PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
@@ -31,7 +31,7 @@ module.exports = {
 
 		let cancelled = true
 
-		client.emit('cancelProcess', id, type, (msg) => {
+		client.emit("cancelProcess", id, type, (msg) => {
 			if(msg == undefined || msg === "not cancelled"){
 				cancelled = false
 			}

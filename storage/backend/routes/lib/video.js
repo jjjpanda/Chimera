@@ -15,7 +15,7 @@ const {webhookAlert} = require("lib")
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
-const client = require('memory').client("VIDEO PROCESS")
+const client = require("memory").client("VIDEO PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
@@ -105,8 +105,8 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
 		})
 
-		client.emit('saveProcessEnder', rand, () => {
-			videoCreator.on('end', () => {})
+		client.emit("saveProcessEnder", rand, () => {
+			videoCreator.on("end", () => {})
 			videoCreator.kill()
 		})
 
