@@ -13,7 +13,6 @@
     "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
     "mkdirp": "^1.0.4",
-    "moment": "^2.29.1",
-    "pm2": "^5.1.2"
+    "moment": "^2.29.1"
   }
 }
