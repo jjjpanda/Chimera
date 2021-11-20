@@ -15,14 +15,14 @@ const {webhookAlert} = require("lib")
 ffmpeg.setFfmpegPath(process.env.ffmpeg)
 ffmpeg.setFfprobePath(process.env.ffprobe)
 
+const client = require('memory').client("VIDEO PROCESS")
+
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
 const createFrameList = (camera, start, end, limit) => {
 	const filteredList = filterList(camera, start, end)
 
 	const limitIteration = Math.ceil(filteredList.length/limit)
-
-	//console.log(filteredList.length, limitIteration)
 
 	const limitedList = filteredList.filter((item, index) => {
 		return (index % limitIteration === 0)
@@ -103,7 +103,9 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.stop()
 			})
 
-		req.app.locals[rand] = videoCreator
+		client.emit('saveProcess', rand, videoCreator, () => {
+
+		})
 
 		const createVideo = (creator) => {
 			if(save){

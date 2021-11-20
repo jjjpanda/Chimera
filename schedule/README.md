@@ -20,8 +20,7 @@ The scheduler is pretty self explanatory. You need a task scheduled? Done.
     url: String,
     body: Object,
     cronString: String,
-    running: Boolean,
-    task: Object //node-cron object
+    running: Boolean
 }
 ```
 
