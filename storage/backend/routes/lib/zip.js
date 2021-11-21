@@ -57,25 +57,23 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
 			output.on("close", function() {
-				console.log("SENDING END ALERT")
-				webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
-				//sync
-				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
+				fs.unlink(path.join(imgDir, `zip_${rand}.txt`), () => {
+					console.log("SENDING END ALERT")
+					webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+				})
 			})
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
-				if(save){
-					webhookAlert(`Your zip (${rand}) could not be completed.`)
-				}
-				//sync
-				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
-				//sync
-				fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "zip")))
+				fs.unlink(path.join(imgDir, `zip_${rand}.txt`), () => {
+					if(save){
+						webhookAlert(`Your zip (${rand}) could not be completed.`)
+					}
+					fs.unlink(path.join(imgDir, fileName(camera, start, end, rand, "zip")))
+				})
 			})
             
-			//sync
-			fs.writeFileSync(path.join(imgDir, `zip_${rand}.txt`), "progress")
+			fs.writeFile(path.join(imgDir, `zip_${rand}.txt`), "progress")
 
 			archive.pipe(output)
 

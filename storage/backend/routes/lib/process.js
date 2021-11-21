@@ -18,11 +18,12 @@ module.exports = {
 		const { type } = parseFileName(findFile(id))
 
 		console.log(id)
-		res.send(JSON.stringify({
-			//sync
-			running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`)),
-			id
-		}))
+		fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
+			res.send(JSON.stringify({
+				running: !err,
+				id
+			}))
+		})
 	},
 
 	cancelProcess: (req, res) => {
@@ -72,17 +73,11 @@ module.exports = {
 		const file = findFile(id)
 
 		console.log(id)
-		//sync
-		let deletable = fs.existsSync(path.join(imgDir, file))
-
-		if(deletable){
-			//sync
-			fs.unlinkSync(path.join(imgDir, file))
-		}
-        
-		res.send(JSON.stringify({
-			deleted: deletable,
-			id
-		}))
+		fs.unlink(path.join(imgDir, file), (err) => {
+			res.send(JSON.stringify({
+				deleted: !err,
+				id
+			}))
+		})
 	}
 }
