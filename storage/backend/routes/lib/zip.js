@@ -14,7 +14,7 @@ const client = require("memory").client("ZIP PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
-const createZipList = (camera, start, end, skip) => {
+const createZipList = (camera, start, end, skip, callback) => {
 	var archive = archiver("zip", {
 		zlib: {level: 9}
 	})
@@ -119,9 +119,9 @@ module.exports = {
 		
 				zip(archive, camera, frames, start, end, save, req, res)
 			}
-			else[
+			else{
 				res.send({error: true})
-			]
+			}
 		})
 	}
 }

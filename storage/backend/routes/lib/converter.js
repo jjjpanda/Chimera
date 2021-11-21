@@ -61,7 +61,7 @@ module.exports = {
 
 	findFile: (id, callback) => {
 		fs.readdir(path.join(imgDir), (err, files) => {
-			if(!err){
+			if(err){
 				callback("output_0_start_end_id.type")
 			}
 			else{
