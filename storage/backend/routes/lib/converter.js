@@ -12,23 +12,19 @@ module.exports = {
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {
-		try {
-			fs.readdir(path.join(imgDir, camera), (err, files) => {
-				if(err){
-					callback([])
-				}
-				else{
-					let list = files.filter( file => file.includes(".jpg") && 
-						`${file.split("-")[0]}-${file.split("-")[1]}` > start && 
-						`${file.split("-")[0]}-${file.split("-")[1]}` <= end )
-					callback(skipEvery == 1 ? list : list.filter( (file, index) => {
-						return (index % skipEvery === 0 )
-					}))
-				}
-			})
-		} catch(e) {
-			callback( [] )
-		}
+		fs.readdir(path.join(imgDir, camera), (err, files) => {
+			if(err){
+				callback([])
+			}
+			else{
+				let list = files.filter( file => file.includes(".jpg") && 
+					`${file.split("-")[0]}-${file.split("-")[1]}` > start && 
+					`${file.split("-")[0]}-${file.split("-")[1]}` <= end )
+				callback(skipEvery == 1 ? list : list.filter( (file, index) => {
+					return (index % skipEvery === 0 )
+				}))
+			}
+		})
 	},
 
 	filterType: (type, callback) => {
