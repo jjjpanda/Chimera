@@ -19,37 +19,43 @@ const client = require("memory").client("VIDEO PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
-const createFrameList = (camera, start, end, limit) => {
-	const filteredList = filterList(camera, start, end)
+const createFrameList = (camera, start, end, limit, callback) => {
+	filterList(camera, start, end, undefined, (filteredList) => {
+		const limitIteration = Math.ceil(filteredList.length/limit)
 
-	const limitIteration = Math.ceil(filteredList.length/limit)
-
-	const limitedList = filteredList.filter((item, index) => {
-		return (index % limitIteration === 0)
-	}).map((item) => {
-		return `/shared/captures/${camera}/${item}`
+		const limitedList = filteredList.filter((item, index) => {
+			return (index % limitIteration === 0)
+		}).map((item) => {
+			return `/shared/captures/${camera}/${item}`
+		})
+	
+		callback(limitedList)
 	})
-
-	return limitedList
 }
 
-const createVideoList = (camera, start, end, skip) => {
+const createVideoList = (camera, start, end, skip, callback) => {
 	const rand = generateID()
 
-	const filteredList = filterList(camera, start, end, skip)
+	filterList(camera, start, end, skip, (filteredList) => {
+		const frames = filteredList.length    
 
-	const frames = filteredList.length    
-
-	let files = ""
-
-	console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
-    
-	for (const file of filteredList){
-		files += `file '${camera}/${file}'\r\n` 
-	}
-    
-	fs.writeFileSync(path.join(imgDir, `mp4_${rand}.txt`), files)
-	return { rand, frames }
+		let files = ""
+	
+		console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
+		
+		for (const file of filteredList){
+			files += `file '${camera}/${file}'\r\n` 
+		}
+		
+		fs.writeFile(path.join(imgDir, `mp4_${rand}.txt`), files, (err) => {
+			if(err){
+				callback(err, undefined)
+			}
+			else{
+				callback(false, { rand, frames })
+			}
+		})
+	})
 }
 
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
@@ -89,20 +95,22 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.update(Math.round((progress.frames/frames)*100))
 			})
 			.on("end", () => {
-				if(save){
-					webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
-				}
-				fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
 				bar.stop()
+				fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
+					if(save){
+						webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
+					}
+				})
 			})
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
-			if(save){
-				webhookAlert(`Your video (${rand}) could not be completed.`)
-			}
-			fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
-			fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+			fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
+				if(save){
+					webhookAlert(`Your video (${rand}) could not be completed.`)
+				}
+				fs.unlink(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+			})
 		})
 
 		client.emit("saveProcessEnder", rand, () => {
@@ -144,20 +152,25 @@ module.exports = {
 		skip = skip == undefined ? 1 : skip
 
 		console.log(camera, start, end, fps)
-		const { rand, frames } = createVideoList(camera, start, end, skip)
-
-		if(save == undefined || save == true || save == "true"){
-			save = true
-		}
-		else if(frames > 500){
-			save = true
-			req.body.frameLimitMet = true
-		}
-		else{
-			save = false
-		}
-
-		video(camera, fps, frames, start, end, rand, save, req, res)
+		createVideoList(camera, start, end, skip, (err, {rand, frames}) => {
+			if(err){
+				res.send({error: true})
+			}
+			else{
+				if(save == undefined || save == true || save == "true"){
+					save = true
+				}
+				else if(frames > 500){
+					save = true
+					req.body.frameLimitMet = true
+				}
+				else{
+					save = false
+				}
+		
+				video(camera, fps, frames, start, end, rand, save, req, res)
+			}
+		})
 	},
 
 	listOfFrames: (req, res) => {
@@ -168,11 +181,10 @@ module.exports = {
 			frames = 10
 		}
 
-		const list = createFrameList(camera, start, end, frames)
-
-		res.send(JSON.stringify({
-			list
-		}))
-
+		createFrameList(camera, start, end, frames, (list) => {
+			res.send(JSON.stringify({
+				list
+			}))
+		})
 	}
 }

@@ -27,7 +27,8 @@ const enter = () => {
     
 	auth.register(input, () => {
 		process.exit(0)
-	}, () => {
+	}, (msg) => {
+		console.log(msg)
 		process.exit(1)
 	})
 
