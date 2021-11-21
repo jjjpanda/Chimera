@@ -34,7 +34,7 @@ const downloadProcessing = (prom, callback) => {
 	}).then(blob => {
 		//console.log(blob)
 		const fr = new FileReader()
-		fr.onload = function() {
+		fr.onload = () => {
 			let res 
 			try {
 				res = JSON.parse(this.result)

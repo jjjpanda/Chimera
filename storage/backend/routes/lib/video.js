@@ -88,7 +88,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			.on("progress", function(progress) {
 				bar.update(Math.round((progress.frames/frames)*100))
 			})
-			.on("end", function() {
+			.on("end", () => {
 				if(save){
 					webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
 				}

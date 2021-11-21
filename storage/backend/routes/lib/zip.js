@@ -56,7 +56,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			console.log("SENDING START ALERT")
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
-			output.on("close", function() {
+			output.on("close", () => {
 				console.log("SENDING END ALERT")
 				webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
 				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))

@@ -1,7 +1,7 @@
 const request = require('supertest');
 const app = require('../backend/livestream.js')
 
-describe('Heartbeat Health Route', function() {
+describe('Heartbeat Health Route', () => {
     test('/livestream/health responds with 200', (done) => {
         request(app)
         .get('/livestream/health')
