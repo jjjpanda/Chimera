@@ -11,23 +11,35 @@ module.exports = {
 		return randomID.generate() + "-" + moment().format(dateFormat)
 	},
     
-	filterList: (camera, start, end, skipEvery=1) => {
+	filterList: (camera, start, end, skipEvery=1, callback) => {
 		try {
-			//sync
-			let list = fs.readdirSync(path.join(imgDir, camera)).filter( file => file.includes(".jpg") && 
-                `${file.split("-")[0]}-${file.split("-")[1]}` > start && 
-                `${file.split("-")[0]}-${file.split("-")[1]}` <= end )
-			return skipEvery == 1 ? list : list.filter( (file, index) => {
-				return (index % skipEvery === 0 )
+			fs.readdir(path.join(imgDir, camera), (err, files) => {
+				if(err){
+					callback([])
+				}
+				else{
+					let list = files.filter( file => file.includes(".jpg") && 
+						`${file.split("-")[0]}-${file.split("-")[1]}` > start && 
+						`${file.split("-")[0]}-${file.split("-")[1]}` <= end )
+					callback(skipEvery == 1 ? list : list.filter( (file, index) => {
+						return (index % skipEvery === 0 )
+					}))
+				}
 			})
 		} catch(e) {
-			return []
+			callback( [] )
 		}
 	},
 
-	filterType: (type) => {
-		//sync
-		return fs.readdirSync(path.join(imgDir)).filter(file => file.includes(`.${type}`))
+	filterType: (type, callback) => {
+		fs.readdir(path.join(imgDir), (err, files) => {
+			if(err){
+				callback([])
+			}
+			else{
+				callback(files.filter(file => file.includes(`.${type}`)))
+			}
+		})
 	},
 
 	fileName: (camera, start, end, id, type) => {
@@ -47,10 +59,15 @@ module.exports = {
 		}
 	},
 
-	findFile: (id) => {
-		//sync
-		const fileName = fs.readdirSync(path.join(imgDir)).find(file => file.includes(id) && !file.includes(".txt"))
-		return fileName == undefined ? "output_0_start_end_id.type" : fileName
+	findFile: (id, callback) => {
+		fs.readdir(path.join(imgDir), (err, files) => {
+			if(!err){
+				callback("output_0_start_end_id.type")
+			}
+			else{
+				callback(files.find(file => file.includes(id) && !file.includes(".txt")))
+			}
+		})
 	},
 
 	validateRequest: (req, res, next) => {

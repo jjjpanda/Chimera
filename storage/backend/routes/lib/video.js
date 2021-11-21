@@ -19,42 +19,42 @@ const client = require("memory").client("VIDEO PROCESS")
 
 const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
 
-const createFrameList = (camera, start, end, limit) => {
-	const filteredList = filterList(camera, start, end)
+const createFrameList = (camera, start, end, limit, callback) => {
+	filterList(camera, start, end, undefined, (filteredList) => {
+		const limitIteration = Math.ceil(filteredList.length/limit)
 
-	const limitIteration = Math.ceil(filteredList.length/limit)
-
-	const limitedList = filteredList.filter((item, index) => {
-		return (index % limitIteration === 0)
-	}).map((item) => {
-		return `/shared/captures/${camera}/${item}`
+		const limitedList = filteredList.filter((item, index) => {
+			return (index % limitIteration === 0)
+		}).map((item) => {
+			return `/shared/captures/${camera}/${item}`
+		})
+	
+		callback(limitedList)
 	})
-
-	return limitedList
 }
 
 const createVideoList = (camera, start, end, skip, callback) => {
 	const rand = generateID()
 
-	const filteredList = filterList(camera, start, end, skip)
+	filterList(camera, start, end, skip, (filteredList) => {
+		const frames = filteredList.length    
 
-	const frames = filteredList.length    
-
-	let files = ""
-
-	console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
-    
-	for (const file of filteredList){
-		files += `file '${camera}/${file}'\r\n` 
-	}
-    
-	fs.writeFile(path.join(imgDir, `mp4_${rand}.txt`), files, (err) => {
-		if(err){
-			callback(err, undefined)
+		let files = ""
+	
+		console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
+		
+		for (const file of filteredList){
+			files += `file '${camera}/${file}'\r\n` 
 		}
-		else{
-			callback(false, { rand, frames })
-		}
+		
+		fs.writeFile(path.join(imgDir, `mp4_${rand}.txt`), files, (err) => {
+			if(err){
+				callback(err, undefined)
+			}
+			else{
+				callback(false, { rand, frames })
+			}
+		})
 	})
 }
 
@@ -181,11 +181,10 @@ module.exports = {
 			frames = 10
 		}
 
-		const list = createFrameList(camera, start, end, frames)
-
-		res.send(JSON.stringify({
-			list
-		}))
-
+		createFrameList(camera, start, end, frames, (list) => {
+			res.send(JSON.stringify({
+				list
+			}))
+		})
 	}
 }

@@ -15,69 +15,89 @@ module.exports = {
 	statusProcess: (req, res) => {
 		const { id } = req.body
 
-		const { type } = parseFileName(findFile(id))
+		findFile(id, (fileName) => {
+			const { type } = parseFileName(fileName)
 
-		console.log(id)
-		fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
-			res.send(JSON.stringify({
-				running: !err,
-				id
-			}))
+			console.log(id)
+			fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
+				res.send(JSON.stringify({
+					running: !err,
+					id
+				}))
+			})
 		})
 	},
 
 	cancelProcess: (req, res) => {
 		const { id } = req.body
 
-		const { type } = parseFileName(findFile(id))
+		findFile(id, (fileName) => {
+			const { type } = parseFileName(fileName)
 
-		let cancelled = true
-
-		client.emit("cancelProcess", id, type, (msg) => {
-			if(msg == undefined || msg === "not cancelled"){
-				cancelled = false
-			}
-			else{
-				webhookAlert(msg)
-			}
+			let cancelled = true
+	
+			client.emit("cancelProcess", id, type, (msg) => {
+				if(msg == undefined || msg === "not cancelled"){
+					cancelled = false
+				}
+				else{
+					webhookAlert(msg)
+				}
+			})
+	
+			res.send(JSON.stringify({
+				cancelled,
+				id
+			}))
 		})
-
-		res.send(JSON.stringify({
-			cancelled,
-			id
-		}))
 	},
    
 	listProcess: (req, res) => {
-		let list = [...filterType("zip"), ...filterType("mp4")]
+		Promise.all(["zip", "mp4"].map(type => {
+			return new Promise(resolve => {
+				filterType(type, (fileList) => {
+					resolve(fileList)
+				})
+			})
+		})).then(listOfFileLists => {
+			let list = [].concat.apply([], listOfFileLists)
 
-		list = list.map(file => {
-			const { id, type } = parseFileName(file)
-
-			return {
-				...parseFileName(file),
-				requested: id.split("-")[1]+"-"+id.split("-")[2],
-				//sync
-				running: fs.existsSync(path.join(imgDir, `${type}_${id}.txt`))
-			}
-		})
-
-		res.send({
-			list
+			Promise.all(list.map(file => {
+				const { id, type } = parseFileName(file)
+				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
+						resolve({
+							...parseFileName(file),
+							requested: id.split("-")[1]+"-"+id.split("-")[2],
+							running: !err
+						})
+				}))
+			})).then((asyncCompiledList) => {
+				res.send({
+					list: asyncCompiledList
+				})
+			}).catch(() => {
+				res.send({
+					error: true
+				})
+			})
+		}).catch(() => {
+			res.send({
+				error: true
+			})
 		})
 	},
 
 	deleteProcess: (req, res) => {
 		const { id } = req.body
 
-		const file = findFile(id)
-
-		console.log(id)
-		fs.unlink(path.join(imgDir, file), (err) => {
-			res.send(JSON.stringify({
-				deleted: !err,
-				id
-			}))
+		findFile(id, file => {
+			console.log(id)
+			fs.unlink(path.join(imgDir, file), (err) => {
+				res.send(JSON.stringify({
+					deleted: !err,
+					id
+				}))
+			})
 		})
 	}
 }

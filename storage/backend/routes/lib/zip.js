@@ -19,19 +19,19 @@ const createZipList = (camera, start, end, skip) => {
 		zlib: {level: 9}
 	})
 
-	const filteredList = filterList(camera, start, end, skip)
+	filterList(camera, start, end, skip, (filteredList) => {
+		const frames = filteredList.length    
 
-	const frames = filteredList.length    
-
-	console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
-    
-	for (const file of filteredList){
-		archive.file(path.join(imgDir, camera, file), {
-			name: file
-		}) 
-	}
-
-	return {frames, archive}
+		console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
+		
+		for (const file of filteredList){
+			archive.file(path.join(imgDir, camera, file), {
+				name: file
+			}) 
+		}
+	
+		callback(null, {frames, archive})
+	})
 }
 
 const zip = (archive, camera, frames, start, end, save, req, res) => {
@@ -104,19 +104,24 @@ module.exports = {
 
 		skip = skip == undefined ? 1 : skip
 
-		const {frames, archive} = createZipList(camera, start, end, skip)
-
-		if(save == undefined || save == true || save == "true"){
-			save = true
-		}
-		else if(frames > 1000){
-			save = true
-			req.body.frameLimitMet = true
-		}
-		else{
-			save = false
-		}
-
-		zip(archive, camera, frames, start, end, save, req, res)
+		createZipList(camera, start, end, skip, (err, {frames, archive}) => {
+			if(!err){
+				if(save == undefined || save == true || save == "true"){
+					save = true
+				}
+				else if(frames > 1000){
+					save = true
+					req.body.frameLimitMet = true
+				}
+				else{
+					save = false
+				}
+		
+				zip(archive, camera, frames, start, end, save, req, res)
+			}
+			else[
+				res.send({error: true})
+			]
+		})
 	}
 }
