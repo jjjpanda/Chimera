@@ -7,7 +7,7 @@ const config = {
 		name: "chimera",
 		log: "./log/chimera.log",
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
-		instances: process.env.chimeraInstances,
+		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
 			"NODE_ENV": "production",
 		}
