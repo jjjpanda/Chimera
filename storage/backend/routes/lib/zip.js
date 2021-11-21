@@ -59,6 +59,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			output.on("close", function() {
 				console.log("SENDING END ALERT")
 				webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+				//sync
 				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
 			})
 
@@ -67,10 +68,13 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				if(save){
 					webhookAlert(`Your zip (${rand}) could not be completed.`)
 				}
+				//sync
 				fs.unlinkSync(path.join(imgDir, `zip_${rand}.txt`))
+				//sync
 				fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "zip")))
 			})
             
+			//sync
 			fs.writeFileSync(path.join(imgDir, `zip_${rand}.txt`), "progress")
 
 			archive.pipe(output)

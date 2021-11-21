@@ -13,6 +13,7 @@ module.exports = {
     
 	filterList: (camera, start, end, skipEvery=1) => {
 		try {
+			//sync
 			let list = fs.readdirSync(path.join(imgDir, camera)).filter( file => file.includes(".jpg") && 
                 `${file.split("-")[0]}-${file.split("-")[1]}` > start && 
                 `${file.split("-")[0]}-${file.split("-")[1]}` <= end )
@@ -25,6 +26,7 @@ module.exports = {
 	},
 
 	filterType: (type) => {
+		//sync
 		return fs.readdirSync(path.join(imgDir)).filter(file => file.includes(`.${type}`))
 	},
 
@@ -46,6 +48,7 @@ module.exports = {
 	},
 
 	findFile: (id) => {
+		//sync
 		const fileName = fs.readdirSync(path.join(imgDir)).find(file => file.includes(id) && !file.includes(".txt"))
 		return fileName == undefined ? "output_0_start_end_id.type" : fileName
 	},

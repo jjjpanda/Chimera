@@ -48,6 +48,7 @@ const createVideoList = (camera, start, end, skip) => {
 		files += `file '${camera}/${file}'\r\n` 
 	}
     
+	//sync
 	fs.writeFileSync(path.join(imgDir, `mp4_${rand}.txt`), files)
 	return { rand, frames }
 }
@@ -92,6 +93,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				if(save){
 					webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
 				}
+				//sync
 				fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
 				bar.stop()
 			})
@@ -101,7 +103,9 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			if(save){
 				webhookAlert(`Your video (${rand}) could not be completed.`)
 			}
+			//sync
 			fs.unlinkSync(path.join(imgDir, `mp4_${rand}.txt`))
+			//sync
 			fs.unlinkSync(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
 		})
 
