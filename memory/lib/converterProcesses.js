@@ -1,6 +1,6 @@
 let converterProcesses = {}
 
-module.exports = {
+module.exports = (io) => ({
     saveProcessEnder: (id, converterProcessEnder, callback=()=>{}) => {
         converterProcesses[id] = converterProcessEnder
         callback(id)
@@ -24,4 +24,4 @@ module.exports = {
         callback(msg)
     }
    
-}
+})
