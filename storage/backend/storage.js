@@ -22,6 +22,4 @@ app.use("/file", require("./routes/file.js"))
     
 app.use("/shared", express.static(path.join(process.env.storage_FILEPATH, "shared")))
 
-module.exports = (successCallback, failureCallback) => {
-	return handleServerStart(app, process.env.storage_PORT, successCallback, failureCallback)
-}
+module.exports = app

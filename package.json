@@ -24,17 +24,20 @@
     "memory_install": "cd memory && npm install",
     "postinstall": "npm run command_install && npm run livestream_install && npm run schedule_install && npm run storage_install && npm run lib_install && npm run gateway_install && npm run memory_install",
     "startCont": "npx pm2 start pm2dev.config.js",
-    "buildCont": "cd command && npm run buildCont"
+    "buildCont": "cd command && npm run buildCont",
+    "test": "jest"
   },
   "dependencies": {
     "command": "file:./command",
     "cookie-parser": "^1.4.5",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "helmet": "^4.6.0",
+    "gateway": "file:./gateway",
     "heartbeat": "github:jjjpanda/heartbeat",
+    "helmet": "^4.6.0",
     "lib": "file:./lib",
     "livestream": "file:./livestream",
+    "memory": "file:./memory",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
     "node-cron": "^2.0.3",
@@ -42,12 +45,12 @@
     "request": "^2.88.2",
     "rimraf": "^3.0.2",
     "schedule": "file:./schedule",
-    "storage": "file:./storage",
-    "gateway": "file:./gateway",
-    "memory": "file:./memory"
+    "storage": "file:./storage"
   },
   "devDependencies": {
     "eslint": "^8.2.0",
-    "eslint-plugin-react": "^7.27.0"
+    "eslint-plugin-react": "^7.27.0",
+    "jest": "^27.3.1",
+    "supertest": "^6.1.6"
   }
 }

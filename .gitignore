@@ -10,3 +10,4 @@ feed
 eslint
 .well-known
 log
+coverage

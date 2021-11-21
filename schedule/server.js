@@ -1,3 +1,5 @@
+const {handleServerStart} = require('lib')
+
 module.exports = () => {
 	const successCallback = () => {
 		console.log(`⌚ Schedule On ▶ PORT ${process.env.schedule_PORT}`)
@@ -7,7 +9,7 @@ module.exports = () => {
 		console.log("⌚ Schedule Off ❌")
 	}
 	if(process.env.schedule_ON === "true"){
-		require("./backend/schedule.js")(successCallback, failureCallback)
+		return handleServerStart(require("./backend/schedule.js"), process.env.schedule_PORT, successCallback, failureCallback)
 	}
 	else{
 		failureCallback()

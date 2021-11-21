@@ -1,3 +1,5 @@
+const {handleServerStart} = require('lib')
+
 module.exports = () => {
 	const successCallback = () => {
 		console.log(`📂 Storage On ▶ PORT ${process.env.storage_PORT}`)
@@ -9,7 +11,7 @@ module.exports = () => {
 		console.log("📂 Storage Off ❌")
 	}
 	if(process.env.storage_ON === "true"){
-		require("./backend/storage.js")(successCallback, failureCallback)
+		return handleServerStart(require("./backend/storage.js"), process.env.storage_PORT, successCallback, failureCallback)
 	}	
 	else{
 		failureCallback()

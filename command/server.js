@@ -1,3 +1,5 @@
+const {handleServerStart} = require('lib')
+
 module.exports = () => {
 	const successCallback = () => {
 		console.log(`🎮 Command On ▶ PORT ${process.env.command_PORT}`)
@@ -9,7 +11,7 @@ module.exports = () => {
 		console.log("🎮 Command Off ❌")
 	} 
 	if(process.env.command_ON === "true"){
-		require("./backend/command.js")(successCallback, failureCallback)
+		handleServerStart(require("./backend/command.js"), process.env.command_PORT, successCallback, failureCallback)
 	}
 	else{
 		failureCallback()
