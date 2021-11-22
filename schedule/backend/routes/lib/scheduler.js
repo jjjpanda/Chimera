@@ -65,8 +65,8 @@ module.exports = {
 			id, url, body, cronString, 
 			running: true
 		}
-		const task = generateTask(url, id, body)
-		client.emit("createTask", taskObj, task)
+		client.on(id, generateTask(url, id, body))
+		client.emit("createTask", taskObj)
 		res.send({
 			running: true
 		})
@@ -83,6 +83,7 @@ module.exports = {
 
 	destroyTask: (req, res) => {
 		const { id } = req.body
+		client.off(id)
 		client.emit("destroyTask", id, tasks=>{
 			res.send({
 				destroyed: id in tasks
