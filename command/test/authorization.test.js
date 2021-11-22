@@ -37,6 +37,28 @@ describe('Authorization Routes', () => {
         supertest(app)
         .post('/authorization/login')
         .send({password: "mockedPassword"})
-        .expect(200, done)
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, done)
+    });
+
+    test('Login with correct password and verify', (done) => {
+        supertest(app)
+        .post('/authorization/login')
+        .send({password: "mockedPassword"})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
+            let cookieWithBearerToken = res.headers["set-cookie"]
+            supertest(app)
+            .post('/authorization/verify')
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, done)
+        })
+    });
+
+    test('Verify with wrong bearer token', (done) => {
+        supertest(app)
+        .post('/authorization/verify')
+        .set("Cookie", "veryWrongBearerToken")
+        .expect(401, done)
     });
 })
