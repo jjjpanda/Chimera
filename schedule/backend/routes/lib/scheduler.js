@@ -104,7 +104,7 @@ module.exports = {
 	},
 
 	sendList: (req, res) => {
-		res.send(req.body.list)
+		res.send({tasks: req.body.list})
 	}
 }
 
