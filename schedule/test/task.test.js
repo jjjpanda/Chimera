@@ -9,15 +9,6 @@ fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
     callback(false, hashedMockedPassword)
 })
 
-/* let memory = require('memory')
-memory.client = jest.fn().mockImplementation((name) => ({
-    emit: (event, ...args) => {
-        if(event == "listTask"){
-            args[0]([])
-        }
-    },
-    on: () => {}
-})) */
 jest.mock('memory', () => ({
     client: (name) => ({
         emit: (event, ...args) => {
