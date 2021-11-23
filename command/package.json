@@ -45,6 +45,7 @@
     "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
     "moment": "^2.29.1",
+    "request": "^2.88.2",
     "supertest": "^6.1.6"
   }
 }

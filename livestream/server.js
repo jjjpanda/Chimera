@@ -1,17 +1,22 @@
 const {handleServerStart} = require('lib')
+const app = require("./backend/livestream.js")
 
-module.exports = () => {
-	const successCallback = () => {
-		console.log(`👀 Livestream On ▶ PORT ${process.env.livestream_PORT}`)
-		console.log("\t▶ Livestream Routes:\t /livestream")
-	}
-	const failureCallback = () => {
-		console.log("👀 Livestream Off ❌")
-	}
-	if(process.env.livestream_ON === "true"){
-		handleServerStart(require("./backend/livestream.js"), process.env.livestream_PORT, successCallback, failureCallback)
-	}
-	else{
-		failureCallback()
-	}
+module.exports = {
+	start: () => {
+		const successCallback = () => {
+			console.log(`👀 Livestream On ▶ PORT ${process.env.livestream_PORT}`)
+			console.log("\t▶ Livestream Routes:\t /livestream")
+		}
+		const failureCallback = () => {
+			console.log("👀 Livestream Off ❌")
+		}
+		if(process.env.livestream_ON === "true"){
+			handleServerStart(app, process.env.livestream_PORT, successCallback, failureCallback)
+		}
+		else{
+			failureCallback()
+		}
+	},
+
+	app
 }

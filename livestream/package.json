@@ -10,6 +10,8 @@
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
-    "supertest": "^6.1.6"
+    "supertest": "^6.1.6",
+    "pm2": "^5.1.2",
+    "command": "file:../command"
   }
 }

@@ -8,8 +8,6 @@ const { helmetOptions } = require("lib")
 
 var app = express()
 
-let logs = []
-
 app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
@@ -28,7 +26,7 @@ for(const apiService of services){
 	const {serviceOn, log, postPathRegex, getPathRegex, baseURL} = apiService
 
 	if(serviceOn){
-		logs.push(log)
+		console.log(log)
 		app.use(new RegExp(postPathRegex.source + "|" + getPathRegex.source), createProxyMiddleware((pathname, req) => {
 			return (pathname.match(postPathRegex) && req.method === "POST") || (pathname.match(getPathRegex) && req.method === "GET")
 		}, {

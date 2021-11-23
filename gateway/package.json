@@ -9,6 +9,7 @@
   },
   "peerDependencies": {
     "express": "^4.17.1",
-    "helmet": "^4.6.0"
+    "helmet": "^4.6.0",
+    "command": "file:../command"
   }
 }
