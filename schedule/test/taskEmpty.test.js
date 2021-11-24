@@ -13,7 +13,10 @@ jest.mock('memory', () => ({
     client: (name) => ({
         emit: (event, ...args) => {
             if(event == "listTask"){
-                args[0]([])
+                args[0]({})
+            }
+            else if(event == "createTask"){
+                args[1]({[args[0].id] : args[0]})
             }
         },
         on: () => {}
