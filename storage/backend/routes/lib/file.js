@@ -76,7 +76,7 @@ module.exports = {
 	getCachedFileData: (metric) => (req, res) => {
 		const cameras = JSON.parse(process.env.cameras)
 		const {camera} = req.body
-		readJSON(pathToCumulativeStatsJSON, (data) => {
+		readJSON(pathToCumulativeStatsJSON, (err, data) => {
 			if(metric === "all"){
 				res.send(data)
 			}
@@ -193,7 +193,7 @@ const deleteStatsObjHandler = (deletionData, cumulativeData, percentageDeleted, 
 }
 
 const deletionReadPromises = () => [pathToDeletionStatsJSON, pathToCumulativeStatsJSON].map(pathToStats => new Promise((resolve, reject) => {
-	readJSON(pathToStats, (data, err) => {
+	readJSON(pathToStats, (err, data) => {
 		if(!err){
 			resolve(data)
 		}
@@ -298,7 +298,7 @@ const filterFileCreatedAfter = (checkDate) => (file) => {
 }
 
 const createStatsJSON = (filePath) => {
-	readJSON(filePath, (data, err) => {
+	readJSON(filePath, (err, data) => {
 		if(err){
 			writeJSON(filePath, {}, ()=>{}, (err) => {
 				console.log("creation JSON write", err)
@@ -354,7 +354,7 @@ const promiseMetricTasks = (statsObj, cronMinutes=undefined) => JSON.parse(proce
 const cronTask = () => {
 	let currentStats = createTimestampedStatObject()
 	Promise.all(promiseMetricTasks(currentStats, cronMinutes)).then(() => {
-		readJSON(pathToAdditionStatsJSON, (data) => {
+		readJSON(pathToAdditionStatsJSON, (err, data) => {
 			for(const metric in currentStats){
 				if(!(metric in data)){
 					data[metric] = []
@@ -367,7 +367,7 @@ const cronTask = () => {
 				}
 			})
 		})
-		readJSON(pathToCumulativeStatsJSON, (data) => {
+		readJSON(pathToCumulativeStatsJSON, (err, data) => {
 			for(const metric in currentStats){
 				if(!(metric in data)){
 					data[metric] = {}

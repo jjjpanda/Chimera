@@ -43,10 +43,10 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
 		}
 		else{
-			res.send(JSON.stringify({
+			res.send({
 				id: rand,
 				url: undefined
-			}))
+			})
 		}
 	}
 	else{
@@ -82,11 +82,11 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				archive.abort()
 			})
 
-			res.send(JSON.stringify({
+			res.send({
 				id: rand,
 				frameLimitMet: req.body.frameLimitMet,
 				url: `/shared/captures/${fileName(camera, start, end, rand, "zip")}`
-			}))
+			})
 		}
 		else{
 			res.attachment(fileName(camera, start, end, rand, "zip"))

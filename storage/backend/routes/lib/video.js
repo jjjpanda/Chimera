@@ -65,10 +65,10 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
 		}
 		else{
-			res.send(JSON.stringify({
+			res.send({
 				id: rand,
 				url: undefined,
-			}))
+			})
 		}
 	}
 	else {
@@ -124,11 +124,11 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 					.mergeToFile(`${imgDir}/${fileName(camera, start, end, rand, "mp4")}`, imgDir+"/") //.mergeToFile('output.mp4', path.relative(__dirname, path.join(imgDir)))
                 
 				bar.start(100, 0)
-				res.send(JSON.stringify({
+				res.send({
 					id: rand,
 					frameLimitMet: req.body.frameLimitMet,
 					url: `/shared/captures/${fileName(camera, start, end, rand, "mp4")}`
-				}))
+				})
 			}
 			else{
 				creator
@@ -182,9 +182,9 @@ module.exports = {
 		}
 
 		createFrameList(camera, start, end, frames, (list) => {
-			res.send(JSON.stringify({
+			res.send({
 				list
-			}))
+			})
 		})
 	}
 }
