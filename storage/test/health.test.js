@@ -13,6 +13,14 @@ jest.mock('pm2', () => ({
     }
 }))
 
+jest.mock('memory', () => ({
+    client: (name) => ({
+        emit: () => {},
+        on: () => {}
+    }),
+    server: () => {}
+}))
+
 describe('Heartbeat Health Route', () => {
     test('/storage/health responds with 200', (done) => {
         supertest(app)

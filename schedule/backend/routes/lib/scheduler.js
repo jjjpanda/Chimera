@@ -21,19 +21,19 @@ module.exports = {
 			}
 			else{
 				if(!validateRequestURL(url)){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "no url"
-					}))
+					})
 				}
 				else if(body == undefined || !(jsonFileHanding.isStringJSON(body))){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "no body"
-					}))
+					})
 				}
 				else if(!cron.validate(cronString)){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "cron invalid"
-					}))
+					})
 				}
 				else{
 					req.body.body = JSON.parse(body)
@@ -50,9 +50,9 @@ module.exports = {
 				next()
 			}
 			else{
-				res.send(JSON.stringify({
+				res.status(400).send({
 					error: "id invalid"
-				}))
+				})
 			}
 		})
 	},

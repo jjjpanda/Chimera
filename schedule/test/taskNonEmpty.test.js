@@ -19,6 +19,9 @@ jest.mock('memory', () => ({
                     taskid3: {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: true}
                 })
             }
+            else if(event == "startTask"){
+                args[1](args[0])
+            }
         },
         on: () => {}
     }),
@@ -26,7 +29,7 @@ jest.mock('memory', () => ({
 }))
 
 describe('Task Routes', () => {
-    test('Task List', (done) => {
+    test('List task', (done) => {
         supertest(command)
         .post('/authorization/login')
         .send({password: mockedPassword})

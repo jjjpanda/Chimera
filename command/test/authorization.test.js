@@ -12,6 +12,8 @@ jest.mock('request', () => (options, callback) => {
     return JSON.parse(options.body).content
 })
 
+global.setTimeout = jest.fn()
+
 describe('Authorization Routes', () => {
     test('Login with incorrect PIN', (done) => {
         supertest(app)
