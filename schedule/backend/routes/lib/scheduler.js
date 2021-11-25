@@ -19,6 +19,11 @@ module.exports = {
 					})
 				})
 			}
+			else if(isValidId(id, tasks)){
+				res.send({
+					running: true
+				})
+			}
 			else{
 				if(!validateRequestURL(url)){
 					res.status(400).send({
@@ -85,7 +90,7 @@ module.exports = {
 		const { id } = req.body
 		client.emit("destroyTask", id, tasks=>{
 			res.send({
-				destroyed: id in tasks
+				destroyed: !(id in tasks)
 			})
 		})
 	},
