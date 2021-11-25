@@ -128,4 +128,34 @@ describe('Task Routes', () => {
             .expect(400, { error: "no body" }, done)
         })
     });
+    
+    test(`Stop task that doesn't exist`, (done) => {
+        supertest(command)
+        .post('/authorization/login')
+        .send({password: mockedPassword})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
+            let cookieWithBearerToken = res.headers["set-cookie"]
+            supertest(app)
+            .post('/task/stop')
+            .send({id: "literally any id"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "id invalid" }, done)
+        })
+    });
+
+    test(`Destroy task that doesn't exist`, (done) => {
+        supertest(command)
+        .post('/authorization/login')
+        .send({password: mockedPassword})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
+            let cookieWithBearerToken = res.headers["set-cookie"]
+            supertest(app)
+            .post('/task/destroy')
+            .send({id: "literally any id"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "id invalid" }, done)
+        })
+    });
 })

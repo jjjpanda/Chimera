@@ -16,11 +16,17 @@ jest.mock('memory', () => ({
                 args[0]({
                     taskid: {id: "taskid", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: true},
                     taskid2: {id: "taskid2", url: "/task/url2", cronString: "*/10 * * * *", body: {}, running: true},
-                    taskid3: {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: true}
+                    taskid3: {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: false}
                 })
             }
             else if(event == "startTask"){
-                args[1](args[0])
+                args[1]({})
+            }
+            else if(event == "stopTask"){
+                args[1]({})
+            }
+            else if(event == "destroyTask"){
+                args[1]({})
             }
         },
         on: () => {}
@@ -42,7 +48,7 @@ describe('Task Routes', () => {
             .expect(200, { tasks : [
                 {id: "taskid", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: true},
                 {id: "taskid2", url: "/task/url2", cronString: "*/10 * * * *", body: {}, running: true},
-                {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: true}
+                {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: false}
             ] }, done)
         })
     });
