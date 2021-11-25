@@ -3,12 +3,12 @@ const cron = require("node-cron")
 let scheduledTaskConfigs = {}
 let scheduledTask = {}
 
-module.exports = {
-    createTask: (taskObject, task) => {
+module.exports = (io) => ({
+    createTask: (taskObject) => {
         scheduledTaskConfigs[taskObject.id] = taskObject
         scheduledTask[taskObject.id] = cron.schedule(
             taskObject.cronString, 
-            task
+            () => io.emit(taskObject.id)
         )
         scheduledTask[taskObject.id].start()
     },
@@ -35,4 +35,4 @@ module.exports = {
     listTasks:(callback=()=>{}) => {
         callback(scheduledTaskConfigs)
     }
-}
+})

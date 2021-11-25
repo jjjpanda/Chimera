@@ -25,7 +25,7 @@ const enter = () => {
 	stdout.clearLine()
 	stdout.cursorTo(0)
     
-	auth.register(input, () => {
+	auth().register(input, () => {
 		process.exit(0)
 	}, (msg) => {
 		console.log(msg)

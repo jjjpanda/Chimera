@@ -352,6 +352,7 @@ const promiseMetricTasks = (statsObj, cronMinutes=undefined) => JSON.parse(proce
 }, [])
 
 const cronTask = () => {
+	console.log("SCHEDULED FILE STATS")
 	let currentStats = createTimestampedStatObject()
 	Promise.all(promiseMetricTasks(currentStats, cronMinutes)).then(() => {
 		readJSON(pathToAdditionStatsJSON, (err, data) => {
@@ -401,5 +402,6 @@ if(isPrimeInstance){
 		createStatsJSON(pathToDeletionStatsJSON)
 		createStatsJSON(pathToCumulativeStatsJSON)
 	})
-	client.emit("cron", cronString, cronTask)
+	client.on("file-stats-update", cronTask)
+	client.emit("cron", cronString, "file-stats-update")
 }
