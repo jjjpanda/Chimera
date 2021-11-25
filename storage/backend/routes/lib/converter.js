@@ -44,11 +44,12 @@ module.exports = {
 
 	parseFileName: (fileName) => {
 		const fileInfo = fileName.split("_")
-		console.log(fileName)
+		const id = fileInfo[4].split(".")[0]
 		return {
 			link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
 			type: fileInfo[4].split(".")[1],
-			id: fileInfo[4].split(".")[0],
+			id,
+			requested: `${id.split("-")[1]}-${id.split("-")[2]}`,
 			camera: fileInfo[1],
 			start: fileInfo[2],
 			end: fileInfo[3]

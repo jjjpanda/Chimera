@@ -53,7 +53,7 @@ module.exports = {
 	},
    
 	listProcess: (req, res) => {
-		Promise.all(["zip", "mp4"].map(type => {
+		Promise.all(["mp4", "zip"].map(type => {
 			return new Promise(resolve => {
 				filterType(type, (fileList) => {
 					resolve(fileList)
@@ -67,7 +67,6 @@ module.exports = {
 				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
 						resolve({
 							...parseFileName(file),
-							requested: id.split("-")[1]+"-"+id.split("-")[2],
 							running: !err
 						})
 				}))
