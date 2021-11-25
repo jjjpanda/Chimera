@@ -57,12 +57,14 @@ module.exports = {
 	},
 
 	findFile: (id, callback) => {
+		const defaultName = "output_0_start_end_id.type"
 		fs.readdir(path.join(imgDir), (err, files) => {
 			if(err){
-				callback("output_0_start_end_id.type")
+				callback(defaultName)
 			}
 			else{
-				callback(files.find(file => file.includes(id) && !file.includes(".txt")))
+				const file = files.find(file => file.includes(id) && !file.includes(".txt"))
+				callback(file ? file : defaultName)
 			}
 		})
 	},

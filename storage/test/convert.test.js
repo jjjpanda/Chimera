@@ -10,20 +10,15 @@ const fileList = [
     "output_1_20210101-235959_20210201-235959_video1-20210301-235959.mp4", 
     "output_1_20210101-235959_20210201-235959_video2-20210301-235959.mp4",
     "output_1_20210101-235959_20210201-235959_video3-20210301-235959.mp4",
+    "mp4_video3-20210301-235959.txt",
     "output_1_20210101-235959_20210201-235959_zip1-20210301-235959.zip",
 ]
-const parsedFileList = fileList.map((file) => {
-    return parseFileName(file)
-    /* {
-        link: `${process.env.gateway_HOST}/shared/captures/output_1_20210101-235959_20210201-235959_video1-20210301-235959.mp4`,
-        type: "mp4",
-        id: "video1",
-        requested: "20210301-235959",
-        camera: 1,
-        start: "20210101-235959",  // dateTime,
-        end: "20210201-235959", //dateTime,
-        running: false
-    } */
+const parsedFileList = fileList.filter(file => !file.includes('txt')).map((file) => {
+    const obj = parseFileName(file)
+    return {
+        ...obj,
+        running: obj.id.includes('video3')
+    }
 })
 
 const { testLib } = require('lib')
@@ -41,9 +36,25 @@ fs.readdir = jest.fn().mockImplementation((filePath, callback) => {
     if(filePath == imgDir){
         callback(false, fileList)
     }
+    else{
+        callback(true, [])
+    }
 })
 fs.stat = jest.fn().mockImplementation((filePath, callback) => {
-    callback(true, {})
+    if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
+        callback(false)
+    }
+    else{
+        callback(true)
+    }
+})
+fs.unlink = jest.fn().mockImplementation((filePath, callback) => {
+    if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
+        callback(false)
+    }
+    else{
+        callback(true)
+    }
 })
 
 jest.mock('memory', () => ({
@@ -96,19 +107,51 @@ describe('Convert Routes', () => {
     })
 
     describe("/convert/cancelProcess", () => {
-        test('bruh', () => expect(2+2).toBe(4))
+        test(`cancel a process`, (done) => {
+            const id = "video3-20210301-235959"
+            supertest(app)
+            .post('/convert/cancelProcess')
+            .send({id})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { cancelled: true, id }, done)
+        })
+
+        test(`cancel a process that doesn't exist`, (done) => {
+            const id = "not_an_id"
+            supertest(app)
+            .post('/convert/cancelProcess')
+            .send({id})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { cancelled: false, id }, done)
+        })
     })
 
     describe("/convert/listProcess", () => {
-        test('bruh', (done) => {
+        test('list processes', (done) => {
             supertest(app)
             .get('/convert/listProcess')
             .set("Cookie", cookieWithBearerToken)
-            .expect(200, { list: parsedFileList.map(fileObj => ({...fileObj, running: false})) }, done)
+            .expect(200, { list: parsedFileList }, done)
         })
     })
 
     describe("/convert/deleteProcess", () => {
-        test('bruh', () => expect(2+2).toBe(4))
+        test(`delete a process`, (done) => {
+            const id = "video1-20210301-235959"
+            supertest(app)
+            .post('/convert/deleteProcess')
+            .send({id})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { deleted: true, id }, done)
+        })
+
+        test(`delete a process that doesn't exist`, (done) => {
+            const id = "not-an-id"
+            supertest(app)
+            .post('/convert/deleteProcess')
+            .send({id})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { deleted: false, id }, done)
+        })
     })
 })

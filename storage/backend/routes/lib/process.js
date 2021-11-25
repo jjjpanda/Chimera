@@ -90,7 +90,7 @@ module.exports = {
 		const { id } = req.body
 
 		findFile(id, file => {
-			console.log(id)
+			console.log("TRYING TO DELETE", id)
 			fs.unlink(path.join(imgDir, file), (err) => {
 				res.send({
 					deleted: !err,
