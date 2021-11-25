@@ -35,6 +35,18 @@ jest.mock('pm2', () => ({
 }))
 
 describe('File Routes', () => {
+    let cookieWithBearerToken
+    beforeAll((done) => {
+        supertest(command)
+        .post('/authorization/login')
+        .send({password: mockedPassword})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
+            cookieWithBearerToken = res.headers["set-cookie"]
+            done()
+        })
+    })
+
     describe("/file/pathStats", () => {
         test('bruh', () => expect(2+2).toBe(4))
     })

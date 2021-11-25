@@ -35,6 +35,18 @@ jest.mock('pm2', () => ({
 }))
 
 describe('Convert Routes', () => {
+    let cookieWithBearerToken
+    beforeAll((done) => {
+        supertest(command)
+        .post('/authorization/login')
+        .send({password: mockedPassword})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
+            cookieWithBearerToken = res.headers["set-cookie"]
+            done()
+        })
+    })
+
     describe("/convert/createVideo", () => {
         test('bruh', () => expect(2+2).toBe(4))
     })
@@ -55,8 +67,14 @@ describe('Convert Routes', () => {
         test('bruh', () => expect(2+2).toBe(4))
     })
 
-    describe("/convert/listProcess", () => {
-        test('bruh', () => expect(2+2).toBe(4))
+    describe("/convert/listProcess", (done) => {
+        test('bruh', () => {
+            /* supertest(app)
+            .get('/convert/listProcess')
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, {list: []}, done) */
+            expect ("bruh").toBe("bruh")
+        })
     })
 
     describe("/convert/deleteProcess", () => {

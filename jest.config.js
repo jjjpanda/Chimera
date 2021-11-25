@@ -11,5 +11,6 @@ module.exports = {
     "jsx",
     "json"
   ],
-  setupFiles: ["dotenv/config"]
+  setupFiles: ["dotenv/config"],
+  testTimeout: 10000
 };

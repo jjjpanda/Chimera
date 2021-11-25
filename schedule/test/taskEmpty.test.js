@@ -25,145 +25,94 @@ jest.mock('memory', () => ({
 }))
 
 describe('Task Routes with an Empty list', () => {
+    let cookieWithBearerToken
+    beforeAll((done) => {
+        supertest(command)
+        .post('/authorization/login')
+        .send({password: mockedPassword})
+        .expect(200)
+        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
+            cookieWithBearerToken = res.headers["set-cookie"]
+            done()
+        })
+    })
+
     describe("/task/list", () => {
         test('List task', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .get('/task/list')
-                .set("Cookie", cookieWithBearerToken)
-                .expect(200, { tasks : [] }, done)
-            })
+            supertest(app)
+            .get('/task/list')
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { tasks : [] }, done)
         });
     })
     
     describe("/task/start", () => {
         test('Create task', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({url: "/convert/createVideo", body: JSON.stringify({}), cronString: "*/10 * * * *"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(200, { running: true }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({url: "/convert/createVideo", body: JSON.stringify({}), cronString: "*/10 * * * *"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(200, { running: true }, done)
         });
     
         test('Create task with no url', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({body: JSON.stringify({}), cronString: "*/10 * * * *"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "no url" }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({body: JSON.stringify({}), cronString: "*/10 * * * *"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "no url" }, done)
         });
     
         test('Create task with invalid url', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({url: "/not/valid", body: JSON.stringify({}), cronString: "*/10 * * * *"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "no url" }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({url: "/not/valid", body: JSON.stringify({}), cronString: "*/10 * * * *"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "no url" }, done)
         });
     
         test('Create task with no valid cronString', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({url: "/convert/createVideo", body: JSON.stringify({})})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "cron invalid" }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({url: "/convert/createVideo", body: JSON.stringify({})})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "cron invalid" }, done)
         });
     
         test('Create task with no body', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({url: "/convert/createVideo", cronString: "*/10 * * * *"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "no body" }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({url: "/convert/createVideo", cronString: "*/10 * * * *"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "no body" }, done)
         });
     
         test('Create task with invalid body', (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/start')
-                .send({url: "/convert/createVideo", body: {}, cronString: "*/10 * * * *"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "no body" }, done)
-            })
+            supertest(app)
+            .post('/task/start')
+            .send({url: "/convert/createVideo", body: {}, cronString: "*/10 * * * *"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "no body" }, done)
         });
     })
     
     describe("/task/stop", () => {
         test(`Stop task that doesn't exist`, (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/stop')
-                .send({id: "literally any id"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "id invalid" }, done)
-            })
+            supertest(app)
+            .post('/task/stop')
+            .send({id: "literally any id"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "id invalid" }, done)
         });
     })
 
     describe("/task/destroy", () => {
         test(`Destroy task that doesn't exist`, (done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
-                let cookieWithBearerToken = res.headers["set-cookie"]
-                supertest(app)
-                .post('/task/destroy')
-                .send({id: "literally any id"})
-                .set("Cookie", cookieWithBearerToken)
-                .expect(400, { error: "id invalid" }, done)
-            })
+            supertest(app)
+            .post('/task/destroy')
+            .send({id: "literally any id"})
+            .set("Cookie", cookieWithBearerToken)
+            .expect(400, { error: "id invalid" }, done)
         });
     })
 })
