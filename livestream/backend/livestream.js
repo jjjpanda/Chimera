@@ -13,7 +13,7 @@ app.use(express.json())
 
 app.use("/livestream/health", require("heartbeat").heart)
 
-app.use(auth.auth)
+app.use(auth().authorize)
 
 app.use("/livestream", require("./routes/livestream.js"))
     

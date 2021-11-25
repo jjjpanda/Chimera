@@ -13,7 +13,7 @@ app.use(express.json())
 
 app.use("/storage/health", require("heartbeat").heart)
 
-app.use(auth.auth)
+app.use(auth().authorize)
 
 app.use("/motion", require("./routes/motion.js"))
 
