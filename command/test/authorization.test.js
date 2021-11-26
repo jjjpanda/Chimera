@@ -8,11 +8,29 @@ fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
     callback(false, hashedMockedPassword)
 })
 
+jest.mock('pm2', () => ({
+    list: jest.fn()
+}))
+
 jest.mock('request', () => (options, callback) => {
+    console.log("REQUESY MOCK")
     return JSON.parse(options.body).content
 })
 
-global.setTimeout = jest.fn()
+jest.mock('memory', () => ({
+    client: (name) => ({
+        emit: (event, ...args) => {
+            if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
+        },
+        on: () => {}
+    }),
+    server: () => {}
+}))
 
 describe('Authorization Routes', () => {
     describe("/authorization/requestLink", () => {

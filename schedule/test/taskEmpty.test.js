@@ -18,6 +18,12 @@ jest.mock('memory', () => ({
             else if(event == "createTask"){
                 //do nothing
             }
+            else if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
         },
         on: () => {}
     }),

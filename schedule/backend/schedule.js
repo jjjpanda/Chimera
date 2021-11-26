@@ -12,7 +12,7 @@ app.use(express.json())
 
 app.use("/schedule/health", require("heartbeat").heart)
 
-app.use(auth().authorize)
+app.use(auth.authorize)
 
 app.use("/task", require("./routes/task.js"))
 

@@ -1,6 +1,21 @@
 const supertest = require('supertest');
 const app = require('../backend/command.js')
 
+jest.mock('memory', () => ({
+    client: (name) => ({
+        emit: (event, ...args) => {
+            if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
+        },
+        on: () => {}
+    }),
+    server: () => {}
+}))
+
 describe('Web App Routes', () => {
     const webAppRoutes = ["/", "/live/", "/process/", "/scrub/", "/stats/", "/login/"]
     for(const route of webAppRoutes){

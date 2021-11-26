@@ -59,7 +59,14 @@ fs.unlink = jest.fn().mockImplementation((filePath, callback) => {
 
 jest.mock('memory', () => ({
     client: (name) => ({
-        emit: () => {},
+        emit: (event, ...args) => {
+            if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
+        },
         on: () => {}
     }),
     server: () => {}
@@ -122,7 +129,7 @@ describe('Convert Routes', () => {
             .post('/convert/cancelProcess')
             .send({id})
             .set("Cookie", cookieWithBearerToken)
-            .expect(200, { cancelled: false, id }, done)
+            .expect(200, { cancelled: true, id }, done)
         })
     })
 

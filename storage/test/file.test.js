@@ -16,7 +16,14 @@ fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
 
 jest.mock('memory', () => ({
     client: (name) => ({
-        emit: () => {},
+        emit: (event, ...args) => {
+            if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
+        },
         on: () => {}
     }),
     server: () => {}

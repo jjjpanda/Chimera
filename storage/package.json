@@ -5,7 +5,7 @@
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
-    "lib": "file:../lib"
+    "memory": "file:../memory"
   },
   "peerDependencies": {
     "cookie-parser": "^1.4.5",
@@ -14,8 +14,10 @@
     "helmet": "^4.6.0",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
-    "memory": "file:../memory",
     "supertest": "^6.1.6",
-    "command": "file:../command"
+    "request": "^2.88.2",
+    "command": "file:../command",
+    "lib": "file:../lib",
+    "pm2": "^5.1.2"
   }
 }

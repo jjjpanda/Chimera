@@ -27,6 +27,21 @@ jest.mock('pm2', () => ({
     }
 }))
 
+jest.mock('memory', () => ({
+    client: (name) => ({
+        emit: (event, ...args) => {
+            if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
+        },
+        on: () => {}
+    }),
+    server: () => {}
+}))
+
 describe('Livestream Routes', () => {
     test('Unauthorized livestream status', (done) => {
         supertest(app)

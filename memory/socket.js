@@ -2,8 +2,6 @@ const { Server } = require("socket.io")
 
 const { isPrimeInstance } = require("lib")
 
-
-
 module.exports = () => {
     if(process.env.memory_ON == "true" && isPrimeInstance){
         

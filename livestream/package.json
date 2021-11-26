@@ -2,7 +2,6 @@
   "name": "livestream",
   "main": "server.js",
   "dependencies": {
-    "lib": "file:../lib",
     "memory": "file:../memory"
   },
   "peerDependencies": {
@@ -10,8 +9,8 @@
     "express": "^4.17.1",
     "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
+    "lib": "file:../lib",
     "supertest": "^6.1.6",
-    "pm2": "^5.1.2",
     "command": "file:../command"
   }
 }

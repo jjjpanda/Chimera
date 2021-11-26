@@ -1,4 +1,3 @@
-var path       = require("path")
 var express    = require("express")
 const { auth, helmetOptions } = require("lib")
 const helmet = require("helmet")
@@ -13,7 +12,7 @@ app.use(express.json())
 
 app.use("/livestream/health", require("heartbeat").heart)
 
-app.use(auth().authorize)
+app.use(auth.authorize)
 
 app.use("/livestream", require("./routes/livestream.js"))
     

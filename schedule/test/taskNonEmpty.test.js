@@ -39,8 +39,15 @@ jest.mock('memory', () => ({
                     taskid3: {id: "taskid3", url: "/task/url3", cronString: "*/10 * * * *", body: {}, running: true}
                 })
             }
+            else if(event == "savePassword"){
+                args[1]()
+            }
+            else if(event == "verifyPassword"){
+                args[1](false)
+            }
         },
-        on: () => {}
+        on: () => {},
+        off: () => {}
     }),
     server: () => {}
 }))
