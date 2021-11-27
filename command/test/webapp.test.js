@@ -18,13 +18,21 @@ jest.mock('memory', () => ({
 
 describe('Web App Routes', () => {
     const webAppRoutes = ["/", "/live/", "/process/", "/scrub/", "/stats/", "/login/"]
-    for(const route of webAppRoutes){
-        test(`Web app route ${route} responds with 200`, (done) => { 
+
+    test(`Web app routes respond with 200`, (done) => { 
+        Promise.all(webAppRoutes.map(route => (resolve, reject) => {
             supertest(app)
-                .get(route)
-                .expect(200, done)
-        });
-    }
+            .get(route)
+            .expect(200, (err) => {
+                if(!err) resolve()
+                else reject(`route ${route} failed`)
+            })
+        })).then(() => {
+            done()
+        }, (err) => {
+            done(err)
+        })
+    });
 
     test(`Nonexistent route responds with 404`, (done) => { 
         supertest(app)

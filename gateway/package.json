@@ -4,12 +4,17 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
-    "http-proxy-middleware": "^1.0.6"
-  },
-  "peerDependencies": {
+    "http-proxy-middleware": "^1.0.6",
     "express": "^4.17.1",
     "helmet": "^4.6.0",
-    "command": "file:../command",
-    "lib": "file:../lib"
+    "lib": "file:../lib",
+    "dotenv": "^10.0.0"
+  },
+  "peerDependencies": {
+    "jest": "^27.3.1",
+    "supertest": "^6.1.6"
+  },
+  "devDependencies": {
+    "command": "file:../command"
   }
 }

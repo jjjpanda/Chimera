@@ -37,16 +37,20 @@
     "style-loader": "^1.3.0",
     "webpack": "^5.54.0",
     "webpack-cli": "^4.9.0",
-    "memory": "file:../memory"
+    "memory": "file:../memory",
+    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "lib": "file:../lib",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^8.5.1",
+    "nanoid": "^3.1.30", 
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "helmet": "^4.6.0",
+    "moment": "^2.29.1",
+    "dotenv": "^10.0.0"
   },
   "peerDependencies": {
-    "cookie-parser": "^1.4.5",
-    "lib": "file:../lib",
-    "express": "^4.17.1",
-    "heartbeat": "github:jjjpanda/heartbeat",
-    "helmet": "^4.6.0",
-    "request": "^2.88.2",
-    "moment": "^2.29.1",
+    "jest": "^27.3.1",
     "supertest": "^6.1.6"
   }
 }

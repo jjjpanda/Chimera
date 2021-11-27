@@ -2,15 +2,15 @@
   "name": "livestream",
   "main": "server.js",
   "dependencies": {
-    "memory": "file:../memory"
-  },
-  "peerDependencies": {
+    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "memory": "file:../memory",
+    "lib": "file:../lib",
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
-    "heartbeat": "github:jjjpanda/heartbeat",
     "helmet": "^4.6.0",
-    "lib": "file:../lib",
-    "supertest": "^6.1.6",
+    "dotenv": "^10.0.0"
+  },
+  "devDependencies": {
     "command": "file:../command"
   }
 }

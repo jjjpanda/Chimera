@@ -13,7 +13,7 @@ jest.mock('pm2', () => ({
 }))
 
 jest.mock('request', () => (options, callback) => {
-    console.log("REQUESY MOCK")
+    console.log("REQUEST MOCK")
     return JSON.parse(options.body).content
 })
 
