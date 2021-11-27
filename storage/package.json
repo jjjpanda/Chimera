@@ -10,7 +10,7 @@
     "cli-progress": "^3.9.1",
     "fluent-ffmpeg": "^2.1.2",
     "memory": "file:../memory",
-    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "heartbeat": "jjjpanda/heartbeat#v1.2.5",
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
     "helmet": "^4.6.0",

@@ -37,7 +37,7 @@
     "command": "file:./command",
     "dotenv": "^10.0.0",
     "gateway": "file:./gateway",
-    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "heartbeat": "jjjpanda/heartbeat#v1.2.5",
     "lib": "file:./lib",
     "livestream": "file:./livestream",
     "memory": "file:./memory",

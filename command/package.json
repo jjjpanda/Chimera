@@ -40,7 +40,7 @@
     "webpack": "^5.54.0",
     "webpack-cli": "^4.9.0",
     "memory": "file:../memory",
-    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "heartbeat": "jjjpanda/heartbeat#v1.2.5",
     "lib": "file:../lib",
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",

@@ -6,7 +6,7 @@
     "test": "npx jest --verbose"
   },
   "dependencies": {
-    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "heartbeat": "jjjpanda/heartbeat#v1.2.5",
     "memory": "file:../memory",
     "lib": "file:../lib",
     "cookie-parser": "^1.4.5",
