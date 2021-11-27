@@ -1,3 +1,4 @@
+require("dotenv").config()
 const {handleServerStart, handleSecureServerStart} = require('lib')
 const app = require('./gateway.js')
 
