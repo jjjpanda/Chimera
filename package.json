@@ -4,13 +4,15 @@
   "description": "playback",
   "main": "server.js",
   "scripts": {
-    "prepare": "npm explore command -- npm run build",
-    "prestart": "npx npm-run-all -s splitAndValidateEnvVars register setUpAcmeChallenge",
+    "build": "npm explore command -- npm run build",
+    "buildCont": "npm explore command -- npm run buildCont",
+    "prestart": "npx npm-run-all -s register \"validate:*\"",
     "start": "npx pm2 start pm2prod.config.js",
+    "startCont": "npx pm2 start pm2dev.config.js",
     "server": "node server.js",
     "register": "node register.js",
-    "splitAndValidateEnvVars": "node splitAndValidateEnvVars.js",
-    "setUpAcmeChallenge": "npx mkdirp ./.well-known/acme-challenge",
+    "validate:env": "node splitAndValidateEnvVars.js",
+    "validate:acme": "npx mkdirp ./.well-known/acme-challenge",
     "list": "npx pm2 list",
     "monitor": "npx pm2 monit",
     "kill": "npx pm2 stop all",
@@ -30,8 +32,6 @@
     "install:memory": "npm explore memory -- npm install",
     "install-all": "npx npm-run-all -s --npm-path npm \"install:*\"",
     "install-all-dev": "npx npm-run-all -s --npm-path npm \"install:* -- --include=dev\"",
-    "startCont": "npx pm2 start pm2dev.config.js",
-    "buildCont": "cd command && npm run buildCont",
     "test": "npx jest"
   },
   "dependencies": {
