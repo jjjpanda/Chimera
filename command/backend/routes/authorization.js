@@ -1,15 +1,14 @@
 var express    = require("express")
 var { validateBody, auth } = require("lib")
-
-const app = express.Router()
-const client = require("memory").client("AUTHORIZATION")
+const { authorize } = auth
 const {
 	passwordCheck,
 	login,
 	pinCheck,
-	generateLink,
-	authorize
-} = auth(client)
+	generateLink
+} = require('./lib/auth.js')
+
+const app = express.Router()
 
 app.post("/login", validateBody, passwordCheck, login)
 app.post("/requestLink", validateBody, pinCheck, generateLink)

@@ -44,11 +44,12 @@ module.exports = {
 
 	parseFileName: (fileName) => {
 		const fileInfo = fileName.split("_")
-		console.log(fileName)
+		const id = fileInfo[4].split(".")[0]
 		return {
 			link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
 			type: fileInfo[4].split(".")[1],
-			id: fileInfo[4].split(".")[0],
+			id,
+			requested: `${id.split("-")[1]}-${id.split("-")[2]}`,
 			camera: fileInfo[1],
 			start: fileInfo[2],
 			end: fileInfo[3]
@@ -56,12 +57,14 @@ module.exports = {
 	},
 
 	findFile: (id, callback) => {
+		const defaultName = "output_0_start_end_id.type"
 		fs.readdir(path.join(imgDir), (err, files) => {
 			if(err){
-				callback("output_0_start_end_id.type")
+				callback(defaultName)
 			}
 			else{
-				callback(files.find(file => file.includes(id) && !file.includes(".txt")))
+				const file = files.find(file => file.includes(id) && !file.includes(".txt"))
+				callback(file ? file : defaultName)
 			}
 		})
 	},

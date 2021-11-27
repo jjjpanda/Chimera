@@ -1,0 +1,78 @@
+const supertest = require('supertest');
+const app = require('../backend/command.js')
+
+const bcrypt = require("bcryptjs")
+const mockedPassword = 'mockedPassword'
+const hashedMockedPassword = bcrypt.hashSync(mockedPassword, bcrypt.genSaltSync(10))
+let fs = require('fs');
+fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
+    callback(false, hashedMockedPassword)
+})
+
+jest.mock('pm2')
+jest.mock('request')
+jest.mock('memory')
+
+describe('Authorization Routes', () => {
+    describe("/authorization/requestLink", () => {
+        test('Login with incorrect PIN', (done) => {
+            supertest(app)
+            .post('/authorization/requestLink')
+            .send({pin: "NOT THE PIN"})
+            .expect(400, done)
+        });
+
+        test('Login with correct PIN', (done) => {
+            supertest(app)
+            .post('/authorization/requestLink')
+            .send({pin: process.env.templink_PIN})
+            .expect(200, done)
+        });
+    })
+    
+    describe("/authorization/login", () => {
+        test('Login with incorrect password', (done) => {
+            supertest(app)
+            .post('/authorization/login')
+            .send({password: "incorrectPassword"})
+            .expect(400, done)
+        });
+    
+        test('Login with correct password', (done) => {
+            supertest(app)
+            .post('/authorization/login')
+            .send({password: mockedPassword})
+            .expect(200)
+            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, done)
+        });
+
+        test('Login with no password', (done) => {
+            supertest(app)
+            .post('/authorization/login')
+            .expect(400, { error: true, msg: "no body" }, done)
+        });
+    })
+    
+    describe("/authorization/verify", () => {
+        test('Login with correct password and verify', (done) => {
+            supertest(app)
+            .post('/authorization/login')
+            .send({password: mockedPassword})
+            .expect(200)
+            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => {
+                let cookieWithBearerToken = res.headers["set-cookie"]
+                supertest(app)
+                .post('/authorization/verify')
+                .set("Cookie", cookieWithBearerToken)
+                .expect(200, done)
+            })
+        });
+    
+        test('Verify with wrong bearer token', (done) => {
+            supertest(app)
+            .post('/authorization/verify')
+            .set("Cookie", "veryWrongBearerToken")
+            .expect(401, done)
+        });
+    })
+})

@@ -1,17 +1,24 @@
 {
   "name": "schedule",
   "main": "server.js",
-  "dependencies": {
-    "lib": "file:../lib",
-    "memory": "file:../memory"
+  "scripts": {
+    "start": "node start.js",
+    "test": "npx jest --verbose"
   },
-  "peerDependencies": {
+  "dependencies": {
+    "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
+    "memory": "file:../memory",
     "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
-    "heartbeat": "github:jjjpanda/heartbeat",
+    "lib": "file:../lib",
     "helmet": "^4.6.0",
     "moment": "^2.29.1",
     "node-cron": "^2.0.3",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "dotenv": "^10.0.0"
+  },
+  "peerDependencies": {
+    "jest": "^27.3.1",
+    "supertest": "^6.1.6"
   }
 }

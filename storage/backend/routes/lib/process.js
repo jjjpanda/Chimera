@@ -20,10 +20,10 @@ module.exports = {
 
 			console.log(id)
 			fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
-				res.send(JSON.stringify({
+				res.send({
 					running: !err,
 					id
-				}))
+				})
 			})
 		})
 	},
@@ -45,15 +45,15 @@ module.exports = {
 				}
 			})
 	
-			res.send(JSON.stringify({
+			res.send({
 				cancelled,
 				id
-			}))
+			})
 		})
 	},
    
 	listProcess: (req, res) => {
-		Promise.all(["zip", "mp4"].map(type => {
+		Promise.all(["mp4", "zip"].map(type => {
 			return new Promise(resolve => {
 				filterType(type, (fileList) => {
 					resolve(fileList)
@@ -67,7 +67,6 @@ module.exports = {
 				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
 						resolve({
 							...parseFileName(file),
-							requested: id.split("-")[1]+"-"+id.split("-")[2],
 							running: !err
 						})
 				}))
@@ -91,12 +90,12 @@ module.exports = {
 		const { id } = req.body
 
 		findFile(id, file => {
-			console.log(id)
+			console.log("TRYING TO DELETE", id)
 			fs.unlink(path.join(imgDir, file), (err) => {
-				res.send(JSON.stringify({
+				res.send({
 					deleted: !err,
 					id
-				}))
+				})
 			})
 		})
 	}

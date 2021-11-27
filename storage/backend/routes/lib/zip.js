@@ -43,10 +43,10 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
 		}
 		else{
-			res.send(JSON.stringify({
+			res.send({
 				id: rand,
 				url: undefined
-			}))
+			})
 		}
 	}
 	else{
@@ -56,7 +56,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			console.log("SENDING START ALERT")
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
-			output.on("close", function() {
+			output.on("close", () => {
 				fs.unlink(path.join(imgDir, `zip_${rand}.txt`), () => {
 					console.log("SENDING END ALERT")
 					webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
@@ -82,11 +82,11 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				archive.abort()
 			})
 
-			res.send(JSON.stringify({
+			res.send({
 				id: rand,
 				frameLimitMet: req.body.frameLimitMet,
 				url: `/shared/captures/${fileName(camera, start, end, rand, "zip")}`
-			}))
+			})
 		}
 		else{
 			res.attachment(fileName(camera, start, end, rand, "zip"))
