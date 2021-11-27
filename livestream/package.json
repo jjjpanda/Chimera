@@ -1,6 +1,9 @@
 {
   "name": "livestream",
   "main": "server.js",
+  "scripts": {
+    "test": "npx jest --verbose"
+  },
   "dependencies": {
     "heartbeat": "git+https://github.com/jjjpanda/heartbeat.git",
     "memory": "file:../memory",

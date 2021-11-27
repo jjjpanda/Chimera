@@ -4,14 +4,19 @@
   "description": "playback",
   "main": "server.js",
   "scripts": {
-    "prestart": "node register.js && npx mkdirp ./.well-known/acme-challenge && cd command && npm run build",
+    "prepare": "npm explore command -- npm run build",
+    "prestart": "npx npm-run-all -s splitAndValidateEnvVars register setUpAcmeChallenge",
     "start": "npx pm2 start pm2prod.config.js",
     "server": "node server.js",
+    "register": "node register.js",
+    "splitAndValidateEnvVars": "node splitAndValidateEnvVars.js",
+    "setUpAcmeChallenge": "npx mkdirp ./.well-known/acme-challenge",
     "list": "npx pm2 list",
     "monitor": "npx pm2 monit",
     "kill": "npx pm2 stop all",
     "delete": "npx pm2 delete all",
-    "stop": "npm run kill && npm run delete && pkill PM2",
+    "stop": "npx npm-run-all -s kill delete",
+    "poststop": "pkill PM2",
     "logs": "npx pm2 logs",
     "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
     "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
@@ -27,7 +32,7 @@
     "install-all-dev": "npx npm-run-all -s --npm-path npm \"install:* -- --include=dev\"",
     "startCont": "npx pm2 start pm2dev.config.js",
     "buildCont": "cd command && npm run buildCont",
-    "test": "jest"
+    "test": "npx jest"
   },
   "dependencies": {
     "command": "file:./command",

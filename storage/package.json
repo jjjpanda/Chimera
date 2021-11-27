@@ -1,6 +1,9 @@
 {
   "name": "storage",
   "main": "server.js",
+  "scripts": {
+    "test": "npx jest --verbose"
+  },
   "dependencies": {
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
