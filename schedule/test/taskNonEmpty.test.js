@@ -1,13 +1,7 @@
 const supertest = require('supertest');
 const app = require('../backend/schedule.js')
-const command = require('command').app
 
-const { testLib } = require('lib')
-const { mockedPassword, hashedMockedPassword } = testLib
-let fs = require('fs')
-fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
-    callback(false, hashedMockedPassword)
-})
+jest.mock('lib')
 
 jest.mock('memory', () => ({
     client: (name) => ({
@@ -53,17 +47,7 @@ jest.mock('memory', () => ({
 }))
 
 describe('Task Routes With Non-Empty List', () => {
-    let cookieWithBearerToken
-    beforeAll((done) => {
-        supertest(command)
-        .post('/authorization/login')
-        .send({password: mockedPassword})
-        .expect(200)
-        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
-            cookieWithBearerToken = res.headers["set-cookie"]
-            done()
-        })
-    })
+    let cookieWithBearerToken = "validCookie"
 
     describe("/task/list/", () => {
         test('List task', (done) => {

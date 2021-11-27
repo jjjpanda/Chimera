@@ -1,6 +1,5 @@
 const supertest = require('supertest');
 const app = require('../backend/livestream.js')
-const command = require('command').app
 
 const processList = [1, 2, 3].map((i) => ({
     name: `live_stream_cam_${i}`,
