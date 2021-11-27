@@ -1,22 +1,4 @@
 require("dotenv").config()
-
-// const {
-//     //Gateway
-//     command_PROXY_ON, schedule_PROXY_ON, storage_PROXY_ON, livestream_PROXY_ON, gateway_ON, gateway_PORT, gateway_HOST, gateway_PORT_SECURE, privateKey_FILEPATH, certificate_FILEPATH, gateway_HTTPS_Redirect,
-//     //Command
-//     command_ON, command_PORT, command_HOST,
-//     //Schedule
-//     schedule_ON, schedule_PORT, schedule_HOST, scheduler_AUTH,
-//     //Storage
-//     storage_ON, storage_PORT, storage_HOST, storage_FILEPATH, storage_MOTION_CONFPATH, storage_fileStatsUpdateTime,
-//     //Livestream | note livestream_CAMERA_URL_* can have numbers from 1 to infinity
-//     livestream_ON, livestream_PORT, livestream_HOST, livestream_FILEPATH,
-//     //Memory
-//     memory_ON, memory_PORT, memory_HOST, memory_AUTH_TOKEN,
-//     //Other Server Information 
-//     chimeraInstances, ffmpeg, ffprobe, cameras, alert_URL, password_FILEPATH, templink_PIN, PRINTPASSWORD, SECRETKEY
-// } = process.env
-
 const fs = require('fs')
 
 let env = {
