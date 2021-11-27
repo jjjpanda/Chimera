@@ -2,45 +2,15 @@ const supertest = require('supertest');
 const app = require('../backend/livestream.js')
 const command = require('command').app
 
-const { testLib } = require('lib')
-const { mockedPassword, hashedMockedPassword } = testLib
-let fs = require('fs')
-fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
-    callback(false, hashedMockedPassword)
-})
-
 const processList = [1, 2, 3].map((i) => ({
     name: `live_stream_cam_${i}`,
     status: "on",
     restarts: 0
 }))
 
-jest.mock('pm2', () => ({
-    list: (callback) => {
-        callback(null, [1, 2, 3].map((i) => ({
-            name: `live_stream_cam_${i}`,
-            pm2_env: {
-                status: "on",
-                unstable_restarts: 0
-            }
-        })))
-    }
-}))
-
-jest.mock('memory', () => ({
-    client: (name) => ({
-        emit: (event, ...args) => {
-            if(event == "savePassword"){
-                args[1]()
-            }
-            else if(event == "verifyPassword"){
-                args[1](false)
-            }
-        },
-        on: () => {}
-    }),
-    server: () => {}
-}))
+jest.mock('pm2')
+jest.mock('memory')
+jest.mock('lib')
 
 describe('Livestream Routes', () => {
     test('Unauthorized livestream status', (done) => {
@@ -50,36 +20,26 @@ describe('Livestream Routes', () => {
     });
 
     describe("Authorized Livestream Status", () => {
-        let cookieWithBearerToken
-        beforeAll((done) => {
-            supertest(command)
-            .post('/authorization/login')
-            .send({password: mockedPassword})
-            .expect(200)
-            .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
-                cookieWithBearerToken = res.headers["set-cookie"]
-                done()
-            })
-        })
+        let cookieWithMockedBearerToken = "validCookie"
 
         test('Livestream status', (done) => {
             supertest(app)
             .get('/livestream/status')
-            .set("Cookie", cookieWithBearerToken)
+            .set("Cookie", cookieWithMockedBearerToken)
             .expect(200, {processList}, done)
         });
     
         test('Livestream status of specific camera', (done) => {
             supertest(app)
             .get('/livestream/status?camera=1')
-            .set("Cookie", cookieWithBearerToken)
+            .set("Cookie", cookieWithMockedBearerToken)
             .expect(200, {processList: [ processList[0] ]}, done)
         });
     
         test(`Livestream status of specific camera that doesn't exist`, (done) => {
             supertest(app)
             .get('/livestream/status?camera=9999')
-            .set("Cookie", cookieWithBearerToken)
+            .set("Cookie", cookieWithMockedBearerToken)
             .expect(200, {processList: []}, done)
         });
     })
