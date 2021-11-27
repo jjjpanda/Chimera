@@ -89,6 +89,9 @@ env.lib += writeVarLine("alert_URL")
 env.command += writeVarLine("password_FILEPATH")
 env.lib += writeVarLine("password_FILEPATH")
 
+env.command += writeVarLine("templink_PIN")
+env.lib += writeVarLine("templink_PIN")
+
 env.lib += writeVarLine("PRINTPASSWORD")
 
 env.command += writeVarLine("SECRETKEY")
