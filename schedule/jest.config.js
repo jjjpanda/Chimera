@@ -1,14 +1,8 @@
 module.exports = {
+  displayName: "schedule",
   clearMocks: true,
-  collectCoverage: true,
-  coverageDirectory: "coverage",
-  coveragePathIgnorePatterns: [
-    "node_modules"
-  ],
-  coverageProvider: "babel",
   moduleFileExtensions: [
     "js",
-    "jsx",
     "json"
   ],
   setupFiles: ["dotenv/config"],

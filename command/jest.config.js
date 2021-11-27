@@ -1,16 +1,14 @@
 module.exports = {
+  displayName: "command",
   clearMocks: true,
-  collectCoverage: true,
-  coverageDirectory: "coverage",
-  coveragePathIgnorePatterns: [
-    "node_modules"
-  ],
-  coverageProvider: "babel",
   moduleFileExtensions: [
     "js",
     "jsx",
     "json"
   ],
   setupFiles: ["dotenv/config"],
-  testTimeout: 10000
+  testTimeout: 10000,
+  transform: {
+    '\\/(frontend|backend|dist)\\/.+\\.jsx?$': 'babel-jest'
+  }
 };
