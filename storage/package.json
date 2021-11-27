@@ -22,7 +22,6 @@
   },
   "peerDependencies": {
     "jest": "^27.3.1",
-    "supertest": "^6.1.6",
-    "command": "file:../command"
+    "supertest": "^6.1.6"
   }
 }

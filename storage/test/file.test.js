@@ -1,58 +1,13 @@
 const supertest = require('supertest');
 const app = require('../backend/storage.js')
-const command = require('command').app
 
-const { testLib } = require('lib')
-const { mockedPassword, hashedMockedPassword } = testLib
-let fs = require('fs')
-fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
-    if(options instanceof Function){
-        options(false, {})
-    }
-    else{
-        callback(false, hashedMockedPassword)
-    }
-})
-
-jest.mock('memory', () => ({
-    client: (name) => ({
-        emit: (event, ...args) => {
-            if(event == "savePassword"){
-                args[1]()
-            }
-            else if(event == "verifyPassword"){
-                args[1](false)
-            }
-        },
-        on: () => {}
-    }),
-    server: () => {}
-}))
-
-jest.mock('pm2', () => ({
-    list: (callback) => {
-        callback(null, [{
-            name: `motion`,
-            pm2_env: {
-                status: "on",
-                unstable_restarts: 0
-            }
-        }])
-    }
-}))
+jest.mock('lib')
+jest.mock('fs')
+jest.mock('memory')
+jest.mock('pm2')
 
 describe('File Routes', () => {
-    let cookieWithBearerToken
-    beforeAll((done) => {
-        supertest(command)
-        .post('/authorization/login')
-        .send({password: mockedPassword})
-        .expect(200)
-        .expect('set-cookie', /bearertoken=Bearer%20.*; Max-Age=.*/, (err, res) => { 
-            cookieWithBearerToken = res.headers["set-cookie"]
-            done()
-        })
-    })
+    let cookieWithBearerToken = "validCookie"
 
     describe("/file/pathStats", () => {
         test('bruh', () => expect(2+2).toBe(4))
