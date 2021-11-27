@@ -2,6 +2,7 @@
   "name": "command",
   "main": "server.js",
   "scripts": {
+    "start": "node start.js",
     "build": "npx webpack --progress",
     "buildCont": "npx webpack --progress --watch",
     "test": "npx jest --verbose"

@@ -2,6 +2,7 @@
   "name": "gateway",
   "main": "server.js",
   "scripts": {
+    "start": "node start.js",
     "test": "npx jest --verbose"
   },
   "dependencies": {
