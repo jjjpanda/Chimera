@@ -1,4 +1,3 @@
-require("dotenv").config()
 const {handleServerStart} = require('lib')
 const app = require("./backend/livestream.js")
 
