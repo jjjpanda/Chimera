@@ -1,15 +1,20 @@
 {
   "name": "gateway",
-  "version": "1.0.0",
-  "description": "",
   "main": "server.js",
-  "dependencies": {
-    "http-proxy-middleware": "^1.0.6"
+  "scripts": {
+    "start": "node start.js",
+    "test": "npx jest --verbose"
   },
-  "peerDependencies": {
+  "dependencies": {
+    "http-proxy-middleware": "^1.0.6",
     "express": "^4.17.1",
     "helmet": "^4.6.0",
-    "command": "file:../command",
-    "lib": "file:../lib"
+    "lib": "file:../lib",
+    "dotenv": "^10.0.0"
+  },
+  "peerDependencies": {
+    "jest": "^27.3.1",
+    "supertest": "^6.1.6",
+    "command": "file:../command"
   }
 }
