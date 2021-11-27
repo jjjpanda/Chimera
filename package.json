@@ -1,14 +1,13 @@
 {
   "name": "chimera",
-  "version": "4.0.0",
-  "description": "playback",
+  "version": "4.2.0",
+  "description": "a microservices based security camera system",
   "main": "server.js",
   "scripts": {
     "build": "npm explore command -- npm run build",
     "buildCont": "npm explore command -- npm run buildCont",
-    "prestart": "npx npm-run-all -s register \"validate:*\"",
-    "start": "npx pm2 start pm2prod.config.js",
-    "startCont": "npx pm2 start pm2dev.config.js",
+    "prestart": "npx npm-run-all -s register \"validate:*\" build",
+    "start": "npx pm2 start pm2.config.js",
     "server": "node server.js",
     "register": "node register.js",
     "validate:env": "node splitAndValidateEnvVars.js",

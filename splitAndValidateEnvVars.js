@@ -23,6 +23,8 @@ const writeVarLine = (varName) => {
     }
 }
 
+env.command += writeVarLine("NODE_ENV")
+
 env.gateway += writeVarLine("command_PROXY_ON")
 env.gateway += writeVarLine("schedule_PROXY_ON")
 env.gateway += writeVarLine("storage_PROXY_ON")
@@ -43,7 +45,9 @@ env.gateway += writeVarLine("gateway_HTTPS_Redirect")
 
 env.command += writeVarLine("command_ON")
 
-env.gateway += writeVarLine("command_PORT")
+if(process.env.NODE_ENV != "production") {
+    env.gateway += writeVarLine("command_PORT")
+}
 env.command += writeVarLine("command_PORT")
 
 env.gateway += writeVarLine("command_HOST")

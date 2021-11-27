@@ -1,29 +1,39 @@
 require("dotenv").config()
 const path = require("path")
 
+const isDev = process.env.NODE_ENV == "development"
+
 const config = {
 	apps : [{
 		script: "server.js",
-		name: "chimera",
-		log: "./log/chimera.log",
+		name: `chimera${isDev ? "Continuous" : ""}`,
+		log: `./log/chimera.${isDev ? "dev." : ""}log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
+		...(isDev ? {
+			watch: ["."],
+			ignore_watch: ["shared", "feed", "*.log", "log", ".env", process.env.password_FILEPATH, ".well-known", "*.config.js"],
+		} : {}),
 		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
-			"NODE_ENV": "production",
+			"NODE_ENV": process.env.NODE_ENV,
 		}
-	}, {
+	}]
+}
+
+if(!isDev){
+	config.apps.push({
 		script: "npx heartbeat",
 		name: "heartbeat",
 		log: "./log/heartbeat.log",
 		log_date_format:"YYYY-MM-DD HH:mm:ss"
-	}]
+	})
 }
 
 if(process.env.storage_ON === "true"){
 	config.apps.push({
 		script: `npx mkdirp ${process.env.storage_FILEPATH}shared/captures && motion -c ${process.env.storage_MOTION_CONFPATH}`,
 		name: "motion",
-		log: "./log/motion.pm2.log",
+		log: `./log/motion.${isDev ? "dev" : "pm2"}.log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
 	})
 }
@@ -36,7 +46,7 @@ if(process.env.livestream_ON === "true"){
 		config.apps.push({
 			script: `npx mkdirp ${process.env.livestream_FILEPATH}feed/${cameraIndex} && ffmpeg -loglevel quiet -i "${cameraURL(cameraIndex)}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${path.join(process.env.livestream_FILEPATH, "feed", cameraIndex.toString(), "video.m3u8")}`,
 			name: `live_stream_cam_${cameraIndex}`,
-			log: `./log/livestream.${cameraIndex}.log`,
+			log: `./log/livestream.${cameraIndex}${isDev ? ".dev" : ""}.log`,
 			log_date_format:"YYYY-MM-DD HH:mm:ss",
 		})
 		cameraIndex++
