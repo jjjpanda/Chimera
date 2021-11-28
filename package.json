@@ -27,14 +27,20 @@
     "buildCont": "cd command && npm run buildCont"
   },
   "dependencies": {
+    "@tensorflow-models/coco-ssd": "^2.2.2",
+    "@tensorflow/tfjs-converter": "^3.11.0",
+    "@tensorflow/tfjs-core": "^3.11.0",
+    "@tensorflow/tfjs-node": "3.3.0",
     "command": "file:./command",
     "cookie-parser": "^1.4.5",
     "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "helmet": "^4.6.0",
+    "gateway": "file:./gateway",
     "heartbeat": "github:jjjpanda/heartbeat",
+    "helmet": "^4.6.0",
     "lib": "file:./lib",
     "livestream": "file:./livestream",
+    "memory": "file:./memory",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
     "node-cron": "^2.0.3",
@@ -42,9 +48,7 @@
     "request": "^2.88.2",
     "rimraf": "^3.0.2",
     "schedule": "file:./schedule",
-    "storage": "file:./storage",
-    "gateway": "file:./gateway",
-    "memory": "file:./memory"
+    "storage": "file:./storage"
   },
   "devDependencies": {
     "eslint": "^8.2.0",
