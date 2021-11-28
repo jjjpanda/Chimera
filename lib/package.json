@@ -1,16 +1,18 @@
 {
   "name": "lib",
-  "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "module": "module.js",
+  "scripts": {
+    "test": "npx jest --verbose"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^8.5.1",
-    "nanoid": "^3.1.30"
-  },
-  "peerDependencies": {
+    "nanoid": "^3.1.30",
     "request": "^2.88.2",
     "pm2": "^5.1.2"
+  },
+  "peerDependencies": {
+    "jest": "^27.3.1"
   }
 }

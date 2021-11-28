@@ -1,14 +1,15 @@
 {
   "name": "memory",
-  "version": "1.0.0",
-  "description": "",
   "main": "server.js",
+  "scripts": {
+    "start": "node start.js",
+    "test": "npx jest --verbose"
+  },
   "dependencies": {
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
-    "lib": "file:../lib"
-  },
-  "peerDependencies": {
-    "node-cron": "^2.0.3"
+    "lib": "file:../lib",
+    "node-cron": "^2.0.3",
+    "dotenv": "^10.0.0"
   }
 }

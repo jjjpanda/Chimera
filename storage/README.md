@@ -20,7 +20,7 @@ The storage server is the heartbeat of Chimera. It handles 4 main sections regar
 |POST|/createZip|Creates zip archive from images based on timestamps|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, skip: Number }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
 |POST|/statusProcess|Get status of video or zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
 |POST|/cancelProcess|Cancel running video or zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
-|POST|/listProcess|Get list of all processes|None|`{ list: [ ProcessObj ] }`|
+|GET|/listProcess|Get list of all processes|None|`{ list: [ ProcessObj ] }`|
 |POST|/deleteProcess|Delete video or zip by given ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
 
 ### ProcessObj

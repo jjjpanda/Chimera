@@ -27,7 +27,7 @@ app.post("/createZip", validateBody, validateRequest, createZip)
 
 app.post("/statusProcess", validateBody, validateID, statusProcess)
 app.post("/cancelProcess", validateBody, validateID, cancelProcess)
-app.post("/listProcess", listProcess)
+app.get("/listProcess", listProcess)
 app.post("/deleteProcess", validateBody, validateID, deleteProcess)
 
 module.exports = app

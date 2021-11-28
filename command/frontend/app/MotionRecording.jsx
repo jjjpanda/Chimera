@@ -38,7 +38,7 @@ class MotionRecording extends React.Component{
 	listProcesses = () => {
 		this.setState({ processList: [], loading: true }, () => {
 			request("/convert/listProcess", {
-				method: "POST",
+				method: "GET",
 				headers: {
 					"Content-Type": "application/json",
 				}

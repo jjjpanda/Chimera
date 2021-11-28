@@ -19,21 +19,26 @@ module.exports = {
 					})
 				})
 			}
+			else if(isValidId(id, tasks)){
+				res.send({
+					running: true
+				})
+			}
 			else{
 				if(!validateRequestURL(url)){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "no url"
-					}))
+					})
 				}
 				else if(body == undefined || !(jsonFileHanding.isStringJSON(body))){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "no body"
-					}))
+					})
 				}
 				else if(!cron.validate(cronString)){
-					res.send(JSON.stringify({
+					res.status(400).send({
 						error: "cron invalid"
-					}))
+					})
 				}
 				else{
 					req.body.body = JSON.parse(body)
@@ -50,9 +55,9 @@ module.exports = {
 				next()
 			}
 			else{
-				res.send(JSON.stringify({
+				res.status(400).send({
 					error: "id invalid"
-				}))
+				})
 			}
 		})
 	},
@@ -86,7 +91,7 @@ module.exports = {
 		client.off(id)
 		client.emit("destroyTask", id, tasks=>{
 			res.send({
-				destroyed: id in tasks
+				destroyed: !(id in tasks)
 			})
 		})
 	},
@@ -105,7 +110,7 @@ module.exports = {
 	},
 
 	sendList: (req, res) => {
-		res.send(req.body.list)
+		res.send({tasks: req.body.list})
 	}
 }
 

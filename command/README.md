@@ -9,8 +9,6 @@ The command server is face of the operation. It runs the web-app and the authent
 |POST|/login|Auth Routes|N/A|N/A|
 |POST|/requestLink|Auth Routes|N/A|N/A|
 |POST|/verify|Auth Routes|N/A|N/A|
-|GET|/login/:password|Attempts login with password as URL param|None|html|
-|GET|/login|Serves the login page|None|html|
 ## ▶ /
 
 |Type|Route|Description|Parameters|Returns|
@@ -21,6 +19,8 @@ The command server is face of the operation. It runs the web-app and the authent
 |GET|/process|Serves main website|None|html|
 |GET|/scrub|Serves main website|None|html|
 |GET|/stats|Serves main website|None|html|
+|GET|/login|Serves the login page|None|html|
+|GET|/login/:password|Attempts login with password as URL param|None|html|
 
 ## ▶ /command
 

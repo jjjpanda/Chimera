@@ -2,8 +2,6 @@ const { Server } = require("socket.io")
 
 const { isPrimeInstance } = require("lib")
 
-
-
 module.exports = () => {
     if(process.env.memory_ON == "true" && isPrimeInstance){
         
@@ -21,6 +19,7 @@ module.exports = () => {
 
         const {createTask, startTask, stopTask, destroyTask, listTasks} = require('./lib/scheduledTasks.js')(io)
         const {saveProcessEnder, cancelProcess} = require('./lib/converterProcesses.js')(io)
+        const {savePassword, verifyPassword, deletePassword} = require('./lib/tempPassword.js')(io)
         const cronTask = require('./lib/cronTask.js')(io)
 
         console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
@@ -29,6 +28,10 @@ module.exports = () => {
             client.on("log", data => console.log(data))
 
             client.on("cron", cronTask)
+
+            client.on("savePassword", savePassword)
+            client.on('verifyPassword', verifyPassword)
+            client.on("deletePassword", deletePassword)
             
             client.on("createTask", createTask)
             client.on("startTask", startTask)

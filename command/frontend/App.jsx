@@ -20,7 +20,7 @@ const timeout = 750
 import * as FastClick from "fastclick"
 
 if ("addEventListener" in document) {
-	document.addEventListener("DOMContentLoaded", function() {
+	document.addEventListener("DOMContentLoaded", () => {
 		FastClick.attach(document.body)
 	}, false)
 }
