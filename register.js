@@ -5,27 +5,62 @@ const stdout = process.stdout
 const stdin = process.stdin
 
 let input = ""
+let retypedInput = ""
 
-const handleNewData = (c) => {
+const handleNewData = (retyped, c) => {
 	switch (c) {
 	case "\r":
 	case "\n":
 	case "\u0004": // Ctrl-D
-		return enter()
+		return enter(retyped)
 	case "\u0003": // Ctrl-C
-		return exit()
+		return exit(retyped)
 	default:
-		if (c.charCodeAt(0) === 8) return backspace()
-		else return newchar(c)
+		if (c.charCodeAt(0) === 8) return backspace(retyped)
+		else return newchar(retyped, c)
 	}
 }
 
-const enter = () => {
-	stdin.removeListener("data", handleNewData)
+const handleTyping = (c) => {
+	handleNewData(false, c)
+}
+
+const handleRetype = (c) => {
+	handleNewData(true, c)
+}
+
+const enter = (retyped, bypass=false) => {
 	stdout.clearLine()
 	stdout.cursorTo(0)
-    
-	auth.register(input, () => {
+	stdin.removeListener("data", retyped ? handleRetype : handleTyping)
+
+	if(bypass){
+		closeOut(true)
+	}
+	else if(retyped){
+		if(retypedInput === input){
+			closeOut()
+		}
+		else{
+			console.log("not the same password, rerun to try again")
+			process.exit(1)
+		}
+	}
+	else{
+		stdin.on("data", handleRetype)
+		stdout.write("\nRetype Password:")	
+	}
+}
+
+const exit = (retyped) => {
+	stdin.removeListener("data", retyped ? handleRetype : handleTyping)
+	stdin.setRawMode(false)
+	stdin.pause()
+	process.exit(1)
+}
+
+const closeOut = (bypass=false) => {
+	auth.register(bypass ? "" : input, () => {
 		process.exit(0)
 	}, (msg) => {
 		console.log(msg)
@@ -36,33 +71,32 @@ const enter = () => {
 	stdin.pause()
 }
 
-const exit = () => {
-	stdin.removeListener("data", pn)
-	stdin.setRawMode(false)
-	stdin.pause()
-	process.exit(1)
-}
-
-const newchar = (c) => {
-	input += c
-}
-
-const backspace = () => {
-	input = input.slice(0, input.length - 1)
-}
-
-let seconds = 30
-setInterval(() => {
-	if(seconds == 0){
-		enter()
+const newchar = (retyped, c) => {
+	if(retyped){
+		retypedInput += c
 	}
-	seconds--
-}, 1000)
+	else{
+		input += c
+	}
+}
+
+const backspace = (retyped) => {
+	if(retyped){
+		retypedInput = retypedInput.slice(0, retypedInput.length - 1)
+	}
+	else{
+		input = input.slice(0, input.length - 1)
+	}
+}
+
+const seconds = 30
+setInterval(() => {
+	enter(null, true)
+}, seconds * 1000)
+
 stdout.write(`Proceeding with password file in ${seconds} seconds`)
 stdout.write("\nPassword:")
 stdin.setRawMode(true)
 stdin.resume()
 stdin.setEncoding("utf-8")
-stdin.on("data", handleNewData)
-
-
+stdin.on("data", handleTyping)
