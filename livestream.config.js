@@ -14,7 +14,7 @@ module.exports = [{
     log: `./log/livestream.update.log`,
     log_date_format:"YYYY-MM-DD HH:mm:ss",
 }, {
-    script: "server.js",
+    script: "false && server.js",
     name: "chimera",
     log: "./log/chimera.log",
     log_date_format:"YYYY-MM-DD HH:mm:ss",
@@ -22,9 +22,4 @@ module.exports = [{
     env: {
         "NODE_ENV": "production",
     }
-}, {
-    script: "object.js",
-    name: "object",
-    log: "./log/object.log",
-    log_date_format:"YYYY-MM-DD HH:mm:ss",
 }]

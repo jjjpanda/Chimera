@@ -1,0 +1,10 @@
+{
+  "name": "object",
+  "version": "1.0.0",
+  "description": "",
+  "main": "object.js",
+  "dependencies": {
+    "@tensorflow-models/coco-ssd": "^2.2.2",
+    "@tensorflow/tfjs-node": "^3.11.0"
+  }
+}
