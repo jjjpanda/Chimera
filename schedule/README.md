@@ -2,6 +2,8 @@
 
 The scheduler is pretty self explanatory. You need a task scheduled? Done.
 
+---
+# Routes
 ## ▶ /task
 
 |Type|Route|Description|Parameters|Returns|

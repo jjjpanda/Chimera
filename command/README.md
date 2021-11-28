@@ -2,6 +2,8 @@
 
 The command server is face of the operation. It runs the web-app and the authentication of the other endpoints. 
 
+---
+# Routes
 ## ▶ /authorization
 
 |Type|Route|Description|Parameters|Returns|

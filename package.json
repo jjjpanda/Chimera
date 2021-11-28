@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npm explore command -- npm run build",
     "buildCont": "npm explore command -- npm run buildCont",
-    "prestart": "npx npm-run-all -s register \"validate:*\" build",
+    "prestart": "npx npm-run-all -s register \"validate:*\"",
     "start": "npx pm2 start pm2.config.js",
     "server": "node server.js",
     "register": "node register.js",

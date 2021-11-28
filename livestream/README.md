@@ -2,6 +2,10 @@
 
 The livestream server handles transcoding the RTSP camera feed into a HLS stream.
 
+[ffmpeg](https://ffmpeg.org) is required to start HLS stream.
+
+---
+# Routes
 ## ▶ /livestream
 
 |Type|Route|Description|Parameters|Returns|

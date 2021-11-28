@@ -3,6 +3,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
+    "postinstall": "npm explore lib -- npm install",
     "test": "npx jest --verbose"
   },
   "dependencies": {
