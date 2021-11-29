@@ -3,7 +3,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "postinstall": "npm explore lib -- npm install",
     "test": "npx jest --verbose"
   },
   "dependencies": {
@@ -14,7 +13,7 @@
     "lib": "file:../lib",
     "helmet": "^4.6.0",
     "moment": "^2.29.1",
-    "node-cron": "^2.0.3",
+    "node-cron": "^3.0.0",
     "request": "^2.88.2",
     "dotenv": "^10.0.0"
   },

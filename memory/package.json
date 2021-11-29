@@ -3,14 +3,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "postinstall": "npm explore lib -- npm install",
     "test": "npx jest --verbose"
   },
   "dependencies": {
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
     "lib": "file:../lib",
-    "node-cron": "^2.0.3",
+    "node-cron": "^3.0.0",
     "dotenv": "^10.0.0"
   }
 }

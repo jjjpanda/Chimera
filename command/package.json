@@ -5,7 +5,6 @@
     "start": "node start.js",
     "build": "npx webpack --progress",
     "buildCont": "npx webpack --progress --watch",
-    "postinstall": "npm explore lib -- npm install",
     "test": "npx jest --verbose"
   },
   "dependencies": {

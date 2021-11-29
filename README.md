@@ -30,7 +30,7 @@ sudo apt-get install motion ffmpeg
 
 If running all services on one machine:
 ```
-npm run install-all
+npm run install
 ```
 
 If splitting services, you can install each service with:
