@@ -22,6 +22,7 @@
     "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
     "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
     "install-dev": "npm install --include=dev",
+    "install-sub-devs": "npx npm-run-all -s \"install:* -- --only=dev\"",
     "install:command": "npm explore command -- npm install",
     "install:livestream": "npm explore livestream -- npm install",
     "install:schedule": "npm explore schedule -- npm install",
@@ -29,8 +30,8 @@
     "install:lib": "npm explore lib -- npm install",
     "install:gateway": "npm explore gateway -- npm install",
     "install:memory": "npm explore memory -- npm install",
-    "uninstall-all-deps": "npx rimraf **/node_modules",
-    "uninstall-all-locks": "npx rimraf **/package-lock.json",
+    "delete-all-deps": "npx rimraf **/node_modules",
+    "delete-all-locks": "npx rimraf **/package-lock.json",
     "test": "npx jest",
     "prune:root": "npm prune",
     "prune:command": "npm explore command -- npm prune",
@@ -40,7 +41,7 @@
     "prune:lib": "npm explore lib -- npm prune",
     "prune:gateway": "npm explore gateway -- npm prune",
     "prune:memory": "npm explore memory -- npm prune",
-    "release": "npx npm-run-all -s --npm-path npm uninstall-all-deps uninstall-all-locks install-dev build test lint",
+    "release": "npx npm-run-all -s --npm-path npm delete-all-locks install-dev install-all-devs build test lint",
     "postrelease": "npx npm-run-all -s --npm-path npm \"prune:* -- --production\""
   },
   "dependencies": {
