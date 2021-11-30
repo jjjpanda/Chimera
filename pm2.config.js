@@ -31,7 +31,7 @@ if(!isDev){
 
 if(process.env.storage_ON === "true"){
 	config.apps.push({
-		script: `npx mkdirp ${process.env.storage_FILEPATH}shared/captures && motion -c ${process.env.storage_MOTION_CONFPATH}`,
+		script: `npx mkdirp ${process.env.storage_FILEPATH}shared/captures && motion -c ${process.env.storage_MOTION_CONF_FILEPATH}`,
 		name: "motion",
 		log: `./log/motion.${isDev ? "dev" : "pm2"}.log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",

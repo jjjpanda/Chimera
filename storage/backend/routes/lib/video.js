@@ -12,8 +12,8 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
-ffmpeg.setFfmpegPath(process.env.ffmpeg)
-ffmpeg.setFfprobePath(process.env.ffprobe)
+ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
+ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
 
 const client = require("memory").client("VIDEO PROCESS")
 
