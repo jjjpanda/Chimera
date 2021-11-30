@@ -64,5 +64,5 @@ npm start
 ```
 If splitting services
 ```
-cd <service> && npm start
+npm run start:<service>
 ```
