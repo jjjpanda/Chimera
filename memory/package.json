@@ -3,7 +3,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "test": "npx jest --verbose"
+    "test": "npx jest --verbose",
+    "prunewrap": "npm prune --production && npm shrinkwrap"
   },
   "dependencies": {
     "socket.io": "^4.4.0",
