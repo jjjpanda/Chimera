@@ -3,7 +3,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "test": "npx jest --verbose"
+    "test": "npx jest --verbose",
+    "prunewrap": "npm prune --production && npm shrinkwrap"
   },
   "dependencies": {
     "heartbeat": "jjjpanda/heartbeat#v1.2.5",
@@ -13,7 +14,7 @@
     "lib": "file:../lib",
     "helmet": "^4.6.0",
     "moment": "^2.29.1",
-    "node-cron": "^2.0.3",
+    "node-cron": "^3.0.0",
     "request": "^2.88.2",
     "dotenv": "^10.0.0"
   },

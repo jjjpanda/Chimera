@@ -3,7 +3,8 @@
   "main": "index.js",
   "module": "module.js",
   "scripts": {
-    "test": "npx jest --verbose"
+    "test": "npx jest --verbose",
+    "prunewrap": "npm prune --production && npm shrinkwrap"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -12,12 +12,12 @@ const {
 }              = require("./converter.js")
 const {webhookAlert} = require("lib")
 
-ffmpeg.setFfmpegPath(process.env.ffmpeg)
-ffmpeg.setFfprobePath(process.env.ffprobe)
+ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
+ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
 
 const client = require("memory").client("VIDEO PROCESS")
 
-const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const createFrameList = (camera, start, end, limit, callback) => {
 	filterList(camera, start, end, undefined, (filteredList) => {

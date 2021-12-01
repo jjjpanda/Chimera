@@ -4,7 +4,7 @@ var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 var {randomID}    = require("lib")
 
-const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 module.exports = {   
 	generateID: () => {

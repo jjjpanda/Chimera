@@ -3,13 +3,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "test": "npx jest --verbose"
+    "test": "npx jest --verbose",
+    "prunewrap": "npm prune --production && npm shrinkwrap"
   },
   "dependencies": {
     "socket.io": "^4.4.0",
     "socket.io-client": "^4.4.0",
     "lib": "file:../lib",
-    "node-cron": "^2.0.3",
+    "node-cron": "^3.0.0",
     "dotenv": "^10.0.0"
   }
 }

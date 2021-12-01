@@ -12,7 +12,7 @@ const {webhookAlert} = require("lib")
 
 const client = require("memory").client("ZIP PROCESS")
 
-const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const createZipList = (camera, start, end, skip, callback) => {
 	var archive = archiver("zip", {
@@ -73,7 +73,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				})
 			})
             
-			fs.writeFile(path.join(imgDir, `zip_${rand}.txt`), "progress")
+			fs.writeFile(path.join(imgDir, `zip_${rand}.txt`), "progress", () => {})
 
 			archive.pipe(output)
 
