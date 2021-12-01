@@ -21,6 +21,6 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
-app.use("/feed", express.static(path.join(process.env.livestream_FILEPATH, "feed")))
+app.use("/feed", express.static(path.join(process.env.livestream_FOLDERPATH, "feed")))
 
 module.exports = app

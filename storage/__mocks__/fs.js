@@ -1,5 +1,5 @@
 const path       = require("path")
-const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const fileList = [
     "output_1_20210101-235959_20210201-235959_video1-20210301-235959.mp4", 

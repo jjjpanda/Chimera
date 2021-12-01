@@ -6,16 +6,16 @@ const mkdirp = require("mkdirp")
 const { formatBytes, jsonFileHanding, isPrimeInstance } = require("lib")
 const {readJSON, writeJSON} = jsonFileHanding
 
-const pathToAdditionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/additionStats.json")
-const pathToDeletionStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/deletionStats.json")
-const pathToCumulativeStatsJSON = path.join(process.env.storage_FILEPATH, "./shared/cumulativeStats.json")
+const pathToAdditionStatsJSON = path.join(process.env.storage_FOLDERPATH, "./shared/additionStats.json")
+const pathToDeletionStatsJSON = path.join(process.env.storage_FOLDERPATH, "./shared/deletionStats.json")
+const pathToCumulativeStatsJSON = path.join(process.env.storage_FOLDERPATH, "./shared/cumulativeStats.json")
 const cronMinutes = process.env.storage_fileStatsUpdateTime
 
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
 		const {camera} = req.body
 		if(parseInt(camera) == camera){
-			req.body.appendedPath = path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())
+			req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", camera.toString())
 			next()
 		}
 		else{
@@ -24,7 +24,7 @@ module.exports = {
 	},
 
 	summaryMetricsDirectoryList: (req, res, next) => {
-		req.body.appendedPath = path.join(process.env.storage_FILEPATH, "./shared/captures/")
+		req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/")
 		let fileLists = {}
 		JSON.parse(process.env.cameras).map((name, index) => {
 			const camera = index + 1
@@ -319,7 +319,7 @@ const createTimestampedStatObject = () => {
 
 const promiseMetricTasks = (statsObj, cronMinutes=undefined) => JSON.parse(process.env.cameras).map((name, i) => {
 	const camera = i+1
-	return {name, pathToDir: path.join(process.env.storage_FILEPATH, "./shared/captures/", camera.toString())}
+	return {name, pathToDir: path.join(process.env.storage_FOLDERPATH, "./shared/captures/", camera.toString())}
 }).reduce(function (accumulator, {name, pathToDir}) {
 	return accumulator.concat([
 		new Promise(resolve => {
@@ -397,7 +397,7 @@ const cronString = `*/${cronMinutes} * * * *`
 
 if(isPrimeInstance){
 	const client = require("memory").client("FILE STATS")
-	mkdirp(path.join(process.env.storage_FILEPATH, "./shared")).then(() => {
+	mkdirp(path.join(process.env.storage_FOLDERPATH, "./shared")).then(() => {
 		createStatsJSON(pathToAdditionStatsJSON)
 		createStatsJSON(pathToDeletionStatsJSON)
 		createStatsJSON(pathToCumulativeStatsJSON)

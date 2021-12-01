@@ -9,7 +9,7 @@ const {webhookAlert} = require("lib")
 
 const client = require("memory").client("PROCESS")
 
-const imgDir = path.join(process.env.storage_FILEPATH, "shared/captures")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 module.exports = {
 	statusProcess: (req, res) => {
