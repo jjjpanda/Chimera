@@ -2,7 +2,7 @@
 
 <img src="command/frontend/res/logo.png" alt="logo" width="100"/>
 
-Chimera is a microservices based security camera system for RTSP/IP cameras.
+Chimera is a microservices based security camera system for RTSP/IP cameras *(which kinda sorta only runs on linux)*
 
 List of microservices: 
 

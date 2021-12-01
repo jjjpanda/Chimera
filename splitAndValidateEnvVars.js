@@ -82,8 +82,8 @@ env.memory += writeVarLine("memory_PORT")
 env.memory += writeVarLine("memory_HOST")
 env.memory += writeVarLine("memory_AUTH_TOKEN")
 
-env.storage += writeVarLine("ffmpeg")
-env.storage += writeVarLine("ffprobe")
+env.storage += writeVarLine("ffmpeg_FILEPATH")
+env.storage += writeVarLine("ffprobe_FILEPATH")
 
 env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
