@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "4.3.0",
+  "version": "4.3.1",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "scripts": {
@@ -8,9 +8,9 @@
     "buildCont": "cd command && npm run buildCont",
     "prestart": "npx npm-run-all -s --npm-path npm register \"validate:*\"",
     "start": "npx pm2 start pm2.config.js",
-    "register": "node register.js",
-    "validate:env": "node splitAndValidateEnvVars.js",
-    "validate:pass": "node generateEmptyPassFile.js",
+    "register": "node chimera/register.js",
+    "validate:env": "node chimera/splitAndValidateEnvVars.js",
+    "validate:pass": "node chimera/generateEmptyPassFile.js",
     "validate:acme": "npx mkdirp ./.well-known/acme-challenge",
     "start:command": "cd command && npm start",
     "start:livestream": "cd livestream && npm start",
@@ -28,8 +28,7 @@
     "logs": "npx pm2 logs",
     "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
     "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
-    "install-dev": "npm install --include=dev",
-    "install-prod": "npm install",
+    "install:root": "npm install",
     "install:lib": "cd lib && npm install",
     "install:command": "cd command && npm install",
     "install:livestream": "cd livestream && npm install",
@@ -55,9 +54,9 @@
     "prunewrap:storage": "cd storage && npm run prunewrap",
     "prunewrap:gateway": "cd gateway && npm run prunewrap",
     "prunewrap:memory": "cd memory && npm run prunewrap",
-    "prerelease": "npx npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps install-dev \"install:* -- --include=dev\"",
+    "prerelease": "npx npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --include=dev\"",
     "release": "npx npm-run-all -s --npm-path npm build test",
-    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks install-prod install:* \"prunewrap:*\""
+    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks install:* prunewrap:*"
   },
   "dependencies": {
     "command": "file:./command",

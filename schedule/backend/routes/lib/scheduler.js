@@ -1,5 +1,7 @@
 const cron     = require("node-cron")
-const request  = require("request")
+const axios  = require("axios").default.create({
+	validateStatus: (status) => status == 200,
+})
 const moment   = require("moment")
 
 const { webhookAlert, randomID, jsonFileHanding, auth } = require("lib")
@@ -119,25 +121,15 @@ const validateRequestURL = (url) => {
 }
 
 const generateTask = (url, id, body) => () => {
-	console.log( "CRON: ", url)
-	webhookAlert(`scheduled task ID: ${id}\nURL: ${url} started at ${moment().format("LLL")}`, () => {
-		request({
-			method: "POST",
-			url: `${process.env.gateway_HOST}${url}`,
-			body,
-			headers: {
-				"Authorization": process.env.scheduler_AUTH
-			}
-		}, (e, r, b) => {
-			if(!e && r.statusCode === 200){
-				webhookAlert(`scheduled task ID: ${id}\nURL: ${url} ✅ \nresponse ${JSON.stringify(JSON.parse(b), null, 2)}`)
-				console.log(JSON.parse(b))
-			}
-			else{
-				webhookAlert(`scheduled task ID: ${id}\nURL: ${url} ❌ \nerror ${e} | code ${r.statusCode}`)
-				console.log(`code ${r.statusCode} | error ${e}`)
-			}
-		})
+	console.log(id, " | CRON: ", url)
+	axios.post(`${process.env.gateway_HOST}${url}`, body, {
+		headers: { "Authorization": process.env.scheduler_AUTH }
+	}).then(({data}) => {
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
+		console.log(data)
+	}).catch(({response, message}) => {
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ❌ \nerror ${message} | code ${response.status}`)
+		console.log(`code ${response.status} | error ${message}`)
 	})
 }
 
