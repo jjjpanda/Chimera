@@ -121,17 +121,15 @@ const validateRequestURL = (url) => {
 }
 
 const generateTask = (url, id, body) => () => {
-	console.log( "CRON: ", url)
-	webhookAlert(`scheduled task ID: ${id}\nURL: ${url} started at ${moment().format("LLL")}`, () => {
-		axios.post(`${process.env.gateway_HOST}${url}`, body, {
-			headers: { "Authorization": process.env.scheduler_AUTH }
-		}).then((data) => {
-			webhookAlert(`scheduled task ID: ${id}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
-			console.log(data)
-		}).catch(({response, message}) => {
-			webhookAlert(`scheduled task ID: ${id}\nURL: ${url} ❌ \nerror ${message} | code ${response.status}`)
-			console.log(`code ${response.status} | error ${message}`)
-		})
+	console.log(id, " | CRON: ", url)
+	axios.post(`${process.env.gateway_HOST}${url}`, body, {
+		headers: { "Authorization": process.env.scheduler_AUTH }
+	}).then(({data}) => {
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
+		console.log(data)
+	}).catch(({response, message}) => {
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ❌ \nerror ${message} | code ${response.status}`)
+		console.log(`code ${response.status} | error ${message}`)
 	})
 }
 
