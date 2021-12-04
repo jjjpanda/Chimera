@@ -1,9 +1,11 @@
 var path       = require("path")
 var express    = require("express")
-const { helmetOptions } = require("lib")
+const { helmetOptions, tracker } = require("lib")
 const helmet = require("helmet")
 
 var app = express()
+
+app.use(tracker)
 
 app.use(helmet(helmetOptions))
 app.use(require("cookie-parser")())
