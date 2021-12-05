@@ -7,7 +7,6 @@ module.exports = JSON.parse(process.env.cameras).map((camera, index) => ({
     inputUrl: cameraURL(index + 1),
     fps: 0.25,
     alertUrl: process.env.alertUrl,
-    name: "name of input",
 
     minimumObjectConfidence: 0.9,
     pixelThreshold: 0.1, 
@@ -16,6 +15,4 @@ module.exports = JSON.parse(process.env.cameras).map((camera, index) => ({
     sizeTolerance: 0.1,
     positionTolerance: 0.1,
     probabilityOfExistenceDecay: 0.95,
-
-    alertUrl: 'webhook url'
 }))
