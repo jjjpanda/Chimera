@@ -1,6 +1,13 @@
 const supertest = require('supertest');
 const command = require('command').app
 const {handleServerStart} = require('lib')
+
+try{
+    process.env.command_PORT = parseInt(process.env.command_HOST.split(":")[2])
+}
+catch{
+    process.exit(1)
+}
 const gateway = require('../server.js').app
 
 jest.mock('memory')

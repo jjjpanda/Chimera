@@ -2,7 +2,7 @@ const supertest = require('supertest');
 const app = require('../backend/schedule.js')
 
 jest.mock('lib')
-
+jest.mock('axios')
 jest.mock('memory', () => ({
     client: (name) => ({
         emit: (event, ...args) => {

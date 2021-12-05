@@ -10,7 +10,7 @@ fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
 })
 
 jest.mock('pm2')
-jest.mock('request')
+jest.mock('axios')
 jest.mock('memory')
 
 describe('Authorization Routes', () => {

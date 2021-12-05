@@ -5,6 +5,7 @@ jest.mock('lib')
 jest.mock('fs')
 jest.mock('memory')
 jest.mock('pm2')
+jest.mock('axios')
 
 describe('File Routes', () => {
     let cookieWithBearerToken = "validCookie"
