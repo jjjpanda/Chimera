@@ -62,6 +62,7 @@ env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
 
 env.lib += writeVarLine("alert_URL")
+env.lib += writeVarLine("admin_alert_URL")
 
 env.command += writeVarLine("password_FILEPATH")
 env.lib += writeVarLine("password_FILEPATH")
