@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "4.3.2",
+  "version": "4.3.3",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "scripts": {
@@ -56,7 +56,7 @@
     "prunewrap:memory": "cd memory && npm run prunewrap",
     "prerelease": "npx npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --include=dev\"",
     "release": "npx npm-run-all -s --npm-path npm build test",
-    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks install:* prunewrap:*"
+    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks \"install:* -- --package-lock-only\" prunewrap:*"
   },
   "dependencies": {
     "command": "file:./command",
@@ -71,7 +71,7 @@
     "pm2": "^5.1.2",
     "schedule": "file:./schedule",
     "storage": "file:./storage",
-    "object": "jjjpanda/object#v1.1.0"
+    "object": "jjjpanda/object#v1.1.1"
   },
   "devDependencies": {
     "eslint": "^8.2.0",

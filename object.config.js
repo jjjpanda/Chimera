@@ -6,7 +6,7 @@ module.exports = JSON.parse(process.env.cameras).map((camera, index) => ({
     name: camera,
     inputUrl: cameraURL(index + 1),
     fps: 0.25,
-    alertUrl: process.env.alertUrl,
+    alertUrl: process.env.admin_alert_URL,
 
     minimumObjectConfidence: 0.9,
     pixelThreshold: 0.1, 
