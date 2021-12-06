@@ -4,7 +4,7 @@
   "module": "module.js",
   "scripts": {
     "test": "npx jest --verbose",
-    "prunewrap": "npm prune --production && npm shrinkwrap"
+    "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

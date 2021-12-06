@@ -4,7 +4,7 @@
   "scripts": {
     "start": "node start.js",
     "test": "npx jest --verbose",
-    "prunewrap": "npm prune --production && npm shrinkwrap"
+    "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
     "http-proxy-middleware": "^1.0.6",

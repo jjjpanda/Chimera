@@ -6,7 +6,7 @@
     "build": "npx webpack --progress",
     "buildCont": "npx webpack --progress --watch",
     "test": "npx jest --verbose",
-    "prunewrap": "npm prune --production && npm shrinkwrap"
+    "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
     "@ant-design/icons": "^4.3.0",
