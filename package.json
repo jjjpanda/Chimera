@@ -56,7 +56,7 @@
     "prunewrap:memory": "cd memory && npm run prunewrap",
     "prerelease": "npx npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --include=dev\"",
     "release": "npx npm-run-all -s --npm-path npm build test",
-    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks \"install:* -- --package-lock-only\" prunewrap:*"
+    "postrelease": "npx npm-run-all -s --npm-path npm delete-locks install:* prunewrap:*"
   },
   "dependencies": {
     "command": "file:./command",
