@@ -7,7 +7,7 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
-    "heartbeat": "jjjpanda/heartbeat#v1.2.5",
+    "heartbeat": "jjjpanda/heartbeat#v1.2.6",
     "memory": "file:../memory",
     "lib": "file:../lib",
     "cookie-parser": "^1.4.5",

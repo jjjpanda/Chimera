@@ -17,8 +17,7 @@ Massive Dependencies:
 1. [motion](https://github.com/Motion-Project/motion) - should be running on same machine as [storage](storage) server for optimal performance. See [storage](storage) as for why.
 2. [ffmpeg](https://ffmpeg.org) - should be installed on same machine as [livestream](livestream) and [storage](storage). 
 3. [heartbeat](https://github.com/jjjpanda/heartbeat) - used to confirm server is still up.
-
-
+4. [object](https://github.com/jjjpanda/object) - used to detect objects (still not implemented within start script).
 
 ## Quick Start
 
