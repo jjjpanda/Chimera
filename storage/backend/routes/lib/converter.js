@@ -18,7 +18,7 @@ module.exports = {
 			}
 			else{
 				let list = files.filter( file => file.includes(".jpg") && 
-					`${file.split("-")[0]}-${file.split("-")[1]}` > start && 
+					`${file.split("-")[0]}-${file.split("-")[1]}` >= start && 
 					`${file.split("-")[0]}-${file.split("-")[1]}` <= end )
 				callback(skipEvery == 1 ? list : list.filter( (file, index) => {
 					return (index % skipEvery === 0 )
@@ -78,11 +78,12 @@ module.exports = {
         
 		if(camera == undefined){
 			res.status(400).send({
-				error: "No Camera"
+				error: true,
+				msg: "no camera"
 			})
 		}
 		else{
-			camera = camera.toString()
+			req.body.camera = camera.toString()
 			next()
 		}
 	},
@@ -92,7 +93,8 @@ module.exports = {
         
 		if(id == undefined){
 			res.status(400).send({
-				error: "No ID"
+				error: true,
+				msg: "no id"
 			})
 		}
 		else{
