@@ -139,6 +139,7 @@ env.gateway += writeVarLine("livestream_HOST")
 env.livestream += writeVarLine("livestream_FOLDERPATH")
 confirmPath("livestream_FOLDERPATH", true)
 
+writeVarLine("object_os")
 writeVarLine("OBJECT_CONF_FOLDERPATH")
 
 env.memory += writeVarLine("memory_ON")
