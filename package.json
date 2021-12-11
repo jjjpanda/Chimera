@@ -75,7 +75,7 @@
     "pm2": "^5.1.2",
     "schedule": "file:./schedule",
     "storage": "file:./storage",
-    "object": "jjjpanda/object#v1.1.2"
+    "object": "jjjpanda/object#v2.0.0"
   },
   "devDependencies": {
     "eslint": "^8.2.0",
