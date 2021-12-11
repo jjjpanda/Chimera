@@ -7,12 +7,13 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
+    "axios": "^0.24.0",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^10.0.0",
     "jsonwebtoken": "^8.5.1",
     "nanoid": "^3.1.30",
-    "axios": "^0.24.0",
     "pm2": "^5.1.2",
-    "dotenv": "^10.0.0"
+    "request-ip": "^2.1.3"
   },
   "peerDependencies": {
     "jest": "^27.3.1"
