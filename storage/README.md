@@ -76,7 +76,6 @@ The rest of the config in terms of [motion](https://github.com/Motion-Project/mo
 
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
-|GET|/directory|Opens 'directory' as web page|None|html|
 |GET|/directory/example.mp4|Downloads the specified file|None|mp4|
 
 ## ▶ /storage
