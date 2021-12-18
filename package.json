@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "4.3.5",
+  "version": "4.4.0",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "engines": {
@@ -65,7 +65,7 @@
     "command": "file:./command",
     "dotenv": "^10.0.0",
     "gateway": "file:./gateway",
-    "heartbeat": "jjjpanda/heartbeat#v1.2.6",
+    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "lib": "file:./lib",
     "livestream": "file:./livestream",
     "memory": "file:./memory",

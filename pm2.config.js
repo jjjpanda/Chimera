@@ -22,7 +22,7 @@ const config = {
 
 if(!isDev){
 	config.apps.push({
-		script: "heartbeat",
+		script: "npx heartbeat",
 		name: "heartbeat",
 		log: "./log/heartbeat.log",
 		log_date_format:"YYYY-MM-DD HH:mm:ss"
