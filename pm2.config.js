@@ -55,7 +55,7 @@ if(process.env.livestream_ON === "true"){
 
 if(process.env.object_ON === "true"){
 	const pathToObjectExecArr = ["node_modules", "object", "dist", "object"]
-	const pathToObjectExec = process.env.object_os == "win" ? pathToObjectExecArr.join("/") : pathToObjectExecArr.join("\\")
+	const pathToObjectExec = process.env.object_os == "win" ? pathToObjectExecArr.join("\\") : pathToObjectExecArr.join("/")
 	config.apps.push({
 		script: `${pathToObjectExec}-${process.env.object_os}${process.env.object_os == "win" ? ".exe" : ""} ${process.env.OBJECT_CONF_FOLDERPATH}`,
 		name: "object",
