@@ -3,9 +3,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
-    "build": "npx webpack --progress",
-    "buildCont": "npx webpack --progress --watch",
-    "test": "npx jest --verbose",
+    "build": "webpack --progress",
+    "buildCont": "webpack --progress --watch",
+    "test": "jest --verbose",
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {

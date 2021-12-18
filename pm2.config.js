@@ -22,7 +22,7 @@ const config = {
 
 if(!isDev){
 	config.apps.push({
-		script: "npx heartbeat",
+		script: "heartbeat",
 		name: "heartbeat",
 		log: "./log/heartbeat.log",
 		log_date_format:"YYYY-MM-DD HH:mm:ss"
@@ -31,7 +31,7 @@ if(!isDev){
 
 if(process.env.storage_ON === "true"){
 	config.apps.push({
-		script: `npx mkdirp ${process.env.storage_FOLDERPATH}shared/captures && motion -c ${process.env.storage_MOTION_CONF_FILEPATH}`,
+		script: `mkdirp ${process.env.storage_FOLDERPATH}shared/captures && motion -c ${process.env.storage_MOTION_CONF_FILEPATH}`,
 		name: "motion",
 		log: `./log/motion.${isDev ? "dev" : "pm2"}.log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
@@ -44,7 +44,7 @@ if(process.env.livestream_ON === "true"){
 	const cameraKey = (i) => `livestream_CAMERA_URL_${i}`
 	while(cameraKey(cameraIndex) in process.env){
 		config.apps.push({
-			script: `npx mkdirp ${process.env.livestream_FOLDERPATH}feed/${cameraIndex} && ffmpeg -loglevel quiet -i "${cameraURL(cameraIndex)}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${path.join(process.env.livestream_FOLDERPATH, "feed", cameraIndex.toString(), "video.m3u8")}`,
+			script: `mkdirp ${process.env.livestream_FOLDERPATH}feed/${cameraIndex} && ffmpeg -rtsp_transport tcp -i "${cameraURL(cameraIndex)}" -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${path.join(process.env.livestream_FOLDERPATH, "feed", cameraIndex.toString(), "video.m3u8")}`,
 			name: `live_stream_cam_${cameraIndex}`,
 			log: `./log/livestream.${cameraIndex}${isDev ? ".dev" : ""}.log`,
 			log_date_format:"YYYY-MM-DD HH:mm:ss",
@@ -54,8 +54,10 @@ if(process.env.livestream_ON === "true"){
 }
 
 if(process.env.object_ON === "true"){
+	const pathToObjectExecArr = ["node_modules", "object", "dist", "object"]
+	const pathToObjectExec = process.env.object_os == "win" ? pathToObjectExecArr.join("/") : pathToObjectExecArr.join("\\")
 	config.apps.push({
-		script: `node_modules/object/dist/object-${process.env.object_os}${process.env.object_os == "win" ? ".exe" : ""} ${process.env.OBJECT_CONF_FOLDERPATH}`,
+		script: `${pathToObjectExec}-${process.env.object_os}${process.env.object_os == "win" ? ".exe" : ""} ${process.env.OBJECT_CONF_FOLDERPATH}`,
 		name: "object",
 		log: `./log/object.${isDev ? "dev" : "pm2"}.log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",

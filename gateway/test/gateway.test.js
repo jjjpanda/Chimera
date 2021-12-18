@@ -11,6 +11,7 @@ catch{
 const gateway = require('../server.js').app
 
 jest.mock('memory')
+jest.mock('axios')
 
 describe('Gateway Tests', () => {
     test('Gateway Timeout when proxied server is down', (done) => {

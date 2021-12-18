@@ -3,7 +3,7 @@
   "main": "index.js",
   "module": "module.js",
   "scripts": {
-    "test": "npx jest --verbose",
+    "test": "jest --verbose",
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {

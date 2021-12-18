@@ -10,6 +10,7 @@ const processList = [1, 2, 3].map((i) => ({
 jest.mock('pm2')
 jest.mock('memory')
 jest.mock('lib')
+jest.mock('axios')
 
 describe('Livestream Routes', () => {
     test('Unauthorized livestream status', (done) => {
