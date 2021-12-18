@@ -30,7 +30,7 @@ Then, set up a conf for motion with all of your cameras.
 
 If running all services on one machine:
 ```
-npm run install
+npm install --no-optional
 ```
 
 If splitting services, you can install each service with:
