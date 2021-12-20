@@ -147,6 +147,12 @@ env.memory += writeVarLine("memory_PORT")
 env.memory += writeVarLine("memory_HOST")
 env.memory += writeVarLine("memory_AUTH_TOKEN")
 
+env.storage += writeVarLine("database_NAME")
+env.storage += writeVarLine("database_USER")
+env.storage += writeVarLine("database_PASSWORD")
+env.storage += writeVarLine("database_HOST")
+env.storage += writeVarLine("database_PORT")
+
 if(allEnvPresent){
     Promise.all(Object.entries(env)
         .map(([key, value]) => new Promise((resolve, reject) => {

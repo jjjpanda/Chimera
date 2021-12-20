@@ -9,17 +9,18 @@
   "dependencies": {
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
-    "fluent-ffmpeg": "^2.1.2",
-    "memory": "file:../memory",
-    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "cookie-parser": "^1.4.5",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "helmet": "^4.6.0",
+    "lib": "file:../lib",
+    "memory": "file:../memory",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
-    "lib": "file:../lib",
-    "rimraf": "^3.0.2",
-    "dotenv": "^10.0.0"
+    "pg": "^8.7.1",
+    "rimraf": "^3.0.2"
   },
   "peerDependencies": {
     "jest": "^27.3.1",
