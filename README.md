@@ -18,14 +18,18 @@ Massive Dependencies:
 2. [ffmpeg](https://ffmpeg.org) - should be installed on same machine as [livestream](livestream) and [storage](storage). 
 3. [heartbeat](https://github.com/jjjpanda/heartbeat) - used to confirm server is still up.
 4. [object](https://github.com/jjjpanda/object) - used to detect objects (still not implemented within start script).
+5. [postgres](https://www.postgresql.org) - the database
 
 ## Quick Start
 
-### 1. Install motion and ffmpeg
+### 1. Install motion, ffmpeg, and postgres
 ```
-sudo apt-get install motion ffmpeg 
+sudo apt-get install motion ffmpeg postgresql
 ```
-Then, set up a conf for motion with all of your cameras.
+
+*Or however you need to download it on your machine*
+
+Then, set up a conf for **motion** with all of your cameras. Then, set up **postgres** with a database, port, user, and password of your choosing. **Motion** will also need postgres details in it's conf as well. [*See storage for details.*](storage) 
 ### 2. Installing NPM dependencies
 
 If running all services on one machine:
