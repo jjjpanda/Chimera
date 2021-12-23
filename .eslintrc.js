@@ -1,5 +1,9 @@
 module.exports = {
-	"ignorePatterns": ["command/frontend/js/lib/*", "command/dist/app.js", "node_modules"],
+	"ignorePatterns": [ 
+		"command/frontend/js/lib/*", 
+		"command/dist/app.js", 
+		"node_modules"
+	],
 	"env": {
 		"browser": true,
 		"es2021": true,
