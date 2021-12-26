@@ -2,6 +2,7 @@
   "name": "command",
   "main": "server.js",
   "scripts": {
+    "prestart": "cd .. && npm-run-all -s --npm-path npm \"prepare:*\"",
     "start": "node start.js",
     "build": "webpack --progress",
     "buildCont": "webpack --progress --watch",

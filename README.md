@@ -32,19 +32,10 @@ sudo apt-get install motion ffmpeg postgresql
 Then, set up a conf for **motion** with all of your cameras. Then, set up **postgres** with a database, port, user, and password of your choosing. **Motion** will also need postgres details in it's conf as well. [*See storage for details.*](storage) 
 ### 2. Installing NPM dependencies
 
-If running all services on one machine:
 ```
 npm install --no-optional
 ```
 
-If splitting services, you can install each service with:
-```
-npm run install:<service>
-```
-or 
-```
-cd <service> && npm install
-```
 ### 3. Create Environment Variables File
 
 Copy the example env into an .env dotfile:
@@ -53,17 +44,6 @@ cp env.example .env
 ```
 
 Fill in the .env with all the info listed ( for optional fields, leave blank after the "=" ). 
-
-Then, if running any service separate run:
-```
-npm run validate:env && npm run validate:pass
-```
-This is will split the .env into multiple .env's for the respective services, then create the hash file for passwords.
-
-If running gateway and using https run:
-```
-npm run validate:acme
-```
 
 ### 4. Start Chimera
 

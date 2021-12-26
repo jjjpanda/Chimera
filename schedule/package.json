@@ -7,6 +7,7 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
+    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:env",
     "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "memory": "file:../memory",
     "cookie-parser": "^1.4.5",

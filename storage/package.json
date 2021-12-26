@@ -2,6 +2,7 @@
   "name": "storage",
   "main": "server.js",
   "scripts": {
+    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:acme prepare:env prepare:database",
     "start": "node start.js",
     "test": "jest --verbose",
     "prunewrap": "npm shrinkwrap"
