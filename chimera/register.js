@@ -1,6 +1,15 @@
 require("dotenv").config()
 const { auth } = require("lib")
 
+const Pool = require('pg').Pool
+const pool = new Pool({
+    user: process.env.database_USER,
+    host: process.env.database_HOST,
+    database: process.env.database_NAME,
+    password: process.env.database_PASSWORD,
+    port: process.env.database_PORT,
+})
+
 const stdout = process.stdout
 const stdin = process.stdin
 
@@ -60,7 +69,7 @@ const exit = (retyped) => {
 }
 
 const closeOut = (bypass=false) => {
-	auth.register(bypass ? "" : input, () => {
+	auth.register(bypass ? "" : input, pool, () => {
 		process.exit(0)
 	}, (msg) => {
 		console.log(msg)
@@ -89,13 +98,7 @@ const backspace = (retyped) => {
 	}
 }
 
-const seconds = 30
-setInterval(() => {
-	enter(null, true)
-}, seconds * 1000)
-
-stdout.write(`Proceeding with password file in ${seconds} seconds`)
-stdout.write("\nPassword:")
+stdout.write("\nCreate Chimera Password:")
 stdin.setRawMode(true)
 stdin.resume()
 stdin.setEncoding("utf-8")

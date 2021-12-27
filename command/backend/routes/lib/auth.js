@@ -1,9 +1,16 @@
 const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
-const fs = require("fs")
-const path = require("path")
 const {randomID, webhookAlert} = require('lib')
+
+const Pool = require('pg').Pool
+const pool = new Pool({
+    user: process.env.database_USER,
+    host: process.env.database_HOST,
+    database: process.env.database_NAME,
+    password: process.env.database_PASSWORD,
+    port: process.env.database_PORT,
+})
 
 const client = require("memory").client("AUTHORIZATION")
 
@@ -17,8 +24,9 @@ module.exports = {
 				next()
 			}
 			else{
-				fs.readFile(path.join(process.env.password_FILEPATH), {encoding:"utf8", flag:"r"}, (err, hash) => {
-					if(!err){
+				pool.query(`SELECT hash FROM auth WHERE username = 'admin'`, (err, values) => {
+					if (!err && values.rows.length > 0 && values.rows[0].hash) {
+						const {hash} = values.rows[0]
 						bcrypt.compare(password == undefined ? "" : password, hash, (err, success) => {
 							if(!err && success){
 								next()
@@ -29,7 +37,7 @@ module.exports = {
 						})
 					}
 					else{
-						console.log(`NO HASH FILE AT ${process.env.password_FILEPATH}`)
+						console.log(`NO HASH`)
 						res.status(400).json({ error: true, errors: "Password Unable to Be Verified" })
 					}
 				})

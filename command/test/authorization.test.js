@@ -1,14 +1,9 @@
 const supertest = require('supertest');
 const app = require('../backend/command.js')
 
-const bcrypt = require("bcryptjs")
 const mockedPassword = 'mockedPassword'
-const hashedMockedPassword = bcrypt.hashSync(mockedPassword, bcrypt.genSaltSync(10))
-let fs = require('fs');
-fs.readFile = jest.fn().mockImplementation((filePath, options, callback) => {
-    callback(false, hashedMockedPassword)
-})
 
+jest.mock('pg')
 jest.mock('pm2')
 jest.mock('axios')
 jest.mock('memory')
