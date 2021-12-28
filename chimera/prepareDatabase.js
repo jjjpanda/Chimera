@@ -26,8 +26,11 @@ const creationTasks = [
 Promise.allSettled(creationTasks.map(({query}) => {
   return pool.query(query)
 })).then(values => {
+  let issues = false
   values.forEach((value, index) => {
     const tableExists = value.status == "fulfilled" || (value.status == "rejected" && value.reason && value.reason.code == `42P07`)
+    if(!tableExists) issues = true
     console.log(`${creationTasks[index].description} ${tableExists ? `✔️` : `❌`}`)
   })
+  process.exit(issues ? 1 : 0)
 })
