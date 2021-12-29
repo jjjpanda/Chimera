@@ -194,7 +194,7 @@ class FileStats extends React.Component {
                 
 					{/* <ServerProcess key={`server${this.state.lastUpdated}`}/> */}
 
-					<ResponsiveContainer width="100%" height={300}>
+					{/* <ResponsiveContainer width="100%" height={300}>
 						<LineChart width={730} height={250} data={this.state.countStats}
 							margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
 							<CartesianGrid strokeDasharray="3 3" />
@@ -221,7 +221,7 @@ class FileStats extends React.Component {
 								return <Line type="monotone" dataKey={name} stroke={colorArray[index]} />
 							})}
 						</LineChart>
-					</ResponsiveContainer>
+					</ResponsiveContainer> */}
 
 					<List >
 						{this.state.cameras.map(cam => {
