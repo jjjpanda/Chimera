@@ -18,7 +18,7 @@ const creationTasks = [
     description: "frame deletions table"
   },
   {
-    query: `CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(10), hash VARCHAR);`,
+    query: `CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(10) UNIQUE, hash VARCHAR);`,
     description: "authorization table"
   }
 ]
