@@ -64,10 +64,6 @@ env.storage += writeVarLine("cameras")
 env.lib += writeVarLine("alert_URL")
 env.lib += writeVarLine("admin_alert_URL")
 
-env.command += writeVarLine("password_FILEPATH")
-env.lib += writeVarLine("password_FILEPATH")
-confirmPath("password_FILEPATH")
-
 env.command += writeVarLine("templink_PIN")
 env.lib += writeVarLine("templink_PIN")
 
@@ -146,6 +142,21 @@ env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
 env.memory += writeVarLine("memory_HOST")
 env.memory += writeVarLine("memory_AUTH_TOKEN")
+
+env.storage += writeVarLine("database_NAME")
+env.command += writeVarLine("database_NAME")
+
+env.storage += writeVarLine("database_USER")
+env.command += writeVarLine("database_USER")
+
+env.storage += writeVarLine("database_PASSWORD")
+env.command += writeVarLine("database_PASSWORD")
+
+env.storage += writeVarLine("database_HOST")
+env.command += writeVarLine("database_HOST")
+
+env.storage += writeVarLine("database_PORT")
+env.command += writeVarLine("database_PORT")
 
 if(allEnvPresent){
     Promise.all(Object.entries(env)
