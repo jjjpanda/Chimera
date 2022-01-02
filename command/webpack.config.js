@@ -71,10 +71,6 @@ module.exports = {
 			chunks : ["app"],
 			filename: "app.html"
 		}),
-		new Dotenv({
-			path: path.resolve(__dirname, "../.env"),
-			safe: path.resolve(__dirname, "../env.example"),
-			allowEmptyValues: true
-		})
+		new Dotenv()
 	]
 }
