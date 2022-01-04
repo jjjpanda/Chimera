@@ -1,4 +1,4 @@
-import React from "react"
+import React, {useEffect} from "react"
 import ReactDOM from "react-dom"
 import {
 	BrowserRouter as Router,
@@ -6,12 +6,13 @@ import {
 	Routes,
 	Navigate
 } from "react-router-dom"
-import Main from "./app/Main.jsx"
+import Main from "./app_v2/Main.jsx"
 
 import "./css/style.less"
 import Cookies from "js-cookie"
-import LoadingIcon from "./app/LoadingIcon.jsx"
-import LoginPage from "./app/LoginPage.jsx"
+import LoadingIcon from "./app_v2/LoadingIcon.jsx"
+import LoginPage from "./app_v2/LoginPage.jsx"
+import ThemeProvider from "./app_v2/ThemeProvider.jsx"
 
 import { request } from "./js/request.js"
 
@@ -103,16 +104,18 @@ class App extends React.Component{
 			timestamp: this.state.timestamp
 		}
 		return (
-			<Router>
-				{this.state.loaded ? <Routes>
-					<Route path="/login/:password" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage withPassword {...loginProps} />}
-					/>
-					<Route path="/login" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage {...loginProps} />}
-					/>
-					<Route path="/:route" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
-					<Route path="/" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
-				</Routes> : <LoadingIcon />}
-			</Router>
+			<ThemeProvider>
+				<Router>
+					{this.state.loaded ? <Routes>
+						<Route path="/login/:password" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage withPassword {...loginProps} />}
+						/>
+						<Route path="/login" element={this.state.loggedIn ? <Navigate to="/" /> : <LoginPage {...loginProps} />}
+						/>
+						<Route path="/:route" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
+						<Route path="/" element={this.state.loggedIn ? <Main /> : <Navigate to="/login" />}/>
+					</Routes> : <LoadingIcon />}
+				</Router>
+			</ThemeProvider>
 		)
 	}
 }
@@ -120,29 +123,3 @@ class App extends React.Component{
 ReactDOM.render(<App />,
 	document.getElementById("root"),
 )
-
-/* 
-    const [key, value] = location.search.split('=')
-    console.log(key, value, this.state.loggedIn)
-    if(key == "?loginForm") {
-        if(this.state.loggedIn){
-            return <div>bruh</div>//this.props.history.push({pathname: "/"}) 
-        }
-        else{
-            if(value == undefined){
-                return <LoginForm  />
-            }
-            else{
-                return <div>bruh</div>//this.props.history.push({pathname: "/", state: { otp: value }})
-            }
-        }
-    }
-    else {
-        if(this.state.loggedIn) {
-            return <Main /> 
-        }
-        else{
-            return <div>bruh</div>//this.props.history.push({pathname: "/?loginForm"})
-        }
-    }  
-*/

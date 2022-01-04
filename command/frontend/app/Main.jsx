@@ -1,7 +1,7 @@
 import React from "react"
 
 import { 
-	WingBlank,
+	Space,
 	Tabs
 } from "antd-mobile"
 
@@ -31,15 +31,15 @@ const Main = () => {
 	const navigate = useNavigate()
 	let index = routeToIndex(route)
 	return (
-		<WingBlank size="sm">
-			<Tabs prerenderingSiblingsNumber={0} initialPage={index} swipeable={false} tabBarPosition="bottom" animated tabs= {[
+		<Space>
+			{/* <Tabs prerenderingSiblingsNumber={0} initialPage={index} swipeable={false} tabBarPosition="bottom" animated tabs= {[
 				{title: "Live", routeName:"live"},
 				{title: "Motion", routeName:"process"},
 				{title: "Scrubber", routeName:"scrub"},
 				{title: "Files", routeName:"stats"}
 			]} onChange={({routeName}) => {
 				navigate(`/${routeName}`)
-			}}>
+			}}> */}
 				<LiveVideo />
 
 				<MotionRecording />
@@ -47,8 +47,8 @@ const Main = () => {
 				<SummaryScrubber />
 
 				<FileStats />
-			</Tabs>
-		</WingBlank>
+			{/* </Tabs> */}
+		</Space>
 	)
 }
 

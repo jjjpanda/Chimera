@@ -13,8 +13,6 @@ import {
 	InputItem
 } from "antd-mobile"
 
-import enUs from "antd-mobile/lib/date-picker/locale/en_US"
-
 class TimeRangePicker extends React.Component{
 
 	constructor(props){
@@ -26,7 +24,6 @@ class TimeRangePicker extends React.Component{
 			<DatePicker
 				mode="time"
 				value={this.props.startTime}
-				locale={enUs}
 				onChange={this.props.startChange}
 				use12Hours
 			>
@@ -37,7 +34,6 @@ class TimeRangePicker extends React.Component{
 			<DatePicker
 				mode='time'
 				value={this.props.endTime}
-				locale={enUs}
 				onChange={this.props.endChange}
 				use12Hours
 			>

@@ -8,18 +8,14 @@ import {
 	DatePicker,
 	List,
 	Checkbox,
-	WhiteSpace,
+	Space,
 	Toast, 
 	Card,
 	Slider,
 	WingBlank,
-	ActivityIndicator,
-	Progress,
-	InputItem
+	ProgressBar,
+	Input
 } from "antd-mobile"
-
-import enUsDate from "antd-mobile/lib/date-picker/locale/en_US"
-import enUsNumber from "antd-mobile/lib/input-item/locale/en_US"
 
 import {request, jsonProcessing, downloadProcessing} from "./../js/request.js"
 import moment from "moment"
@@ -132,19 +128,19 @@ class SummaryScrubber extends React.Component{
 					}) : <div>
                         No Images
 					</div>) 
-						: <ActivityIndicator />}
+						: "Loading"}
 
 					<br />
 
 					{this.state.list.length > 0 && this.state.imagesLoaded < this.state.list.length ? 
-						<Progress percent={Math.round(100 * this.state.imagesLoaded / this.state.list.length)} position="normal" /> 
+						<ProgressBar percent={Math.round(100 * this.state.imagesLoaded / this.state.list.length)} position="normal" /> 
 						: <div></div>}
                     
 					<CameraDatePicker
 						pre ={
 							<List.Item>
 								<br />
-								<WingBlank size="sm">
+								<Space>
 									<Slider 
 										min={0}
 										max={Math.min(this.state.numberOfFrames - 1, this.state.list.length - 1)}
@@ -156,22 +152,17 @@ class SummaryScrubber extends React.Component{
 										}}
 										disabled={this.state.loading}
 									/>
-								</WingBlank>
+								</Space>
 								<br />
 							</List.Item>
 						}
 						post={
-							<InputItem 
-								type="money" 
-								moneyKeyboardAlign="right" 
+							<Input
 								value={this.state.numberOfFrames} 
 								onChange={(val) => this.setState(() => ({numberOfFrames: Math.max(Math.round(val), 0)}))}
-								onVirtualKeyboardConfirm={this.updateImages}
-								locale={enUsNumber}
-								autoAdjustHeight
 							>
                                 Frames
-							</InputItem>
+							</Input>
 						}
 						camera={this.state.camera}
 						cameras={this.state.cameras}

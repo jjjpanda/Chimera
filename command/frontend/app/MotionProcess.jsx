@@ -4,8 +4,7 @@ import {
 	Button,
 	List,
 	Card,
-	Switch,
-	ActivityIndicator
+	Switch
 } from "antd-mobile"
 
 import {request, jsonProcessing} from "../js/request.js"
@@ -86,7 +85,7 @@ class MotionProcess extends React.Component {
 					<Switch checked = {this.state.status.running} disabled = {this.state.loading} onChange={this.motionChange} />
 				</div>}
 				body= {<div>
-                    Status: {this.state.loading ? <ActivityIndicator /> : (this.state.status.running ? "On": "Off")}
+                    Status: {this.state.loading ? "Loading" : (this.state.status.running ? "On": "Off")}
 				</div>}
 				footer={<div>
                     CPU Time: {this.state.status.duration}

@@ -6,12 +6,14 @@ import {
 	Card,
 	PullToRefresh,
 	NoticeBar,
-	Icon,
-	WhiteSpace,
 	Flex,
 	Modal,
-	WingBlank
+	Space
 } from "antd-mobile"
+
+import {
+	CheckCircleOutline
+} from 'antd-mobile-icons'
 
 import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
@@ -112,21 +114,15 @@ class MotionRecording extends React.Component{
 					</Button>}
 				/>
 				<Card.Body>                    
-					<NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
+					<NoticeBar mode="closable" icon={<CheckCircleOutline />}>
                         Last Updated Date: {this.state.lastUpdated}
 					</NoticeBar>
-                    
-					<WhiteSpace size="sm" />
 
 					<ScheduleMotion update ={this.listProcesses} />
 
 					<MotionProcess key={`motion${this.state.lastUpdated}`}/>
-
-					<WhiteSpace size="sm" />
                     
 					<SaveProcess update={this.listProcesses}/>    
-                    
-					<WhiteSpace size="sm" />
 
 					{this.state.processList.map(process => {
 						return (
@@ -152,13 +148,13 @@ class MotionRecording extends React.Component{
 									}
 									title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
 								/>
-								<WingBlank size="sm">
+								<Space>
                                         Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
                                         Camera: {process.camera} <br />
                                         Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
                                         End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
 									{(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
-								</WingBlank>
+								</Space>
 								<br />
 								<Card.Footer 
 									content={<div>{process.running ? "Running" : null}</div>} 

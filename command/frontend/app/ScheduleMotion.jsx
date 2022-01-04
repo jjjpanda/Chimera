@@ -1,7 +1,7 @@
 import React from "react"
 
 import { 
-	Flex,
+	Space,
 	Modal, 
 	Button,
 	SegmentedControl,
@@ -172,7 +172,7 @@ class ScheduleMotion extends React.Component{
 	}
 
 	render () {
-		return (<Flex.Item>
+		return (<Space>
 			<Button icon="check-circle-o" onClick={this.openModal}>
                 SCHEDULE
 			</Button>
@@ -211,16 +211,16 @@ class ScheduleMotion extends React.Component{
 					/>
                     
 				</List>
-				<Flex>
-					<Flex.Item>
+				<Space>
+					<Space>
 						<Button icon="check-circle-o" onClick={this.stopTask}>STOP</Button>
-					</Flex.Item>
-					<Flex.Item>
+					</Space>
+					<Space>
 						<Button icon="check-circle-o" onClick={this.startTask}>START</Button>
-					</Flex.Item>
-				</Flex>
+					</Space>
+				</Space>
 			</Modal>
-		</Flex.Item>)
+		</Space>)
 	}
 
 }

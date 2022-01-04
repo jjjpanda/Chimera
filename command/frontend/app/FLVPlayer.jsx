@@ -2,7 +2,7 @@ import React from "react"
 import flvjs from "flv.js"
 
 import{
-	Card, Button, WhiteSpace
+	Card, Button
 } from "antd-mobile"
 
 class FLVPlayer extends React.Component{
@@ -62,7 +62,6 @@ class FLVPlayer extends React.Component{
 				<Card.Footer extra={<Button size="small">
 
 				</Button>}>
-					<WhiteSpace size="xl" />
 				</Card.Footer>
 			</Card>
 		)

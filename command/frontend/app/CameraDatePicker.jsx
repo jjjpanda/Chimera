@@ -4,15 +4,13 @@ import {
 	Flex,
 	Modal, 
 	Button,
-	SegmentedControl,
+	Selector,
 	DatePicker,
 	List,
 	Checkbox,
 	WhiteSpace,
 	Toast
 } from "antd-mobile"
-
-import enUs from "antd-mobile/lib/date-picker/locale/en_US"
 
 class CameraDatePicker extends React.Component {
 	constructor(props){
@@ -26,17 +24,15 @@ class CameraDatePicker extends React.Component {
 
 				<List.Item>
 					<div>Camera</div>
-					<SegmentedControl
-						selectedIndex={this.props.camera}
-						values={this.props.cameras}
-						onValueChange = {this.props.cameraChange}
-						tintColor={"#ff0000"}
+					<Selector
+						value={this.props.camera}
+						options={this.props.cameras}
+						onChange = {this.props.cameraChange}
 					/>
 				</List.Item>
 
 				<DatePicker
 					value={this.props.startDate}
-					locale={enUs}
 					onChange={this.props.startChange}
 				>
 					<List.Item arrow="horizontal">
@@ -46,7 +42,6 @@ class CameraDatePicker extends React.Component {
             
 				<DatePicker
 					value={this.props.endDate}
-					locale={enUs}
 					onChange={this.props.endChange}
 				>
 					<List.Item arrow="horizontal">

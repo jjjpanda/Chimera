@@ -1,16 +1,15 @@
 import React from "react"
 
 import { 
-	Flex,
+	Space,
 	Modal, 
 	Button,
 	SegmentedControl,
 	DatePicker,
 	List,
 	Checkbox,
-	WhiteSpace,
 	Toast,
-	InputItem
+	Input
 } from "antd-mobile"
 
 import {request, jsonProcessing, downloadProcessing} from "./../js/request.js"
@@ -106,7 +105,7 @@ class SaveProcess extends React.Component{
 	render () {
 		console.log(this.state)
 		return (
-			<Flex.Item>
+			<Space>
 				<Button icon="check-circle-o" onClick={this.openModal}>
                     SAVE VIDEO/ZIP
 				</Button>
@@ -132,14 +131,13 @@ class SaveProcess extends React.Component{
 						endDate={this.state.endDate}
 						endChange={date => this.setState({ endDate: date })}
 						post={[
-							<InputItem 
-								type="number" 
+							<Input 
 								value={this.state.skip}
 								extra={"Frame Skipping"}
 								onChange = {(val) => this.setState({ skip: val })}
 							>
                                 Skip
-							</InputItem>,
+							</Input>,
 							<Checkbox.CheckboxItem 
 								checked={this.state.download} 
 								onChange={(e) => this.setState({ download : e.target.checked })} 
@@ -147,20 +145,19 @@ class SaveProcess extends React.Component{
                                 Direct Download
 							</Checkbox.CheckboxItem>
 						]}
-					/>                
-					<WhiteSpace size="md" />
+					/>
 
-					<Flex>
-						<Flex.Item>
+					<Space>
+						<Space>
 							<Button icon="check-circle-o" onClick={this.createVideo}>VIDEO</Button>
-						</Flex.Item>
-						<Flex.Item>
+						</Space>
+						<Space>
 							<Button icon="check-circle-o" onClick={this.createZip}>ZIP</Button>
-						</Flex.Item>
-					</Flex>
+						</Space>
+					</Space>
 
 				</Modal>
-			</Flex.Item>
+			</Space>
 		)
 	}
 

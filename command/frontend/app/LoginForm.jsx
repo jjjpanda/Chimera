@@ -1,7 +1,8 @@
 import React from "react"
 import ReactDOM from "react-dom"
-import { Card, WingBlank, Button, Modal, LocaleProvider, Icon, Toast } from "antd-mobile"
-import enUS from "antd-mobile/lib/locale-provider/en_US"
+import { Card, Space, Button, Modal } from 'antd'
+import { Button, Modal, Toast } from "antd-mobile"
+import {RightOutline, CloseCircleOutline, CheckCircleOutline} from 'antd-mobile-icons'
 class LoginForm extends React.Component{
 	constructor(props){
 		super(props)
@@ -46,39 +47,26 @@ class LoginForm extends React.Component{
 
 	render() {
 		return (
-			<LocaleProvider locale={enUS}>
-				<WingBlank size="sm">
-					<Card>
-						<Card.Header
-							title={"  ---Login---"}
-							thumb={<Icon type={this.state.loginStatus == null ? "right" : (this.state.loginStatus == "wrong" ? "cross-circle" : "check-circle")}  />}
-						/>
-						<Card.Body>
-							<WingBlank size="sm">
-								<Button 
-									onClick={
-										() => Modal.prompt("Password", "", [{text: "Cancel"}, {text: "Enter", onPress: this.onPasswordEnter}], "secure-text")
-									}
-									type="primary"
-								>
-                                    Password
-								</Button>
-								<Button 
-									onClick={
-										() => Modal.prompt("PIN", "", [{text: "Cancel"}, {text: "Enter", onPress: this.onPINEnter}], "secure-text")
-									}
-									type="ghost"
-								>
-                                    PIN
-								</Button>
-							</WingBlank>
-						</Card.Body>
-						<Card.Footer
-							extra={"2 methods to sign in"}
-						/>
-					</Card>
-				</WingBlank>
-			</LocaleProvider>
+			<Card 
+				title={"---Login---"} 
+				extra={this.state.loginStatus == null ? <RightOutline /> : (this.state.loginStatus == "wrong" ? <CloseCircleOutline /> : <CheckCircleOutline />)}>
+				<Button 
+					onClick={
+						() => Modal.prompt("Password", "", [{text: "Cancel"}, {text: "Enter", onPress: this.onPasswordEnter}], "secure-text")
+					}
+					type="primary"
+				>
+					Password
+				</Button>
+				<Button 
+					onClick={
+						() => Modal.prompt("PIN", "", [{text: "Cancel"}, {text: "Enter", onPress: this.onPINEnter}], "secure-text")
+					}
+					type="ghost"
+				>
+					PIN
+				</Button>
+			</Card>
 		)
 	}
 }

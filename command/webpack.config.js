@@ -3,6 +3,8 @@ const path = require("path")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const Dotenv = require("dotenv-webpack")
 
+console.log(process.env.NODE_ENV)
+
 module.exports = {
 	mode: process.env.NODE_ENV,
 	entry: {
@@ -53,11 +55,7 @@ module.exports = {
 			},
 			{
 				test: /\.svg(\?v=\d+\.\d+\.\d+)?$/,
-				use: [
-					{
-						loader: "babel-loader",
-					}
-				],
+				use: ["babel-loader", "svg-url-loader"],
 			},
 			{
 				test: /\.(woff|woff2|eot|ttf|otf)$/,

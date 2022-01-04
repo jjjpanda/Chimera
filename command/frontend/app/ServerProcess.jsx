@@ -4,8 +4,7 @@ import {
 	Button,
 	List,
 	Card,
-	Switch,
-	ActivityIndicator
+	Switch
 } from "antd-mobile"
 
 import {request, jsonProcessing} from "../js/request.js"
@@ -88,12 +87,12 @@ class ServerProcess extends React.Component {
 		return ( 
 			<ProcessCard 
 				title= {"Node Server"}
-				extra = {(this.state.loading ? <ActivityIndicator />: <div>
+				extra = {(this.state.loading ?  "Loading" : <div>
 					<Button type="ghost" size="small" inline onClick={this.serverUpdate}>Update</Button>
 					<Button size="small" inline onClick={this.serverInstall}>Install</Button>
 				</div>)}
 				body= {<div>
-                    Status: {this.state.loading ? <ActivityIndicator /> : (this.state.status.running ? "On": "Off")}
+                    Status: {this.state.loading ? "Loading" : (this.state.status.running ? "On": "Off")}
 				</div>}
 				footer={<div>
                     CPU Time: {this.state.status.duration}

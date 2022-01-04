@@ -6,10 +6,13 @@ import {
 	Card,
 	PullToRefresh,
 	NoticeBar,
-	Icon,
-	InputItem,
+	Input,
 	Stepper
 } from "antd-mobile"
+
+import {
+	CheckCircleOutline
+} from 'antd-mobile-icons'
 
 import {
 	LineChart,
@@ -24,11 +27,8 @@ import {
 
 import { formatBytes } from "lib"
 
-import enUs from "antd-mobile/lib/input-item/locale/en_US"
-
 import {request, jsonProcessing} from "./../js/request.js"
 import ServerProcess from "./ServerProcess.jsx"
-import WebDAVProcess from "./WebDAVProcess.jsx"
 import moment from "moment"
 import alertModal from "./Alert.jsx"
 import Cookies from "js-cookie"
@@ -188,7 +188,7 @@ class FileStats extends React.Component {
 					]}
 				/>
 				<Card.Body>
-					<NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
+					<NoticeBar mode="closable" icon={<CheckCircleOutline />}>
                         Last Updated Date: {this.state.lastUpdated} ⚠️ File Size Data is updated every {process.env.storage_fileStatsUpdateTime} minutes.
 					</NoticeBar>
                 
@@ -235,16 +235,12 @@ class FileStats extends React.Component {
 								<List.Item.Brief>File Count: {this.state.loading ? "---" : cam.count}</List.Item.Brief>
 							</List.Item>)
 						})}
-						<InputItem 
-							type="money" 
-							moneyKeyboardAlign="right" 
+						<Input
 							value={this.state.days} 
 							onChange={(val) => this.setState(() => ({days: Math.max(Math.round(val), 0)}))}
-							locale={enUs}
-							autoAdjustHeight
 						>
                             Delete Days
-						</InputItem>
+						</Input>
 					</List>
 
 					<a href= "/shared">

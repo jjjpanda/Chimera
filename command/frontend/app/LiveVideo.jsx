@@ -4,11 +4,14 @@ import {
 	NoticeBar, 
 	Card, 
 	Button, 
-	WingBlank,
-	Icon, 
+	WingBlank, 
 	Tabs,
 	Flex,
 } from "antd-mobile"
+
+import {
+	CheckCircleOutline
+} from 'antd-mobile-icons'
 
 import FLVPlayer from "./FLVPlayer.jsx"
 import MediaServerProcess from "./MediaServerProcess.jsx"
@@ -67,7 +70,7 @@ class LiveVideo extends React.Component{
 	render () {
 		return (
 			<Card>
-				<NoticeBar mode="closable" icon={<Icon type="check-circle-o" size="xxs" />}>
+				<NoticeBar mode="closable" icon={<CheckCircleOutline />}>
                     Last Updated Date: {this.state.lastUpdated}
 				</NoticeBar>
 				<Card.Header 
