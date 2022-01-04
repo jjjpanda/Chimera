@@ -11,7 +11,7 @@ const config = {
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
 		...(isDev ? {
 			watch: ["."],
-			ignore_watch: ["shared", "feed", "*.log", "log", ".env", process.env.password_FILEPATH, ".well-known", "*.config.js"],
+			ignore_watch: ["shared", "feed", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"],
 		} : {}),
 		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
