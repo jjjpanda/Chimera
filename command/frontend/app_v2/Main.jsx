@@ -2,19 +2,24 @@ import React from "react"
 import { useParams, useNavigate } from "react-router-dom"
 
 import { 
-	Space
+	Row,
+	Col
 } from "antd"
+import LiveVideo from "./LiveVideo"
+import FileStats from "./FileStats"
 
 const routeToIndex = (r) => {
 	switch(r){
-	case "live":
+	case "":
 		return 0
-	case "process":
+	case "live":
 		return 1
-	case "scrub":
+	case "process":
 		return 2
-	case "stats":
+	case "scrub":
 		return 3
+	case "stats":
+		return 4
 	default: 
 		return 0
 	}
@@ -25,10 +30,14 @@ const Main = () => {
 	const navigate = useNavigate()
 	let index = routeToIndex(route)
     return (
-		<Space>
-            {index}
-            {route}
-        </Space>
+		<Row>
+			<Col span={16}>
+				<FileStats />
+			</Col>
+			<Col span={8}>
+				<LiveVideo />
+			</Col>
+        </Row>
     )
 }
 

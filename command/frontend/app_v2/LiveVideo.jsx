@@ -4,21 +4,17 @@ import {
 	NoticeBar, 
 	Card, 
 	Button, 
-	WingBlank, 
+	Carousel, 
 	Tabs,
 	Flex,
-} from "antd-mobile"
-
-import {
-	CheckCircleOutline
-} from 'antd-mobile-icons'
+} from "antd"
 
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 import ReactHlsPlayer from "react-hls-player"
 
 class LiveVideo extends React.Component{
-	constructor(props){
+    constructor(props){
 		super(props)
 		this.state = {
 			loading: false,
@@ -65,43 +61,34 @@ class LiveVideo extends React.Component{
 		})
 	}
 
-	render () {
+    render () {
 		return (
-			<Card>
-				<NoticeBar mode="closable" icon={<CheckCircleOutline />}>
-                    Last Updated Date: {this.state.lastUpdated}
-				</NoticeBar>
-				<Card.Header 
-					title= "Live Video"
-					extra={<Button size="small" loading={this.state.loading} disabled={this.state.loading} onClick={this.listVideos}>
-                        Refresh{this.state.loading ? "ing" : ""}
-					</Button>}
-				/>
-				<Card.Body>
-                
-					{/* <MediaServerProcess key={`media${this.state.lastUpdated}`}/> */}
-
-					<Tabs prerenderingSiblingsNumber={2} swipeable={true} animated tabs= {this.state.videoList.map(video => {
-						return {title: video.camera}
-					})}>
-						{this.state.videoList.map((video) => {
-							return (
-								<ReactHlsPlayer
-									src={video.url}
-									autoPlay={false}
-									controls={true}
-									width="100%"
-									height="auto"
-								/>
-							)
-						})} 
-					</Tabs>
-				</Card.Body>
-                
-
+			<Card
+                cover={
+                    <Carousel dotPosition="top">
+                        {this.state.videoList.map((video) => {
+                            return (
+                                <div>
+                                    <ReactHlsPlayer
+                                        src={video.url}
+                                        autoPlay={false}
+                                        controls={true}
+                                        width="100%"
+                                        height="auto"
+                                    />
+                                </div>
+                            )
+                        })}
+                    </Carousel>
+                } 
+            >
+                <Card.Meta 
+                    description="Live Video"
+                />
 			</Card>
 		)
 	}
+
 }
 
 export default LiveVideo
