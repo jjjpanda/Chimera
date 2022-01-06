@@ -144,7 +144,7 @@ const queryToAddToDeletionsTable = (camera, size, count) => {
 }
 
 const queryForGroupedStats = (camera) => {
-    return pool.query(`SELECT timestamp,SUM(size), COUNT(*) FROM frame_files WHERE camera=${camera} GROUP BY timestamp ORDER BY timestamp ASC;`)
+    return pool.query(`SELECT date_trunc('hour', timestamp),SUM(size), COUNT(*) FROM frame_files WHERE camera=${camera} GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {
