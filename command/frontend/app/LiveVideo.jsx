@@ -17,6 +17,9 @@ import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 import ReactHlsPlayer from "react-hls-player"
 
+/**
+ * @deprecated
+ */
 class LiveVideo extends React.Component{
 	constructor(props){
 		super(props)

@@ -10,6 +10,10 @@ import {
 import {request, jsonProcessing} from "../js/request.js"
 import ProcessCard from "./ProcessCard.jsx"
 import Cookies from "js-cookie"
+
+/**
+ * @deprecated
+ */
 class MotionProcess extends React.Component {
 	constructor(props){
 		super(props)

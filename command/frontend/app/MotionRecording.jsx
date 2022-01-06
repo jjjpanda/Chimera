@@ -22,6 +22,10 @@ import MotionProcess from "./MotionProcess.jsx"
 import alertModal from "./Alert.jsx"
 import ScheduleMotion from "./ScheduleMotion.jsx"
 import Cookies from "js-cookie"
+
+/**
+ * @deprecated
+ */
 class MotionRecording extends React.Component{
 
 	constructor(props){

@@ -12,6 +12,9 @@ import {
 	Toast
 } from "antd-mobile"
 
+/**
+ * @deprecated
+ */
 class CameraDatePicker extends React.Component {
 	constructor(props){
 		super(props)

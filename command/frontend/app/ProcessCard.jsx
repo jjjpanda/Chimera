@@ -4,6 +4,9 @@ import {
 	Card,
 } from "antd-mobile"
 
+/**
+ * @deprecated
+ */
 const ProcessCard = (props) => (
 	<Card >
 		<Card.Header 

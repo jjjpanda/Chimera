@@ -5,6 +5,9 @@ import{
 	Card, Button
 } from "antd-mobile"
 
+/**
+ * @deprecated
+ */
 class FLVPlayer extends React.Component{
 	initFlv = (video) => {
 		if (video) {

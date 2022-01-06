@@ -13,6 +13,9 @@ import {
 	InputItem
 } from "antd-mobile"
 
+/**
+ * @deprecated
+ */
 class WeekdayPicker extends React.Component{
 
 	constructor(props){

@@ -10,6 +10,9 @@ import {
 import {request, jsonProcessing} from "../js/request.js"
 import ProcessCard from "./ProcessCard.jsx"
 
+/**
+ * @deprecated
+ */
 class MediaServerProcess extends React.Component {
 	constructor(props){
 		super(props)

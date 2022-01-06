@@ -13,6 +13,9 @@ import {
 	InputItem
 } from "antd-mobile"
 
+/**
+ * @deprecated
+ */
 class TimeRangePicker extends React.Component{
 
 	constructor(props){

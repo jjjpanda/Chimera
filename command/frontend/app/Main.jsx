@@ -26,6 +26,9 @@ const routeToIndex = (r) => {
 	}
 }
 
+/**
+ * @deprecated
+ */
 const Main = () => {
 	const {route} = useParams()
 	const navigate = useNavigate()

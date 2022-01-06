@@ -3,6 +3,10 @@ import ReactDOM from "react-dom"
 import { Card, Space, Button, Modal } from 'antd'
 import { Button, Modal, Toast } from "antd-mobile"
 import {RightOutline, CloseCircleOutline, CheckCircleOutline} from 'antd-mobile-icons'
+
+/**
+ * @deprecated
+ */
 class LoginForm extends React.Component{
 	constructor(props){
 		super(props)

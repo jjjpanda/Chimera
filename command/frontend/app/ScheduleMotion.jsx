@@ -19,6 +19,10 @@ import TimeRangePicker from "./TimeRangePicker.jsx"
 import WeekdayPicker from "./WeekdayPicker.jsx"
 import { cronString, cronState } from "../js/lib/cronString.js"
 import Cookies from "js-cookie"
+
+/**
+ * @deprecated
+ */
 class ScheduleMotion extends React.Component{
 
 	constructor(props){

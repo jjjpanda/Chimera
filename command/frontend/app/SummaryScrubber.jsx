@@ -21,6 +21,10 @@ import {request, jsonProcessing, downloadProcessing} from "./../js/request.js"
 import moment from "moment"
 import CameraDatePicker from "./CameraDatePicker.jsx"
 import Cookies from "js-cookie"
+
+/**
+ * @deprecated
+ */
 class SummaryScrubber extends React.Component{
 
 	constructor(props){
