@@ -7,6 +7,7 @@ import {
 } from "antd"
 import LiveVideo from "./LiveVideo"
 import FileStats from "./FileStats"
+import SummaryScrubber from "./SummaryScrubber"
 
 const routeToIndex = (r) => {
 	switch(r){
@@ -31,8 +32,11 @@ const Main = () => {
 	let index = routeToIndex(route)
     return (
 		<Row>
-			<Col span={16}>
+			<Col span={8}>
 				<FileStats />
+			</Col>
+			<Col span={8}>
+				<SummaryScrubber />
 			</Col>
 			<Col span={8}>
 				<LiveVideo />
