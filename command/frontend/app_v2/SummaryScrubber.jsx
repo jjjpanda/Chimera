@@ -1,10 +1,10 @@
 import React from "react"
 
-import {Card, Slider, Progress} from 'antd'
+import {Card, Slider, Progress, Space } from 'antd'
 import { request, jsonProcessing } from "./../js/request.js"
 import moment from "moment"
 import Cookies from "js-cookie"
-
+import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
 class SummaryScrubber extends React.Component{
 
     constructor(props){
@@ -14,8 +14,8 @@ class SummaryScrubber extends React.Component{
 			numberOfFrames: 100,
 			camera: 0,
 			cameras: JSON.parse(process.env.cameras),
-			startDate: moment().subtract(1, "day").toDate(),
-			endDate: moment().toDate(),
+			startDate: moment().subtract(1, "day"),
+			endDate: moment(),
 			list: [],
 			loading: true,
 			imagesLoaded: 0,
@@ -83,6 +83,15 @@ class SummaryScrubber extends React.Component{
 		setIterate()
 	}
 
+	onReload = (newState) => {
+		this.setState(() => ({
+			camera: newState.camera,
+			startDate: newState.startDate,
+			endDate: newState.endDate,
+			numberOfFrames: newState.number
+		}))
+	}
+
     render() {
         const images = (this.state.list.length > 0 ? this.state.list.map((frame, index) => {
             return (
@@ -122,7 +131,18 @@ class SummaryScrubber extends React.Component{
             <Card 
                 cover={!this.state.loading ? images : "Loading"}
             >
-                { loadingImages ? progressBar : selectionSlider }
+                <Space direction="vertical">
+					{ loadingImages ? progressBar : selectionSlider }
+					<CameraDateNumberPicker
+						camera={this.state.camera}
+						cameras={this.state.cameras}
+						startDate={this.state.startDate}
+						endDate={this.state.endDate}
+						number={this.state.numberOfFrames}
+						numberType={"frames"}
+						onReload={this.onReload}
+					/>
+				</Space>
             </Card>
         )
     }

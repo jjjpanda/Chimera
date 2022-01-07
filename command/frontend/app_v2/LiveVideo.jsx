@@ -64,6 +64,7 @@ class LiveVideo extends React.Component{
     render () {
 		return (
 			<Card
+				extra={"Live Video"}
                 cover={
                     <Carousel dotPosition="top">
                         {this.state.videoList.map((video) => {
@@ -81,11 +82,7 @@ class LiveVideo extends React.Component{
                         })}
                     </Carousel>
                 } 
-            >
-                <Card.Meta 
-                    description="Live Video"
-                />
-			</Card>
+            />
 		)
 	}
 

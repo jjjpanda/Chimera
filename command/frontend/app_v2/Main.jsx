@@ -32,13 +32,13 @@ const Main = () => {
 	let index = routeToIndex(route)
     return (
 		<Row>
-			<Col span={8}>
+			<Col span={4}>
 				<FileStats />
 			</Col>
-			<Col span={8}>
+			<Col span={14}>
 				<SummaryScrubber />
 			</Col>
-			<Col span={8}>
+			<Col span={6}>
 				<LiveVideo />
 			</Col>
         </Row>
