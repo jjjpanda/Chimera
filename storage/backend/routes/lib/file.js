@@ -90,14 +90,15 @@ module.exports = {
 
     fileStats: (req, res) => {
         const cameras = JSON.parse(process.env.cameras)
-        Promise.all(cameras.map((camera, index) => {
-            return queryForGroupedStats(index+1)
-        })).then(values => {
-            let stats = {}
-            cameras.forEach((camera, index) => {
-                stats[camera] = values[index].rows
-            })
-            res.send(stats)
+        queryForGroupedStats(cameras).then(values => {
+            let fileStats = values.rows.map(row => ({
+                timestamp: moment(row.timestamp).valueOf(),
+                ...cameras.reduce((obj, item) => ({
+                    ...obj,
+                    [item]: parseInt(row[item])
+                }), {})
+            }))
+            res.send(fileStats)
         }).catch(err => {
             console.log("err", err)
         })
@@ -143,8 +144,9 @@ const queryToAddToDeletionsTable = (camera, size, count) => {
     return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
 }
 
-const queryForGroupedStats = (camera) => {
-    return pool.query(`SELECT date_trunc('hour', timestamp),SUM(size), COUNT(*) FROM frame_files WHERE camera=${camera} GROUP BY 1 ORDER BY 1 ASC;`)
+const queryForGroupedStats = (cameras) => {
+    const arrayOfColumns = cameras.map((cam, index) => `SUM(CASE WHEN camera=${index+1} THEN size ELSE 0 END) as "${cam}"`)
+    return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(',')} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {
