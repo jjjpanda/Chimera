@@ -1,151 +1,157 @@
-import React from "react"
+import React, { useState, useEffect } from "react"
 
-import {Card, Slider, Progress, Space } from 'antd'
+import {Card, Slider, Progress, Space, Empty, Button, Col, Row } from 'antd'
 import { request, jsonProcessing } from "./../js/request.js"
 import moment from "moment"
 import Cookies from "js-cookie"
 import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
-class SummaryScrubber extends React.Component{
+import { StopFilled, StopOutlined } from "@ant-design/icons"
 
-    constructor(props){
-		super(props)
-		this.state ={
-			sliderIndex: 99,
-			numberOfFrames: 100,
-			camera: 0,
-			cameras: JSON.parse(process.env.cameras),
-			startDate: moment().subtract(1, "day"),
-			endDate: moment(),
-			list: [],
-			loading: true,
-			imagesLoaded: 0,
-		}
-	}
+const processBody = (state) => {
+	const body = JSON.stringify({
+		camera: (state.camera+1).toString(),
+		start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
+		end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
+		frames: state.numberOfFrames
+	})
+	return body
+}
 
-	componentDidMount = () => {
-		this.updateImages()
-	}
-
-	processBody = () => {
-		console.log(this.state.startDate, this.state.endDate)
-		const body = JSON.stringify({
-			camera: (this.state.camera+1).toString(),
-			start: moment(this.state.startDate).second(0).format("YYYYMMDD-HHmmss"),
-			end: moment(this.state.endDate).second(0).format("YYYYMMDD-HHmmss"),
-			frames: this.state.numberOfFrames
-		})
-		console.log(body)
-		return body
-	}
-
-	updateImages = () => {
-		this.setState({
-			list: [],
-			loading: true,
-			imagesLoaded: 0
-		}, () => {
-			request("/convert/listFramesVideo", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: this.processBody()
-			}, (prom) => {
-                
-				jsonProcessing(prom, (data) => {
-					console.log(data)
-					this.setState({
-						list: data.list,
-						loading: false
-					})
-				})
-            
+const updateImages = (state, setState) => {
+	setState({
+		...state,
+		list: ["/res/logo.png"],
+		loading: true,
+		imagesLoaded: 0
+	})
+	request("/convert/listFramesVideo", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: processBody(state)
+	}, (prom) => {
+		jsonProcessing(prom, (data) => {
+			setState({
+				...state,
+				list: data.list,
+				loading: data.list.length > 0,
+				sliderIndex: data.list.length-1
 			})
 		})
-        
-	}
+	})
+}
 
-	sliderPlaythrough = () => {
-		const setIterate = () => {
-			this.setState((oldState) => {
-				return {
-					sliderIndex: oldState.sliderIndex+1
-				}
-			}, () => {
-				setTimeout(() => {
-					if(this.state.sliderIndex < this.state.numberOfFrames - 1){
-						setIterate()
-					}
-				}, 125)
+const SummaryScrubber = (props) => {
+	const [state, setState] = useState({
+		sliderIndex: 99,
+		numberOfFrames: 100,
+		camera: 0,
+		cameras: JSON.parse(process.env.cameras),
+		startDate: moment().subtract(1, "day"),
+		endDate: moment(),
+		list: ["/res/logo.png"],
+		loading: true,
+		imagesLoaded: 0,
+	})
+
+	const listHasContents = state.list.length > 0
+	const stoppable = state.loading && listHasContents
+	const allImagesLoaded = !listHasContents || state.imagesLoaded >= state.list.length
+
+	useEffect(() => {
+		updateImages(state, setState)
+	}, [state.numberOfFrames, state.camera, state.startDate, state.endDate])
+
+	useEffect(()=> {
+		if( allImagesLoaded ){
+			setState({
+				...state,
+				loading: false,
+				imagesLoaded: 0
 			})
 		}
-		console.log("ITERATE")
-		setIterate()
-	}
+	}, [state.imagesLoaded])
 
-	onReload = (newState) => {
-		this.setState(() => ({
+	const onReload = (newState) => {
+		setState({
+			...state,
 			camera: newState.camera,
 			startDate: newState.startDate,
 			endDate: newState.endDate,
 			numberOfFrames: newState.number
-		}))
+		})
 	}
 
-    render() {
-        const images = (this.state.list.length > 0 ? this.state.list.map((frame, index) => {
-            return (
-                <img 
-                    style={{ display: this.state.sliderIndex == index ? "inherit" : "none"}} 
-                    src={frame}
-                    onLoad = {() => {
-                        
-                        this.setState((oldState) => ({
-                            imagesLoaded: oldState.imagesLoaded + 1
-                        }))
-                    }}
-                />
-            )
-        }) : <div>
-            No Images
-        </div>) 
-
-        const progressBar = <Progress 
-            percent={Math.round(100 * this.state.imagesLoaded / this.state.list.length)} 
-        />
-        const selectionSlider = <Slider 
-            min={0}
-            max={Math.min(this.state.numberOfFrames - 1, this.state.list.length - 1)}
-            value={this.state.sliderIndex} 
-            onChange={(val) => {
-                this.setState(() => ({
-                    sliderIndex: val
-                }))
-            }}
-            disabled={this.state.loading}
-        />
-
-        const loadingImages = this.state.list.length > 0 && this.state.imagesLoaded < this.state.list.length
-
+	const images = (listHasContents ? state.list.map((frame, index) => {
 		return (
-            <Card 
-                cover={!this.state.loading ? images : "Loading"}
-            >
-                <Space direction="vertical">
-					{ loadingImages ? progressBar : selectionSlider }
-					<CameraDateNumberPicker
-						camera={this.state.camera}
-						cameras={this.state.cameras}
-						startDate={this.state.startDate}
-						endDate={this.state.endDate}
-						number={this.state.numberOfFrames}
-						numberType={"frames"}
-						onReload={this.onReload}
-					/>
-				</Space>
-            </Card>
-        )
-    }
+			<img 
+				style={{ display: state.sliderIndex == index ? "inherit" : "none", objectFit: "contain", height: "100%" }} 
+				src={frame}
+				onLoad = {() => {
+					setState({
+						...state,
+						imagesLoaded: state.imagesLoaded + 1
+					})
+				}}
+			/>
+		)
+	}) : <Empty
+		description="No Images"
+		imageStyle={{display: "inherit"}}
+	/>) 
+
+	const progressBar = <Progress 
+		percent={Math.round(100 * state.imagesLoaded / state.list.length)}
+		status={stoppable ? "active" : "exception"}
+	/>
+
+	const selectionSlider = <Slider 
+		min={0}
+		max={Math.min(state.numberOfFrames - 1, state.list.length - 1)}
+		value={state.sliderIndex} 
+		onChange={(val) => {
+			setState({
+				...state,
+				sliderIndex: val
+			})
+		}}
+		disabled={state.loading}
+	/>
+
+	return (
+		<Card cover={images}>
+			<Space direction="vertical">
+				<Row>
+					<Col span={20}>
+						{ stoppable ? progressBar : selectionSlider }
+					</Col>
+					<Col span={2}>
+						<Button
+							icon={stoppable ? <StopFilled /> : <StopOutlined />}
+							onClick={() => {
+								setState({
+									...state,
+									list: ["/res/logo.png"]
+								})
+							}}
+							disabled={!stoppable}
+						/>
+					</Col>
+				</Row>
+				<CameraDateNumberPicker
+					camera={state.camera}
+					cameras={state.cameras}
+					startDate={state.startDate}
+					endDate={state.endDate}
+					number={state.numberOfFrames}
+					numberType={"frames"}
+					loading={state.loading && state.list.length > 0}
+					onChange={onReload}
+				/>
+			</Space>
+		</Card>
+	)
 }
 
 export default SummaryScrubber

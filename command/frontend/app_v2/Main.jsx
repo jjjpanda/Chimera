@@ -8,6 +8,7 @@ import {
 import LiveVideo from "./LiveVideo"
 import FileStats from "./FileStats"
 import SummaryScrubber from "./SummaryScrubber"
+import ProcessList from "./ProcessList"
 
 const routeToIndex = (r) => {
 	switch(r){
@@ -32,14 +33,11 @@ const Main = () => {
 	let index = routeToIndex(route)
     return (
 		<Row>
-			<Col span={14}>
-				<FileStats />
-			</Col>
-			<Col span={6}>
+			<Col span={12}>
 				<SummaryScrubber />
 			</Col>
-			<Col span={4}>
-				<LiveVideo />
+			<Col span={12}>
+				<ProcessList />
 			</Col>
         </Row>
     )
