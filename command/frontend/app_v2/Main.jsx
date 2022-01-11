@@ -33,10 +33,13 @@ const Main = () => {
 	let index = routeToIndex(route)
     return (
 		<Row>
-			<Col span={12}>
+			<Col span={9}>
 				<SummaryScrubber />
 			</Col>
-			<Col span={12}>
+			<Col span={6}>
+				<FileStats />
+			</Col>
+			<Col span={9}>
 				<ProcessList />
 			</Col>
         </Row>

@@ -20,11 +20,19 @@ const listProcesses = (setState) => {
         }
     }, (prom) => {
         jsonProcessing(prom, (data) => {
-            const {tasks} = data
-            setState({
-                processList: tasks,
-                loading: false 
-            })
+            if(data && "tasks" in data){
+                const {tasks} = data
+                setState({
+                    processList: tasks,
+                    loading: false 
+                })
+            }
+            else{
+                setState({
+                    processList: [],
+                    loading: false
+                })
+            }
         })
     })
 }
