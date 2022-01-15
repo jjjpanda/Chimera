@@ -2,101 +2,105 @@ import React, {useState, useEffect} from "react"
 import { Card, Space, Button, Modal, message, Input, InputNumber } from 'antd'
 import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 
-const statusHandler = (err, state, setState) => {
-    console.log(err, state, setState)
-    setState({
-        ...state,
-        loginStatus: !err ? "right" : "wrong"
+const toggleModalGenerator = (show, type, toggleModal) => () => {
+    toggleModal((oldState) => ({
+        ...oldState,
+        [type]: show
+    }))
+}
+
+const updateValueGenerator = (type, setValue) => (e) => {
+    const {value} = e.target;
+    setValue((oldState) => ({
+        ...oldState,
+        [type]: value
+    }))
+}
+
+const onPasswordEnterGenerator = (props, inputs, setLoginStatus) => () => {
+    const {password} = inputs
+    props.tryLogin(password, "password", (correct) => {
+        setLoginStatus(correct ? "right" : "wrong")
     })
 }
 
-const onPasswordEnter = (props, state, setState) => () => {
-    console.log(props, state, setState)
-    const {password} = state
-    props.loginReq(password).then(req => props.handler(req, props.timestamp, statusHandler))
-    toggleModalGenerator(false, "Password", state, setState)()
-}
-
-const onPINEnter = (props, state, setState) => () => {
-    console.log(props, state, setState)
-    const {pin} = state
-    props.loginReq(pin, "/authorization/requestLink", {pin}).then(({error}) => {
-        setState({
-            ...state,
-            loginStatus: !error ? "right" : "wrong"
-        })
-        if(!error){
+const onPINEnterGenerator = (props, inputs, setLoginStatus) => () => {
+    const {pin} = inputs
+    props.tryLogin(pin, "pin", (correct) => {
+        if(correct){
             message.success("Request for temporary link was successful.\nCheck your messages!", 20)
         }
         else{
             message.error("Request for temporary link failed.", 4)
         }
-        toggleModalGenerator(false, "PIN", state, setState)()
-    })
-}
-
-const toggleModalGenerator = (show, type, state, setState) => () => {
-    console.log(type, state, setState)
-    setState({
-        ...state,
-        [`is${type}ModalVisible`]: show
-    })
-}
-
-const updateValueGenerator = (type, state, setState) => (e) => {
-    console.log(type, state, setState)
-    const {value} = e.target;
-    setState({
-        ...state,
-        [type]: value
+        setLoginStatus(correct ? "right" : "wrong")
     })
 }
 
 const LoginForm = (props) => {
-    const [state, setState] = useState({
-        loginStatus: null,
-        isPasswordModalVisible: false,
-        isPINModalVisible: false,
+    const [modalVisible, toggleModalVisible] = useState({
+        password: false,
+        pin: false,
+    })
+    const [inputValues, setInputValue] = useState({
         pin: "",
         password: ""
     })
+    const [loginStatus, setLoginStatus] = useState(null)
 
     useEffect(() => {
         const {passwordAttempt} = props
-		if(passwordAttempt != undefined){
-			props.loginReq(passwordAttempt).then(res => {
-				props.handler(res, props.timestamp, statusHandler)
-			})
+		if(passwordAttempt){
+			props.tryLogin(passwordAttempt, "password", (correct) => {
+                setLoginStatus(correct ? "right" : "wrong")
+            })
 		}
     }, [])
+
+    useEffect(() => {
+        toggleModalVisible(() => ({
+            password: false,
+            pin: false
+        }))
+    }, [loginStatus])
 
     return (
         <Space>
             <Card
                 title="Login"
-                extra={state.loginStatus == null ? <RightCircleOutlined /> : (state.loginStatus == "wrong" ? <CloseCircleOutlined /> : <CheckCircleOutlined />)}
+                extra={loginStatus == null ? <RightCircleOutlined /> : (loginStatus == "wrong" ? <CloseCircleOutlined /> : <CheckCircleOutlined />)}
             >
-                <Button type="primary" onClick={toggleModalGenerator(true, "Password", state, setState)}>
+                <Button type="primary" onClick={toggleModalGenerator(true, "password", toggleModalVisible)}>
                     Password
                 </Button>
-                <Button onClick={toggleModalGenerator(true, "PIN", state, setState)}>
+                <Button onClick={toggleModalGenerator(true, "pin", toggleModalVisible)}>
                     PIN
                 </Button>
             </Card>
-            <Modal title="Password" visible={state.isPasswordModalVisible} onOk={onPasswordEnter(props, state, setState)} onCancel={toggleModalGenerator(false, "Password", state, setState)}>
+            <Modal
+                title="Password" 
+                visible={modalVisible.password}
+                onOk={onPasswordEnterGenerator(props, inputValues, setLoginStatus)}
+                onCancel={toggleModalGenerator(false, "password", toggleModalVisible)}
+            >
                 <Input.Password 
                     placeholder="input password" 
-                    onChange={updateValueGenerator('password', state, setState)} 
-                    onPressEnter={onPasswordEnter(props, state, setState)}
-                    value={state.password}
+                    onChange={updateValueGenerator('password', setInputValue)} 
+                    onPressEnter={onPasswordEnterGenerator(props, inputValues, setLoginStatus)}
+                    value={inputValues.password}
                 />
             </Modal>
-            <Modal title="PIN" visible={state.isPINModalVisible} onOk={onPINEnter(props, state, setState)} onCancel={toggleModalGenerator(false, "PIN", state, setState)}>
+            <Modal
+                title="PIN"
+                visible={modalVisible.pin}
+                onOk={onPINEnterGenerator(props, inputValues, setLoginStatus)}
+                onCancel={toggleModalGenerator(false, "pin", toggleModalVisible)}
+            >
                 <Input.Password 
                     placeholder="input pin" 
-                    onChange={updateValueGenerator('pin', state, setState)} 
-                    onPressEnter={onPINEnter(props, state, setState)}
-                    value={state.pin}
+                    onChange={updateValueGenerator('pin', setInputValue)} 
+                    onPressEnter={onPINEnterGenerator(props, inputValues, setLoginStatus)}
+                    value={inputValues.pin}
                 />
             </Modal>
         </Space>

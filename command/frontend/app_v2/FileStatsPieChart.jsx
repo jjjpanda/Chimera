@@ -23,11 +23,11 @@ const customTooltip = ({ active, payload }) => {
 };
 
 const cameraUpdate = (state, setState) => {
-	setState({
-		...state,
+	setState((oldState) => ({
+		...oldState,
 		loading: "refreshing",
 		lastUpdated: moment().format("h:mm:ss a")
-	})
+	}))
 	request("/file/pathMetrics", {
 		method: "POST",
 		headers: {
@@ -36,33 +36,33 @@ const cameraUpdate = (state, setState) => {
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			if(data && "count" in data && "size" in data){
-				setState({
-					...state,
-					cameras: state.cameras.map((camera) => ({
+				setState((oldState) => ({
+					...oldState,
+					cameras: oldState.cameras.map((camera) => ({
 						...camera,
 						size: parseInt(data.size[camera.name]),
 						count: parseInt(data.count[camera.name])
 					})),
 					lastUpdated: moment().format("h:mm:ss a"),
 					loading: undefined
-				})
+				}))
 			}
 			else{
-				setState({
-					...state,
+				setState((oldState) => ({
+					...oldState,
 					lastUpdated: moment().format("h:mm:ss a"),
 					loading: undefined
-				})
+				}))
 			}
 		})
 	})
 }
 
 const deleteFiles = (state, setState, camera=undefined) => {
-	setState({
-		...state,
+	setState((oldState) => ({
+		...oldState,
 		loading: "deleting"
-	})
+	}))
 	if(camera != undefined){
 		request("/file/pathClean", {
 			method: "POST",

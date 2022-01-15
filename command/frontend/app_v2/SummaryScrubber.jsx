@@ -18,12 +18,12 @@ const processBody = (state) => {
 }
 
 const updateImages = (state, setState) => {
-	setState({
-		...state,
+	setState((oldState) => ({
+		...oldState,
 		list: ["/res/logo.png"],
 		loading: true,
 		imagesLoaded: 0
-	})
+	}))
 	request("/convert/listFramesVideo", {
 		method: "POST",
 		headers: {
@@ -32,12 +32,12 @@ const updateImages = (state, setState) => {
 		body: processBody(state)
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			setState({
-				...state,
+			setState((oldState) => ({
+				...oldState,
 				list: data.list,
 				loading: data.list.length > 0,
 				sliderIndex: data.list.length-1
-			})
+			}))
 		})
 	})
 }
@@ -65,22 +65,22 @@ const SummaryScrubber = (props) => {
 
 	useEffect(()=> {
 		if( allImagesLoaded ){
-			setState({
-				...state,
+			setState((oldState) => ({
+				...oldState,
 				loading: false,
 				imagesLoaded: 0
-			})
+			}))
 		}
 	}, [state.imagesLoaded])
 
 	const onReload = (newState) => {
-		setState({
-			...state,
+		setState((oldState) => ({
+			...oldState,
 			camera: newState.camera,
 			startDate: newState.startDate,
 			endDate: newState.endDate,
 			numberOfFrames: newState.number
-		})
+		}))
 	}
 
 	const images = (listHasContents ? state.list.map((frame, index) => {
@@ -89,10 +89,10 @@ const SummaryScrubber = (props) => {
 				style={{ display: state.sliderIndex == index ? "inherit" : "none", objectFit: "contain", height: "100%" }} 
 				src={frame}
 				onLoad = {() => {
-					setState({
-						...state,
+					setState((oldState) => ({
+						...oldState,
 						imagesLoaded: state.imagesLoaded + 1
-					})
+					}))
 				}}
 			/>
 		)
@@ -111,10 +111,10 @@ const SummaryScrubber = (props) => {
 		max={Math.min(state.numberOfFrames - 1, state.list.length - 1)}
 		value={state.sliderIndex} 
 		onChange={(val) => {
-			setState({
-				...state,
+			setState((oldState) => ({
+				...oldState,
 				sliderIndex: val
-			})
+			}))
 		}}
 		disabled={state.loading}
 	/>
@@ -130,10 +130,10 @@ const SummaryScrubber = (props) => {
 						<Button
 							icon={stoppable ? <StopFilled /> : <StopOutlined />}
 							onClick={() => {
-								setState({
-									...state,
+								setState((oldState) => ({
+									...oldState,
 									list: ["/res/logo.png"]
-								})
+								}))
 							}}
 							disabled={!stoppable}
 						/>

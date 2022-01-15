@@ -36,11 +36,14 @@ const Main = () => {
 			<Col span={7}>
 				<SummaryScrubber />
 			</Col>
-			<Col span={10}>
+			<Col span={5}>
 				<FileStats />
 			</Col>
-			<Col span={7}>
+			<Col span={5}>
 				<ProcessList />
+			</Col>
+			<Col span={7}>
+				<LiveVideo />
 			</Col>
         </Row>
     )

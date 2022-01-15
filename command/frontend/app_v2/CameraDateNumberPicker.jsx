@@ -14,60 +14,60 @@ const CameraDateNumberPicker = (props) => {
     })
 
     const onReset=() => {
-        setState({
+        setState(() => ({
             camera: props.camera,
             startDate: props.startDate,
             endDate: props.endDate,
             number: props.number,
             modified: false
-        })
+        }))
     }
 
     const onChange=()=> {
         props.onChange(state)
-        setState({
-            ...state,
+        setState((oldState) => ({
+            ...oldState,
             modified: false
-        })
+        }))
     }
 
     const onCamChange = (e) => {
 		//e target.value -> index
 		const {value} = e.target
-		setState({
-            ...state,
+		setState((oldState) => ({
+            ...oldState,
 			camera: value,
             modified: true
-		})
+		}))
 	}
 
 	const onDateChange = (e) => {
 		//e [moment, moment]
         if(e){
-            setState({
-                ...state,
+            setState((oldState) => ({
+                ...oldState,
                 startDate: e[0],
                 endDate: e[1],
                 modified: true
-            })
+            }))
         }
 		else{
-            setState({
-                ...state,
+            setState((oldState) => ({
+                ...oldState,
                 startDate: moment().subtract(1, "day"),
                 endDate: moment(),
                 modified: true
-            })
+            }))
         }
 	}
 
 	const onNumberChange = (e) => {
 		//e number
-		setState({
-            ...state,
+		setState((oldState) => ({
+            ...oldState,
 			number: e,
             modified: true
-		})
+		}))
 	}
 
     return (

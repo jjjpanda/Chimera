@@ -9,10 +9,10 @@ import cronstrue from 'cronstrue'
 const cronParser = require('cron-parser')
 
 const listProcesses = (setState) => {
-    setState({
+    setState(() => ({
         processList: [],
         loading: true
-    })
+    }))
     request("/convert/listProcess", {
         method: "GET",
         headers: {
@@ -22,16 +22,16 @@ const listProcesses = (setState) => {
         jsonProcessing(prom, (data) => {
             if(data && "tasks" in data){
                 const {tasks} = data
-                setState({
+                setState(() => ({
                     processList: tasks,
                     loading: false 
-                })
+                }))
             }
             else{
-                setState({
+                setState(() => ({
                     processList: [],
                     loading: false
-                })
+                }))
             }
         })
     })

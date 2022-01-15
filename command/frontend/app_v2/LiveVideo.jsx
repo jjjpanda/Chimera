@@ -14,11 +14,11 @@ import { request, jsonProcessing } from "../js/request.js"
 import ReactHlsPlayer from "react-hls-player"
 
 const listVideos = (state, setState) => {
-	setState({
-		...state,
+	setState((oldState) => ({
+		...oldState,
 		loading: true,
 		videoList: []
-	})
+	}))
 	request("/livestream/status", {
 		method: "GET",
 		headers: {
@@ -30,17 +30,17 @@ const listVideos = (state, setState) => {
 			console.log(data)
 			const {processList} = data
 			if(processList){
-				setState({
-					...state,
+				setState((oldState) => ({
+					...oldState,
 					loading: false,
 					videoList: processList.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
 						return camNumA - camNumB
 					}).map((num) => ({
-						camera: state.cameras[num - 1],
+						camera: oldState.cameras[num - 1],
 						url: `/livestream/feed/${num}/video.m3u8`
 					})),
 					lastUpdated: moment().format("h:mm:ss a")
-				})
+				}))
 			}	
 		})
 	})

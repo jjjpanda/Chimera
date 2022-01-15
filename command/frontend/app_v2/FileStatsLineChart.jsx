@@ -32,10 +32,10 @@ const statsUpdate = (state, setState) => {
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			if(data != undefined){
-				setState({
-					...state,
+				setState((oldState) => ({
+					...oldState,
 					fileStats: data,
-				})
+				}))
 			}
 		})
 	})
