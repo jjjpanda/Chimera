@@ -3,6 +3,7 @@ import { Card, Space, Button, Modal, message, Input, InputNumber } from 'antd'
 import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 
 const statusHandler = (err, state, setState) => {
+    console.log(err, state, setState)
     setState({
         ...state,
         loginStatus: !err ? "right" : "wrong"
@@ -10,7 +11,7 @@ const statusHandler = (err, state, setState) => {
 }
 
 const onPasswordEnter = (props, state, setState) => () => {
-    console.log(props, state)
+    console.log(props, state, setState)
     const {password} = state
     props.loginReq(password).then(req => props.handler(req, props.timestamp, statusHandler))
     toggleModalGenerator(false, "Password", state, setState)()
@@ -35,6 +36,7 @@ const onPINEnter = (props, state, setState) => () => {
 }
 
 const toggleModalGenerator = (show, type, state, setState) => () => {
+    console.log(type, state, setState)
     setState({
         ...state,
         [`is${type}ModalVisible`]: show
@@ -42,6 +44,7 @@ const toggleModalGenerator = (show, type, state, setState) => () => {
 }
 
 const updateValueGenerator = (type, state, setState) => (e) => {
+    console.log(type, state, setState)
     const {value} = e.target;
     setState({
         ...state,

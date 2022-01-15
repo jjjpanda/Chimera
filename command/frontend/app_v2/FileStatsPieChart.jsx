@@ -1,8 +1,11 @@
-import React from "react"
+import React, {useState, useEffect} from "react"
 
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
 import { formatBytes } from "lib"
+import {request, jsonProcessing} from "../js/request.js"
+import moment from "moment"
 import Cookies from "js-cookie"
+import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
 
 const customTooltip = ({ active, payload }) => {
@@ -19,44 +22,136 @@ const customTooltip = ({ active, payload }) => {
     return null;
 };
 
+const cameraUpdate = (state, setState) => {
+	setState({
+		...state,
+		loading: "refreshing",
+		lastUpdated: moment().format("h:mm:ss a")
+	})
+	request("/file/pathMetrics", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+	}, (prom) => {
+		jsonProcessing(prom, (data) => {
+			if(data && "count" in data && "size" in data){
+				setState({
+					...state,
+					cameras: state.cameras.map((camera) => ({
+						...camera,
+						size: parseInt(data.size[camera.name]),
+						count: parseInt(data.count[camera.name])
+					})),
+					lastUpdated: moment().format("h:mm:ss a"),
+					loading: undefined
+				})
+			}
+			else{
+				setState({
+					...state,
+					lastUpdated: moment().format("h:mm:ss a"),
+					loading: undefined
+				})
+			}
+		})
+	})
+}
+
+const deleteFiles = (state, setState, camera=undefined) => {
+	setState({
+		...state,
+		loading: "deleting"
+	})
+	if(camera != undefined){
+		request("/file/pathClean", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				camera,
+				days: state.days
+			})
+		}, (prom) => {
+			jsonProcessing(prom, (data) => {
+				cameraUpdate(state, setState)
+			})
+		})
+	}
+	else{
+		Promise.all(state.cameras.map((camera) => {
+			request("/file/pathClean", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					camera: camera.number,
+					days: state.days
+				})
+			}, (prom) => {
+				jsonProcessing(prom, (data) => {
+					resolve()
+				})
+			}) 
+		})).then(() => cameraUpdate(state, setState))
+	}
+}
+
+const handlePieClick = ({name, number, target}) => {
+	console.log(name, number, target)
+}
+
 const FileStatsPieChart = (props) => {
-    const sumSize = props.cameras.reduce((total, cam) => total+cam.size, 0)
+    const [state, setState] = useState({
+		loading: "refreshing",
+		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
+		days: 7
+	})
+
+    useEffect(() => {
+		cameraUpdate(state, setState)
+	}, [])
+
+    const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
     /* const bytesInTerabytes = 1099511627776
     const nearestTerabyte = Math.ceil(sumSize / bytesInTerabytes)
     const sizes = [
-        ...props.cameras,
+        ...state.cameras,
         {
             number: "Free Space",
             size: nearestTerabyte*bytesInTerabytes - sumSize
         }
     ]
-    console.log(sizes, props.cameras) */
+    console.log(sizes, state.cameras) */
+	console.log(state)
     return (
         <ResponsiveContainer width="100%" height="100%">
             <PieChart>
                 <Tooltip content={customTooltip} />
                 <Pie 
-                    data={props.cameras} dataKey="count" nameKey="number" 
+                    data={state.cameras} dataKey="count" nameKey="number" 
                     cx="50%" cy="50%" innerRadius={37} outerRadius={55}
-                    onClick={props.onClick}
+                    onClick={handlePieClick}
                 >
                     {
-                        props.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
+                        state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
                     }
                 </Pie>
                 <Pie 
-                    data={props.cameras} dataKey="size" nameKey="number" 
+                    data={state.cameras} dataKey="size" nameKey="number" 
                     cx="50%" cy="50%" innerRadius={60} outerRadius={80}
-                    onClick={props.onClick}
+                    onClick={handlePieClick}
                 >
                     {
-                        props.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
+                        state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
                     }
                     <Label 
                         value={`${formatBytes(sumSize, 1)}`} 
                         position="center" 
                         style={{fill: Cookies.get("theme") == "dark" ? "white" : "black"}} 
-                        onClick={props.onClick}
+                        onClick={handlePieClick}
                     />
                 </Pie>
             </PieChart>

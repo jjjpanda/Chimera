@@ -1,8 +1,10 @@
-import React from "react"
+import React, {useState, useEffect} from "react"
 
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { formatBytes } from "lib"
+import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
+import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
 
 const customTooltip = ({ active, payload }) => {
@@ -24,10 +26,37 @@ const customTooltip = ({ active, payload }) => {
     return null;
 };
 
+const statsUpdate = (state, setState) => {
+	request("/file/pathStats", {
+		method: "GET"
+	}, (prom) => {
+		jsonProcessing(prom, (data) => {
+			if(data != undefined){
+				setState({
+					...state,
+					fileStats: data,
+				})
+			}
+		})
+	})
+}
+
 const FileStatsLineChart = (props) => {
+    const [state, setState] = useState({
+		loading: "refreshing",
+		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
+		days: 7,
+		lastUpdated: moment().format("h:mm:ss a"),
+		fileStats: []
+	})
+
+	useEffect(() => {
+		statsUpdate(state, setState)
+	}, [])
+
     return (
         <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={props.fileStats}>
+            <LineChart data={state.fileStats}>
                 <Tooltip content={customTooltip} />
                 <XAxis 
                     dataKey="timestamp" 
@@ -38,7 +67,7 @@ const FileStatsLineChart = (props) => {
                 <YAxis tickFormatter={bytes => formatBytes( bytes, 2 )}/>
                 <Legend />
                 {
-                    props.cameras.map(({name}, index) => {
+                    state.cameras.map(({name}, index) => {
                         return <Line type="monotone" dataKey={name} stroke={colors[index % colors.length]} />
                     })
                 }
