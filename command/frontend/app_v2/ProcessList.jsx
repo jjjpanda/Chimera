@@ -107,7 +107,7 @@ const processBody = (state) => {
         camera: (state.camera+1).toString(),
         start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
         end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
-        skip: state.speed,
+        skip: state.number,
         save: !state.download
     })
     return body
@@ -135,7 +135,7 @@ const ProcessList = () => {
                         cameras={state.cameras}
                         startDate={state.startDate}
                         endDate={state.endDate}
-                        number={state.speed}
+                        number={state.number}
                         numberType={state.numberType}
                         loading={state.disabled}
                         onChange={onChange}

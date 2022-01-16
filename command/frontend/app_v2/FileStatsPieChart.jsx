@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from "react"
 
+import { InputNumber, Modal } from 'antd'
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
 import { formatBytes } from "lib"
 import {request, jsonProcessing} from "../js/request.js"
@@ -22,7 +23,7 @@ const customTooltip = ({ active, payload }) => {
     return null;
 };
 
-const cameraUpdate = (state, setState) => {
+const cameraUpdate = (setState) => {
 	setState((oldState) => ({
 		...oldState,
 		loading: "refreshing",
@@ -75,7 +76,7 @@ const deleteFiles = (state, setState, camera=undefined) => {
 			})
 		}, (prom) => {
 			jsonProcessing(prom, (data) => {
-				cameraUpdate(state, setState)
+				cameraUpdate(setState)
 			})
 		})
 	}
@@ -95,12 +96,18 @@ const deleteFiles = (state, setState, camera=undefined) => {
 					resolve()
 				})
 			}) 
-		})).then(() => cameraUpdate(state, setState))
+		})).then(() => cameraUpdate(setState))
 	}
 }
 
-const handlePieClick = ({name, number, target}) => {
-	console.log(name, number, target)
+const DaysInput = (props) => {
+	return <InputNumber 
+		min={0}
+		addonBefore={`Delete files older than`}
+		addonAfter={"days"}
+		defaultValue={props.default}
+		onChange={(value) => props.onChange(value)}
+	/>
 }
 
 const FileStatsPieChart = (props) => {
@@ -111,8 +118,42 @@ const FileStatsPieChart = (props) => {
 	})
 
     useEffect(() => {
-		cameraUpdate(state, setState)
+		cameraUpdate(setState)
 	}, [])
+
+	const handlePieClick = ({name, number, target}) => {
+		console.log(name, number, target)
+		if(name && number){
+			Modal.confirm({
+				title:`Delete Files from Camera: ${name}?`,
+				content: (<DaysInput 
+					default={state.days}
+					onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
+				/>),
+				okText: "Yes",
+				cancelText: "No",
+				onOk: () => {
+					console.log("DELETE", name, state.days)
+					deleteFiles(state, setState, number)
+				}
+			})
+		}
+		else{
+			Modal.confirm({
+				title:`Delete Files from All Cameras?`,
+				content: (<DaysInput 
+					default={state.days}
+					onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
+				/>),
+				okText: "Yes",
+				cancelText: "No",
+				onOk: () => {
+					console.log("DELETE ALL", state.days)
+					deleteFiles(state, setState)
+				}
+			})
+		}
+	}
 
     const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
     /* const bytesInTerabytes = 1099511627776
