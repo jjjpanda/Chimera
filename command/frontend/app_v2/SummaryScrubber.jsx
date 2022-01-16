@@ -7,12 +7,14 @@ import Cookies from "js-cookie"
 import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
 import { StopFilled, StopOutlined } from "@ant-design/icons"
 
+import useCamDateNumInfo from "../hooks/useCamDateNumInfo.js"
+
 const processBody = (state) => {
 	const body = JSON.stringify({
 		camera: (state.camera+1).toString(),
 		start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
 		end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
-		frames: state.numberOfFrames
+		frames: state.number
 	})
 	return body
 }
@@ -42,14 +44,21 @@ const updateImages = (state, setState) => {
 	})
 }
 
+const onReloadGenerator = (setState) => (newState) => {
+	setState((oldState) => ({
+		...oldState,
+		camera: newState.camera,
+		startDate: newState.startDate,
+		endDate: newState.endDate,
+		number: newState.number
+	}))
+}
+
 const SummaryScrubber = (props) => {
-	const [state, setState] = useState({
+	const [state, setState] = useCamDateNumInfo({
+		number: 100,
+		numberType: "frames",
 		sliderIndex: 99,
-		numberOfFrames: 100,
-		camera: 0,
-		cameras: JSON.parse(process.env.cameras),
-		startDate: moment().subtract(1, "day"),
-		endDate: moment(),
 		list: ["/res/logo.png"],
 		loading: true,
 		imagesLoaded: 0,
@@ -61,7 +70,7 @@ const SummaryScrubber = (props) => {
 
 	useEffect(() => {
 		updateImages(state, setState)
-	}, [state.numberOfFrames, state.camera, state.startDate, state.endDate])
+	}, [state.number, state.camera, state.startDate, state.endDate])
 
 	useEffect(()=> {
 		if( allImagesLoaded ){
@@ -73,15 +82,12 @@ const SummaryScrubber = (props) => {
 		}
 	}, [state.imagesLoaded])
 
-	const onReload = (newState) => {
+	useEffect(() => {
 		setState((oldState) => ({
 			...oldState,
-			camera: newState.camera,
-			startDate: newState.startDate,
-			endDate: newState.endDate,
-			numberOfFrames: newState.number
+			
 		}))
-	}
+	}, [state.loading, state.list])
 
 	const images = (listHasContents ? state.list.map((frame, index) => {
 		return (
@@ -108,7 +114,7 @@ const SummaryScrubber = (props) => {
 
 	const selectionSlider = <Slider 
 		min={0}
-		max={Math.min(state.numberOfFrames - 1, state.list.length - 1)}
+		max={Math.min(state.number - 1, state.list.length - 1)}
 		value={state.sliderIndex} 
 		onChange={(val) => {
 			setState((oldState) => ({
@@ -144,10 +150,10 @@ const SummaryScrubber = (props) => {
 					cameras={state.cameras}
 					startDate={state.startDate}
 					endDate={state.endDate}
-					number={state.numberOfFrames}
-					numberType={"frames"}
-					loading={state.loading && state.list.length > 0}
-					onChange={onReload}
+					number={state.number}
+					numberType={state.numberType}
+					disabled={state.loading && state.list.length > 0}
+					onChange={onReloadGenerator(setState)}
 				/>
 			</Space>
 		</Card>

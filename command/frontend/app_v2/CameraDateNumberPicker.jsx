@@ -1,24 +1,21 @@
 import React, { useState } from "react"
 
 import {Radio, DatePicker, InputNumber, Space, Button} from 'antd'
-import {CloseCircleOutlined, CloseCircleFilled, CheckCircleOutlined, CheckCircleFilled} from '@ant-design/icons'
+import {BackwardOutlined, BackwardFilled, CheckCircleOutlined, CheckCircleFilled} from '@ant-design/icons'
 import moment from "moment"
 
+import useCamDateNumInfo from "../hooks/useCamDateNumInfo.js"
+
 const CameraDateNumberPicker = (props) => {
-    const [state, setState] = useState({
-        camera: props.camera,
-        startDate: props.startDate,
-        endDate: props.endDate,
-        number: props.number,
-        modified: false
-    })
+    const [state, setState] = useCamDateNumInfo({
+        ...props,
+		modified: false
+	})
 
     const onReset=() => {
-        setState(() => ({
-            camera: props.camera,
-            startDate: props.startDate,
-            endDate: props.endDate,
-            number: props.number,
+        setState((oldState) => ({
+            ...oldState,
+            ...props,
             modified: false
         }))
     }
@@ -95,19 +92,19 @@ const CameraDateNumberPicker = (props) => {
             />
             <Space>
                 <InputNumber 
-                    min={0}
+                    min={1}
                     value={state.number}
                     onChange={onNumberChange} 
                     addonAfter={props.numberType}
                 />
                 <Button 
-                    icon={state.modified ? <CloseCircleFilled /> : <CloseCircleOutlined />}
+                    icon={state.modified ? <BackwardFilled /> : <BackwardOutlined />}
                     onClick={onReset}
                 />
                 <Button 
                     icon={state.modified ? <CheckCircleFilled /> : <CheckCircleOutlined />}
-                    onClick={state.modified ? onChange: () => {}}
-                    disabled={props.loading}
+                    onClick={onChange}
+                    disabled={props.disabled}
                 />
             </Space>
         </Space>

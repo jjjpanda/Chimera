@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-import { List, Card, Space, Button, Modal } from "antd"
+import { List, Card, Space, Button, Radio, Modal, message } from "antd"
+import { PlusCircleFilled } from '@ant-design/icons';
 
 import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
+import CameraDateNumberPicker from './CameraDateNumberPicker';
+
+import useCamDateNumInfo from "../hooks/useCamDateNumInfo.js"
 
 const listProcesses = (setState) => {
     setState((oldState) => ({ 
@@ -30,6 +34,35 @@ const listProcesses = (setState) => {
     })
 }
 
+const createProcess = (state, setState, type, toggleModal) => {
+    const url = type == "video" ? "/convert/createVideo" : "/convert/createZip"
+    if(state.download){
+        message.success("Generating", 0)
+    }
+    request(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: processBody(state)
+    }, (prom) => {
+        if(state.download){
+            downloadProcessing(prom, () => {
+                message.destroy()
+            })
+        }
+        else {
+            jsonProcessing(prom, (data) => {
+                console.log(data)
+                toggleModal({visible: false})
+                setTimeout(() => {
+                    listProcesses(setState)  
+                }, 1500)
+            })
+        }
+    })
+}
+
 const cancelProcess = (id, setState) => {
     request("/convert/cancelProcess", {
         method: "POST",
@@ -47,7 +80,6 @@ const cancelProcess = (id, setState) => {
             }, 1500)
         })
     })
-    
 }
 
 const deleteProcess = (id, setState) => {
@@ -67,19 +99,74 @@ const deleteProcess = (id, setState) => {
             }, 1500)
         })
     })
+}
 
+const processBody = (state) => {
+    console.log(state.startDate, state.endDate)
+    const body = JSON.stringify({
+        camera: (state.camera+1).toString(),
+        start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
+        end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
+        skip: state.speed,
+        save: !state.download
+    })
+    return body
 }
 
 const ProcessList = () => {
-    const [state, setState] = useState({
-        loading: false,
-        lastUpdated: moment().format("h:mm:ss a"),
+    const [state, setState] = useCamDateNumInfo({
+		download: false,
+        numberType: "speed",
         processList: []
-    })
+	})
+
+    const [modal, toggleModal] = useState({
+        visible: false,
+        processType: null
+    });
+
+    useEffect(() => {
+        if(modal.visible){
+            Modal.confirm({
+                title: `Create a ${modal.processType}`,
+                content: (<Space>
+                    <CameraDateNumberPicker 
+                        camera={state.camera}
+                        cameras={state.cameras}
+                        startDate={state.startDate}
+                        endDate={state.endDate}
+                        number={state.speed}
+                        numberType={state.numberType}
+                        loading={state.disabled}
+                        onChange={onChange}
+                    />
+                </Space>),
+                okText: "Close",
+                onOk: () => toggleModal({visible: false}),
+                cancelButtonProps: {style: {visibility: "hidden"}}
+            })
+        }
+        else{
+            Modal.destroyAll()
+        }
+    }, [modal])
+
+    useEffect(() => {
+        if(modal.processType){
+            createProcess(state, setState, modal.processType, toggleModal)
+        }
+    }, [state])
 
     useEffect(() => {
         listProcesses(setState)
     }, [])
+    
+    const onChange = (newState) => {
+        setState((oldState) => ({
+            ...oldState,
+            ...newState
+        }))
+    }
 
     const downloadLink = (process) => <Button disabled={process.running} href={process.link}>
         Download
@@ -104,6 +191,7 @@ const ProcessList = () => {
 
     return (
         <List 
+            header={"Processes"}
             dataSource={state.processList}
             renderItem={process => {
                 return (
@@ -122,6 +210,24 @@ const ProcessList = () => {
                     </Card>
                 )
             }}
+            footer={<Space>
+                <Button 
+                    onClick={() => {
+                        toggleModal({visible: true, processType: "video"})
+                    }}
+                    icon={<PlusCircleFilled />}
+                >
+                    Video
+                </Button>
+                <Button 
+                    onClick={() => {
+                        toggleModal({visible: true, processType: "zip"})
+                    }}
+                    icon={<PlusCircleFilled />}
+                >
+                    Zip
+                </Button>
+            </Space>}
         />
     )
 }
