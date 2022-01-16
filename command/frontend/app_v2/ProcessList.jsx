@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-import {Tabs, List, Card, Button} from 'antd'
-import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from '@ant-design/icons'
-import CameraDateNumberPicker from './CameraDateNumberPicker.jsx';
+import { List, Card, Space, Button, Modal } from "antd"
+
 import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
-import cronstrue from 'cronstrue'
-const cronParser = require('cron-parser')
 
 const listProcesses = (setState) => {
-    setState(() => ({
-        processList: [],
-        loading: true
+    setState((oldState) => ({ 
+        ...oldState,
+        processList: [], 
+        loading: true 
     }))
     request("/convert/listProcess", {
         method: "GET",
@@ -20,44 +18,19 @@ const listProcesses = (setState) => {
         }
     }, (prom) => {
         jsonProcessing(prom, (data) => {
-            if(data && "tasks" in data){
-                const {tasks} = data
-                setState(() => ({
-                    processList: tasks,
-                    loading: false 
-                }))
-            }
-            else{
-                setState(() => ({
-                    processList: [],
-                    loading: false
-                }))
-            }
+            setState((oldState) => ({
+                ...oldState,
+                processList: [...data.list.sort((process1, process2) => {
+                    return moment(process2.requested, "YYYYMMDD-HHmmss").diff(moment(process1.requested, "YYYYMMDD-HHmmss"), "seconds")
+                })],
+                lastUpdated: moment().format("h:mm:ss a"),
+                loading: false
+            }))
         })
     })
 }
 
-const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
-    jsonProcessing(prom, (data) => {
-        setTimeout(() => {
-           setKey(key+1) 
-        }, 1500)
-    })
-}
-
-const restartProcess = (id, key, setKey) => {
-    request("/convert/startProcess", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            id
-        })
-    }, afterRequestCallbackGenerator(key, setKey))
-}
-
-const cancelProcess = (id, key, setKey) => {
+const cancelProcess = (id, setState) => {
     request("/convert/cancelProcess", {
         method: "POST",
         headers: {
@@ -66,10 +39,18 @@ const cancelProcess = (id, key, setKey) => {
         body: JSON.stringify({
             id
         })
-    }, afterRequestCallbackGenerator(key, setKey))
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            setTimeout(() => {
+                listProcesses(setState)  
+            }, 1500)
+        })
+    })
+    
 }
 
-const deleteProcess = (id, key, setKey) => {
+const deleteProcess = (id, setState) => {
     request("/convert/deleteProcess", {
         method: "POST",
         headers: {
@@ -78,62 +59,71 @@ const deleteProcess = (id, key, setKey) => {
         body: JSON.stringify({
             id
         })
-    }, afterRequestCallbackGenerator(key, setKey))
+    }, (prom) => {
+        jsonProcessing(prom, (data) => {
+            console.log(data)
+            setTimeout(() => {
+                listProcesses(setState)  
+            }, 1500)
+        })
+    })
+
 }
 
-const ProcessList = (props) => {
+const ProcessList = () => {
     const [state, setState] = useState({
-        processList: [],
-        loading: false
+        loading: false,
+        lastUpdated: moment().format("h:mm:ss a"),
+        processList: []
     })
-    const [key, setKey] = useState(0)
 
     useEffect(() => {
         listProcesses(setState)
-    }, [key])
+    }, [])
 
-    const processListSortedUpcoming = [...state.processList.sort((a, b) => {
-        const secondsToNowB = moment(cronParser.parseExpression(b.cronString).next().toString()).diff(moment(), "seconds")
-        const secondsToNowA = moment(cronParser.parseExpression(a.cronString).next().toString()).diff(moment(), "seconds")
-        return secondsToNowA - secondsToNowB
-    })]
-    const processListSortedAll = [...state.processList.sort((a, b) => a.id.localeCompare(b.id))]
+    const downloadLink = (process) => <Button disabled={process.running} href={process.link}>
+        Download
+    </Button>
 
-    const processList = (items) => (
-        <List
-            itemLayout='horizontal'
-            dataSource={items}
-            renderItem={item => (
-                <List.Item actions={[<Button onClick={() => {
-                        if(item.running){
-                            cancelProcess(item.id, key, setKey)
-                        }
-                        else{
-                            restartProcess(item.id, key, setKey)
-                        }
-                    }} icon={item.running ? <PauseCircleFilled /> : <PlayCircleFilled />}/>, 
-                    <Button onClick={() => {
-                        deleteProcess(item.id, key, setKey)
-                    }} icon={<DeleteFilled />}/>]}
-                >
-                    <List.Item.Meta
-                        title={`Task: ${item.url}`}
-                        avatar={<RightOutlined />}
-                        description={`${cronstrue.toString(item.cronString)}`}
-                    />
-                </List.Item>
-            )}     
+    const endButton = (process) => <Button onClick={() => {
+        Modal.confirm({
+            title: process.running ? "Cancel" : "Delete",
+            content: "Are you sure?",
+            okText: "Yes",
+            cancelText: "No",
+            onOk: () => {
+                if(process.running){
+                    cancelProcess(process.id, setState)
+                }
+                else{
+                    deleteProcess(process.id, setState)
+                }
+            }
+        })
+    }}>{process.running ? "Cancel" : "Delete"}</Button>
+
+    return (
+        <List 
+            dataSource={state.processList}
+            renderItem={process => {
+                return (
+                    <Card 
+                        extra={process.running ? "Running" : null}
+                        title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
+                        actions={[downloadLink(process), endButton(process)]}
+                    >
+                        <Space>
+                            Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                            Camera: {process.camera} <br />
+                            Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                            End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
+                            {(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
+                        </Space>
+                    </Card>
+                )
+            }}
         />
     )
-
-    return (<Tabs tabBarExtraContent={{right: <Button />}}>
-        <Tabs.TabPane tab="Upcoming" key="1">
-            {processList(processListSortedUpcoming)}
-        </Tabs.TabPane>
-        <Tabs.TabPane tab="All" key="2">
-            {processList(processListSortedAll)}
-        </Tabs.TabPane>
-    </Tabs>)
 }
 
 export default ProcessList
