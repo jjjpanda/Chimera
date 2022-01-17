@@ -6,6 +6,7 @@ const useCamDateNumInfo = (extraOverride) => {
 		camera: 0,
 		cameras: JSON.parse(process.env.cameras),
 
+        days: 1,
 		startDate: moment().subtract(1, "day"),
 		endDate: moment(),
 

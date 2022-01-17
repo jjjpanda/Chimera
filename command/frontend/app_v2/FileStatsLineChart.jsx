@@ -1,11 +1,11 @@
-import React, {useState, useEffect} from "react"
+import React from "react"
 
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { formatBytes } from "lib"
-import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
 import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
+import useFileStats from "../hooks/useFileStats.js"
 
 const customTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
@@ -26,33 +26,15 @@ const customTooltip = ({ active, payload }) => {
     return null;
 };
 
-const statsUpdate = (state, setState) => {
-	request("/file/pathStats", {
-		method: "GET"
-	}, (prom) => {
-		jsonProcessing(prom, (data) => {
-			if(data != undefined){
-				setState((oldState) => ({
-					...oldState,
-					fileStats: data,
-				}))
-			}
-		})
-	})
-}
 
 const FileStatsLineChart = (props) => {
-    const [state, setState] = useState({
+    const [state] = useFileStats({
 		loading: "refreshing",
 		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
 		days: 7,
 		lastUpdated: moment().format("h:mm:ss a"),
 		fileStats: []
 	})
-
-	useEffect(() => {
-		statsUpdate(state, setState)
-	}, [])
 
     return (
         <ResponsiveContainer width="100%" height="100%">

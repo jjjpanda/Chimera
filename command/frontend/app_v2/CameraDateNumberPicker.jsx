@@ -58,6 +58,15 @@ const CameraDateNumberPicker = (props) => {
         }
 	}
 
+    const onDaysChange = (e) => {
+        //e number
+		setState((oldState) => ({
+            ...oldState,
+			days: e,
+            modified: true
+		}))
+    }
+
 	const onNumberChange = (e) => {
 		//e number
 		setState((oldState) => ({
@@ -78,7 +87,12 @@ const CameraDateNumberPicker = (props) => {
                     <Radio.Button value={index}>{cam}</Radio.Button>
                 ))}
             </Radio.Group>
-            <DatePicker.RangePicker
+            {props.days ? <InputNumber 
+                min={1}
+                value={state.days}
+                onChange={onDaysChange} 
+                addonAfter={"day's worth"}
+            /> : <DatePicker.RangePicker
                 value={[state.startDate, state.endDate]}
                 ranges={{
                     'Past Month': [moment().subtract(1, "month"), moment()],
@@ -89,7 +103,7 @@ const CameraDateNumberPicker = (props) => {
                 showTime
                 format="YYYY/MM/DD HH:mm:ss"
                 onChange={onDateChange}
-            />
+            />}
             <Space>
                 <InputNumber 
                     min={1}
