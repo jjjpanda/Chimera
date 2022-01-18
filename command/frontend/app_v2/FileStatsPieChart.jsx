@@ -1,11 +1,13 @@
 import React from "react"
+import useFileMetrics from "../hooks/useFileMetrics.js"
 
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
-import { formatBytes } from "lib"
+
 import Cookies from "js-cookie"
+import { formatBytes } from "lib"
+
 import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
-import useFileMetrics from "../hooks/useFileMetrics.js"
 
 const customTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {

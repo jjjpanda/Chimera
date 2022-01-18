@@ -1,12 +1,10 @@
 import React from "react"
 import { useParams, useNavigate } from "react-router-dom"
 
-import { 
-	Row,
-	Col
-} from "antd"
+import { Row, Col } from "antd"
 import LiveVideo from "./LiveVideo"
-import FileStats from "./FileStats"
+import FileStatsPieChart from "./FileStatsPieChart.jsx"
+import FileStatsLineChart from "./FileStatsLineChart.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
@@ -34,11 +32,11 @@ const Main = () => {
 	let index = routeToIndex(route)
     return (
 		<Row>
-			<Col span={12}>
-				<ProcessList />
+			<Col span={12} style={{height: "600px"}}>
+				<FileStatsPieChart />
 			</Col>
 			<Col span={12}>
-				<SummaryScrubber />
+				<ProcessList />
 			</Col>
         </Row>
     )

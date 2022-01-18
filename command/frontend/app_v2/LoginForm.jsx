@@ -1,8 +1,8 @@
 import React from "react"
+import useLoginSchema from "../hooks/useLoginSchema"
 
 import { Card, Space, Button, Modal, Input } from 'antd'
 import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
-import useLoginSchema from "../hooks/useLoginSchema"
 
 const LoginForm = (props) => {
     const [loginStatus, modalVisible, toggleModal, inputValues, onPasswordEnter, onPINEnter, updatePassword, updatePIN] = useLoginSchema(props);

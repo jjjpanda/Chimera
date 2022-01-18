@@ -1,11 +1,10 @@
 import React from 'react';
+import useProcesses from '../hooks/useProcesses.js';
 
 import { List, Card, Space, Button, Modal } from "antd"
 import { PlusCircleFilled } from '@ant-design/icons';
 
 import moment from "moment"
-
-import useProcesses from '../hooks/useProcesses.js';
 
 const ProcessList = () => {
     const [state, cancelProcess, deleteProcess, toggleModal] = useProcesses()

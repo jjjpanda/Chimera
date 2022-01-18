@@ -1,13 +1,10 @@
 import React from "react"
+import useLiveVideo from "../hooks/useLiveVideo.js"
 
-import { 
-	Card, 
-	Carousel, 
-} from "antd"
+import { Card, Carousel } from "antd"
+import ReactHlsPlayer from "react-hls-player"
 
 import moment from "moment"
-import ReactHlsPlayer from "react-hls-player"
-import useLiveVideo from "../hooks/useLiveVideo.js"
 
 const LiveVideo = (props) => {
 	const [state, setState] = useLiveVideo({

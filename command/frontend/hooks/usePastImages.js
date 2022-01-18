@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react"
+import useCamDateNumInfo from "./useCamDateNumInfo.js"
+
+import moment from "moment"
 
 import { request, jsonProcessing } from "./../js/request.js"
-import moment from "moment"
-import Cookies from "js-cookie"
-
-import useCamDateNumInfo from "./useCamDateNumInfo.js"
 
 const processBody = (state) => {
 	const body = JSON.stringify({

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import useTasks from '../hooks/useTasks.js';
 
-import {Tabs, List, Card, Button} from 'antd'
+import {Tabs, List, Button} from 'antd'
 import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from '@ant-design/icons'
+
+const cronParser = require('cron-parser')
 import moment from "moment"
 import cronstrue from 'cronstrue'
-import useTasks from '../hooks/useTasks.js';
-const cronParser = require('cron-parser')
 
 const TaskList = (props) => {
     const [state, restartProcess, cancelProcess, deleteProcess] = useTasks()

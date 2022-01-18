@@ -1,6 +1,7 @@
 import React from 'react'
 
 import {Switch, Typography, Space} from 'antd'
+
 import Cookies from "js-cookie"
 
 const ThemeSwitcher = () => {

@@ -1,11 +1,13 @@
 import React from "react"
+import useFileStats from "../hooks/useFileStats.js"
 
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
-import { formatBytes } from "lib"
+
 import moment from "moment"
+import { formatBytes } from "lib"
+
 import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
-import useFileStats from "../hooks/useFileStats.js"
 
 const customTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
