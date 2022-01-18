@@ -2,94 +2,13 @@ import React, { useState, useEffect } from 'react';
 
 import {Tabs, List, Card, Button} from 'antd'
 import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from '@ant-design/icons'
-import {request, jsonProcessing} from "../js/request.js"
 import moment from "moment"
 import cronstrue from 'cronstrue'
+import useTasks from '../hooks/useTasks.js';
 const cronParser = require('cron-parser')
 
-const listProcesses = (setState) => {
-    setState(() => ({
-        processList: [],
-        loading: true
-    }))
-    request("/convert/listProcess", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        }
-    }, (prom) => {
-        jsonProcessing(prom, (data) => {
-            if(data && "tasks" in data){
-                const {tasks} = data
-                setState(() => ({
-                    processList: tasks,
-                    loading: false 
-                }))
-            }
-            else{
-                setState(() => ({
-                    processList: [],
-                    loading: false
-                }))
-            }
-        })
-    })
-}
-
-const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
-    jsonProcessing(prom, (data) => {
-        setTimeout(() => {
-           setKey(key+1) 
-        }, 1500)
-    })
-}
-
-const restartProcess = (id, key, setKey) => {
-    request("/convert/startProcess", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            id
-        })
-    }, afterRequestCallbackGenerator(key, setKey))
-}
-
-const cancelProcess = (id, key, setKey) => {
-    request("/convert/cancelProcess", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            id
-        })
-    }, afterRequestCallbackGenerator(key, setKey))
-}
-
-const deleteProcess = (id, key, setKey) => {
-    request("/convert/deleteProcess", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            id
-        })
-    }, afterRequestCallbackGenerator(key, setKey))
-}
-
 const TaskList = (props) => {
-    const [state, setState] = useState({
-        processList: [],
-        loading: false
-    })
-    const [key, setKey] = useState(0)
-
-    useEffect(() => {
-        listProcesses(setState)
-    }, [key])
+    const [state, restartProcess, cancelProcess, deleteProcess] = useTasks()
 
     const processListSortedUpcoming = [...state.processList.sort((a, b) => {
         const secondsToNowB = moment(cronParser.parseExpression(b.cronString).next().toString()).diff(moment(), "seconds")
@@ -105,14 +24,14 @@ const TaskList = (props) => {
             renderItem={item => (
                 <List.Item actions={[<Button onClick={() => {
                         if(item.running){
-                            cancelProcess(item.id, key, setKey)
+                            cancelProcess(item.id)
                         }
                         else{
-                            restartProcess(item.id, key, setKey)
+                            restartProcess(item.id)
                         }
                     }} icon={item.running ? <PauseCircleFilled /> : <PlayCircleFilled />}/>, 
                     <Button onClick={() => {
-                        deleteProcess(item.id, key, setKey)
+                        deleteProcess(item.id)
                     }} icon={<DeleteFilled />}/>]}
                 >
                     <List.Item.Meta
