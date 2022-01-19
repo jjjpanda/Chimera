@@ -98,6 +98,12 @@ const backspace = (retyped) => {
 	}
 }
 
+const minutes = 3
+setInterval(() => {
+	enter(null, true)
+}, minutes * 1000 * 60)
+
+stdout.write(`Proceeding with password file in ${minutes} minutes`)
 stdout.write("\nCreate Chimera Password:")
 stdin.setRawMode(true)
 stdin.resume()
