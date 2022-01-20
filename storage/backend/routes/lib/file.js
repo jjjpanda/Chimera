@@ -172,12 +172,12 @@ const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {
 		{unit: "y", format: "YYYY"}, 
 		{unit: "M", format: "YYYYMM"}, 
 		{unit: "d", format: "YYYYMMDD"}, 
-		{unit: "h", format: "YYYYMM-HH"}, 
-		{unit: "m", format: "YYYYMM-HHmm"}, 
-		{unit: "s", format: "YYYYMM-HHmmss"}
+		{unit: "h", format: "YYYYMMDD-HH"}, 
+		{unit: "m", format: "YYYYMMDD-HHmm"}, 
+		{unit: "s", format: "YYYYMMDD-HHmmss"}
 	]
 	for(const {unit, format} of units){
-		if(now.diff(beforeDate, unit) >= 1){
+		if(now.diff(beforeDate, unit) > 0){
 			const str = now.format(format)
 			return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, unit), beforeDate)]
 		}
