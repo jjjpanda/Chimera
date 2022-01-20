@@ -6,7 +6,7 @@ import {
 	Routes,
 	Navigate
 } from "react-router-dom"
-import Main from "./app_v2/Main.jsx"
+import ResponsiveMain from "./app_v2/ResponsiveMain.jsx"
 
 import "./css/style.less"
 import LoadingIcon from "./app_v2/LoadingIcon.jsx"
@@ -48,12 +48,12 @@ const App = () => {
 					<Route 
 						key={`ROUTE-${key}-3`}
 						path="/:route" 
-						element={loggedIn ? <Main /> : <Navigate to="/login" />}
+						element={loggedIn ? <ResponsiveMain /> : <Navigate to="/login" />}
 					/>
 					<Route 
 						key={`ROUTE-${key}-4`}
 						path="/" 
-						element={loggedIn ? <Main /> : <Navigate to="/login" />}
+						element={loggedIn ? <ResponsiveMain /> : <Navigate to="/login" />}
 					/>
 				</Routes> : <LoadingIcon />}
 			</Router>

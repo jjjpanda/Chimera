@@ -33,7 +33,7 @@ const FileStatsPieChart = (props) => {
     const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
 
     return (
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer height={600}>
             <PieChart>
                 <Tooltip content={customTooltip} />
                 <Pie 

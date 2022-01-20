@@ -47,6 +47,7 @@
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "react-hls-player": "^3.0.7",
+    "react-responsive": "^9.0.0-beta.6",
     "react-router-dom": "^6.0.2",
     "recharts": "^2.1.5",
     "stream-browserify": "^3.0.0",

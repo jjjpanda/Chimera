@@ -35,7 +35,7 @@ const Main = () => {
 	const navigate = useNavigate()
 	let index = routeToIndex(route)
     return (
-		<Layout>
+		<Layout style={{minHeight: "100vh"}}>
 			<Sider
 				collapsible 
 				collapsed={collapsed} 
@@ -57,7 +57,7 @@ const Main = () => {
 			<Layout>
 				<Content>
 					<Row>
-						<Col span={12} style={{height: "600px"}}>
+						<Col span={12}>
 							<FileStatsPieChart />
 						</Col>
 						<Col span={12}>
