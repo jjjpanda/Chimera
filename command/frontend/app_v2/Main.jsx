@@ -57,10 +57,13 @@ const Main = () => {
 			<Layout>
 				<Content>
 					<Row>
-						<Col span={12}>
+						<Col span={9}>
 							<FileStatsPieChart />
 						</Col>
-						<Col span={12}>
+						<Col span={9}>
+							<FileStatsLineChart />
+						</Col>
+						<Col span={6}>
 							<ProcessList />
 						</Col>
 					</Row>

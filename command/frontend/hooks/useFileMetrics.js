@@ -101,36 +101,20 @@ const useFileMetrics = (initialState) => {
 
     const handleDelete = ({name, number, target}) => {
 		console.log(name, number, target)
-		if(name && number){
-			Modal.confirm({
-				title:`Delete Files from Camera: ${name}?`,
-				content: (<DeleteDaysInput 
-					default={state.days}
-					onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
-				/>),
-				okText: "Yes",
-				cancelText: "No",
-				onOk: () => {
-					console.log("DELETE", name, state.days)
-					deleteFiles(state, setState, number)
-				}
-			})
-		}
-		else{
-			Modal.confirm({
-				title:`Delete Files from All Cameras?`,
-				content: (<DeleteDaysInput 
-					default={state.days}
-					onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
-				/>),
-				okText: "Yes",
-				cancelText: "No",
-				onOk: () => {
-					console.log("DELETE ALL", state.days)
-					deleteFiles(state, setState)
-				}
-			})
-		}
+		Modal.confirm({
+			title: (name && number) ? `Delete Files from Camera: ${name}?` : `Delete Files from All Cameras?`,
+			content: (<DeleteDaysInput 
+				default={state.days}
+				onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
+			/>),
+			okText: "No",
+			onOk: () => Modal.destroyAll(),
+			cancelText: "Yes",
+			onCancel: () => {
+				console.log(name && number ? `DELETE ${name} ${state.days}` : `DELETE ALL ${state.days}`)
+				deleteFiles(state, setState, number ? number : undefined)
+			}
+		})
 	}
 
     return [state, setState, handleDelete]

@@ -34,7 +34,12 @@ const MobileMain = () => {
 	let index = routeToIndex(route)
     return (
 		<Space direction='vertical' justify='center' style={{minWidth: "100%"}}>
-      
+			<div style={{height: "400px", display: "flex"}}>
+				<FileStatsLineChart />
+			</div>
+			<div style={{height: "400px", display: "flex"}}>
+				<FileStatsPieChart />
+			</div>
             <SummaryScrubber />
             <LiveVideo />
             <ProcessList />

@@ -39,7 +39,7 @@ const FileStatsLineChart = (props) => {
 	})
 
     return (
-        <ResponsiveContainer height={500}>
+        <ResponsiveContainer>
             <LineChart data={state.fileStats}>
                 <Tooltip content={customTooltip} />
                 <XAxis 
