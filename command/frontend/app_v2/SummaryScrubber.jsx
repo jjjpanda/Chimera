@@ -8,20 +8,18 @@ import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
 const SummaryScrubber = (props) => {
 	const [state, setState, listHasContents, stoppable, onReload] = usePastImages()
 
-	const images = (listHasContents ? state.list.map((frame, index) => {
-		return (
-			<img 
-				style={{ display: state.sliderIndex == index ? "inherit" : "none", objectFit: "contain", height: "100%" }} 
-				src={frame}
-				onLoad = {() => {
-					setState((oldState) => ({
-						...oldState,
-						imagesLoaded: state.imagesLoaded + 1
-					}))
-				}}
-			/>
-		)
-	}) : <Empty
+	const images = (listHasContents ? state.list.map((frame, index) => (
+		<img 
+			style={{ display: state.sliderIndex == index ? "inherit" : "none", objectFit: "contain", height: "100%" }} 
+			src={frame}
+			onLoad = {() => {
+				setState((oldState) => ({
+					...oldState,
+					imagesLoaded: state.imagesLoaded + 1
+				}))
+			}}
+		/>
+	)) : <Empty
 		description="No Images"
 		imageStyle={{display: "inherit"}}
 	/>) 

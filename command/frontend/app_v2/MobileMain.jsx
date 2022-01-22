@@ -8,23 +8,9 @@ import FileStatsLineChart from "./FileStatsLineChart.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
+import ThemeSwitcher from "./ThemeSwitcher";
 
-const routeToIndex = (r) => {
-	switch(r){
-	case "":
-		return 0
-	case "live":
-		return 1
-	case "process":
-		return 2
-	case "scrub":
-		return 3
-	case "stats":
-		return 4
-	default: 
-		return 0
-	}
-}
+import routeToIndex from "../js/routeToIndex";
 
 const MobileMain = () => {
 	const [collapsed, setCollapsed] = useState(false)
@@ -34,6 +20,7 @@ const MobileMain = () => {
 	let index = routeToIndex(route)
     return (
 		<Space direction='vertical' justify='center' style={{minWidth: "100%"}}>
+			<ThemeSwitcher />
 			<div style={{height: "400px", display: "flex"}}>
 				<FileStatsLineChart />
 			</div>

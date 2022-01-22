@@ -11,22 +11,7 @@ import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
 
-const routeToIndex = (r) => {
-	switch(r){
-	case "":
-		return 0
-	case "live":
-		return 1
-	case "process":
-		return 2
-	case "scrub":
-		return 3
-	case "stats":
-		return 4
-	default: 
-		return 0
-	}
-}
+import routeToIndex from "../js/routeToIndex";
 
 const Main = () => {
 	const [collapsed, setCollapsed] = useState(false)
