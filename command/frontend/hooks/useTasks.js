@@ -81,6 +81,8 @@ const useTasks = () => {
         loading: false
     })
 
+    const [key, setKey] = useState(1)
+
     useEffect(() => {
         listProcesses(setState)
     }, [key])

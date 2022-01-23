@@ -1,10 +1,11 @@
 import React, {useEffect} from 'react';
-
-import Cookies from "js-cookie"
+import useThemeSwitch from '../hooks/useThemeSwitch';
 
 const ThemeProvider = ({children}) => {
+    const [isDarkTheme] = useThemeSwitch();
+
     useEffect(() => {
-        if( Cookies.get('theme') == "dark" ) {
+        if( isDarkTheme ) {
             import('antd/dist/antd.dark.css')
         }
         else{

@@ -1,9 +1,9 @@
 import React from "react"
 import useFileMetrics from "../hooks/useFileMetrics.js"
+import useThemeSwitch from "../hooks/useThemeSwitch.js"
 
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
 
-import Cookies from "js-cookie"
 import { formatBytes } from "lib"
 
 import cameraInfo from '../js/cameraInfo.js'
@@ -29,6 +29,8 @@ const FileStatsPieChart = (props) => {
 		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
 		days: 7
 	})
+
+    const [isDarkTheme] = useThemeSwitch();
 
     const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
 
@@ -56,7 +58,7 @@ const FileStatsPieChart = (props) => {
                     <Label 
                         value={`${formatBytes(sumSize, 1)}`} 
                         position="center" 
-                        style={{fill: Cookies.get("theme") == "dark" ? "white" : "black"}} 
+                        style={{fill: isDarkTheme ? "white" : "black"}} 
                         onClick={handleDelete}
                     />
                 </Pie>

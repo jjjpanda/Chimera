@@ -1,35 +1,20 @@
-import React, { useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import React from "react"
+import { useParams } from "react-router-dom"
 
 import { Space } from 'antd-mobile';
-import LiveVideo from "./LiveVideo"
-import FileStatsPieChart from "./FileStatsPieChart.jsx"
-import FileStatsLineChart from "./FileStatsLineChart.jsx"
-import SummaryScrubber from "./SummaryScrubber"
-import TaskList from "./TaskList"
-import ProcessList from "./ProcessList"
-import ThemeSwitcher from "./ThemeSwitcher";
+import SideMenu from './SideMenu'
+import MobileView from "./MobileView";
 
-import routeToIndex from "../js/routeToIndex";
+import {routeToIndex} from "../js/routeIndexMapping";
 
 const MobileMain = () => {
-	const [collapsed, setCollapsed] = useState(false)
-
 	const {route} = useParams()
-	const navigate = useNavigate()
+	
 	let index = routeToIndex(route)
     return (
 		<Space direction='vertical' justify='center' style={{minWidth: "100%"}}>
-			<ThemeSwitcher />
-			<div style={{height: "400px", display: "flex"}}>
-				<FileStatsLineChart />
-			</div>
-			<div style={{height: "400px", display: "flex"}}>
-				<FileStatsPieChart />
-			</div>
-            <SummaryScrubber />
-            <LiveVideo />
-            <ProcessList />
+			<SideMenu mobile index={index} />
+			<MobileView index={index} />
         </Space>
     )
 }
