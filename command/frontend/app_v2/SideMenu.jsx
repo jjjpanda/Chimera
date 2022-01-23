@@ -51,7 +51,7 @@ const SideMenu = (props) => {
                 onCollapse={(c) => setCollapsed(c)}
             >
                 <img 
-                    style={{ display: "inherit", objectFit: "contain", height: "5%" }} 
+                    style={{ display: "inherit", objectFit: "contain", height: "20px" }} 
                     src={"/res/logo.png"}
                 />
                 <Menu theme="dark" defaultSelectedKeys={[props.index]} onClick={handleMenuClick}>

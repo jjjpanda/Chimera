@@ -8,14 +8,10 @@ import MobileMain from './MobileMain.jsx'
 const ResponsiveMain = (props) => {
     const isTabletOrMobile = useMediaQuery({ query: '(max-width: 600px)' }) 
     if(isTabletOrMobile){
-        return(
-            <MobileMain/>
-        )
+        return <MobileMain/>
     }
     else{
-        return(
-            <Main/>    
-        )
+        return <Main/>
     }
 }
 

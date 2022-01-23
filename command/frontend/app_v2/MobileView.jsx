@@ -14,7 +14,7 @@ const MobileView = (props) => {
         return <LiveVideo list/>
     }
     else if(index == "route-2"){
-        return <ProcessList />
+        return [<ProcessList showFooter />, <TaskList />]
     }
     else if(index == "route-3"){
         return <SummaryScrubber />

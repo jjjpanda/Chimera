@@ -6,7 +6,7 @@ import { PlusCircleFilled } from '@ant-design/icons';
 
 import moment from "moment"
 
-const ProcessList = () => {
+const ProcessList = (props) => {
     const [state, cancelProcess, deleteProcess, toggleModal] = useProcesses()
 
     const downloadLink = (process) => <Button disabled={process.running} href={process.link}>
@@ -51,7 +51,7 @@ const ProcessList = () => {
                     </Card>
                 )
             }}
-            footer={<Space direction="vertical">
+            footer={props.showFooter ? <Space direction="vertical">
                 <Space>
                     <Button 
                         onClick={() => {
@@ -88,7 +88,7 @@ const ProcessList = () => {
                         Scheduled Zip
                     </Button>
                 </Space>
-            </Space>}
+            </Space> : null}
         />
     )
 }

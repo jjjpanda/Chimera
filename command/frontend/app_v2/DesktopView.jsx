@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Row, Col, Space } from "antd"
+import { Row, Col, Space, Typography } from "antd"
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
 import FileStatsLineChart from "./FileStatsLineChart.jsx"
@@ -15,13 +15,33 @@ const DesktopView = (props) => {
         return <LiveVideo grid />
     }
     else if(index == "route-2"){
-        return <></>
+        return <Row>
+            <Col span={18}>
+                <ProcessList showFooter />
+            </Col>
+            <Col span={6}>
+                <TaskList />
+            </Col>
+        </Row>
     }
     else if(index == "route-3"){
-        return <></>
+        return  <Space direction="vertical" style={{width: "100%"}}>
+            <SummaryScrubber />
+        </Space> 
     }
     else if(index == "route-4"){
-        return <></>
+        return <Space direction="vertical" style={{width: "100%"}}>
+            <Row >
+                <Col span={6} style={{height: "80vh"}}>
+                    <FileStatsPieChart />
+                </Col>
+                <Col span={2}>
+                </Col>
+                <Col span={16}>
+                    <FileStatsLineChart />
+                </Col>
+            </Row>
+        </Space>
     }
     else{
         return (
@@ -32,9 +52,6 @@ const DesktopView = (props) => {
                     </Col>
                     <Col span={9}>
                         <ProcessList />
-                    </Col>
-                    <Col span={6}>
-                        <FileStatsLineChart />
                     </Col>
                 </Row>
                 <Row>
