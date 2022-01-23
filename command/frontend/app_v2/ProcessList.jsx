@@ -51,23 +51,43 @@ const ProcessList = () => {
                     </Card>
                 )
             }}
-            footer={<Space>
-                <Button 
-                    onClick={() => {
-                        toggleModal({visible: true, processType: "video"})
-                    }}
-                    icon={<PlusCircleFilled />}
-                >
-                    Video
-                </Button>
-                <Button 
-                    onClick={() => {
-                        toggleModal({visible: true, processType: "zip"})
-                    }}
-                    icon={<PlusCircleFilled />}
-                >
-                    Zip
-                </Button>
+            footer={<Space direction="vertical">
+                <Space>
+                    <Button 
+                        onClick={() => {
+                            toggleModal({visible: true, processType: "video", days: false})
+                        }}
+                        icon={<PlusCircleFilled />}
+                    >
+                        Video
+                    </Button>
+                    <Button 
+                        onClick={() => {
+                            toggleModal({visible: true, processType: "zip", days: false})
+                        }}
+                        icon={<PlusCircleFilled />}
+                    >
+                        Zip
+                    </Button>
+                </Space>
+                <Space>
+                    <Button 
+                        onClick={() => {
+                            toggleModal({visible: true, processType: "video", days: true})
+                        }}
+                        icon={<PlusCircleFilled />}
+                    >
+                        Scheduled Video
+                    </Button>
+                    <Button 
+                        onClick={() => {
+                            toggleModal({visible: true, processType: "zip", days: true})
+                        }}
+                        icon={<PlusCircleFilled />}
+                    >
+                        Scheduled Zip
+                    </Button>
+                </Space>
             </Space>}
         />
     )

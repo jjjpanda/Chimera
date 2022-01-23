@@ -10,7 +10,7 @@ import { BulbFilled, BulbOutlined, HomeOutlined, VideoCameraOutlined, PlayCircle
 import { indexToRoute } from "../js/routeIndexMapping"
 
 const SideMenu = (props) => {
-	const [collapsed, setCollapsed] = useState(false)
+	const [collapsed, setCollapsed] = useState(true)
     const [isDarkTheme, switchTheme, triggerSwitchModal] = useThemeSwitch();
     const navigate = useNavigate()
 

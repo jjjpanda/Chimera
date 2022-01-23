@@ -9,10 +9,16 @@ const getNumberOfRowsAndCols = (numberOfVideos) => {
 }
 
 const squarifyVideoList = (videos) => {
-    if(!videos) return []
+    if(!videos){ 
+        console.log("SQUARED", videos, [])
+        return []
+    }
 
     let numberOfVideos = videos.length
-    if(numberOfVideos == 0) return []
+    if(numberOfVideos == 0){ 
+        console.log("SQUARED", videos, [])
+        return []
+    }
 
     let numberOfRowsAndCols = getNumberOfRowsAndCols(numberOfVideos)
 
@@ -24,17 +30,17 @@ const squarifyVideoList = (videos) => {
             squaredVideoList[j].push(videos[i])
             i++
             if(i == numberOfVideos){
+                console.log("SQUARED", videos, squaredVideoList)
                 return squaredVideoList
             }
         }
     }
+    console.log("SQUARED", videos, squaredVideoList)
     return squaredVideoList
 }
 
-const useSquarifyVideos = (list) => {
-    let squarifiedList = squarifyVideoList(list)
-    console.log("SQUARED", list, squarifiedList)
-    return squarifiedList
+const useSquarifyVideos = () => {
+    return squarifyVideoList
 }
 
 export default useSquarifyVideos

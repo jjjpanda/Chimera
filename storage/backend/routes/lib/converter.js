@@ -69,6 +69,15 @@ module.exports = {
 		})
 	},
 
+	validateDays: (req, res, next) => {
+		let { days } = req.body
+		if(days != undefined){
+			req.start = moment().subtract(days, "days")
+			req.end = moment()
+		}
+		next()
+	},
+
 	validateRequest: (req, res, next) => {
 		let { camera, start, end } = req.body
 

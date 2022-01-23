@@ -16,9 +16,10 @@ const LiveVideo = (props) => {
 	})
 
 	const [videos, setVideos] = useState([])
+	const squarify = useSquarifyVideos()
 
 	useEffect(() => {
-		setVideos(props.grid ? useSquarifyVideos(state.videoList) : state.videoList)
+		setVideos(props.grid ? squarify(state.videoList) : state.videoList)
 	}, [state.videoList])
 
 	if(props.list){

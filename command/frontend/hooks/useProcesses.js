@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import useCamDateNumInfo from "./useCamDateNumInfo.js"
+import useScheduler from './useScheduler'
 
 import { Space, Modal, message } from "antd"
 import CameraDateNumberPicker from '../app_v2/CameraDateNumberPicker';
@@ -99,19 +100,21 @@ const deleteProcessGenerator = (setState) => (id) => {
     })
 }
 
-const processBody = (state) => {
-    console.log(state.startDate, state.endDate)
+const processBody = (state, useDays=false) => {
     const body = JSON.stringify({
         camera: (state.camera+1).toString(),
+        ...(useDays ? {days: state.days} : {}),
         start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
         end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
         skip: state.number,
         save: !state.download
     })
+    console.log("PROCESS BODY", body)
     return body
 }
 
 const useProcesses = () => {
+    const [scheduleTask] = useScheduler()
     const [state, setState] = useCamDateNumInfo({
 		download: false,
         numberType: "speed",
@@ -120,7 +123,8 @@ const useProcesses = () => {
 
     const [modal, toggleModal] = useState({
         visible: false,
-        processType: null
+        processType: null,
+        days: false
     });
 
     const onChange = (newState) => {
@@ -133,13 +137,17 @@ const useProcesses = () => {
     useEffect(() => {
         if(modal.visible){
             Modal.confirm({
-                title: `Create a ${modal.processType}`,
+                title: `${modal.days ? "Schedule" : "Create"} a ${modal.processType}`,
                 content: (<Space>
                     <CameraDateNumberPicker 
                         camera={state.camera}
                         cameras={state.cameras}
-                        startDate={state.startDate}
-                        endDate={state.endDate}
+                        {...(modal.days ? {
+                            days: state.days
+                        } : {
+                            startDate: state.startDate,
+                            endDate: state.endDate
+                        })}
                         number={state.number}
                         numberType={state.numberType}
                         loading={state.disabled}
@@ -158,7 +166,15 @@ const useProcesses = () => {
 
     useEffect(() => {
         if(modal.processType){
-            createProcess(state, setState, modal.processType, toggleModal)
+            if(modal.days){
+                scheduleTask( 
+                    modal.processType == "video" ? "/convert/createVideo" : "/convert/createZip", 
+                    processBody(state, modal.days)
+                )
+            }
+            else{
+                createProcess(state, setState, modal.processType, toggleModal)
+            }
         }
     }, [state])
 

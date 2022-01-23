@@ -9,7 +9,7 @@ import moment from "moment"
 import cronstrue from 'cronstrue'
 
 const TaskList = (props) => {
-    const [state, restartProcess, cancelProcess, deleteProcess] = useTasks()
+    const [state, restartProcess, stopProcess, deleteProcess] = useTasks()
 
     const processListSortedUpcoming = [...state.processList.sort((a, b) => {
         const secondsToNowB = moment(cronParser.parseExpression(b.cronString).next().toString()).diff(moment(), "seconds")
@@ -25,7 +25,7 @@ const TaskList = (props) => {
             renderItem={item => (
                 <List.Item actions={[<Button onClick={() => {
                         if(item.running){
-                            cancelProcess(item.id)
+                            stopProcess(item.id)
                         }
                         else{
                             restartProcess(item.id)

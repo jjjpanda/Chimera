@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 
 import {request, jsonProcessing} from "../js/request.js"
 
-const listProcesses = (setState) => {
+const listTasks = (setState) => {
     setState(() => ({
         processList: [],
         loading: true
     }))
-    request("/convert/listProcess", {
+    request("/task/list", {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -39,8 +39,8 @@ const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
     })
 }
 
-const restartProcessGenerator = (key, setKey) => (id) => {
-    request("/convert/startProcess", {
+const restartTasksGenerator = (key, setKey) => (id) => {
+    request("/task/start", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -51,8 +51,8 @@ const restartProcessGenerator = (key, setKey) => (id) => {
     }, afterRequestCallbackGenerator(key, setKey))
 }
 
-const cancelProcessGenerator = (key, setKey) => (id) => {
-    request("/convert/cancelProcess", {
+const stopTasksGenerator = (key, setKey) => (id) => {
+    request("/task/stop", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -63,8 +63,8 @@ const cancelProcessGenerator = (key, setKey) => (id) => {
     }, afterRequestCallbackGenerator(key, setKey))
 }
 
-const deleteProcessGenerator = (key, setKey) => (id) => {
-    request("/convert/deleteProcess", {
+const deleteTasksGenerator = (key, setKey) => (id) => {
+    request("/task/destroy", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -84,14 +84,14 @@ const useTasks = () => {
     const [key, setKey] = useState(1)
 
     useEffect(() => {
-        listProcesses(setState)
+        listTasks(setState)
     }, [key])
 
     return [
         state, 
-        restartProcessGenerator(key, setKey),
-        cancelProcessGenerator(key, setKey),
-        deleteProcessGenerator(key, setKey)
+        restartTasksGenerator(key, setKey),
+        stopTasksGenerator(key, setKey),
+        deleteTasksGenerator(key, setKey)
     ]
 }
 
