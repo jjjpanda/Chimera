@@ -4,6 +4,7 @@ import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
 
 import { Card, Carousel, Row, Col, Space } from "antd"
 import ReactHlsPlayer from "react-hls-player"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 
 import moment from "moment"
 
@@ -26,17 +27,13 @@ const LiveVideo = (props) => {
 		return (
 			<Space>
 				{videos.map((video) => {
-					return (
-						<div>
-							<ReactHlsPlayer
-								src={video.url}
-								autoPlay={false}
-								controls={true}
-								width="100%"
-								height="auto"
-							/>
-						</div>
-					)
+					return <ReactHlsPlayer
+						src={video.url}
+						autoPlay={false}
+						controls={true}
+						width="100%"
+						height="auto"
+					/>
 				})}
 			</Space>
 		)
@@ -63,24 +60,18 @@ const LiveVideo = (props) => {
 	}
 
 	return <Card
-		extra={"Live Video"}
-		cover={
-			<Carousel dotPosition="top">
-				{videos.map((video) => {
-					return (
-						<div>
-							<ReactHlsPlayer
-								src={video.url}
-								autoPlay={false}
-								controls={true}
-								width="100%"
-								height="auto"
-							/>
-						</div>
-					)
-				})}
-			</Carousel>
-		} 
+		title="Live Video"
+		size="small"
+		extra={<NavigateToRoute to="/live" />}
+		cover={<Carousel dotPosition="top">
+			{videos.map((video) => <ReactHlsPlayer
+				src={video.url}
+				autoPlay={false}
+				controls={true}
+				width="100%"
+				height="auto"
+			/>)}
+		</Carousel>}
 	/>
 }
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react"
-import useThemeSwitch from "../hooks/useThemeSwitch"
 import { useNavigate } from "react-router-dom"
+import useThemeSwitch from "../hooks/useThemeSwitch"
 
 import { Layout, Menu } from "antd"
 const { Sider } = Layout
@@ -12,6 +12,7 @@ import { indexToRoute } from "../js/routeIndexMapping"
 const SideMenu = (props) => {
 	const [collapsed, setCollapsed] = useState(true)
     const [isDarkTheme, switchTheme, triggerSwitchModal] = useThemeSwitch();
+
     const navigate = useNavigate()
 
     const handleMenuClick = (info) => { 

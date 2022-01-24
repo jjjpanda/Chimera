@@ -4,6 +4,7 @@ import usePastImages from "../hooks/usePastImages.js"
 import {Card, Slider, Progress, Space, Empty, Button, Col, Row } from 'antd'
 import { StopFilled, StopOutlined } from "@ant-design/icons"
 import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 
 const SummaryScrubber = (props) => {
 	const [state, setState, listHasContents, stoppable, onReload] = usePastImages(props.numberOfFrames)
@@ -43,7 +44,7 @@ const SummaryScrubber = (props) => {
 	/>
 
 	return (
-		<Card cover={images}>
+		<Card cover={images} size="small" extra={<NavigateToRoute to="/scrub" />} title={"Past Images"}>
 			<Space direction="vertical">
 				<Row>
 					<Col span={20}>

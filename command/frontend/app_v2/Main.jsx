@@ -1,23 +1,16 @@
 import React from "react"
-import { useParams } from "react-router-dom"
 
-import { Row, Col, Layout } from "antd"
+import { Layout } from "antd"
 const { Content } = Layout
 import SideMenu from "./SideMenu"
 import DesktopView from "./DesktopView"
 
-import {routeToIndex} from "../js/routeIndexMapping";
-
-const Main = () => {
-	const {route} = useParams()
-
-	let index = routeToIndex(route)
-
+const Main = (props) => {
     return (
 		<Layout style={{minHeight: "100vh"}}>
-			<SideMenu index={index}/>
+			<SideMenu index={props.index}/>
 			<Content>
-				<DesktopView index={index} />
+				<DesktopView index={props.index} />
 			</Content>
 		</Layout>
     )

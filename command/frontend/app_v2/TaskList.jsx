@@ -3,6 +3,7 @@ import useTasks from '../hooks/useTasks.js';
 
 import {Tabs, List, Button} from 'antd'
 import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from '@ant-design/icons'
+import NavigateToRoute from './NavigateToRoute.jsx';
 
 const cronParser = require('cron-parser')
 import moment from "moment"
@@ -45,7 +46,7 @@ const TaskList = (props) => {
         />
     )
 
-    return (<Tabs tabBarExtraContent={{right: <Button />}}>
+    return (<Tabs tabBarExtraContent={{right: <NavigateToRoute to={"/process"} />}}>
         <Tabs.TabPane tab="Upcoming" key="1">
             {processList(processListSortedUpcoming)}
         </Tabs.TabPane>

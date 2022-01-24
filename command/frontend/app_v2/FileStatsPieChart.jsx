@@ -2,10 +2,9 @@ import React from "react"
 import useFileMetrics from "../hooks/useFileMetrics.js"
 import useThemeSwitch from "../hooks/useThemeSwitch.js"
 
-import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label, Legend } from "recharts"
+import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
 
 import { formatBytes } from "lib"
-
 import cameraInfo from '../js/cameraInfo.js'
 import colors from '../js/colors.js'
 
@@ -57,7 +56,7 @@ const FileStatsPieChart = (props) => {
                         state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
                     }
                     <Label 
-                        value={`${formatBytes(sumSize, 1)}`} 
+                        value={formatBytes(sumSize, 1)}
                         position="center" 
                         style={{fill: isDarkTheme ? "white" : "black"}} 
                         onClick={handleDelete}

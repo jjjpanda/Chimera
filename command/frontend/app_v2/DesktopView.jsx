@@ -51,7 +51,7 @@ const DesktopView = (props) => {
                         <div>STATUS</div>
                     </Col>
                     <Col span={8}>
-                        <FileStatsPieChart />
+                        <FileStatsPieChart withButton/>
                     </Col>
                     <Col span={8}>
                         <LiveVideo />
@@ -64,7 +64,9 @@ const DesktopView = (props) => {
                     <Col span={6}>
                         <TaskList />
                     </Col>
-                    <Col span={12}>
+                    <Col span={2}>
+                    </Col>
+                    <Col span={10}>
                         <SummaryScrubber numberOfFrames={10} />
                     </Col>
                 </Row>
