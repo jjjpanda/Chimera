@@ -22,17 +22,17 @@ const MobileView = (props) => {
     else if(index == "route-4"){
         return [
             <div style={{height: "400px", display: "flex"}}>
-                <FileStatsLineChart />
+                <FileStatsPieChart mobile />
             </div>,
             <div style={{height: "400px", display: "flex"}}>
-                <FileStatsPieChart />
+                <FileStatsLineChart mobile />
             </div>
         ]
     }
-    return [        
-        <SummaryScrubber />,
-        <ProcessList />,
-        <TaskList />
+    return [      
+        <LiveVideo />,
+        <SummaryScrubber numberOfFrames={10}/>,
+        <div>STATUS</div>
     ]
 }
 

@@ -100,7 +100,7 @@ const useFileMetrics = (initialState) => {
 	}, [])
 
     const handleDelete = ({name, number, target}) => {
-		console.log(name, number, target)
+		console.log(name, number, target, state)
 		Modal.confirm({
 			title: (name && number) ? `Delete Files from Camera: ${name}?` : `Delete Files from All Cameras?`,
 			content: (<DeleteDaysInput 

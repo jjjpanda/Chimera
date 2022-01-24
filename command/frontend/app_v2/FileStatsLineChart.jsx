@@ -40,7 +40,7 @@ const FileStatsLineChart = (props) => {
 
     return (
         <ResponsiveContainer>
-            <LineChart data={state.fileStats}>
+            <LineChart data={props.mobile ? state.fileStats.slice(state.fileStats.length-3, state.fileStats.length) : state.fileStats}>
                 <Tooltip content={customTooltip} />
                 <XAxis 
                     dataKey="timestamp" 
@@ -49,7 +49,7 @@ const FileStatsLineChart = (props) => {
                     type="number"
                 />
                 <YAxis tickFormatter={bytes => formatBytes( bytes, 2 )}/>
-                <Legend />
+                <Legend layout="horizontal" align="right" verticalAlign="top" />
                 {
                     state.cameras.map(({name}, index) => {
                         return <Line type="monotone" dataKey={name} stroke={colors[index % colors.length]} />

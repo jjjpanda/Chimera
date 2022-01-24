@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Row, Col, Space, Typography } from "antd"
+import { Row, Col, Space } from "antd"
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
 import FileStatsLineChart from "./FileStatsLineChart.jsx"
@@ -25,13 +25,13 @@ const DesktopView = (props) => {
         </Row>
     }
     else if(index == "route-3"){
-        return  <Space direction="vertical" style={{width: "100%"}}>
+        return <Space direction="vertical" style={{width: "100%"}}>
             <SummaryScrubber />
         </Space> 
     }
     else if(index == "route-4"){
         return <Space direction="vertical" style={{width: "100%"}}>
-            <Row >
+            <Row>
                 <Col span={6} style={{height: "80vh"}}>
                     <FileStatsPieChart />
                 </Col>
@@ -46,23 +46,26 @@ const DesktopView = (props) => {
     else{
         return (
             <Space direction="vertical">
-                <Row>
-                    <Col span={9}>
+                <Row style={{minHeight: "50vh"}}>
+                    <Col span={8}>
+                        <div>STATUS</div>
+                    </Col>
+                    <Col span={8}>
                         <FileStatsPieChart />
                     </Col>
-                    <Col span={9}>
-                        <ProcessList />
+                    <Col span={8}>
+                        <LiveVideo />
                     </Col>
                 </Row>
                 <Row>
-                    <Col span={12}>
-                        <SummaryScrubber />
+                    <Col span={6}>
+                        <ProcessList />
                     </Col>
-                    <Col span={5}>
+                    <Col span={6}>
                         <TaskList />
                     </Col>
-                    <Col span={7}>
-                        <LiveVideo />
+                    <Col span={12}>
+                        <SummaryScrubber numberOfFrames={10} />
                     </Col>
                 </Row>
             </Space>

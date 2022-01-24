@@ -2,7 +2,7 @@ import React from "react"
 import useFileMetrics from "../hooks/useFileMetrics.js"
 import useThemeSwitch from "../hooks/useThemeSwitch.js"
 
-import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
+import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label, Legend } from "recharts"
 
 import { formatBytes } from "lib"
 
@@ -37,7 +37,7 @@ const FileStatsPieChart = (props) => {
     return (
         <ResponsiveContainer>
             <PieChart>
-                <Tooltip content={customTooltip} />
+                {props.mobile ? null : <Tooltip content={customTooltip} />}
                 <Pie 
                     data={state.cameras} dataKey="count" nameKey="number" 
                     cx="50%" cy="50%" innerRadius={37} outerRadius={55}
@@ -50,7 +50,8 @@ const FileStatsPieChart = (props) => {
                 <Pie 
                     data={state.cameras} dataKey="size" nameKey="number" 
                     cx="50%" cy="50%" innerRadius={60} outerRadius={80}
-                    onClick={handleDelete}
+                    onClick={handleDelete} 
+                    {...(props.mobile ? {label: ({size, name}) => (size != 0 ? name : null)} : {})}
                 >
                     {
                         state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)

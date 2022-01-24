@@ -50,11 +50,11 @@ const onReloadGenerator = (setState) => (newState) => {
 	}))
 }
 
-const usePastImages = () => {
+const usePastImages = (numberOfFrames = 100) => {
     const [state, setState] = useCamDateNumInfo({
-		number: 100,
+		number: numberOfFrames,
 		numberType: "frames",
-		sliderIndex: 99,
+		sliderIndex: numberOfFrames-1,
 		list: ["/res/logo.png"],
 		loading: true,
 		imagesLoaded: 0,

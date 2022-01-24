@@ -6,7 +6,7 @@ import { StopFilled, StopOutlined } from "@ant-design/icons"
 import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
 
 const SummaryScrubber = (props) => {
-	const [state, setState, listHasContents, stoppable, onReload] = usePastImages()
+	const [state, setState, listHasContents, stoppable, onReload] = usePastImages(props.numberOfFrames)
 
 	const images = (listHasContents ? state.list.map((frame, index) => (
 		<img 
