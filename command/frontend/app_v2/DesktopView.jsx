@@ -62,12 +62,12 @@ const DesktopView = (props) => {
                         <ProcessList />
                     </Col>
                     <Col span={6}>
-                        <TaskList />
+                        <TaskList withButton/>
                     </Col>
                     <Col span={2}>
                     </Col>
                     <Col span={10}>
-                        <SummaryScrubber numberOfFrames={10} />
+                        <SummaryScrubber numberOfFrames={10} withButton />
                     </Col>
                 </Row>
             </Space>

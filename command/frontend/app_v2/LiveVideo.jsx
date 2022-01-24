@@ -25,7 +25,7 @@ const LiveVideo = (props) => {
 
 	if(props.list){
 		return (
-			<Space>
+			<Space direction="vertical">
 				{videos.map((video) => {
 					return <ReactHlsPlayer
 						src={video.url}

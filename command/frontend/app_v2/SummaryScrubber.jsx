@@ -44,7 +44,12 @@ const SummaryScrubber = (props) => {
 	/>
 
 	return (
-		<Card cover={images} size="small" extra={<NavigateToRoute to="/scrub" />} title={"Past Images"}>
+		<Card 
+			cover={images} 
+			size="small" 
+			extra={(props.withButton ? <NavigateToRoute to={"/scrub"} /> : null)} 
+			title={"Past Images"}
+		>
 			<Space direction="vertical">
 				<Row>
 					<Col span={20}>

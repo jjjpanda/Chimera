@@ -46,11 +46,11 @@ const TaskList = (props) => {
         />
     )
 
-    return (<Tabs tabBarExtraContent={{right: <NavigateToRoute to={"/process"} />}}>
-        <Tabs.TabPane tab="Upcoming" key="1">
+    return (<Tabs tabBarExtraContent={{right: (props.withButton ? <NavigateToRoute to={"/process"} /> : null)}}>
+        <Tabs.TabPane tab="Upcoming Tasks" key="1">
             {processList(processListSortedUpcoming)}
         </Tabs.TabPane>
-        <Tabs.TabPane tab="All" key="2">
+        <Tabs.TabPane tab="All Tasks" key="2">
             {processList(processListSortedAll)}
         </Tabs.TabPane>
     </Tabs>)
