@@ -9,10 +9,23 @@ const request = (url, opt, callback) => {
 	return callback(fetch(url, opt))
 }
 
+const statusProcessing = (prom, code, callback) => {
+	prom
+		.then(res => {
+			if(res.status === code){
+				callback(true)
+			}
+			else{
+				callback(false)
+			}
+		})
+		.catch(e => callback(false))
+}
+
 const jsonProcessing = (prom, callback) => {
 	prom
 		.then(res => {
-			console.log(res)
+			console.log(res, res.status)
 			return res.text()
 		})
 		.then((res) => {
@@ -69,4 +82,4 @@ const downloadProcessing = (prom, callback) => {
 	})
 }
 
-export {request, jsonProcessing, downloadProcessing}
+export {request, statusProcessing, jsonProcessing, downloadProcessing}

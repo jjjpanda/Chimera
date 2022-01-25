@@ -7,6 +7,7 @@ import FileStatsLineChart from "./FileStatsLineChart.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
+import StatusTree from "./StatusTree"
 
 const DesktopView = (props) => {
     const {index} = props
@@ -48,7 +49,7 @@ const DesktopView = (props) => {
             <Space direction="vertical">
                 <Row style={{minHeight: "50vh"}}>
                     <Col span={8}>
-                        <div>STATUS</div>
+                        <StatusTree />
                     </Col>
                     <Col span={8}>
                         <FileStatsPieChart withButton/>

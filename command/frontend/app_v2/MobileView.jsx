@@ -6,6 +6,7 @@ import FileStatsLineChart from "./FileStatsLineChart.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
+import StatusTree from "./StatusTree"
 
 const MobileView = (props) => {
     const {index} = props
@@ -32,7 +33,7 @@ const MobileView = (props) => {
     return [      
         <LiveVideo />,
         <SummaryScrubber numberOfFrames={10}/>,
-        <div>STATUS</div>
+        <StatusTree />
     ]
 }
 
