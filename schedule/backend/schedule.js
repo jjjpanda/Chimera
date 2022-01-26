@@ -16,6 +16,7 @@ app.use("/schedule/health", require("heartbeat").heart)
 
 app.use(auth.authorize)
 
+app.use("/memory", require("./routes/memory.js"))
 app.use("/task", require("./routes/task.js"))
 
 module.exports = app

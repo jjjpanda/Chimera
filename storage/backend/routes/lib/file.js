@@ -11,6 +11,10 @@ const pool = new Pool({
     port: process.env.database_PORT,
 })
 
+pool.on('error', (err) => {
+    console.log("STORAGE FILE POOL ERROR", err)
+})
+
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
 		const {camera} = req.body
