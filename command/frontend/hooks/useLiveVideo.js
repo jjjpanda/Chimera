@@ -18,12 +18,11 @@ const listVideos = (state, setState) => {
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			console.log(data)
-			const {processList} = data
-			if(processList){
+			if(DataTransferItemList){
 				setState((oldState) => ({
 					...oldState,
 					loading: false,
-					videoList: processList.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
+					videoList: data.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
 						return camNumA - camNumB
 					}).map((num) => ({
 						camera: oldState.cameras[num - 1],
