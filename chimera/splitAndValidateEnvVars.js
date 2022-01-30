@@ -76,6 +76,7 @@ env.gateway += writeVarLine("command_PROXY_ON")
 env.gateway += writeVarLine("schedule_PROXY_ON")
 env.gateway += writeVarLine("storage_PROXY_ON")
 env.gateway += writeVarLine("livestream_PROXY_ON")
+env.gateway += writeVarLine("object_PROXY_ON")
 
 env.gateway += writeVarLine("gateway_ON")
 env.gateway += writeVarLine("gateway_PORT")
@@ -135,8 +136,7 @@ env.gateway += writeVarLine("livestream_HOST")
 env.livestream += writeVarLine("livestream_FOLDERPATH")
 confirmPath("livestream_FOLDERPATH", true)
 
-writeVarLine("object_os")
-writeVarLine("OBJECT_CONF_FOLDERPATH")
+env.gateway += writeVarLine("object_HOST")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")

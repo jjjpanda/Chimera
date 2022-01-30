@@ -8,6 +8,10 @@ const { helmetOptions } = require("lib")
 
 var app = express()
 
+app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"), {
+	dotfiles: "allow"
+}))
+
 app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
@@ -35,9 +39,5 @@ for(const apiService of services){
 		}))
 	}
 }
-
-app.use("/.well-known/acme-challenge/", express.static(path.join(__dirname, "./.well-known/acme-challenge"), {
-	dotfiles: "allow"
-}))
 
 module.exports = app

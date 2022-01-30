@@ -8,13 +8,13 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
-    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
-    "memory": "file:../memory",
-    "lib": "file:../lib",
     "cookie-parser": "^1.4.5",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
+    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "helmet": "^4.6.0",
-    "dotenv": "^10.0.0"
+    "lib": "file:../lib",
+    "memory": "file:../memory"
   },
   "peerDependencies": {
     "jest": "^27.3.1",
