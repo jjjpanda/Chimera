@@ -23,7 +23,7 @@
     "cron-parser": "^4.2.1",
     "cronstrue": "^1.122.0",
     "crypto-browserify": "^3.12.0",
-    "css-loader": "^3.6.0",
+    "css-loader": "^6.5.1",
     "dotenv": "^10.0.0",
     "dotenv-webpack": "^7.0.0",
     "express": "^4.17.1",

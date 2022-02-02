@@ -30,13 +30,8 @@ sudo apt-get install motion ffmpeg postgresql
 *Or however you need to download it on your machine*
 
 Then, set up a conf for **motion** with all of your cameras. Then, set up **postgres** with a database, port, user, and password of your choosing. **Motion** will also need postgres details in it's conf as well. [*See storage for details.*](storage) 
-### 2. Installing NPM dependencies
 
-```
-npm install --no-optional
-```
-
-### 3. Create Environment Variables File
+### 2. Create Environment Variables File
 
 Copy the example env into an .env dotfile:
 ```
@@ -45,7 +40,19 @@ cp env.example .env
 
 Fill in the .env with all the info listed ( for optional fields, leave blank after the "=" ). 
 
-### 4. Start Chimera
+### 3. Installing NPM dependencies
+
+```
+npm install --no-optional
+```
+
+### 4. Run Build
+
+```
+npm run build-with-env
+```
+
+### 5. Start Chimera
 
 If running all or more than one service(s)
 ```

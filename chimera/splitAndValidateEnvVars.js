@@ -141,7 +141,7 @@ writeVarLine("object_PORT")
 env.gateway += writeVarLine("object_HOST")
 writeVarLine("object_HOST")
 writeVarLine("object_minimumConfidence")
-writeVarLine("object_alertUrl")
+writeVarLine("object_alertUrls")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
