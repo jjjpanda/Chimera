@@ -11,7 +11,7 @@ const config = {
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
 		...(isDev ? {
 			watch: ["."],
-			ignore_watch: ["shared", "feed", "*.log", "log", ".env", process.env.password_FILEPATH, ".well-known", "*.config.js"],
+			ignore_watch: ["shared", "feed", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"],
 		} : {}),
 		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
@@ -54,10 +54,8 @@ if(process.env.livestream_ON === "true"){
 }
 
 if(process.env.object_ON === "true"){
-	const pathToObjectExecArr = ["node_modules", "object", "dist", "object"]
-	const pathToObjectExec = process.env.object_os == "win" ? pathToObjectExecArr.join("\\") : pathToObjectExecArr.join("/")
 	config.apps.push({
-		script: `${pathToObjectExec}-${process.env.object_os}${process.env.object_os == "win" ? ".exe" : ""} ${process.env.OBJECT_CONF_FOLDERPATH}`,
+		script: `npx object`,
 		name: "object",
 		log: `./log/object.${isDev ? "dev" : "pm2"}.log`,
 		log_date_format:"YYYY-MM-DD HH:mm:ss",

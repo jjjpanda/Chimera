@@ -24,6 +24,6 @@ describe('Motion Routes', () => {
         supertest(app)
         .get('/motion/status')
         .set("Cookie", cookieWithBearerToken)
-        .expect(200, {processList}, done)
+        .expect(200, processList, done)
     });
 })

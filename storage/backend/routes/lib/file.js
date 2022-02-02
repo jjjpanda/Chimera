@@ -11,6 +11,10 @@ const pool = new Pool({
     port: process.env.database_PORT,
 })
 
+pool.on('error', (err) => {
+    console.log("STORAGE FILE POOL ERROR", err)
+})
+
 module.exports = {
     validateCameraAndAppendToPath: (req, res, next) => {
 		const {camera} = req.body
@@ -90,14 +94,15 @@ module.exports = {
 
     fileStats: (req, res) => {
         const cameras = JSON.parse(process.env.cameras)
-        Promise.all(cameras.map((camera, index) => {
-            return queryForGroupedStats(index+1)
-        })).then(values => {
-            let stats = {}
-            cameras.forEach((camera, index) => {
-                stats[camera] = values[index].rows
-            })
-            res.send(stats)
+        queryForGroupedStats(cameras).then(values => {
+            let fileStats = values.rows.map(row => ({
+                timestamp: moment(row.timestamp).valueOf(),
+                ...cameras.reduce((obj, item) => ({
+                    ...obj,
+                    [item]: parseInt(row[item])
+                }), {})
+            }))
+            res.send(fileStats)
         }).catch(err => {
             console.log("err", err)
         })
@@ -143,8 +148,9 @@ const queryToAddToDeletionsTable = (camera, size, count) => {
     return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
 }
 
-const queryForGroupedStats = (camera) => {
-    return pool.query(`SELECT timestamp,SUM(size), COUNT(*) FROM frame_files WHERE camera=${camera} GROUP BY timestamp ORDER BY timestamp ASC;`)
+const queryForGroupedStats = (cameras) => {
+    const arrayOfColumns = cameras.map((cam, index) => `SUM(CASE WHEN camera=${index+1} THEN size ELSE 0 END) as "${cam}"`)
+    return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(',')} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {
@@ -170,12 +176,12 @@ const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {
 		{unit: "y", format: "YYYY"}, 
 		{unit: "M", format: "YYYYMM"}, 
 		{unit: "d", format: "YYYYMMDD"}, 
-		{unit: "h", format: "YYYYMM-HH"}, 
-		{unit: "m", format: "YYYYMM-HHmm"}, 
-		{unit: "s", format: "YYYYMM-HHmmss"}
+		{unit: "h", format: "YYYYMMDD-HH"}, 
+		{unit: "m", format: "YYYYMMDD-HHmm"}, 
+		{unit: "s", format: "YYYYMMDD-HHmmss"}
 	]
 	for(const {unit, format} of units){
-		if(now.diff(beforeDate, unit) >= 1){
+		if(now.diff(beforeDate, unit) > 0){
 			const str = now.format(format)
 			return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, unit), beforeDate)]
 		}

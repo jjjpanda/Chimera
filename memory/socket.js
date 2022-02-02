@@ -27,6 +27,10 @@ module.exports = () => {
         io.on("connection", client => {
             client.on("log", data => console.log(data))
 
+            client.on("callback", (callback) => {
+                callback()
+            })
+
             client.on("cron", cronTask)
 
             client.on("savePassword", savePassword)

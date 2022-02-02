@@ -18,6 +18,7 @@ app.use("/storage/health", require("heartbeat").heart)
 app.use(auth.authorize)
 
 app.use("/motion", require("./routes/motion.js"))
+app.use("/database", require("./routes/database.js"))
 
 app.use("/convert", require("./routes/convert.js"))
 app.use("/file", require("./routes/file.js"))
