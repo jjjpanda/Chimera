@@ -17,9 +17,9 @@ const ProcessList = (props) => {
 		Modal.confirm({
 			title: process.running ? "Cancel" : "Delete",
 			content: "Are you sure?",
-			okText: "Yes",
-			cancelText: "No",
-			onOk: () => {
+			okText: "No",
+			cancelText: "Yes",
+			onCancel: () => {
 				if(process.running){
 					cancelProcess(process.id)
 				}

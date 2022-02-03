@@ -173,6 +173,7 @@ const useProcesses = () => {
 				)
 			}
 			else{
+				console.log(modal.processType, "CREATED")
 				createProcess(state, setState, modal.processType, toggleModal)
 			}
 		}
