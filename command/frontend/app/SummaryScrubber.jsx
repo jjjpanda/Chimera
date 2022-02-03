@@ -1,7 +1,7 @@
 import React from "react"
 import usePastImages from "../hooks/usePastImages.js"
 
-import {Card, Slider, Progress, Space, Empty, Button, Col, Row } from 'antd'
+import {Card, Slider, Progress, Space, Empty, Button, Col, Row } from "antd"
 import { StopFilled, StopOutlined } from "@ant-design/icons"
 import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
 import NavigateToRoute from "./NavigateToRoute.jsx"

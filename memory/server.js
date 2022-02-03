@@ -1,4 +1,4 @@
 module.exports = {
-	server: require('./socket.js'),
-	client: require('./client.js')
+	server: require("./socket.js"),
+	client: require("./client.js")
 }

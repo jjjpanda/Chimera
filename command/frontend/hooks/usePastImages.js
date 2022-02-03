@@ -51,7 +51,7 @@ const onReloadGenerator = (setState) => (newState) => {
 }
 
 const usePastImages = (numberOfFrames = 100) => {
-    const [state, setState] = useCamDateNumInfo({
+	const [state, setState] = useCamDateNumInfo({
 		number: numberOfFrames,
 		numberType: "frames",
 		sliderIndex: numberOfFrames-1,
@@ -60,11 +60,11 @@ const usePastImages = (numberOfFrames = 100) => {
 		imagesLoaded: 0,
 	})
 
-    const listHasContents = state.list.length > 0
+	const listHasContents = state.list.length > 0
 	const stoppable = state.loading && listHasContents
 	const allImagesLoaded = !listHasContents || state.imagesLoaded >= state.list.length
 
-    useEffect(() => {
+	useEffect(() => {
 		updateImages(state, setState)
 	}, [state.number, state.camera, state.startDate, state.endDate])
 
@@ -78,7 +78,7 @@ const usePastImages = (numberOfFrames = 100) => {
 		}
 	}, [state.imagesLoaded])
 
-    return [state, setState, listHasContents, stoppable, onReloadGenerator(setState)]
+	return [state, setState, listHasContents, stoppable, onReloadGenerator(setState)]
 }
 
 export default usePastImages

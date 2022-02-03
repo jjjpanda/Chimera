@@ -1,6 +1,6 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState} from "react"
 
-import { InputNumber, Modal } from 'antd'
+import { InputNumber, Modal } from "antd"
 
 import moment from "moment"
 import {request, jsonProcessing} from "../js/request.js"
@@ -8,7 +8,7 @@ import {request, jsonProcessing} from "../js/request.js"
 const DeleteDaysInput = (props) => {
 	return <InputNumber 
 		min={0}
-		addonBefore={`Delete files older than`}
+		addonBefore={"Delete files older than"}
 		addonAfter={"days"}
 		defaultValue={props.default}
 		onChange={(value) => props.onChange(value)}
@@ -93,16 +93,16 @@ const deleteFiles = (state, setState, camera=undefined) => {
 }
 
 const useFileMetrics = (initialState) => {
-    const [state, setState] = useState(initialState)
+	const [state, setState] = useState(initialState)
 
-    useEffect(() => {
+	useEffect(() => {
 		cameraUpdate(setState)
 	}, [])
 
-    const handleDelete = ({name, number, target}) => {
+	const handleDelete = ({name, number, target}) => {
 		console.log(name, number, target, state)
 		Modal.confirm({
-			title: (name && number) ? `Delete Files from Camera: ${name}?` : `Delete Files from All Cameras?`,
+			title: (name && number) ? `Delete Files from Camera: ${name}?` : "Delete Files from All Cameras?",
 			content: (<DeleteDaysInput 
 				default={state.days}
 				onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
@@ -117,7 +117,7 @@ const useFileMetrics = (initialState) => {
 		})
 	}
 
-    return [state, setState, handleDelete]
+	return [state, setState, handleDelete]
 }
 
 export default useFileMetrics
