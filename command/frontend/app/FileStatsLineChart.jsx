@@ -19,7 +19,7 @@ const customTooltip = ({ active, payload }) => {
 				{payload.map((cam, index) => {
 					const name = payload[index].name
 					const value = formatBytes( payload[index].value, 2 )
-					return payload[index].value == 0 ? null : `${name} : ${value}`
+					return <div>{payload[index].value == 0 ? null : `${name} : ${value}`}<br/></div>
 				})}
 			</div>
 		)
