@@ -41,12 +41,12 @@ const ProcessList = (props) => {
 						title={process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???")}
 						actions={[downloadLink(process), endButton(process)]}
 					>
-						<Space>
-                            Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} <br />
-                            Camera: {process.camera} <br />
-                            Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} <br />
-                            End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} <br />
-							{(process.running || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
+						<Space direction={"vertical"}>
+                            <Typography>Requested: {moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")} </Typography>
+                            <Typography>Camera: {process.camera} </Typography>
+                            <Typography>Start: {moment(process.start, "YYYYMMDD-HHmmss").format("LLL")} </Typography>
+                            <Typography>End: {moment(process.end, "YYYYMMDD-HHmmss").format("LLL")} </Typography>
+							{(process.running || props.mobile || process.type != "mp4") ? null : <video src={process.link} type="video/mp4" controls/>}
 						</Space>
 					</Card>
 				)
