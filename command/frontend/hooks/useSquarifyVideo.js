@@ -27,12 +27,17 @@ const squarifyVideoList = (videos) => {
     for (let j = 0; j < numberOfRowsAndCols; j++){
         squaredVideoList.push([])
         for (let k = 0; k < numberOfRowsAndCols; k++){
-            squaredVideoList[j].push(videos[i])
-            i++
-            if(i == numberOfVideos){
-                console.log("SQUARED", videos, squaredVideoList)
-                return squaredVideoList
+            if(i < numberOfVideos){
+                squaredVideoList[j].push(videos[i])
+                i++
             }
+            else{
+                squaredVideoList[j].push(null)
+            }
+        }
+        if(i >= numberOfVideos){
+            console.log("SQUARED", videos, squaredVideoList)
+            return squaredVideoList
         }
     }
     console.log("SQUARED", videos, squaredVideoList)
