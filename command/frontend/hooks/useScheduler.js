@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { Modal } from 'antd'
-import Scheduler from '../app_v2/Scheduler'
+import Scheduler from '../app/Scheduler'
 
 import {request, jsonProcessing} from "../js/request.js"
 

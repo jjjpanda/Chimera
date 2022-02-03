@@ -119,9 +119,6 @@ confirmPath("storage_FOLDERPATH", true)
 
 writeVarLine("storage_MOTION_CONF_FILEPATH")
 
-env.command += writeVarLine("storage_fileStatsUpdateTime")
-env.storage += writeVarLine("storage_fileStatsUpdateTime")
-
 env.storage += writeVarLine("ffmpeg_FILEPATH")
 confirmPath("ffmpeg_FILEPATH")
 

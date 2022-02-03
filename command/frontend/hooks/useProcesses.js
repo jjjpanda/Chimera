@@ -3,7 +3,7 @@ import useCamDateNumInfo from "./useCamDateNumInfo.js"
 import useScheduler from './useScheduler'
 
 import { Space, Modal, message } from "antd"
-import CameraDateNumberPicker from '../app_v2/CameraDateNumberPicker';
+import CameraDateNumberPicker from '../app/CameraDateNumberPicker';
 
 import moment from "moment"
 import {request, jsonProcessing} from "../js/request.js"
