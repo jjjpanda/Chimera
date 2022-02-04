@@ -1,6 +1,6 @@
 import React from "react"
 
-import { Row, Col, Space } from "antd"
+import { Row, Col, Space, Card } from "antd"
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
 import FileStatsLineChart from "./FileStatsLineChart.jsx"
@@ -48,24 +48,22 @@ const DesktopView = (props) => {
 		return (
 			<Space direction="vertical">
 				<Row style={{minHeight: "50vh"}}>
-					<Col span={8}>
+					<Col span={8} >
 						<StatusTree />
 					</Col>
-					<Col span={8}>
+					<Col span={8} >
 						<FileStatsPieChart withButton/>
 					</Col>
 					<Col span={8}>
 						<LiveVideo />
 					</Col>
 				</Row>
-				<Row>
-					<Col span={6}>
-						<ProcessList />
-					</Col>
-					<Col span={6}>
+				<Row style={{minHeight: "50vh"}}>
+					<Col span={7}>
 						<TaskList withButton/>
 					</Col>
-					<Col span={2}>
+					<Col span={7}>
+						<ProcessList withButton/>
 					</Col>
 					<Col span={10}>
 						<SummaryScrubber numberOfFrames={10} withButton />

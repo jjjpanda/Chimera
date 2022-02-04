@@ -1,8 +1,9 @@
-import React, { useState } from "react"
+import React from "react"
 import useCamDateNumInfo from "../hooks/useCamDateNumInfo.js"
+import useThemeSwitch from "../hooks/useThemeSwitch"
 
-import {Radio, DatePicker, InputNumber, Space, Button} from "antd"
-import {BackwardOutlined, BackwardFilled, CheckCircleOutlined, CheckCircleFilled} from "@ant-design/icons"
+import {Button, DatePicker, InputNumber, Space, Menu, Dropdown, Typography} from "antd"
+import {BackwardOutlined, BackwardFilled, CheckCircleOutlined, CheckCircleFilled, DownOutlined } from "@ant-design/icons"
 
 import moment from "moment"
 
@@ -11,6 +12,7 @@ const CameraDateNumberPicker = (props) => {
 		...props,
 		modified: false
 	})
+	const [isDarkTheme] = useThemeSwitch()
 
 	const onReset=() => {
 		setState((oldState) => ({
@@ -29,16 +31,24 @@ const CameraDateNumberPicker = (props) => {
 	}
 
 	const onCamChange = (e) => {
-		//e target.value -> index
-		const {value} = e.target
 		setState((oldState) => ({
 			...oldState,
-			camera: value,
+			camera: e,
 			modified: true
 		}))
 	}
 
-	const onDateChange = (e) => {
+	const onDateChangeMobileGen = (index) => (e) => {
+		// e.target.value
+		const {value} = e.target
+		setState((oldState) => ({
+			...oldState,
+			[index == "start" ? "startDate" : "endDate"]: moment(value),
+			modified: true
+		}))
+	}
+
+	const onDateChangeDesktop = (e) => {
 		//e [moment, moment]
 		if(e){
 			setState((oldState) => ({
@@ -76,34 +86,61 @@ const CameraDateNumberPicker = (props) => {
 		}))
 	}
 
+	const menu = (
+		<Menu>
+			{props.cameras.map((cam, index) => (
+				<Menu.Item>
+					<Typography onClick={() => onCamChange(index)}>
+						{cam}
+					</Typography>
+				</Menu.Item>
+			))}
+		</Menu>
+	);
+
+	const desktopDateTimePicker = <DatePicker.RangePicker
+		value={[state.startDate, state.endDate]}
+		ranges={{
+			"Past Month": [moment().subtract(1, "month"), moment()],
+			"Past Week": [moment().subtract(1, "week"), moment()],
+			"Past Day": [moment().subtract(1, "day"), moment()],
+			"Past Hour": [moment().subtract(1, "hour"), moment()],
+		}}
+		showTime
+		format="YYYY/MM/DD HH:mm:ss"
+		onChange={onDateChangeDesktop}
+	/>
+
+	const mobileDateTimePicker = <div>
+		<input 
+			style={{backgroundColor: isDarkTheme ? "black" : "white", color: isDarkTheme ? "white" : "black"}}
+			type="datetime-local" 
+			value={state.startDate.format("YYYY-MM-DDTHH:mm")} 
+			onChange={onDateChangeMobileGen("start")}
+		/>
+		<input 
+			style={{backgroundColor: isDarkTheme ? "black" : "white", color: isDarkTheme ? "white" : "black"}}
+			type="datetime-local" 
+			value={state.endDate.format("YYYY-MM-DDTHH:mm")} 
+			onChange={onDateChangeMobileGen("end")}
+		/>
+	</div>
+
+	const dateTimePicker = props.days ? <InputNumber 
+		min={1}
+		value={state.days}
+		onChange={onDaysChange} 
+		addonAfter={"day's worth"}
+	/> : (props.mobile ? mobileDateTimePicker : desktopDateTimePicker)
+
 	return (
 		<Space direction="vertical">
-			<Radio.Group 
-				value={state.camera} 
-				onChange={onCamChange}
-				buttonStyle="solid"
-			>
-				{props.cameras.map((cam, index) => (
-					<Radio.Button value={index}>{cam}</Radio.Button>
-				))}
-			</Radio.Group>
-			{props.days ? <InputNumber 
-				min={1}
-				value={state.days}
-				onChange={onDaysChange} 
-				addonAfter={"day's worth"}
-			/> : <DatePicker.RangePicker
-				value={[state.startDate, state.endDate]}
-				ranges={{
-					"Past Month": [moment().subtract(1, "month"), moment()],
-					"Past Week": [moment().subtract(1, "week"), moment()],
-					"Past Day": [moment().subtract(1, "day"), moment()],
-					"Past Hour": [moment().subtract(1, "hour"), moment()],
-				}}
-				showTime
-				format="YYYY/MM/DD HH:mm:ss"
-				onChange={onDateChange}
-			/>}
+			<Dropdown overlay={menu} trigger={['click']}>
+				<Button icon={<DownOutlined />}>
+					{props.cameras[state.camera]} 
+				</Button>
+			</Dropdown>
+			{dateTimePicker}
 			<Space>
 				<InputNumber 
 					min={1}

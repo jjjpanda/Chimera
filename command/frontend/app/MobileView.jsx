@@ -18,7 +18,7 @@ const MobileView = (props) => {
 		return [<ProcessList showFooter mobile />, <TaskList />]
 	}
 	else if(index == "route-3"){
-		return <SummaryScrubber />
+		return <SummaryScrubber mobile />
 	}
 	else if(index == "route-4"){
 		return [
@@ -31,8 +31,8 @@ const MobileView = (props) => {
 		]
 	}
 	return [      
-		<LiveVideo />,
-		<SummaryScrubber numberOfFrames={10}/>,
+		<LiveVideo mobile />,
+		<SummaryScrubber numberOfFrames={10} withButton mobile/>,
 		<StatusTree />
 	]
 }

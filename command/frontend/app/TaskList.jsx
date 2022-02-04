@@ -1,7 +1,7 @@
 import React from "react"
 import useTasks from "../hooks/useTasks.js"
 
-import {Tabs, List, Button} from "antd"
+import {Tabs, List, Button, Card} from "antd"
 import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from "@ant-design/icons"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
@@ -46,14 +46,22 @@ const TaskList = (props) => {
 		/>
 	)
 
-	return (<Tabs tabBarExtraContent={{right: (props.withButton ? <NavigateToRoute to={"/process"} /> : null)}}>
-		<Tabs.TabPane tab="Upcoming Tasks" key="1">
-			{processList(processListSortedUpcoming)}
-		</Tabs.TabPane>
-		<Tabs.TabPane tab="All Tasks" key="2">
-			{processList(processListSortedAll)}
-		</Tabs.TabPane>
-	</Tabs>)
+	return (
+		<Card 
+			title={"Scheduled Tasks"}
+			extra={ (props.withButton ? <NavigateToRoute to={"/process"} /> : null) }
+			size="small"
+		>
+			<Tabs>
+				<Tabs.TabPane tab="Upcoming Tasks" key="1">
+					{processList(processListSortedUpcoming)}
+				</Tabs.TabPane>
+				<Tabs.TabPane tab="All Tasks" key="2">
+					{processList(processListSortedAll)}
+				</Tabs.TabPane>
+			</Tabs>
+		</Card>
+	)
 }
 
 export default TaskList

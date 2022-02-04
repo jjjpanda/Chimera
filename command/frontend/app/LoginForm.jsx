@@ -10,6 +10,7 @@ const LoginForm = (props) => {
 	return (
 		<Space>
 			<Card
+				size="small"
 				title="Login"
 				extra={loginStatus == null ? <RightCircleOutlined /> : (loginStatus == "wrong" ? <CloseCircleOutlined /> : <CheckCircleOutlined />)}
 			>

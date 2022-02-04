@@ -113,7 +113,7 @@ const processBody = (state, useDays=false) => {
 	return body
 }
 
-const useProcesses = () => {
+const useProcesses = (settings) => {
 	const [scheduleTask] = useScheduler()
 	const [state, setState] = useCamDateNumInfo({
 		download: false,
@@ -152,6 +152,7 @@ const useProcesses = () => {
 						numberType={state.numberType}
 						loading={state.disabled}
 						onChange={onChange}
+						mobile={settings.mobile}
 					/>
 				</Space>),
 				okText: "Close",

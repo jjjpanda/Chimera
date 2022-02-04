@@ -62,6 +62,7 @@ const LiveVideo = (props) => {
 	return <Card
 		title="Live Video"
 		size="small"
+		style={{height: "100%"}}
 		extra={<NavigateToRoute to="/live" />}
 		cover={<Tabs centered>
 			{videos.map((video, index) => <Tabs.TabPane tab={index+1} key={index} style={{textAlign: "center"}}>
@@ -73,6 +74,10 @@ const LiveVideo = (props) => {
 					height="auto"
 				/>
 				<Typography>{video.camera}</Typography>
+				<br />
+				{props.mobile ? null : <Space>
+					<Typography.Link href="/object">object view</Typography.Link>
+				</Space>}
 			</Tabs.TabPane>)}
 		</Tabs>}
 	/>

@@ -5,6 +5,7 @@ import {FullscreenOutlined} from "@ant-design/icons"
 
 const NavigateToRoute = ({to}) => {
 	const navigate = useNavigate()
+
 	return <FullscreenOutlined 
 		onClick={() => {
 			navigate(to, {replace: true})

@@ -50,10 +50,12 @@ const SummaryScrubber = (props) => {
 			extra={(props.withButton ? <NavigateToRoute to={"/scrub"} /> : null)} 
 			title={"Past Images"}
 		>
-			<Space direction="vertical">
+			<Space direction="vertical" style={{width: "100%", textAlign: "center"}}>
 				<Row>
-					<Col span={20}>
+					<Col span={21}>
 						{ stoppable ? progressBar : selectionSlider }
+					</Col>
+					<Col span={1}>
 					</Col>
 					<Col span={2}>
 						<Button
@@ -77,6 +79,7 @@ const SummaryScrubber = (props) => {
 					numberType={state.numberType}
 					disabled={stoppable}
 					onChange={onReload}
+					mobile={props.mobile}
 				/>
 			</Space>
 		</Card>

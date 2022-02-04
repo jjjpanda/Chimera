@@ -22,6 +22,7 @@ const StatusTree = () => {
 
 	return <Card
 		title="Status"
+		style={{height: "100%"}}
 		size="small"
 		showIcon 
 		selectable={true} 

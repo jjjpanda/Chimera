@@ -2,7 +2,9 @@ import React from "react"
 import useFileMetrics from "../hooks/useFileMetrics.js"
 import useThemeSwitch from "../hooks/useThemeSwitch.js"
 
+import { Card } from "antd"
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 
 import { formatBytes } from "lib"
 import cameraInfo from "../js/cameraInfo.js"
@@ -33,7 +35,7 @@ const FileStatsPieChart = (props) => {
 
 	const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
 
-	return (
+	const pie = (
 		<ResponsiveContainer>
 			<PieChart>
 				{props.mobile ? null : <Tooltip content={customTooltip} />}
@@ -65,6 +67,23 @@ const FileStatsPieChart = (props) => {
 			</PieChart>
 		</ResponsiveContainer>
 	)
+
+	if(props.withButton) {
+		return (
+			<Card 
+				title={"Storage Usage"}
+				size={"small"} 
+				style={{height: "100%"}}
+				extra={ (props.withButton ? <NavigateToRoute to={"/stats"} /> : null) }
+			>
+				<div style={{height: "50vh"}}>
+					{pie}
+				</div>
+			</Card>
+		)
+	}
+
+	return pie
 }
 
 export default FileStatsPieChart
