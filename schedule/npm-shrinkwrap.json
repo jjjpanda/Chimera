@@ -816,7 +816,7 @@
       }
     },
     "../lib/node_modules/@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "license": "MIT",
       "peer": true,
       "dependencies": {
@@ -1496,7 +1496,7 @@
       }
     },
     "../lib/node_modules/caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "license": "CC-BY-4.0",
       "peer": true,
       "funding": {
@@ -6001,7 +6001,7 @@
       }
     },
     "node_modules/@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "license": "MIT",
       "peer": true,
       "dependencies": {
@@ -6497,7 +6497,7 @@
       }
     },
     "node_modules/caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "license": "CC-BY-4.0",
       "peer": true,
       "funding": {
@@ -10172,7 +10172,7 @@
       "peer": true
     },
     "@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "peer": true,
       "requires": {
         "@jridgewell/resolve-uri": "^3.0.3",
@@ -10521,7 +10521,7 @@
       "peer": true
     },
     "caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "peer": true
     },
     "chalk": {
@@ -12228,7 +12228,7 @@
           "peer": true
         },
         "@jridgewell/trace-mapping": {
-          "version": "0.2.5",
+          "version": "0.2.6",
           "peer": true,
           "requires": {
             "@jridgewell/resolve-uri": "^3.0.3",
@@ -12702,7 +12702,7 @@
           "peer": true
         },
         "caniuse-lite": {
-          "version": "1.0.30001306",
+          "version": "1.0.30001307",
           "peer": true
         },
         "chalk": {
@@ -15521,7 +15521,7 @@
               "peer": true
             },
             "@jridgewell/trace-mapping": {
-              "version": "0.2.5",
+              "version": "0.2.6",
               "peer": true,
               "requires": {
                 "@jridgewell/resolve-uri": "^3.0.3",
@@ -15995,7 +15995,7 @@
               "peer": true
             },
             "caniuse-lite": {
-              "version": "1.0.30001306",
+              "version": "1.0.30001307",
               "peer": true
             },
             "chalk": {

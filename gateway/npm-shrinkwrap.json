@@ -1198,7 +1198,7 @@
       }
     },
     "../command/node_modules/@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "license": "MIT",
       "peer": true,
       "dependencies": {
@@ -2485,7 +2485,7 @@
       }
     },
     "../command/node_modules/caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "license": "CC-BY-4.0",
       "peer": true,
       "funding": {
@@ -7058,14 +7058,14 @@
       "peer": true
     },
     "../command/node_modules/pg": {
-      "version": "8.7.1",
+      "version": "8.7.3",
       "license": "MIT",
       "peer": true,
       "dependencies": {
         "buffer-writer": "2.0.0",
         "packet-reader": "1.0.0",
         "pg-connection-string": "^2.5.0",
-        "pg-pool": "^3.4.1",
+        "pg-pool": "^3.5.1",
         "pg-protocol": "^1.5.0",
         "pg-types": "^2.1.0",
         "pgpass": "1.x"
@@ -7096,7 +7096,7 @@
       }
     },
     "../command/node_modules/pg-pool": {
-      "version": "3.4.1",
+      "version": "3.5.1",
       "license": "MIT",
       "peer": true,
       "peerDependencies": {
@@ -9198,7 +9198,7 @@
       }
     },
     "../command/node_modules/url-toolkit": {
-      "version": "2.2.4",
+      "version": "2.2.5",
       "license": "Apache-2.0",
       "peer": true
     },
@@ -10365,7 +10365,7 @@
       }
     },
     "../lib/node_modules/@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "license": "MIT",
       "peer": true,
       "dependencies": {
@@ -11045,7 +11045,7 @@
       }
     },
     "../lib/node_modules/caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "license": "CC-BY-4.0",
       "peer": true,
       "funding": {
@@ -15588,7 +15588,7 @@
       }
     },
     "node_modules/@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "license": "MIT",
       "peer": true,
       "dependencies": {
@@ -16083,7 +16083,7 @@
       }
     },
     "node_modules/caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "license": "CC-BY-4.0",
       "peer": true,
       "funding": {
@@ -19759,7 +19759,7 @@
       "peer": true
     },
     "@jridgewell/trace-mapping": {
-      "version": "0.2.5",
+      "version": "0.2.6",
       "peer": true,
       "requires": {
         "@jridgewell/resolve-uri": "^3.0.3",
@@ -20107,7 +20107,7 @@
       "peer": true
     },
     "caniuse-lite": {
-      "version": "1.0.30001306",
+      "version": "1.0.30001307",
       "peer": true
     },
     "chalk": {
@@ -20949,7 +20949,7 @@
           "peer": true
         },
         "@jridgewell/trace-mapping": {
-          "version": "0.2.5",
+          "version": "0.2.6",
           "peer": true,
           "requires": {
             "@jridgewell/resolve-uri": "^3.0.3",
@@ -21898,7 +21898,7 @@
           "peer": true
         },
         "caniuse-lite": {
-          "version": "1.0.30001306",
+          "version": "1.0.30001307",
           "peer": true
         },
         "chalk": {
@@ -24991,7 +24991,7 @@
               "peer": true
             },
             "@jridgewell/trace-mapping": {
-              "version": "0.2.5",
+              "version": "0.2.6",
               "peer": true,
               "requires": {
                 "@jridgewell/resolve-uri": "^3.0.3",
@@ -25465,7 +25465,7 @@
               "peer": true
             },
             "caniuse-lite": {
-              "version": "1.0.30001306",
+              "version": "1.0.30001307",
               "peer": true
             },
             "chalk": {
@@ -28406,7 +28406,7 @@
                   "peer": true
                 },
                 "@jridgewell/trace-mapping": {
-                  "version": "0.2.5",
+                  "version": "0.2.6",
                   "peer": true,
                   "requires": {
                     "@jridgewell/resolve-uri": "^3.0.3",
@@ -28880,7 +28880,7 @@
                   "peer": true
                 },
                 "caniuse-lite": {
-                  "version": "1.0.30001306",
+                  "version": "1.0.30001307",
                   "peer": true
                 },
                 "chalk": {
@@ -31450,13 +31450,13 @@
           "peer": true
         },
         "pg": {
-          "version": "8.7.1",
+          "version": "8.7.3",
           "peer": true,
           "requires": {
             "buffer-writer": "2.0.0",
             "packet-reader": "1.0.0",
             "pg-connection-string": "^2.5.0",
-            "pg-pool": "^3.4.1",
+            "pg-pool": "^3.5.1",
             "pg-protocol": "^1.5.0",
             "pg-types": "^2.1.0",
             "pgpass": "1.x"
@@ -31471,7 +31471,7 @@
           "peer": true
         },
         "pg-pool": {
-          "version": "3.4.1",
+          "version": "3.5.1",
           "peer": true,
           "requires": {}
         },
@@ -32827,7 +32827,7 @@
           }
         },
         "url-toolkit": {
-          "version": "2.2.4",
+          "version": "2.2.5",
           "peer": true
         },
         "use-async-memo": {
@@ -34737,7 +34737,7 @@
           "peer": true
         },
         "@jridgewell/trace-mapping": {
-          "version": "0.2.5",
+          "version": "0.2.6",
           "peer": true,
           "requires": {
             "@jridgewell/resolve-uri": "^3.0.3",
@@ -35211,7 +35211,7 @@
           "peer": true
         },
         "caniuse-lite": {
-          "version": "1.0.30001306",
+          "version": "1.0.30001307",
           "peer": true
         },
         "chalk": {
