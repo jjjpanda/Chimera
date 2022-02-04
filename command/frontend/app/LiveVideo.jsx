@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import useLiveVideo from "../hooks/useLiveVideo.js"
 import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
 
-import { Card, Carousel, Row, Col, Space } from "antd"
+import { Card, Tabs, Row, Col, Space, Typography } from "antd"
 import ReactHlsPlayer from "react-hls-player"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
@@ -44,7 +44,7 @@ const LiveVideo = (props) => {
 			{videos.map(videoRow => {
 				return <Row>
 					{videoRow.map((video, index, arr) => {
-						return <Col span={24/arr.length}>
+						return video ? <Col span={24/arr.length}>
 							<ReactHlsPlayer
 								src={video.url}
 								autoPlay={false}
@@ -52,7 +52,7 @@ const LiveVideo = (props) => {
 								width="100%"
 								height="auto"
 							/>
-						</Col>
+						</Col> : null
 					})}
 				</Row>
 			})}
@@ -63,15 +63,18 @@ const LiveVideo = (props) => {
 		title="Live Video"
 		size="small"
 		extra={<NavigateToRoute to="/live" />}
-		cover={<Carousel dotPosition="top">
-			{videos.map((video) => <ReactHlsPlayer
-				src={video.url}
-				autoPlay={false}
-				controls={true}
-				width="100%"
-				height="auto"
-			/>)}
-		</Carousel>}
+		cover={<Tabs centered>
+			{videos.map((video, index) => <Tabs.TabPane tab={index+1} key={index} style={{textAlign: "center"}}>
+				<ReactHlsPlayer
+					src={video.url}
+					autoPlay={false}
+					controls={true}
+					width="100%"
+					height="auto"
+				/>
+				<Typography>{video.camera}</Typography>
+			</Tabs.TabPane>)}
+		</Tabs>}
 	/>
 }
 

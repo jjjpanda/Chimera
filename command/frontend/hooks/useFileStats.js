@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState} from "react"
 
 import {request, jsonProcessing} from "../js/request.js"
 
@@ -18,13 +18,13 @@ const statsUpdate = (state, setState) => {
 }
 
 const useFileStats = (initialState) => {
-    const [state, setState] = useState(initialState)
+	const [state, setState] = useState(initialState)
 
-    useEffect(() => {
+	useEffect(() => {
 		statsUpdate(state, setState)
 	}, [])
 
-    return [state]
+	return [state]
 }
 
 export default useFileStats

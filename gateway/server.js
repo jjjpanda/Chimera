@@ -1,5 +1,5 @@
-const {handleServerStart, handleSecureServerStart} = require('lib')
-const app = require('./gateway.js')
+const {handleServerStart, handleSecureServerStart} = require("lib")
+const app = require("./gateway.js")
 
 module.exports = {
 	start: () => {

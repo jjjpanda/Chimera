@@ -1,15 +1,15 @@
 const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
-const {randomID, webhookAlert} = require('lib')
+const {randomID, webhookAlert} = require("lib")
 
-const Pool = require('pg').Pool
+const Pool = require("pg").Pool
 const pool = new Pool({
-    user: process.env.database_USER,
-    host: process.env.database_HOST,
-    database: process.env.database_NAME,
-    password: process.env.database_PASSWORD,
-    port: process.env.database_PORT,
+	user: process.env.database_USER,
+	host: process.env.database_HOST,
+	database: process.env.database_NAME,
+	password: process.env.database_PASSWORD,
+	port: process.env.database_PORT,
 })
 
 const client = require("memory").client("AUTHORIZATION")
@@ -18,13 +18,13 @@ module.exports = {
 	passwordCheck: (req, res, next) => {
 		const { password } = req.body
     
-		client.emit('verifyPassword', password, (exists) => {
+		client.emit("verifyPassword", password, (exists) => {
 			if(exists){
 				client.emit("deletePassword", password)
 				next()
 			}
 			else{
-				pool.query(`SELECT hash FROM auth WHERE username = 'admin'`, (err, values) => {
+				pool.query("SELECT hash FROM auth WHERE username = 'admin'", (err, values) => {
 					if (!err && values.rows.length > 0 && values.rows[0].hash) {
 						const {hash} = values.rows[0]
 						bcrypt.compare(password == undefined ? "" : password, hash, (err, success) => {
@@ -37,7 +37,7 @@ module.exports = {
 						})
 					}
 					else{
-						console.log(`NO HASH`)
+						console.log("NO HASH")
 						res.status(400).json({ error: true, errors: "Password Unable to Be Verified" })
 					}
 				})
@@ -69,7 +69,7 @@ module.exports = {
     
 	generateLink: (req, res) => {
 		const password = randomID.generate(50)
-		client.emit('savePassword', password, () => {
+		client.emit("savePassword", password, () => {
 			webhookAlert(`A login link was requested:\n${process.env.gateway_HOST}/login/${password}\nThis link will expire in 5 minutes or after first use, whichever comes first.`)
 			res.send({ error: false, msg: "sending link" })
 		})

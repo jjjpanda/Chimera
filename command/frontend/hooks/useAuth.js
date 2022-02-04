@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState} from "react"
 
 import Cookies from "js-cookie"
 import { request } from "../js/request.js"
@@ -6,16 +6,16 @@ import { request } from "../js/request.js"
 const timeout = 750
 
 const handleAuthResponse = (res) => {
-    return res.json()
+	return res.json()
 }
 
 const catchAuthError = (err)=> {
-    return {error: true}
+	return {error: true}
 }
 
 const authPromiseHandler = (prom) => {
-    return prom.then(handleAuthResponse)
-                .catch(catchAuthError)
+	return prom.then(handleAuthResponse)
+		.catch(catchAuthError)
 }
 
 const attemptVerification = () => {
@@ -29,7 +29,7 @@ const attemptVerification = () => {
 }
 
 const attemptLogin = (password, type) => {
-    const url = type == "password" ? "/authorization/login" : "/authorization/requestLink"
+	const url = type == "password" ? "/authorization/login" : "/authorization/requestLink"
 	return request(url, {
 		method: "POST",
 		headers: {
@@ -58,36 +58,36 @@ const handleLoginAttempt = (verified, timestamp, setState) => {
 }
 
 const useAuth = () => {
-    const [state, setState] = useState({
+	const [state, setState] = useState({
 		loaded: false,
 		loggedIn: false,
-        bearerToken: Cookies.get("bearertoken"),
+		bearerToken: Cookies.get("bearertoken"),
 		timestamp: new Date()
 	})
 
-    useEffect(() => {
-        if(state.bearerToken){
-            attemptVerification().then(res => {
-                handleLoginAttempt(!res.error, state.timestamp, setState)
-            })
-        }
-        else{
-            handleLoginAttempt(false, state.timestamp, setState) 
-        }
-    }, [])
+	useEffect(() => {
+		if(state.bearerToken){
+			attemptVerification().then(res => {
+				handleLoginAttempt(!res.error, state.timestamp, setState)
+			})
+		}
+		else{
+			handleLoginAttempt(false, state.timestamp, setState) 
+		}
+	}, [])
     
-    const tryLogin = (input, type, callback) => {
-        attemptLogin(input, type).then(res => {
-            callback(!res.error)
-            if(type == "password"){
-                handleLoginAttempt(!res.error, state.timestamp, setState)
-            }
-        })
-    }
+	const tryLogin = (input, type, callback) => {
+		attemptLogin(input, type).then(res => {
+			callback(!res.error)
+			if(type == "password"){
+				handleLoginAttempt(!res.error, state.timestamp, setState)
+			}
+		})
+	}
 
-    console.log("LOADED:", state.loaded, "\nLOGGED IN:", state.loggedIn)
+	console.log("LOADED:", state.loaded, "\nLOGGED IN:", state.loggedIn)
 
-    return [state.loaded, state.loggedIn, tryLogin]
+	return [state.loaded, state.loggedIn, tryLogin]
 }
 
 export default useAuth

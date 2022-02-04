@@ -2,21 +2,21 @@ const path = require("path")
 const rimraf = require("rimraf")
 const moment = require("moment")
 
-const Pool = require('pg').Pool
+const Pool = require("pg").Pool
 const pool = new Pool({
-    user: process.env.database_USER,
-    host: process.env.database_HOST,
-    database: process.env.database_NAME,
-    password: process.env.database_PASSWORD,
-    port: process.env.database_PORT,
+	user: process.env.database_USER,
+	host: process.env.database_HOST,
+	database: process.env.database_NAME,
+	password: process.env.database_PASSWORD,
+	port: process.env.database_PORT,
 })
 
-pool.on('error', (err) => {
-    console.log("STORAGE FILE POOL ERROR", err)
+pool.on("error", (err) => {
+	console.log("STORAGE FILE POOL ERROR", err)
 })
 
 module.exports = {
-    validateCameraAndAppendToPath: (req, res, next) => {
+	validateCameraAndAppendToPath: (req, res, next) => {
 		const {camera} = req.body
 		if(parseInt(camera) == camera){
 			req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", camera.toString())
@@ -27,7 +27,7 @@ module.exports = {
 		}
 	},
 
-    validateDays: (req, res, next) => {
+	validateDays: (req, res, next) => {
 		const {days} = req.body
 		if(days != null){
 			next()
@@ -37,46 +37,46 @@ module.exports = {
 		}
 	},
 
-    getCameraMetricFromDatabase: (metric) => (req, res) => {
+	getCameraMetricFromDatabase: (metric) => (req, res) => {
 		const {camera} = req.body
 		queryForMetric(camera, metric)
-        .then(extractValueForMetric(metric))
-        .then(extractedValue => {
-            res.send({[metric]: extractedValue})
-        })
-        .catch(err => {
-            res.status(400).send({error: true})
-        })
+			.then(extractValueForMetric(metric))
+			.then(extractedValue => {
+				res.send({[metric]: extractedValue})
+			})
+			.catch(err => {
+				res.status(400).send({error: true})
+			})
 	},
 
-    updateDeletionOfFiles: (filesOrDirectory) => (req, res, next) => {
-        const {camera} = req.body
-        let beforeDate = ""
-        if(filesOrDirectory == "files"){
-            let {days} = req.body
-            beforeDate = moment().subtract(days, "days").format('YYYY-MM-DD HH:mm:ss');
-        }
-        queryToUpdateDatabaseForDeletion(camera, filesOrDirectory, beforeDate).then(deletedValues => {
-            const sumSize = deletedValues.rows.reduce((sum, row) => {
-                return sum + parseInt(row.size)
-            }, 0);
-            return queryToAddToDeletionsTable(camera, sumSize, deletedValues.rows.length)
-                .then(insertedValues => {
-                    req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
-                    next()
-                })
-        }).catch(err => {
-            console.log(err)
-        })
-    },
+	updateDeletionOfFiles: (filesOrDirectory) => (req, res, next) => {
+		const {camera} = req.body
+		let beforeDate = ""
+		if(filesOrDirectory == "files"){
+			let {days} = req.body
+			beforeDate = moment().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
+		}
+		queryToUpdateDatabaseForDeletion(camera, filesOrDirectory, beforeDate).then(deletedValues => {
+			const sumSize = deletedValues.rows.reduce((sum, row) => {
+				return sum + parseInt(row.size)
+			}, 0)
+			return queryToAddToDeletionsTable(camera, sumSize, deletedValues.rows.length)
+				.then(insertedValues => {
+					req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
+					next()
+				})
+		}).catch(err => {
+			console.log(err)
+		})
+	},
 
-    deleteFileDirectory: (req, res) => {
+	deleteFileDirectory: (req, res) => {
 		rimraf(req.body.appendedPath, (err) => {
 			res.send({deleted: !err && req.numberOfFilesDeletedInDatabase > 0})
 		})
 	},
 
-    deleteFilesBeforeDateGlob: (req, res) => {
+	deleteFilesBeforeDateGlob: (req, res) => {
 		const {days} = req.body
 		const now = moment()
 		const beforeDate = moment().subtract(days, "days")
@@ -92,83 +92,83 @@ module.exports = {
 		}
 	},
 
-    fileStats: (req, res) => {
-        const cameras = JSON.parse(process.env.cameras)
-        queryForGroupedStats(cameras).then(values => {
-            let fileStats = values.rows.map(row => ({
-                timestamp: moment(row.timestamp).valueOf(),
-                ...cameras.reduce((obj, item) => ({
-                    ...obj,
-                    [item]: parseInt(row[item])
-                }), {})
-            }))
-            res.send(fileStats)
-        }).catch(err => {
-            console.log("err", err)
-        })
-    },
+	fileStats: (req, res) => {
+		const cameras = JSON.parse(process.env.cameras)
+		queryForGroupedStats(cameras).then(values => {
+			let fileStats = values.rows.map(row => ({
+				timestamp: moment(row.timestamp).valueOf(),
+				...cameras.reduce((obj, item) => ({
+					...obj,
+					[item]: parseInt(row[item])
+				}), {})
+			}))
+			res.send(fileStats)
+		}).catch(err => {
+			console.log("err", err)
+		})
+	},
 
-    cameraMetrics: (req, res) => {
-        const cameras = JSON.parse(process.env.cameras)
+	cameraMetrics: (req, res) => {
+		const cameras = JSON.parse(process.env.cameras)
 
-        const sizePromises = Promise.all(cameras.map((camera, index) => {
-            return queryForMetric(index+1, "size").then(extractValueForMetric("size"))
-        }));
+		const sizePromises = Promise.all(cameras.map((camera, index) => {
+			return queryForMetric(index+1, "size").then(extractValueForMetric("size"))
+		}))
 
-        const countPromises = Promise.all(cameras.map((camera, index) => {
-            return queryForMetric(index+1, "count").then(extractValueForMetric("count"))
-        }));
+		const countPromises = Promise.all(cameras.map((camera, index) => {
+			return queryForMetric(index+1, "count").then(extractValueForMetric("count"))
+		}))
 
-        Promise.all([sizePromises, countPromises]).then(values => {
-            let sizes = values[0]
-            let counts = values[1]
-            let metrics = { size: {}, count: {} }
-            cameras.forEach((camera, index) => {
-                metrics.size[camera] = sizes[index] ? sizes[index] : 0
-                metrics.count[camera] = counts[index] ? counts[index] : 0
-            })
-            res.send(metrics)
-        }).catch(err => {
-            console.log("err", err)
-        })
-    }
+		Promise.all([sizePromises, countPromises]).then(values => {
+			let sizes = values[0]
+			let counts = values[1]
+			let metrics = { size: {}, count: {} }
+			cameras.forEach((camera, index) => {
+				metrics.size[camera] = sizes[index] ? sizes[index] : 0
+				metrics.count[camera] = counts[index] ? counts[index] : 0
+			})
+			res.send(metrics)
+		}).catch(err => {
+			console.log("err", err)
+		})
+	}
 }
 
 const queryForMetric = (camera, metric) => {
-    return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=${camera};`)
+	return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=${camera};`)
 }
 
 const queryToUpdateDatabaseForDeletion = (camera, deleting, before="") => {
-    const timestampCondition = deleting=="files" ? `AND timestamp<=timestamp '${before}'` : ""
-    return pool.query(`DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING *;`)
+	const timestampCondition = deleting=="files" ? `AND timestamp<=timestamp '${before}'` : ""
+	return pool.query(`DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING *;`)
 }
 
 const queryToAddToDeletionsTable = (camera, size, count) => {
-    const now = moment().format('YYYY-MM-DD HH:mm:ss')
-    return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
+	const now = moment().format("YYYY-MM-DD HH:mm:ss")
+	return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
 }
 
 const queryForGroupedStats = (cameras) => {
-    const arrayOfColumns = cameras.map((cam, index) => `SUM(CASE WHEN camera=${index+1} THEN size ELSE 0 END) as "${cam}"`)
-    return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(',')} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
+	const arrayOfColumns = cameras.map((cam, index) => `SUM(CASE WHEN camera=${index+1} THEN size ELSE 0 END) as "${cam}"`)
+	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {
-    let metricName
-    switch (metric) {
-        case "size":
-            metricName = "sum";
-            break;
-        default:
-            metricName = metric;
-            break;
-    }
-    if(values.rows && values.rows.length > 0){
-        return values.rows[0][metricName] ? values.rows[0][metricName] : 0
-    }
-    else{ 
-        throw new Error()
-    }
+	let metricName
+	switch (metric) {
+	case "size":
+		metricName = "sum"
+		break
+	default:
+		metricName = metric
+		break
+	}
+	if(values.rows && values.rows.length > 0){
+		return values.rows[0][metricName] ? values.rows[0][metricName] : 0
+	}
+	else{ 
+		throw new Error()
+	}
 } 
 
 const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {

@@ -6,14 +6,14 @@ import SideMenu from "./SideMenu"
 import DesktopView from "./DesktopView"
 
 const Main = (props) => {
-    return (
+	return (
 		<Layout style={{minHeight: "100vh"}}>
 			<SideMenu index={props.index}/>
 			<Content>
 				<DesktopView index={props.index} />
 			</Content>
 		</Layout>
-    )
+	)
 }
 
 export default Main

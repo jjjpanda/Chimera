@@ -6,7 +6,7 @@ const {
 	login,
 	pinCheck,
 	generateLink
-} = require('./lib/auth.js')
+} = require("./lib/auth.js")
 
 const app = express.Router()
 

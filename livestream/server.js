@@ -1,4 +1,4 @@
-const {handleServerStart} = require('lib')
+const {handleServerStart} = require("lib")
 const app = require("./backend/livestream.js")
 
 module.exports = {

@@ -6,8 +6,8 @@ const client = require("memory").client("MEMORY-HEALTH")
 
 app.get("/status", (req, res) => {
 	client.emit("callback", () => {
-        res.send({})
-    })
+		res.send({})
+	})
 })
 
 module.exports = app

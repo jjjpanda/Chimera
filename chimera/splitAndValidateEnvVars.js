@@ -1,62 +1,62 @@
 require("dotenv").config()
-const fs = require('fs')
+const fs = require("fs")
 const path = require("path")
 
 let env = {
-    command: "", 
-    gateway: "", 
-    lib: "", 
-    livestream: "", 
-    memory: "", 
-    schedule: "", 
-    storage: ""
+	command: "", 
+	gateway: "", 
+	lib: "", 
+	livestream: "", 
+	memory: "", 
+	schedule: "", 
+	storage: ""
 }
 
 let allEnvPresent = true
 
 const writeVarLine = (varName) => {
-    if(varName in process.env){
-        return `${varName} = ${process.env[varName]}\n`;
-    }
-    else{
-        console.log("MISSING ENV VAR", varName)
-        allEnvPresent = false
-    }
+	if(varName in process.env){
+		return `${varName} = ${process.env[varName]}\n`
+	}
+	else{
+		console.log("MISSING ENV VAR", varName)
+		allEnvPresent = false
+	}
 }
 
 const isFolderCheck = (varName) => {
-    try {
-        return fs.lstatSync(process.env[varName]).isDirectory()
-    }
-    catch(e) {
-        return false
-    }
+	try {
+		return fs.lstatSync(process.env[varName]).isDirectory()
+	}
+	catch(e) {
+		return false
+	}
 }
 
 const confirmPath = (varName, shouldBeFolder=false) => {
-    const isAbsolutePath =  path.isAbsolute(process.env[varName])
-    if(process.env[varName].length != 0 && !isAbsolutePath){
-        console.log(varName, "SHOULD BE AN ABSOLUTE PATH")
-        allEnvPresent = false
-        return
-    }
-    const isFolder = isFolderCheck(varName)
-    if(shouldBeFolder && !isFolder){
-        console.log(varName, "SHOULD BE A FOLDER")
-        allEnvPresent = false
-        return
-    }
-    if(!shouldBeFolder && isFolder){
-        console.log(varName, "SHOULD BE A FILE")
-        allEnvPresent = false
-        return
-    }
-    return
+	const isAbsolutePath =  path.isAbsolute(process.env[varName])
+	if(process.env[varName].length != 0 && !isAbsolutePath){
+		console.log(varName, "SHOULD BE AN ABSOLUTE PATH")
+		allEnvPresent = false
+		return
+	}
+	const isFolder = isFolderCheck(varName)
+	if(shouldBeFolder && !isFolder){
+		console.log(varName, "SHOULD BE A FOLDER")
+		allEnvPresent = false
+		return
+	}
+	if(!shouldBeFolder && isFolder){
+		console.log(varName, "SHOULD BE A FILE")
+		allEnvPresent = false
+		return
+	}
+	return
 }
 
 env.command += writeVarLine("NODE_ENV")
 
-writeVarLine('chimeraInstances')
+writeVarLine("chimeraInstances")
 
 env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
@@ -119,9 +119,6 @@ confirmPath("storage_FOLDERPATH", true)
 
 writeVarLine("storage_MOTION_CONF_FILEPATH")
 
-env.command += writeVarLine("storage_fileStatsUpdateTime")
-env.storage += writeVarLine("storage_fileStatsUpdateTime")
-
 env.storage += writeVarLine("ffmpeg_FILEPATH")
 confirmPath("ffmpeg_FILEPATH")
 
@@ -163,20 +160,20 @@ env.storage += writeVarLine("database_PORT")
 env.command += writeVarLine("database_PORT")
 
 if(allEnvPresent){
-    Promise.all(Object.entries(env)
-        .map(([key, value]) => new Promise((resolve, reject) => {
-            fs.writeFile(`${key}/.env`, value, (err) => {
-                if(!err) resolve()
-                else reject()
-            })
-        }))
-    ).then(() => {
-        process.exit(0)
-    }, () => {
-        process.exit(1)
-    })
+	Promise.all(Object.entries(env)
+		.map(([key, value]) => new Promise((resolve, reject) => {
+			fs.writeFile(`${key}/.env`, value, (err) => {
+				if(!err) resolve()
+				else reject()
+			})
+		}))
+	).then(() => {
+		process.exit(0)
+	}, () => {
+		process.exit(1)
+	})
 }
 else{
-    process.exit(1)
+	process.exit(1)
 }
 

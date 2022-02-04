@@ -6,12 +6,12 @@ import {
 	Routes,
 	Navigate
 } from "react-router-dom"
-import ResponsiveMain from "./app_v2/ResponsiveMain.jsx"
+import ResponsiveMain from "./app/ResponsiveMain.jsx"
 
 import "./css/style.less"
-import LoadingIcon from "./app_v2/LoadingIcon.jsx"
-import LoginPage from "./app_v2/LoginPage.jsx"
-import ThemeProvider from "./app_v2/ThemeProvider.jsx"
+import LoadingIcon from "./app/LoadingIcon.jsx"
+import LoginPage from "./app/LoginPage.jsx"
+import ThemeProvider from "./app/ThemeProvider.jsx"
 
 import * as FastClick from "fastclick"
 import useAuth from "./hooks/useAuth.js"
