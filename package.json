@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "engines": {

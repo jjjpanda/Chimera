@@ -43,7 +43,7 @@ Fill in the .env with all the info listed ( for optional fields, leave blank aft
 ### 3. Installing NPM dependencies
 
 ```
-npm install --no-optional
+npm install
 ```
 
 ### 4. Run Build

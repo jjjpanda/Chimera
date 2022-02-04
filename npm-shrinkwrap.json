@@ -1,12 +1,12 @@
 {
   "name": "chimera",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "chimera",
-      "version": "5.0.1",
+      "version": "5.0.2",
       "dependencies": {
         "command": "file:./command",
         "dotenv": "^10.0.0",
