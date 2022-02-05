@@ -19,6 +19,7 @@ const SummaryScrubber = (props) => {
 					imagesLoaded: state.imagesLoaded + 1
 				}))
 			}}
+			loading="lazy"
 		/>
 	)) : <Empty
 		description="No Images"

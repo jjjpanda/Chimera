@@ -8,8 +8,9 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "build": "cd command && npm run build",
-    "buildCont": "cd command && npm run buildCont",
+    "prebuild": "npm run prepare:env",
+    "build": "npm-run-all -s --npm-path npm \"build:*\"",
+    "postbuild": "npm run copy:object",
     "prestart": "npm-run-all -s --npm-path npm \"prepare:*\"",
     "start": "pm2 start pm2.config.js",
     "prepare:acme": "mkdirp ./.well-known/acme-challenge",
@@ -57,13 +58,14 @@
     "prunewrap:storage": "cd storage && npm run prunewrap",
     "prunewrap:gateway": "cd gateway && npm run prunewrap",
     "prunewrap:memory": "cd memory && npm run prunewrap",
-    "object-build": "npx buildObject",
-    "object-copy": "mkdirp objectTemp && ncp node_modules/object/dist objectTemp",
-    "object-reinsert": "ncp objectTemp node_modules/object/dist && rimraf objectTemp",
-    "build-with-env": "npm-run-all -s --npm-path npm prepare:env build",
+    "build:command": "cd command && npm run build",
+    "build:command-cont": "cd command && npm run buildCont",
+    "build:object": "npx buildObject",
+    "copy:object": "mkdirp objectTemp && ncp node_modules/object/dist objectTemp",
+    "reinsert:object": "ncp objectTemp node_modules/object/dist && rimraf objectTemp",
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\"",
-    "release": "npm-run-all -s --npm-path npm object-build build object-copy test",
-    "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" object-reinsert prunewrap:*"
+    "release": "npm-run-all -s --npm-path npm build test",
+    "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" reinsert:object prunewrap:*"
   },
   "dependencies": {
     "command": "file:./command",

@@ -49,7 +49,7 @@ npm install
 ### 4. Run Build
 
 ```
-npm run build-with-env
+npm run build
 ```
 
 ### 5. Start Chimera
