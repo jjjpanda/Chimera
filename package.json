@@ -59,7 +59,7 @@
     "prunewrap:gateway": "cd gateway && npm run prunewrap",
     "prunewrap:memory": "cd memory && npm run prunewrap",
     "build:command": "cd command && npm run build",
-    "build:command-cont": "cd command && npm run buildCont",
+    "buildCont:command": "cd command && npm run buildCont",
     "build:object": "npx buildObject",
     "copy:object": "mkdirp objectTemp && ncp node_modules/object/dist objectTemp",
     "reinsert:object": "ncp objectTemp node_modules/object/dist && rimraf objectTemp",
