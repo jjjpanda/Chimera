@@ -24,7 +24,7 @@ const useFileStats = (initialState) => {
 		statsUpdate(state, setState)
 	}, [])
 
-	return [state]
+	return [state, setState]
 }
 
 export default useFileStats
