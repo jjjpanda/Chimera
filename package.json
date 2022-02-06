@@ -62,11 +62,12 @@
     "build:object": "npx buildObject",
     "copy:object": "mkdirp objectTemp && ncp node_modules/object/dist objectTemp",
     "reinsert:object": "ncp objectTemp node_modules/object/dist && rimraf objectTemp",
-    "devprep": "npm run prerelease && npm run prepare:env && npm run build",
+    "build-with-env": "npm run prepare:env && npm run build",
+    "devprep": "npm run prerelease && npm run build-with-env",
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\"",
     "release": "npm-run-all -s --npm-path npm build test",
     "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" reinsert:object prunewrap:*",
-    "setup": "npm install && npm run prepare:env && npm run build"
+    "setup": "npm install && npm run build-with-env"
   },
   "dependencies": {
     "command": "file:./command",
