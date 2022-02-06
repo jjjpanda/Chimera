@@ -11,5 +11,7 @@ The livestream server handles transcoding the RTSP camera feed into a HLS stream
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
 |GET|/status| | | |
+|GET|/status?camera={camera number}| | | |
 |GET|/feed/{camera number}/video.m3u8|Live stream file|None|mp4|
+|POST|/restart|restart live stream file|`{ camera: Number }`|N/A|
 |GET|/health|Confirms server alive|N/A|N/A|

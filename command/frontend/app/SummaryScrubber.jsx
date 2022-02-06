@@ -19,7 +19,14 @@ const SummaryScrubber = (props) => {
 					imagesLoaded: state.imagesLoaded + 1
 				}))
 			}}
-			loading="lazy"
+			onError = {() => {
+				console.log("ERROR IMAGE LOAD")
+				setState((oldState) => ({
+					...oldState,
+					imagesLoaded: state.imagesLoaded + 1
+				}))
+			}}
+			loading="eager"
 		/>
 	)) : <Empty
 		description="No Images"

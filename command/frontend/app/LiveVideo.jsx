@@ -2,14 +2,14 @@ import React, { useState, useEffect } from "react"
 import useLiveVideo from "../hooks/useLiveVideo.js"
 import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
 
-import { Card, Tabs, Row, Col, Space, Typography } from "antd"
+import { Card, Tabs, Row, Col, Space, Typography, Divider } from "antd"
 import ReactHlsPlayer from "react-hls-player"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
 import moment from "moment"
 
 const LiveVideo = (props) => {
-	const [state, setState] = useLiveVideo({
+	const [state, setState, attemptRestart] = useLiveVideo({
 		loading: false,
 		lastUpdated: moment().format("h:mm:ss a"),
 		videoList: [],
@@ -75,9 +75,11 @@ const LiveVideo = (props) => {
 				/>
 				<Typography>{video.camera}</Typography>
 				<br />
-				{props.mobile ? null : <Space>
-					<Typography.Link href="/object">object view</Typography.Link>
-				</Space>}
+				<Space>
+					<Typography.Link onClick={() => {attemptRestart(index + 1)}}>refresh</Typography.Link>
+					<Divider />
+					{props.mobile ? null : <Typography.Link href="/object">object view</Typography.Link>}
+				</Space>
 			</Tabs.TabPane>)}
 		</Tabs>}
 	/>

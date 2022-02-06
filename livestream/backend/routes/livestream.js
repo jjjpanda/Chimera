@@ -21,6 +21,17 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
+app.post("/restart", (req, res, next) => {
+	const {camera} = req.body
+	if(camera){
+		req.processName = `live_stream_cam_${camera}`
+		next()
+	}
+	else{
+		res.status(400).send({})
+	}
+}, subprocess.restart)
+
 app.use("/feed", express.static(path.join(process.env.livestream_FOLDERPATH, "feed")))
 
 module.exports = app

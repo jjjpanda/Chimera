@@ -35,6 +35,17 @@ const listVideos = (state, setState) => {
 	})
 }
 
+const attemptRestart = (camera) => {
+	request("/livestream/restart", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({camera}),
+		mode: "cors"
+	})
+}
+
 const useLiveVideo = (initialState) => {
 	const [state, setState] = useState(initialState)
 
@@ -42,7 +53,7 @@ const useLiveVideo = (initialState) => {
 		listVideos(state, setState)
 	}, [])
 
-	return [state, setState]
+	return [state, setState, attemptRestart]
 }
 
 export default useLiveVideo
