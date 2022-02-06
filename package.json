@@ -65,7 +65,8 @@
     "devprep": "npm run prerelease && npm run prepare:env",
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\"",
     "release": "npm-run-all -s --npm-path npm build test",
-    "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" reinsert:object prunewrap:*"
+    "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" reinsert:object prunewrap:*",
+    "setup": "npm install && npm run prepare:env && npm run build"
   },
   "dependencies": {
     "command": "file:./command",
