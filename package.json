@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "engines": {
@@ -8,7 +8,6 @@
     "node": ">=16.0.0"
   },
   "scripts": {
-    "prebuild": "npm run prepare:env",
     "build": "npm-run-all -s --npm-path npm \"build:*\"",
     "postbuild": "npm run copy:object",
     "prestart": "npm-run-all -s --npm-path npm \"prepare:*\"",
@@ -63,6 +62,7 @@
     "build:object": "npx buildObject",
     "copy:object": "mkdirp objectTemp && ncp node_modules/object/dist objectTemp",
     "reinsert:object": "ncp objectTemp node_modules/object/dist && rimraf objectTemp",
+    "devprep": "npm run prerelease && npm run prepare:env",
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\"",
     "release": "npm-run-all -s --npm-path npm build test",
     "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" reinsert:object prunewrap:*"
