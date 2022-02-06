@@ -40,19 +40,13 @@ cp env.example .env
 
 Fill in the .env with all the info listed ( for optional fields, leave blank after the "=" ). 
 
-### 3. Installing NPM dependencies
+### 3. Run Setup
 
 ```
-npm install
+npm run setup
 ```
 
-### 4. Run Build
-
-```
-npm run build-with-env
-```
-
-### 5. Start Chimera
+### 4. Start Chimera
 
 If running all or more than one service(s)
 ```

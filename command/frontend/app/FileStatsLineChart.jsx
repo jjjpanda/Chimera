@@ -19,7 +19,7 @@ const customTooltip = ({ active, payload }) => {
 				{payload.map((cam, index) => {
 					const name = payload[index].name
 					const value = formatBytes( payload[index].value, 2 )
-					return <div>{payload[index].value == 0 ? null : `${name} : ${value}`}<br/></div>
+					return <div>{`${name} : ${payload[index].value == 0 ? "-" : value}`}<br/></div>
 				})}
 			</div>
 		)
@@ -28,18 +28,32 @@ const customTooltip = ({ active, payload }) => {
 	return null
 }
 
-
 const FileStatsLineChart = (props) => {
-	const [state] = useFileStats({
+	const [state, setState] = useFileStats({
 		loading: "refreshing",
 		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
 		days: 7,
 		lastUpdated: moment().format("h:mm:ss a"),
-		fileStats: []
+		fileStats: [],
+		hide: JSON.parse(process.env.cameras).reduce((obj, cam) => ({...obj, [cam]: false}), {})
 	})
 
+	console.log("STATS", state)
+
+	const legendHandler = ({ payload }) => {
+		console.log("LEGEND", payload)
+		const {dataKey} = payload
+		if(dataKey != undefined){
+			setState((oldState) => {
+				let {hide} = oldState
+				hide[dataKey] = !oldState.hide[dataKey]
+				return {...oldState, hide, lastUpdated: moment().format("h:mm:ss a")}
+			})
+		}
+	}
+
 	return (
-		<ResponsiveContainer>
+		<ResponsiveContainer key={`LINE-CHART-${state.lastUpdated}`}>
 			<LineChart data={props.mobile ? state.fileStats.slice(state.fileStats.length-3, state.fileStats.length) : state.fileStats}>
 				<Tooltip content={customTooltip} />
 				<XAxis 
@@ -49,10 +63,10 @@ const FileStatsLineChart = (props) => {
 					type="number"
 				/>
 				<YAxis tickFormatter={bytes => formatBytes( bytes, 2 )}/>
-				<Legend layout="horizontal" align="right" verticalAlign="top" />
+				<Legend onClick={legendHandler} layout="horizontal" align="right" verticalAlign="top" />
 				{
 					state.cameras.map(({name}, index) => {
-						return <Line type="monotone" dataKey={name} stroke={colors[index % colors.length]} />
+						return <Line hide={state.hide[name]} type="monotone" dataKey={name} dot={false} stroke={colors[index % colors.length]} />
 					})
 				}
 			</LineChart>
