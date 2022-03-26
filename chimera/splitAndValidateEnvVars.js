@@ -151,6 +151,7 @@ writeVarLine("object_browser_FILEPATH")
 confirmPath("object_browser_FILEPATH")
 writeVarLine("object_data_FOLDERPATH")
 //confirmPath("object_data_FOLDERPATH", true) removed because of cross os issues in path detection for puppet
+writeVarLine("object_THROTTLE")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
