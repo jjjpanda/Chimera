@@ -2101,24 +2101,6 @@
         "node": ">=8"
       }
     },
-    "../lib/node_modules/follow-redirects": {
-      "version": "1.14.7",
-      "funding": [
-        {
-          "type": "individual",
-          "url": "https://github.com/sponsors/RubenVerborgh"
-        }
-      ],
-      "license": "MIT",
-      "engines": {
-        "node": ">=4.0"
-      },
-      "peerDependenciesMeta": {
-        "debug": {
-          "optional": true
-        }
-      }
-    },
     "../lib/node_modules/form-data": {
       "version": "3.0.1",
       "license": "MIT",
@@ -4712,16 +4694,6 @@
         "lodash": "^4.17.14"
       }
     },
-    "../lib/node_modules/vm2": {
-      "version": "3.9.5",
-      "license": "MIT",
-      "bin": {
-        "vm2": "bin/vm2"
-      },
-      "engines": {
-        "node": ">=6.0"
-      }
-    },
     "../lib/node_modules/w3c-hr-time": {
       "version": "1.0.2",
       "license": "MIT",
@@ -7125,24 +7097,6 @@
       },
       "engines": {
         "node": ">=8"
-      }
-    },
-    "node_modules/follow-redirects": {
-      "version": "1.14.7",
-      "funding": [
-        {
-          "type": "individual",
-          "url": "https://github.com/sponsors/RubenVerborgh"
-        }
-      ],
-      "license": "MIT",
-      "engines": {
-        "node": ">=4.0"
-      },
-      "peerDependenciesMeta": {
-        "debug": {
-          "optional": true
-        }
       }
     },
     "node_modules/form-data": {
@@ -11003,9 +10957,6 @@
         "path-exists": "^4.0.0"
       }
     },
-    "follow-redirects": {
-      "version": "1.14.7"
-    },
     "form-data": {
       "version": "3.0.1",
       "peer": true,
@@ -13197,9 +13148,6 @@
             "path-exists": "^4.0.0"
           }
         },
-        "follow-redirects": {
-          "version": "1.14.7"
-        },
         "form-data": {
           "version": "3.0.1",
           "peer": true,
@@ -14868,9 +14816,6 @@
             }
           }
         },
-        "vm2": {
-          "version": "3.9.5"
-        },
         "w3c-hr-time": {
           "version": "1.0.2",
           "peer": true,
@@ -16516,9 +16461,6 @@
                 "locate-path": "^5.0.0",
                 "path-exists": "^4.0.0"
               }
-            },
-            "follow-redirects": {
-              "version": "1.14.7"
             },
             "form-data": {
               "version": "3.0.1",
@@ -18187,9 +18129,6 @@
                   }
                 }
               }
-            },
-            "vm2": {
-              "version": "3.9.5"
             },
             "w3c-hr-time": {
               "version": "1.0.2",

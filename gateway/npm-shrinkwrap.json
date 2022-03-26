@@ -66,12 +66,12 @@
         "svg-url-loader": "^7.1.1"
       },
       "devDependencies": {
-        "@babel/core": "^7.16.0",
-        "@babel/plugin-proposal-class-properties": "^7.12.1",
-        "@babel/plugin-transform-runtime": "^7.12.10",
-        "@babel/preset-env": "^7.11.5",
-        "@babel/preset-react": "^7.12.10",
-        "@babel/register": "^7.16.0",
+        "@babel/core": "^7.16.7",
+        "@babel/plugin-proposal-class-properties": "^7.16.7",
+        "@babel/plugin-transform-runtime": "^7.16.7",
+        "@babel/preset-env": "^7.16.7",
+        "@babel/preset-react": "^7.16.7",
+        "@babel/register": "^7.16.7",
         "webpack": "^5.54.0",
         "webpack-cli": "^4.9.1"
       },
@@ -6698,11 +6698,6 @@
         "node": "*"
       }
     },
-    "../command/node_modules/minimist": {
-      "version": "1.2.5",
-      "license": "MIT",
-      "peer": true
-    },
     "../command/node_modules/moment": {
       "version": "2.29.1",
       "license": "MIT",
@@ -11663,24 +11658,6 @@
         "node": ">=8"
       }
     },
-    "../lib/node_modules/follow-redirects": {
-      "version": "1.14.7",
-      "funding": [
-        {
-          "type": "individual",
-          "url": "https://github.com/sponsors/RubenVerborgh"
-        }
-      ],
-      "license": "MIT",
-      "engines": {
-        "node": ">=4.0"
-      },
-      "peerDependenciesMeta": {
-        "debug": {
-          "optional": true
-        }
-      }
-    },
     "../lib/node_modules/form-data": {
       "version": "3.0.1",
       "license": "MIT",
@@ -14274,16 +14251,6 @@
         "lodash": "^4.17.14"
       }
     },
-    "../lib/node_modules/vm2": {
-      "version": "3.9.5",
-      "license": "MIT",
-      "bin": {
-        "vm2": "bin/vm2"
-      },
-      "engines": {
-        "node": ">=6.0"
-      }
-    },
     "../lib/node_modules/w3c-hr-time": {
       "version": "1.0.2",
       "license": "MIT",
@@ -16722,24 +16689,6 @@
       },
       "engines": {
         "node": ">=8"
-      }
-    },
-    "node_modules/follow-redirects": {
-      "version": "1.14.7",
-      "funding": [
-        {
-          "type": "individual",
-          "url": "https://github.com/sponsors/RubenVerborgh"
-        }
-      ],
-      "license": "MIT",
-      "engines": {
-        "node": ">=4.0"
-      },
-      "peerDependenciesMeta": {
-        "debug": {
-          "optional": true
-        }
       }
     },
     "node_modules/form-data": {
@@ -20290,12 +20239,12 @@
       "version": "file:../command",
       "requires": {
         "@ant-design/icons": "^4.7.0",
-        "@babel/core": "^7.16.0",
-        "@babel/plugin-proposal-class-properties": "^7.12.1",
-        "@babel/plugin-transform-runtime": "^7.12.10",
-        "@babel/preset-env": "^7.11.5",
-        "@babel/preset-react": "^7.12.10",
-        "@babel/register": "^7.16.0",
+        "@babel/core": "^7.16.7",
+        "@babel/plugin-proposal-class-properties": "^7.16.7",
+        "@babel/plugin-transform-runtime": "^7.16.7",
+        "@babel/preset-env": "^7.16.7",
+        "@babel/preset-react": "^7.16.7",
+        "@babel/register": "^7.16.7",
         "antd": "^4.18.2",
         "antd-mobile": "^5.0.0-rc.12",
         "antd-mobile-icons": "^0.2.2",
@@ -25970,9 +25919,6 @@
                 "path-exists": "^4.0.0"
               }
             },
-            "follow-redirects": {
-              "version": "1.14.7"
-            },
             "form-data": {
               "version": "3.0.1",
               "peer": true,
@@ -27640,9 +27586,6 @@
                   }
                 }
               }
-            },
-            "vm2": {
-              "version": "3.9.5"
             },
             "w3c-hr-time": {
               "version": "1.0.2",
@@ -29411,9 +29354,6 @@
                     "path-exists": "^4.0.0"
                   }
                 },
-                "follow-redirects": {
-                  "version": "1.14.7"
-                },
                 "form-data": {
                   "version": "3.0.1",
                   "peer": true,
@@ -31082,9 +31022,6 @@
                     }
                   }
                 },
-                "vm2": {
-                  "version": "3.9.5"
-                },
                 "w3c-hr-time": {
                   "version": "1.0.2",
                   "peer": true,
@@ -31392,10 +31329,6 @@
           "requires": {
             "brace-expansion": "^1.1.7"
           }
-        },
-        "minimist": {
-          "version": "1.2.5",
-          "peer": true
         },
         "moment": {
           "version": "2.29.1",
@@ -33576,9 +33509,6 @@
         "locate-path": "^5.0.0",
         "path-exists": "^4.0.0"
       }
-    },
-    "follow-redirects": {
-      "version": "1.14.7"
     },
     "form-data": {
       "version": "3.0.1",
@@ -35791,9 +35721,6 @@
             "path-exists": "^4.0.0"
           }
         },
-        "follow-redirects": {
-          "version": "1.14.7"
-        },
         "form-data": {
           "version": "3.0.1",
           "peer": true,
@@ -37461,9 +37388,6 @@
               }
             }
           }
-        },
-        "vm2": {
-          "version": "3.9.5"
         },
         "w3c-hr-time": {
           "version": "1.0.2",
