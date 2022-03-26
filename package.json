@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "5.0.4",
+  "version": "5.1.0",
   "description": "a microservices based security camera system",
   "main": "server.js",
   "engines": {
@@ -80,7 +80,7 @@
     "mkdirp": "^1.0.4",
     "ncp": "^2.0.0",
     "npm-run-all": "^4.1.5",
-    "object": "jjjpanda/object#v3.2.0",
+    "object": "jjjpanda/object#v3.3.0",
     "pg": "^8.7.1",
     "pm2": "^5.1.2",
     "rimraf": "^3.0.2",

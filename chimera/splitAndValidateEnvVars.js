@@ -34,8 +34,11 @@ const isFolderCheck = (varName) => {
 }
 
 const confirmPath = (varName, shouldBeFolder=false) => {
+	if(process.env[varName].length == 0){
+		return
+	}
 	const isAbsolutePath =  path.isAbsolute(process.env[varName])
-	if(process.env[varName].length != 0 && !isAbsolutePath){
+	if(!isAbsolutePath){
 		console.log(varName, "SHOULD BE AN ABSOLUTE PATH")
 		allEnvPresent = false
 		return
@@ -136,8 +139,18 @@ confirmPath("livestream_FOLDERPATH", true)
 writeVarLine("object_ON")
 writeVarLine("object_PORT")
 env.gateway += writeVarLine("object_HOST")
+writeVarLine("object_FULL_URL")
+env.lib += writeVarLine("object_AUTH")
+
+writeVarLine("object_CAMERA_URLS")
 writeVarLine("object_minimumConfidence")
 writeVarLine("object_alertUrls")
+
+writeVarLine("object_headless_ON")
+writeVarLine("object_browser_FILEPATH")
+confirmPath("object_browser_FILEPATH")
+writeVarLine("object_data_FOLDERPATH")
+confirmPath("object_data_FOLDERPATH", true)
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
