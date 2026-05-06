@@ -5,7 +5,7 @@
   "main": "server.js",
   "engines": {
     "npm": ">=7.0.0",
-    "node": ">=16.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "npm-run-all -s --npm-path npm \"build:*\"",
