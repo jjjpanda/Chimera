@@ -53,7 +53,7 @@ const useAuth = () => {
 
 	useEffect(() => {
 		checkStatus().then(res => {
-			const isSetup = res.setup !== false
+			const isSetup = res.setup === true
 			setState(s => ({ ...s, setup: isSetup }))
 			if (!isSetup) {
 				handleLoginAttempt(false, state.timestamp, setState)
