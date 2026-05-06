@@ -5,53 +5,40 @@ import { request } from "../js/request.js"
 
 const timeout = 750
 
-const handleAuthResponse = (res) => {
-	return res.json()
-}
-
-const catchAuthError = (err)=> {
-	return {error: true}
-}
-
 const authPromiseHandler = (prom) => {
-	return prom.then(handleAuthResponse)
-		.catch(catchAuthError)
+	return prom.then(res => res.json())
+		.catch(() => ({ error: true }))
 }
 
-const attemptVerification = () => {
-	return request("/authorization/verify", {
+const checkStatus = () =>
+	request("/authorization/status", { method: "GET" }, authPromiseHandler)
+
+const attemptVerification = () =>
+	request("/authorization/verify", {
 		method: "POST",
-		headers: {
-			"Accept": "application/json",
-			"Content-Type": "application/json",
-		},
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 	}, authPromiseHandler)
-}
 
-const attemptLogin = (username, password) => {
-	return request("/authorization/login", {
+const attemptLogin = (username, password) =>
+	request("/authorization/login", {
 		method: "POST",
-		headers: {
-			"Accept": "application/json",
-			"Content-Type": "application/json",
-		},
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 		credentials: "include",
 		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
-}
+
+const attemptSetup = (username, password) =>
+	request("/authorization/setup", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+		body: JSON.stringify({ username, password })
+	}, authPromiseHandler)
 
 const handleLoginAttempt = (verified, timestamp, setState) => {
-	console.log("login attempt", verified)
 	setTimeout(() => {
-		setState((oldState) => ({
-			...oldState,
-			loggedIn: verified
-		}))
+		setState(s => ({ ...s, loggedIn: verified }))
 		setTimeout(() => {
-			setState((oldState) => ({
-				...oldState,
-			    loaded: true
-			}))
+			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
 	}, 500)
 }
@@ -59,20 +46,28 @@ const handleLoginAttempt = (verified, timestamp, setState) => {
 const useAuth = () => {
 	const [state, setState] = useState({
 		loaded: false,
+		setup: null,
 		loggedIn: false,
-		bearerToken: Cookies.get("bearertoken"),
 		timestamp: new Date()
 	})
 
 	useEffect(() => {
-		if(state.bearerToken){
-			attemptVerification().then(res => {
-				handleLoginAttempt(!res.error, state.timestamp, setState)
-			})
-		}
-		else{
-			handleLoginAttempt(false, state.timestamp, setState)
-		}
+		checkStatus().then(res => {
+			const isSetup = res.setup !== false
+			setState(s => ({ ...s, setup: isSetup }))
+			if (!isSetup) {
+				handleLoginAttempt(false, state.timestamp, setState)
+				return
+			}
+			const bearerToken = Cookies.get("bearertoken")
+			if (bearerToken) {
+				attemptVerification().then(res => {
+					handleLoginAttempt(!res.error, state.timestamp, setState)
+				})
+			} else {
+				handleLoginAttempt(false, state.timestamp, setState)
+			}
+		})
 	}, [])
 
 	const tryLogin = (username, password, callback) => {
@@ -82,9 +77,14 @@ const useAuth = () => {
 		})
 	}
 
-	console.log("LOADED:", state.loaded, "\nLOGGED IN:", state.loggedIn)
+	const trySetup = (username, password, callback) => {
+		attemptSetup(username, password).then(res => {
+			if (!res.error) setState(s => ({ ...s, setup: true }))
+			callback(!res.error)
+		})
+	}
 
-	return [state.loaded, state.loggedIn, tryLogin]
+	return [state.loaded, state.setup, state.loggedIn, tryLogin, trySetup]
 }
 
 export default useAuth
