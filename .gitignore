@@ -7,6 +7,7 @@ shared
 feed
 *.log
 *.conf
+motion.conf
 eslint
 .well-known
 log

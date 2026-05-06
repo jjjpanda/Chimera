@@ -28,16 +28,15 @@ const attemptVerification = () => {
 	}, authPromiseHandler)
 }
 
-const attemptLogin = (password, type) => {
-	const url = type == "password" ? "/authorization/login" : "/authorization/requestLink"
-	return request(url, {
+const attemptLogin = (username, password) => {
+	return request("/authorization/login", {
 		method: "POST",
 		headers: {
 			"Accept": "application/json",
 			"Content-Type": "application/json",
 		},
 		credentials: "include",
-		body: JSON.stringify({[type.toLowerCase()]: password})
+		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
 }
 
@@ -72,16 +71,14 @@ const useAuth = () => {
 			})
 		}
 		else{
-			handleLoginAttempt(false, state.timestamp, setState) 
+			handleLoginAttempt(false, state.timestamp, setState)
 		}
 	}, [])
-    
-	const tryLogin = (input, type, callback) => {
-		attemptLogin(input, type).then(res => {
+
+	const tryLogin = (username, password, callback) => {
+		attemptLogin(username, password).then(res => {
 			callback(!res.error)
-			if(type == "password"){
-				handleLoginAttempt(!res.error, state.timestamp, setState)
-			}
+			handleLoginAttempt(!res.error, state.timestamp, setState)
 		})
 	}
 

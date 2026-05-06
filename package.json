@@ -15,7 +15,6 @@
     "prepare:acme": "mkdirp ./.well-known/acme-challenge",
     "prepare:env": "node chimera/splitAndValidateEnvVars.js",
     "prepare:database": "node chimera/prepareDatabase.js",
-    "prepare:auth": "node chimera/register.js",
     "start:command": "cd command && npm start",
     "start:livestream": "cd livestream && npm start",
     "start:schedule": "cd schedule && npm start",

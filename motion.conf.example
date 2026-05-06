@@ -1,0 +1,93 @@
+############################################################
+# motion.conf.example
+#
+# Copy to motion.conf, fill in your values, then bind-mount
+# into the container at /etc/motion/motion.conf (read-only).
+#
+# WARNING: motion.conf is gitignored. Docker WILL create a
+# directory at the bind-mount path if the file is missing,
+# breaking motion's -c flag. Always copy this file first.
+############################################################
+
+# Run in foreground (PM2 manages the process)
+daemon = off
+
+# Logging
+log_level = 6
+logfile = /dev/stdout
+
+############################################################
+# Storage
+############################################################
+
+# Must match storage_FOLDERPATH and livestream_FOLDERPATH in .env
+target_dir = /mnt/storage
+
+output_pictures = on
+picture_type = jpeg
+quality = 80
+
+movie_output = off
+
+############################################################
+# Video capture defaults (override per camera in camN.conf)
+############################################################
+
+width = 1280
+height = 720
+framerate = 15
+stream_maxrate = 15
+
+############################################################
+# Motion detection
+############################################################
+
+threshold = 1500
+minimum_motion_frames = 1
+event_gap = 60
+
+############################################################
+# Database (motion writes frame metadata directly to PG)
+#
+# database_host must be "postgres" — the compose service name.
+# Do NOT use "localhost"; motion runs inside the chimera
+# container and reaches postgres via compose DNS.
+############################################################
+
+database_type = postgresql
+database_host = postgres
+database_port = 5432
+database_user = chimera
+database_password = changeme
+database_dbname = chimera
+database_table = frame_files
+
+sql_log_picture = on
+sql_log_movie = off
+
+# %t = camera thread (maps to camera column), %f = filename (maps to name column)
+sql_query = INSERT INTO frame_files (camera, name, timestamp) VALUES('%t', '%f', now())
+
+############################################################
+# Per-camera include files
+#
+# Each camera gets its own conf that sets camera_id,
+# netcam_url, and any per-camera overrides. Add one line
+# per camera; PM2 picks up one ffmpeg entry per camera at
+# startup.
+############################################################
+
+camera /etc/motion/cam1.conf
+# camera /etc/motion/cam2.conf
+# camera /etc/motion/cam3.conf
+# ... add as many as needed (consecutive numbers)
+
+############################################################
+# cam1.conf example — create /etc/motion/cam1.conf with:
+#
+# camera_id = 1
+# netcam_url = rtsp://user:pass@192.168.1.10:554/stream1
+# target_dir = /mnt/storage/1
+# width = 1280
+# height = 720
+############################################################
