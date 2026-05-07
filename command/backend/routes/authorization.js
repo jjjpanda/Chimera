@@ -19,26 +19,18 @@ app.get("/status", async (req, res) => {
 app.post("/setup", validateBody, async (req, res) => {
 	const { username, password } = req.body
 	if (!username || !password) return res.status(400).json({ error: true })
-	let client
 	try {
-		client = await pool.connect()
-		await client.query("BEGIN")
-		const check = await client.query("SELECT COUNT(*) FROM auth FOR UPDATE")
-		if (parseInt(check.rows[0].count) > 0) {
-			await client.query("ROLLBACK")
-			return res.status(403).json({ error: true })
-		}
+		const countResult = await pool.query("SELECT COUNT(*) FROM auth")
+		if (parseInt(countResult.rows[0].count) > 0) return res.status(403).json({ error: true })
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await client.query("INSERT INTO auth(username, hash, role) VALUES($1, $2, 'admin')", [username, hash])
-		await client.query("COMMIT")
+		await pool.query(
+			"INSERT INTO auth(username, hash, role) VALUES($1, $2, 'admin')",
+			[username, hash]
+		)
 		res.json({ error: false })
 	} catch (e) {
-		if (client) await client.query("ROLLBACK")
-		if (e.code === "23505") return res.status(403).json({ error: true })
 		res.status(500).json({ error: true })
-	} finally {
-		if (client) client.release()
 	}
 })
 

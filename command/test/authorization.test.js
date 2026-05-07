@@ -1,13 +1,13 @@
 process.env.SECRETKEY = "test-secret"
 
-const supertest = require("supertest")
-const jwt = require("jsonwebtoken")
-const app = require("../backend/command.js")
-
 jest.mock("pg")
 jest.mock("pm2")
 jest.mock("axios")
 jest.mock("memory")
+
+const supertest = require("supertest")
+const jwt = require("jsonwebtoken")
+const app = require("../backend/command.js")
 
 const { mockedPool } = require("pg")
 
@@ -37,11 +37,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 when table already has a row", async () => {
-			const clientQuery = jest.fn(str => {
-				if (str.includes("COUNT")) return Promise.resolve({ rows: [{ count: "1" }] })
-				return Promise.resolve({ rows: [] })
-			})
-			mockedPool.connect.mockResolvedValueOnce({ query: clientQuery, release: jest.fn() })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ count: "1" }] })
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
