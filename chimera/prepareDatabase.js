@@ -18,23 +18,8 @@ const creationTasks = [
 		description: "frame deletions table"
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(10) UNIQUE, hash VARCHAR);",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user');",
 		description: "authorization table"
-	}
-]
-
-const migrationTasks = [
-	{
-		query: "ALTER TABLE auth ALTER COLUMN username TYPE VARCHAR(50)",
-		description: "auth username column widening"
-	},
-	{
-		query: "ALTER TABLE auth ADD COLUMN IF NOT EXISTS role VARCHAR(10) NOT NULL DEFAULT 'user'",
-		description: "auth role column"
-	},
-	{
-		query: "UPDATE auth SET role = 'admin' WHERE id = (SELECT MIN(id) FROM auth) AND role = 'user'",
-		description: "backfill first user as admin"
 	}
 ]
 
@@ -42,20 +27,11 @@ let issues = false
 
 Promise.allSettled(creationTasks.map(({query}) => {
 	return pool.query(query)
-})).then(async values => {
+})).then(values => {
 	values.forEach((value, index) => {
 		const tableExists = value.status == "fulfilled" || (value.status == "rejected" && value.reason && value.reason.code == "42P07")
 		if(!tableExists) issues = true
 		console.log(`${creationTasks[index].description} ${tableExists ? "✔️" : "❌"}`)
 	})
-	for (const [index, {query}] of migrationTasks.entries()) {
-		try {
-			await pool.query(query)
-			console.log(`${migrationTasks[index].description} ✔️`)
-		} catch (e) {
-			issues = true
-			console.log(`${migrationTasks[index].description} ❌`)
-		}
-	}
 	process.exit(issues ? 1 : 0)
 })
