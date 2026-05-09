@@ -75,6 +75,9 @@ sql_query = INSERT INTO frame_files (camera, name, timestamp) VALUES('%t', '%f',
 # netcam_url, and any per-camera overrides. Add one line
 # per camera; PM2 picks up one ffmpeg entry per camera at
 # startup.
+#
+# Each per-camera file must also be bind-mounted in docker-compose.yml, e.g.:
+#   - ./cam1.conf:/etc/motion/cam1.conf:ro
 ############################################################
 
 camera /etc/motion/cam1.conf

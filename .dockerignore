@@ -3,3 +3,4 @@ feed/
 log/
 .env
 *.md
+motion.conf

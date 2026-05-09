@@ -20,14 +20,13 @@ app.post("/setup", validateBody, async (req, res) => {
 	const { username, password } = req.body
 	if (!username || !password) return res.status(400).json({ error: true })
 	try {
-		const countResult = await pool.query("SELECT COUNT(*) FROM auth")
-		if (parseInt(countResult.rows[0].count) > 0) return res.status(403).json({ error: true })
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await pool.query(
-			"INSERT INTO auth(username, hash, role) VALUES($1, $2, 'admin')",
+		const result = await pool.query(
+			"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth)",
 			[username, hash]
 		)
+		if (result.rowCount === 0) return res.status(403).json({ error: true })
 		res.json({ error: false })
 	} catch (e) {
 		res.status(500).json({ error: true })
