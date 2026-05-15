@@ -5,7 +5,7 @@
   "main": "server.js",
   "engines": {
     "npm": ">=7.0.0",
-    "node": ">=16.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build": "npm-run-all -s --npm-path npm \"build:*\"",
@@ -15,7 +15,6 @@
     "prepare:acme": "mkdirp ./.well-known/acme-challenge",
     "prepare:env": "node chimera/splitAndValidateEnvVars.js",
     "prepare:database": "node chimera/prepareDatabase.js",
-    "prepare:auth": "node chimera/register.js",
     "start:command": "cd command && npm start",
     "start:livestream": "cd livestream && npm start",
     "start:schedule": "cd schedule && npm start",
@@ -76,7 +75,14 @@
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\" && npm install --development",
     "release": "npm-run-all -s --npm-path npm build test",
     "postrelease": "npm install --production && npm-run-all -s --npm-path npm delete-locks \"install:* -- --production\" audit:* reinsert:object prunewrap:*",
-    "setup": "npm install && npm run build-with-env"
+    "setup": "npm install && npm run build-with-env",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:restart": "docker compose restart",
+    "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
+    "docker:delete": "docker compose down -v"
   },
   "dependencies": {
     "command": "file:./command",

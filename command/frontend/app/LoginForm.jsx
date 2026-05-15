@@ -5,7 +5,7 @@ import { Card, Space, Button, Modal, Input } from "antd"
 import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons"
 
 const LoginForm = (props) => {
-	const [loginStatus, modalVisible, toggleModal, inputValues, onPasswordEnter, onPINEnter, updatePassword, updatePIN] = useLoginSchema(props)
+	const [loginStatus, modalVisible, toggleModal, inputValues, onLoginEnter, updateUsername, updatePassword] = useLoginSchema(props)
 
 	return (
 		<Space>
@@ -14,37 +14,28 @@ const LoginForm = (props) => {
 				title="Login"
 				extra={loginStatus == null ? <RightCircleOutlined /> : (loginStatus == "wrong" ? <CloseCircleOutlined /> : <CheckCircleOutlined />)}
 			>
-				<Button type="primary" onClick={() => toggleModal(true, "password")}>
-                    Password
-				</Button>
-				<Button onClick={() => toggleModal(true, "pin")}>
-                    PIN
+				<Button type="primary" onClick={() => toggleModal(true)}>
+                    Login
 				</Button>
 			</Card>
 			<Modal
-				title="Password" 
-				visible={modalVisible.password}
-				onOk={onPasswordEnter}
-				onCancel={() => toggleModal(false, "password")}
+				title="Login"
+				visible={modalVisible}
+				onOk={onLoginEnter}
+				onCancel={() => toggleModal(false)}
 			>
-				<Input.Password 
-					placeholder="input password" 
-					onChange={updatePassword} 
-					onPressEnter={onPasswordEnter}
-					value={inputValues.password}
+				<Input
+					placeholder="username"
+					onChange={updateUsername}
+					onPressEnter={onLoginEnter}
+					value={inputValues.username}
+					style={{marginBottom: 8}}
 				/>
-			</Modal>
-			<Modal
-				title="PIN"
-				visible={modalVisible.pin}
-				onOk={onPINEnter}
-				onCancel={() => toggleModal(false, "pin")}
-			>
-				<Input.Password 
-					placeholder="input pin" 
-					onChange={updatePIN} 
-					onPressEnter={onPINEnter}
-					value={inputValues.pin}
+				<Input.Password
+					placeholder="password"
+					onChange={updatePassword}
+					onPressEnter={onLoginEnter}
+					value={inputValues.password}
 				/>
 			</Modal>
 		</Space>

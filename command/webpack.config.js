@@ -69,6 +69,6 @@ module.exports = {
 			chunks : ["app"],
 			filename: "app.html"
 		}),
-		new Dotenv()
+		new Dotenv({ systemvars: true })
 	]
 }

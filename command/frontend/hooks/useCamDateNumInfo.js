@@ -5,7 +5,7 @@ import moment from "moment"
 const useCamDateNumInfo = (extraOverride) => {
 	const [info, setInfo] = useState({
 		camera: 0,
-		cameras: JSON.parse(process.env.cameras),
+		cameras: JSON.parse(process.env.cameras || "[]"),
 
 		days: 1,
 		startDate: moment().subtract(1, "day"),

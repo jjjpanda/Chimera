@@ -31,11 +31,11 @@ const customTooltip = ({ active, payload }) => {
 const FileStatsLineChart = (props) => {
 	const [state, setState] = useFileStats({
 		loading: "refreshing",
-		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
+		cameras: JSON.parse(process.env.cameras || "[]").map(cameraInfo),
 		days: 7,
 		lastUpdated: moment().format("h:mm:ss a"),
 		fileStats: [],
-		hide: JSON.parse(process.env.cameras).reduce((obj, cam) => ({...obj, [cam]: false}), {})
+		hide: JSON.parse(process.env.cameras || "[]").reduce((obj, cam) => ({...obj, [cam]: false}), {})
 	})
 
 	console.log("STATS", state)

@@ -1,0 +1,7 @@
+camera_id 3
+camera_name front_door
+
+netcam_url rtsp://192.168.1.X/cam
+netcam_userpass admin:password
+netcam_keepalive on
+netcam_use_tcp on

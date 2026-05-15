@@ -1,0 +1,37 @@
+services:
+  chimera:
+    build:
+      context: .
+      args:
+        cameras: ${cameras}
+    env_file: .env
+    ports:
+      - "${gateway_PORT}:${gateway_PORT}"
+      - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
+    volumes:
+      - chimera-storage:/mnt/storage
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./motion.conf:/etc/motion/motion.conf:ro
+      - ./cameraconf:/etc/motion/cameraconf:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${database_NAME}
+      POSTGRES_USER: ${database_USER}
+      POSTGRES_PASSWORD: ${database_PASSWORD}
+    volumes:
+      - chimera-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  chimera-pgdata:
+  chimera-storage:

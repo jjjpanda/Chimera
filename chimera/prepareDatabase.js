@@ -18,15 +18,16 @@ const creationTasks = [
 		description: "frame deletions table"
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(10) UNIQUE, hash VARCHAR);",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user');",
 		description: "authorization table"
 	}
 ]
 
+let issues = false
+
 Promise.allSettled(creationTasks.map(({query}) => {
 	return pool.query(query)
 })).then(values => {
-	let issues = false
 	values.forEach((value, index) => {
 		const tableExists = value.status == "fulfilled" || (value.status == "rejected" && value.reason && value.reason.code == "42P07")
 		if(!tableExists) issues = true

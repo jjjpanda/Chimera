@@ -11,6 +11,7 @@ import ResponsiveMain from "./app/ResponsiveMain.jsx"
 import "./css/style.less"
 import LoadingIcon from "./app/LoadingIcon.jsx"
 import LoginPage from "./app/LoginPage.jsx"
+import SetupForm from "./app/SetupForm.jsx"
 import ThemeProvider from "./app/ThemeProvider.jsx"
 
 import * as FastClick from "fastclick"
@@ -23,39 +24,37 @@ if ("addEventListener" in document) {
 }
 
 const App = () => {
-	const [loaded, loggedIn, tryLogin] = useAuth()
+	const [loaded, setup, tokenRequired, loggedIn, tryLogin, trySetup] = useAuth()
 	const [key, setKey] = useState(0)
 
 	useEffect(() => {
-		console.log("UPDATED CHIMERA KEY: ", key)
 		setKey((k) => k+1)
 	}, [loggedIn])
+
+	if (!loaded) return <ThemeProvider><LoadingIcon /></ThemeProvider>
+
+	if (setup === false) return <ThemeProvider><SetupForm trySetup={trySetup} tokenRequired={tokenRequired} /></ThemeProvider>
 
 	return (
 		<ThemeProvider>
 			<Router key={`ROUTER-${key}`}>
-				{loaded ? <Routes>
-					<Route 
+				<Routes>
+					<Route
 						key={`ROUTE-${key}-1`}
-						path="/login/:password" 
-						element={loggedIn ? <Navigate to="/" /> : <LoginPage withPassword tryLogin={tryLogin} />}
+						path="/login"
+						element={loggedIn ? <Navigate to="/" /> : <LoginPage tryLogin={tryLogin} />}
 					/>
-					<Route 
+					<Route
 						key={`ROUTE-${key}-2`}
-						path="/login" 
-						element={loggedIn ? <Navigate to="/" /> : <LoginPage tryLogin={tryLogin} />} 
+						path="/:route"
+						element={loggedIn ? <ResponsiveMain /> : <Navigate to="/login" />}
 					/>
-					<Route 
+					<Route
 						key={`ROUTE-${key}-3`}
-						path="/:route" 
+						path="/"
 						element={loggedIn ? <ResponsiveMain /> : <Navigate to="/login" />}
 					/>
-					<Route 
-						key={`ROUTE-${key}-4`}
-						path="/" 
-						element={loggedIn ? <ResponsiveMain /> : <Navigate to="/login" />}
-					/>
-				</Routes> : <LoadingIcon />}
+				</Routes>
 			</Router>
 		</ThemeProvider>
 	)
