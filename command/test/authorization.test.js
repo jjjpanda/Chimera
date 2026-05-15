@@ -37,7 +37,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 when table already has a row", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ count: "1" }] })
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 })
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
