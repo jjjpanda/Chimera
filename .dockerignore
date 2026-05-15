@@ -4,3 +4,4 @@ log/
 .env
 *.md
 motion.conf
+cameraconf/

@@ -27,7 +27,7 @@ const customTooltip = ({ active, payload }) => {
 const FileStatsPieChart = (props) => {
 	const [state, setState, handleDelete] = useFileMetrics({
 		loading: "refreshing",
-		cameras: JSON.parse(process.env.cameras).map(cameraInfo),
+		cameras: JSON.parse(process.env.cameras || "[]").map(cameraInfo),
 		days: 7
 	})
 

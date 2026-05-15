@@ -1,14 +1,18 @@
 services:
   chimera:
-    build: .
+    build:
+      context: .
+      args:
+        cameras: ${cameras}
     env_file: .env
     ports:
       - "${gateway_PORT}:${gateway_PORT}"
       - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
     volumes:
-      - /mnt/storage:/mnt/storage
+      - chimera-storage:/mnt/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./motion.conf:/etc/motion/motion.conf:ro
+      - ./cameraconf:/etc/motion/cameraconf:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,3 +34,4 @@ services:
 
 volumes:
   chimera-pgdata:
+  chimera-storage:

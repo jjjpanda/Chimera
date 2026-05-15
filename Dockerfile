@@ -1,6 +1,8 @@
 FROM node:22 AS builder
 WORKDIR /app
 COPY . .
+ARG cameras
+ENV cameras=$cameras
 RUN npm install && npm run build:command && npm prune --omit=dev
 
 FROM ubuntu:22.04
@@ -10,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl software-properties-common \
     && add-apt-repository universe \
     && apt-get update && apt-get install -y --no-install-recommends \
-        motion ffmpeg \
+        motion ffmpeg postgresql-client \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g pm2 \
@@ -18,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/command/build ./command/build
+COPY --from=builder /app/command/dist ./command/dist
 
 RUN chmod +x entrypoint.sh
 

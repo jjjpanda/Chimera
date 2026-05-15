@@ -13,7 +13,7 @@ const LiveVideo = (props) => {
 		loading: false,
 		lastUpdated: moment().format("h:mm:ss a"),
 		videoList: [],
-		cameras: JSON.parse(process.env.cameras)
+		cameras: JSON.parse(process.env.cameras || "[]")
 	})
 
 	const [videos, setVideos] = useState([])

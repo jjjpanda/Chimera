@@ -62,7 +62,7 @@ const StatusTree = () => {
 						key: "livestream",
 						icon: <StatusIcon status={status.livestream} />,
 						title: "livestream",
-						children: JSON.parse(process.env.cameras).map((camera) => ({
+						children: JSON.parse(process.env.cameras || "[]").map((camera) => ({
 							key: `${camera}-live`,
 							icon: <StatusIcon status={status[`cam ${camera}`]} />,
 							title: camera,

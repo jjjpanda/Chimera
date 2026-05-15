@@ -9,7 +9,7 @@ const useChimeraStatus = () => {
 		motion: "loading",
 		database: "loading",
 		livestream: "loading",
-		...JSON.parse(process.env.cameras).reduce((obj, camera) => ({ ...obj, [`cam ${camera}`]: "loading"}), {}),
+		...JSON.parse(process.env.cameras || "[]").reduce((obj, camera) => ({ ...obj, [`cam ${camera}`]: "loading"}), {}),
 		memory: "loading",
 		object: "loading"
 	})
@@ -29,7 +29,7 @@ const useChimeraStatus = () => {
 		{ statusType: "motion", url: "/motion/status" },
 		{ statusType: "database", url: "/database/status" },
 		{ statusType: "livestream", url: "/livestream/health" },
-		...JSON.parse(process.env.cameras).map((camera, index) => ({ statusType: `cam ${camera}`, url: `/livestream/status?camera=${index+1}` })),
+		...JSON.parse(process.env.cameras || "[]").map((camera, index) => ({ statusType: `cam ${camera}`, url: `/livestream/status?camera=${index+1}` })),
 		{ statusType: "memory", url: "/memory/status" },
 		{ statusType: "object", url: "/object/status" }
 	]
