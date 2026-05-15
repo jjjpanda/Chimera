@@ -22,7 +22,6 @@ The command server is face of the operation. It runs the web-app and the authent
 |GET|/scrub|Serves main website|None|html|
 |GET|/stats|Serves main website|None|html|
 |GET|/login|Serves the login page|None|html|
-|GET|/login/:password|Attempts login with password as URL param|None|html|
 
 ## ▶ /command
 

@@ -16,14 +16,14 @@ describe("Authorization Routes", () => {
 		test("returns setup: false when table is empty", async () => {
 			const res = await supertest(app).get("/authorization/status")
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ setup: false })
+			expect(res.body).toEqual({ setup: false, tokenRequired: false })
 		})
 
 		test("returns setup: true when table has rows", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ count: "1" }] })
 			const res = await supertest(app).get("/authorization/status")
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ setup: true })
+			expect(res.body).toEqual({ setup: true, tokenRequired: false })
 		})
 	})
 

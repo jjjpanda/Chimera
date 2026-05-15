@@ -2,14 +2,15 @@ import React, { useState } from "react"
 import { Card, Space, Button, Modal, Input } from "antd"
 import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons"
 
-const SetupForm = ({ trySetup }) => {
+const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [modalVisible, setModalVisible] = useState(false)
 	const [status, setStatus] = useState(null)
 	const [username, setUsername] = useState("")
 	const [password, setPassword] = useState("")
+	const [token, setToken] = useState("")
 
 	const onSubmit = () => {
-		trySetup(username, password, (success) => {
+		trySetup(username, password, tokenRequired ? token : undefined, (success) => {
 			setStatus(success ? "done" : "failed")
 			if (success) setModalVisible(false)
 		})
@@ -44,7 +45,16 @@ const SetupForm = ({ trySetup }) => {
 					onChange={e => setPassword(e.target.value)}
 					onPressEnter={onSubmit}
 					value={password}
+					style={{marginBottom: tokenRequired ? 8 : 0}}
 				/>
+				{tokenRequired && (
+					<Input.Password
+						placeholder="setup token"
+						onChange={e => setToken(e.target.value)}
+						onPressEnter={onSubmit}
+						value={token}
+					/>
+				)}
 			</Modal>
 		</Space>
 	)

@@ -27,11 +27,11 @@ const attemptLogin = (username, password) =>
 		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
 
-const attemptSetup = (username, password) =>
+const attemptSetup = (username, password, token) =>
 	request("/authorization/setup", {
 		method: "POST",
 		headers: { "Accept": "application/json", "Content-Type": "application/json" },
-		body: JSON.stringify({ username, password })
+		body: JSON.stringify({ username, password, token })
 	}, authPromiseHandler)
 
 const handleLoginAttempt = (verified, timestamp, setState) => {
@@ -47,6 +47,7 @@ const useAuth = () => {
 	const [state, setState] = useState({
 		loaded: false,
 		setup: null,
+		tokenRequired: false,
 		loggedIn: false,
 		timestamp: new Date()
 	})
@@ -54,12 +55,11 @@ const useAuth = () => {
 	useEffect(() => {
 		checkStatus().then(res => {
 			if (res.error) {
-				setState(s => ({ ...s, setup: false }))
-				handleLoginAttempt(false, state.timestamp, setState)
+				setState(s => ({ ...s, setup: null, loaded: true }))
 				return
 			}
 			const isSetup = res.setup === true
-			setState(s => ({ ...s, setup: isSetup }))
+			setState(s => ({ ...s, setup: isSetup, tokenRequired: !!res.tokenRequired }))
 			if (!isSetup) {
 				handleLoginAttempt(false, state.timestamp, setState)
 				return
@@ -82,14 +82,14 @@ const useAuth = () => {
 		})
 	}
 
-	const trySetup = (username, password, callback) => {
-		attemptSetup(username, password).then(res => {
+	const trySetup = (username, password, token, callback) => {
+		attemptSetup(username, password, token).then(res => {
 			if (!res.error) setState(s => ({ ...s, setup: true }))
 			callback(!res.error)
 		})
 	}
 
-	return [state.loaded, state.setup, state.loggedIn, tryLogin, trySetup]
+	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, tryLogin, trySetup]
 }
 
 export default useAuth

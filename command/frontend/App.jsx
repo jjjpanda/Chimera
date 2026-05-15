@@ -24,7 +24,7 @@ if ("addEventListener" in document) {
 }
 
 const App = () => {
-	const [loaded, setup, loggedIn, tryLogin, trySetup] = useAuth()
+	const [loaded, setup, tokenRequired, loggedIn, tryLogin, trySetup] = useAuth()
 	const [key, setKey] = useState(0)
 
 	useEffect(() => {
@@ -33,7 +33,7 @@ const App = () => {
 
 	if (!loaded) return <ThemeProvider><LoadingIcon /></ThemeProvider>
 
-	if (!setup) return <ThemeProvider><SetupForm trySetup={trySetup} /></ThemeProvider>
+	if (setup === false) return <ThemeProvider><SetupForm trySetup={trySetup} tokenRequired={tokenRequired} /></ThemeProvider>
 
 	return (
 		<ThemeProvider>
