@@ -134,9 +134,7 @@ env.livestream += writeVarLine("livestream_FOLDERPATH")
 confirmPath("livestream_FOLDERPATH", true)
 
 writeVarLine("object_ON")
-writeVarLine("object_PORT")
 env.gateway += writeVarLine("object_HOST")
-writeVarLine("object_FULL_URL")
 env.lib += writeVarLine("object_AUTH")
 
 writeVarLine("object_CAMERA_URLS")
