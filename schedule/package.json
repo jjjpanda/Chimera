@@ -8,16 +8,17 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
-    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
-    "memory": "file:../memory",
+    "axios": "^0.24.0",
     "cookie-parser": "^1.4.5",
+    "dotenv": "^10.0.0",
     "express": "^4.17.1",
-    "lib": "file:../lib",
+    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "helmet": "^4.6.0",
+    "lib": "file:../lib",
+    "memory": "file:../memory",
     "moment": "^2.29.1",
     "node-cron": "^3.0.0",
-    "axios": "^0.24.0",
-    "dotenv": "^10.0.0"
+    "pg": "^8.21.0"
   },
   "peerDependencies": {
     "jest": "^27.3.1",

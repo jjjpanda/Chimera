@@ -1,0 +1,151 @@
+process.env.storage_FOLDERPATH = "/tmp/storage-events-test"
+
+jest.mock("lib")
+jest.mock("fs")
+jest.mock("child_process")
+jest.mock("memory")
+jest.mock("pm2")
+jest.mock("pg", () => {
+	const query = jest.fn((sql) =>
+		Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
+	)
+	return { Pool: jest.fn(() => ({ query, on: jest.fn() })), __query: query }
+})
+
+const supertest = require("supertest")
+const lib = require("lib")
+const { __query: query } = require("pg")
+const fs = require("fs")
+const { execFile } = require("child_process")
+const app = require("../backend/storage.js")
+
+const defaultAuthorize = lib.auth.authorize.getMockImplementation()
+
+afterEach(() => {
+	lib.auth.authorize.mockImplementation(defaultAuthorize)
+	query.mockClear()
+})
+
+describe("Events Routes", () => {
+	describe("GET /events", () => {
+		test("redirects unauthorized request", (done) => {
+			supertest(app).get("/events").expect(303, done)
+		})
+
+		test("returns 400 when camera_id or date missing", async () => {
+			const res = await supertest(app)
+				.get("/events")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(400)
+		})
+
+		test("returns paginated events for authorized request", async () => {
+			const res = await supertest(app)
+				.get("/events?camera_id=1&date=2026-05-16")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ events: [], total: 0, page: 1, per_page: 100 })
+		})
+	})
+
+	describe("requireAdmin gating", () => {
+		test("DELETE /camera/:id returns 403 for non-admin", async () => {
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "userCookie")
+			expect(res.status).toBe(403)
+		})
+
+		test("GET /usage returns 403 for non-admin", async () => {
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "userCookie")
+			expect(res.status).toBe(403)
+		})
+	})
+
+	describe("DELETE /camera/:id", () => {
+		let origPromises
+		beforeEach(() => {
+			lib.auth.authorize.mockImplementation((req, res, next) => {
+				req.decoded = { role: "admin" }
+				next()
+			})
+			origPromises = fs.promises
+			fs.promises = { rm: jest.fn().mockResolvedValue(undefined) }
+		})
+		afterEach(() => {
+			fs.promises = origPromises
+		})
+
+		test("deletes camera data and returns success", async () => {
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deleted: true })
+		})
+
+		test("returns 400 for non-numeric id", async () => {
+			const res = await supertest(app)
+				.delete("/camera/abc")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(400)
+		})
+	})
+
+	describe("GET /frames/:camera_id/:filename", () => {
+		test("returns 400 for path traversal attempt", async () => {
+			const res = await supertest(app)
+				.get("/frames/%2e%2e/evil")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(400)
+		})
+
+		test("returns 404 when file not found", async () => {
+			const express = require("express")
+			const origSendFile = express.response.sendFile
+			express.response.sendFile = function(_path, cb) {
+				if (cb) cb(Object.assign(new Error("ENOENT"), { code: "ENOENT", status: 404 }))
+			}
+			try {
+				const res = await supertest(app)
+					.get("/frames/1/test.jpg")
+					.set("Cookie", "validCookie")
+				expect(res.status).toBe(404)
+			} finally {
+				express.response.sendFile = origSendFile
+			}
+		})
+	})
+
+	describe("GET /usage", () => {
+		beforeEach(() => {
+			lib.auth.authorize.mockImplementation((req, res, next) => {
+				req.decoded = { role: "admin" }
+				next()
+			})
+			execFile.mockImplementation((_cmd, _args, cb) => cb(null, "500000000\t/path\n"))
+		})
+
+		afterEach(() => {
+			execFile.mockReset()
+		})
+
+		test("returns usage stats", async () => {
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
+		})
+
+		test("returns 500 on db error", async () => {
+			query.mockRejectedValueOnce(new Error("db error"))
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+		})
+	})
+})

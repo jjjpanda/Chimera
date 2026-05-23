@@ -64,6 +64,8 @@ writeVarLine("chimeraInstances")
 env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
 
+env.storage += writeVarLine("storage_MAX_GB")
+
 env.lib += writeVarLine("alert_URL")
 env.lib += writeVarLine("admin_alert_URL")
 
@@ -157,18 +159,23 @@ env.memory += writeVarLine("memory_AUTH_TOKEN")
 
 env.storage += writeVarLine("database_NAME")
 env.command += writeVarLine("database_NAME")
+env.schedule += writeVarLine("database_NAME")
 
 env.storage += writeVarLine("database_USER")
 env.command += writeVarLine("database_USER")
+env.schedule += writeVarLine("database_USER")
 
 env.storage += writeVarLine("database_PASSWORD")
 env.command += writeVarLine("database_PASSWORD")
+env.schedule += writeVarLine("database_PASSWORD")
 
 env.storage += writeVarLine("database_HOST")
 env.command += writeVarLine("database_HOST")
+env.schedule += writeVarLine("database_HOST")
 
 env.storage += writeVarLine("database_PORT")
 env.command += writeVarLine("database_PORT")
+env.schedule += writeVarLine("database_PORT")
 
 if(allEnvPresent){
 	Promise.all(Object.entries(env)

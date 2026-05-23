@@ -1,4 +1,6 @@
 import React from "react"
+import { Navigate } from "react-router-dom"
+import { useRole } from "./AuthContext"
 
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
@@ -7,9 +9,11 @@ import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
 import StatusTree from "./StatusTree"
+import AdminPanel from "./AdminPanel"
 
 const MobileView = (props) => {
 	const {index} = props
+	const role = useRole()
 
 	if(index == "route-1"){
 		return <LiveVideo list/>
@@ -30,7 +34,10 @@ const MobileView = (props) => {
 			</div>
 		]
 	}
-	return [      
+	else if(index == "route-5"){
+		return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
+	}
+	return [
 		<LiveVideo mobile />,
 		<SummaryScrubber numberOfFrames={10} withButton mobile/>,
 		<StatusTree />

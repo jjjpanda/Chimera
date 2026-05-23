@@ -34,9 +34,9 @@ const attemptSetup = (username, password, token) =>
 		body: JSON.stringify({ username, password, token })
 	}, authPromiseHandler)
 
-const handleLoginAttempt = (verified, timestamp, setState) => {
+const handleLoginAttempt = (verified, role, timestamp, setState) => {
 	setTimeout(() => {
-		setState(s => ({ ...s, loggedIn: verified }))
+		setState(s => ({ ...s, loggedIn: verified, role: role || null }))
 		setTimeout(() => {
 			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
@@ -49,6 +49,7 @@ const useAuth = () => {
 		setup: null,
 		tokenRequired: false,
 		loggedIn: false,
+		role: null,
 		timestamp: new Date()
 	})
 
@@ -61,24 +62,36 @@ const useAuth = () => {
 			const isSetup = res.setup === true
 			setState(s => ({ ...s, setup: isSetup, tokenRequired: !!res.tokenRequired }))
 			if (!isSetup) {
-				handleLoginAttempt(false, state.timestamp, setState)
+				handleLoginAttempt(false, null, state.timestamp, setState)
 				return
 			}
 			const bearerToken = Cookies.get("bearertoken")
 			if (bearerToken) {
 				attemptVerification().then(res => {
-					handleLoginAttempt(!res.error, state.timestamp, setState)
+					handleLoginAttempt(!res.error, res.role, state.timestamp, setState)
 				})
 			} else {
-				handleLoginAttempt(false, state.timestamp, setState)
+				handleLoginAttempt(false, null, state.timestamp, setState)
 			}
 		})
+
+		const refreshRole = () => {
+			if (document.hidden) return
+			const bearerToken = Cookies.get("bearertoken")
+			if (bearerToken) {
+				attemptVerification().then(res => {
+					if (!res.error) setState(s => ({ ...s, role: res.role }))
+				})
+			}
+		}
+		document.addEventListener("visibilitychange", refreshRole)
+		return () => document.removeEventListener("visibilitychange", refreshRole)
 	}, [])
 
 	const tryLogin = (username, password, callback) => {
 		attemptLogin(username, password).then(res => {
 			callback(!res.error)
-			handleLoginAttempt(!res.error, state.timestamp, setState)
+			handleLoginAttempt(!res.error, res.role, state.timestamp, setState)
 		})
 	}
 
@@ -89,7 +102,7 @@ const useAuth = () => {
 		})
 	}
 
-	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, tryLogin, trySetup]
+	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, tryLogin, trySetup]
 }
 
 export default useAuth

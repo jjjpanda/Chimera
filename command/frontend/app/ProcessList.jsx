@@ -1,5 +1,6 @@
 import React from "react"
 import useProcesses from "../hooks/useProcesses.js"
+import { useRole } from "./AuthContext.jsx"
 
 import { List, Card, Space, Button, Modal, Typography } from "antd"
 import { PlusCircleFilled } from "@ant-design/icons"
@@ -11,6 +12,7 @@ const ProcessList = (props) => {
 	const [state, cancelProcess, deleteProcess, toggleModal] = useProcesses({
 		mobile: props.mobile
 	})
+	const role = useRole()
 
 	const downloadLink = (process) => <Button disabled={process.running} href={process.link}>
         Download
@@ -50,7 +52,7 @@ const ProcessList = (props) => {
 							size="small"
 							extra={process.running ? "Running" : null}
 							title={`${(process.type == "mp4" ? "Video" : (process.type == "zip" ? "Zip" : "???"))} | ${requestedTime} `}
-							actions={[downloadLink(process), endButton(process)]}
+							actions={role === "admin" ? [downloadLink(process), endButton(process)] : [downloadLink(process)]}
 						>
 							<Space direction={"vertical"}>
 								<Typography>Camera: {process.camera} </Typography>
@@ -61,7 +63,7 @@ const ProcessList = (props) => {
 						</Card>
 					)
 				}}
-				footer={props.showFooter ? <Space direction="vertical" align="center" style={{width: "100%", textAlign: "center"}}>
+				footer={props.showFooter && role === "admin" ? <Space direction="vertical" align="center" style={{width: "100%", textAlign: "center"}}>
 					<Space>
 						<Button 
 							onClick={() => {

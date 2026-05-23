@@ -39,7 +39,20 @@ describe("Convert Routes", () => {
 	let cookieWithBearerToken = "validCookie"
 
 	describe("/convert/createVideo", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		test("returns 401 with no cookie", (done) => {
+			supertest(app)
+				.post("/convert/createVideo")
+				.send({})
+				.expect(401, done)
+		})
+
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/convert/createVideo")
+				.send({})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
 	})
 
 	describe("/convert/listFramesVideo", () => {
@@ -81,7 +94,20 @@ describe("Convert Routes", () => {
 	})
 
 	describe("/convert/createZip", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		test("returns 401 with no cookie", (done) => {
+			supertest(app)
+				.post("/convert/createZip")
+				.send({})
+				.expect(401, done)
+		})
+
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/convert/createZip")
+				.send({})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
 	})
 
 	describe("/convert/statusProcess", () => {
@@ -122,6 +148,14 @@ describe("Convert Routes", () => {
 	})
 
 	describe("/convert/cancelProcess", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/convert/cancelProcess")
+				.send({id: "video3-20210301-235959"})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("cancel a process", (done) => {
 			const id = "video3-20210301-235959"
 			supertest(app)
@@ -151,6 +185,14 @@ describe("Convert Routes", () => {
 	})
 
 	describe("/convert/deleteProcess", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/convert/deleteProcess")
+				.send({id: "video1-20210301-235959"})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("delete a process", (done) => {
 			const id = "video1-20210301-235959"
 			supertest(app)

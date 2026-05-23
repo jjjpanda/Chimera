@@ -1,4 +1,6 @@
 import React from "react"
+import { Navigate } from "react-router-dom"
+import { useRole } from "./AuthContext"
 
 import { Row, Col, Space, Card } from "antd"
 import LiveVideo from "./LiveVideo"
@@ -8,9 +10,11 @@ import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
 import StatusTree from "./StatusTree"
+import AdminPanel from "./AdminPanel"
 
 const DesktopView = (props) => {
 	const {index} = props
+	const role = useRole()
 
 	if(index == "route-1"){
 		return <LiveVideo grid />
@@ -43,6 +47,9 @@ const DesktopView = (props) => {
 				</Col>
 			</Row>
 		</Space>
+	}
+	else if(index == "route-5"){
+		return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
 	}
 	else{
 		return (

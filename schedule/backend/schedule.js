@@ -1,6 +1,7 @@
 var express    = require("express")
 const { auth, helmetOptions, tracker } = require("lib")
 const helmet = require("helmet")
+const pool = require("./lib/pool")
 
 var app = express()
 
@@ -14,7 +15,7 @@ app.use(express.json())
 
 app.use("/schedule/health", require("heartbeat").heart)
 
-app.use(auth.authorize)
+app.use(auth.createAuthorize(pool))
 
 app.use("/memory", require("./routes/memory.js"))
 app.use("/task", require("./routes/task.js"))

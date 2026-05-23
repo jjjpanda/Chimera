@@ -1,6 +1,7 @@
 var express    = require("express")
 
-var { validateBody } = require("lib")
+var { validateBody, auth } = require("lib")
+const { requireAdmin } = auth
 var {
 	validateStartableTask,
 	validateId,
@@ -13,9 +14,9 @@ var {
 
 const app = express.Router()
 
-app.post("/start", validateBody, validateStartableTask, taskList, startNewTask)
+app.post("/start", requireAdmin, validateBody, validateStartableTask, taskList, startNewTask)
 app.get("/list", taskList, sendList)
-app.post("/stop", validateBody, validateId, stopTask)
-app.post("/destroy", validateBody, validateId, destroyTask)
+app.post("/stop", requireAdmin, validateBody, validateId, stopTask)
+app.post("/destroy", requireAdmin, validateBody, validateId, destroyTask)
 
 module.exports = app
