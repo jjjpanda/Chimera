@@ -99,8 +99,8 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
 	const camPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", id)
 	try {
-		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		await fs.promises.rm(camPath, { recursive: true, force: true })
+		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		res.json({ deleted: true })
 	} catch (e) {
 		res.status(500).json({ error: true })

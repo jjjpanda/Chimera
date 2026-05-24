@@ -8,7 +8,7 @@ jest.mock("fs", () => {
 		readFileSync: jest.fn((p, enc) => {
 			if (p === "/etc/motion/motion.conf") return "camera_dir /etc/motion/cameraconf\n"
 			if (p.endsWith("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
-			if (p.endsWith("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
+			if (p.endsWith("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://user:secret@2.2.2.2/cam\n"
 			return actual.readFileSync(p, enc)
 		}),
 		readdirSync: jest.fn((p) => {
@@ -36,7 +36,7 @@ describe("Cameras Route", () => {
 			expect(res.status).toBe(303)
 		})
 
-		test("returns 200 with id+name+rtsp_url list for any authenticated user", async () => {
+		test("returns 200 with id+name+rtsp_url list and strips embedded credentials", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
 			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
 			const res = await supertest(app)
