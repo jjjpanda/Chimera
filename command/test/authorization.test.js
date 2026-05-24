@@ -115,15 +115,13 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(303)
 		})
 
-		test("returns 200 for non-admin token", async () => {
+		test("returns 403 for non-admin token", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin", role: "admin" }, { username: "test", role: "user" }] })
 			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-			expect(res.status).toBe(200)
-			expect(res.body).toEqual([{ username: "admin", role: "admin" }, { username: "test", role: "user" }])
+			expect(res.status).toBe(403)
 		})
 
 		test("returns 200 with user list for admin", async () => {

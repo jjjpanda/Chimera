@@ -22,8 +22,9 @@ app.post("/setup", validateBody, async (req, res) => {
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
 	if (!username || !password) return res.status(400).json({ error: true })
 	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
-	const client = await pool.connect()
+	let client
 	try {
+		client = await pool.connect()
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
 		await client.query("BEGIN")
@@ -36,10 +37,10 @@ app.post("/setup", validateBody, async (req, res) => {
 		if (result.rowCount === 0) return res.status(403).json({ error: true })
 		res.json({ error: false })
 	} catch (e) {
-		await client.query("ROLLBACK").catch(() => {})
+		if (client) await client.query("ROLLBACK").catch(() => {})
 		res.status(500).json({ error: true })
 	} finally {
-		client.release()
+		if (client) client.release()
 	}
 })
 
@@ -48,7 +49,7 @@ app.post("/verify", authorize, (req, res) => {
 	res.json({ error: false, role: req.decoded.role })
 })
 
-app.get("/users", authorize, async (req, res) => {
+app.get("/users", authorize, requireAdmin, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT username, role FROM auth ORDER BY username")
 		res.json(result.rows)
@@ -59,8 +60,8 @@ app.get("/users", authorize, async (req, res) => {
 
 app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	const { username, password, role } = req.body
-	if (!username || !password || !role) return res.status(400).json({ error: true })
-	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
+	if (typeof username !== "string" || typeof password !== "string" || !username.trim() || !password.trim() || !role) return res.status(400).json({ error: true })
+	if (!/^[^/]+$/.test(username) || username.trim() !== username) return res.status(400).json({ error: true })
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
 		const salt = await bcrypt.genSalt(10)
@@ -76,10 +77,11 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && !password) return res.status(400).json({ error: true })
+	if (password !== undefined && (typeof password !== "string" || !password.trim())) return res.status(400).json({ error: true })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
-	const client = await pool.connect()
+	let client
 	try {
+		client = await pool.connect()
 		await client.query("BEGIN")
 		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
 		if (target.rowCount === 0) {
@@ -109,18 +111,19 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
-		await client.query("ROLLBACK").catch(() => {})
+		if (client) await client.query("ROLLBACK").catch(() => {})
 		res.status(500).json({ error: true })
 	} finally {
-		client.release()
+		if (client) client.release()
 	}
 })
 
 app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	const { username } = req.params
 	if (username === req.decoded.username) return res.status(400).json({ error: true })
-	const client = await pool.connect()
+	let client
 	try {
+		client = await pool.connect()
 		await client.query("BEGIN")
 		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
 		if (target.rowCount === 0) {
@@ -138,10 +141,10 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
-		await client.query("ROLLBACK").catch(() => {})
+		if (client) await client.query("ROLLBACK").catch(() => {})
 		res.status(500).json({ error: true })
 	} finally {
-		client.release()
+		if (client) client.release()
 	}
 })
 

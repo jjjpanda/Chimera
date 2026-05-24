@@ -2,8 +2,9 @@ module.exports = [{
 	serviceOn: process.env.storage_PROXY_ON === "true",
 	log: "📂 Storage Proxied ◀",
 	baseURL: process.env.storage_HOST,
-	postPathRegex: /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/motion\/.*|\/camera\/delete\/.*/,
-	getPathRegex: /\/convert\/listProcess|\/shared\/.*|\/file\/path.*|\/motion\/.*|\/database\/.*|\/storage\/health|\/events|\/frames\/.*|\/usage/
+	postPathRegex: /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/motion\/.*/,
+	getPathRegex: /\/convert\/listProcess|\/shared\/.*|\/file\/path.*|\/motion\/.*|\/database\/.*|\/storage\/health|\/events|\/frames\/.*|\/usage/,
+	deletePathRegex: /\/camera\/\d+/
 }, {
 	serviceOn: process.env.schedule_PROXY_ON === "true",
 	log: "⌚ Scheduler Proxied ◀",
@@ -27,5 +28,6 @@ module.exports = [{
 	log: "🎮 Command Proxied ◀",
 	baseURL: process.env.command_HOST,
 	postPathRegex: /\/.*/,
-	getPathRegex: /\/.*/
+	getPathRegex: /\/.*/,
+	deletePathRegex: /\/.*/
 }]

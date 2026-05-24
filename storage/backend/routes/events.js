@@ -5,8 +5,6 @@ var { execFile } = require("child_process")
 var { auth, loadCameras } = require("lib")
 const { requireAdmin } = auth
 
-const cameras = loadCameras()
-
 const pool = require("../lib/pool")
 
 const app = express.Router()
@@ -56,6 +54,7 @@ app.get("/usage", requireAdmin, async (req, res) => {
 	try {
 		const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
+		const cameras = loadCameras()
 
 		const duBytes = await new Promise((resolve) => {
 			execFile('du', ['-sb', capturesPath], (err, stdout) => {
@@ -100,8 +99,8 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
 	const camPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", id)
 	try {
-		await fs.promises.rm(camPath, { recursive: true, force: true })
 		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
+		await fs.promises.rm(camPath, { recursive: true, force: true })
 		res.json({ deleted: true })
 	} catch (e) {
 		res.status(500).json({ error: true })

@@ -80,7 +80,8 @@ const useAuth = () => {
 			const bearerToken = Cookies.get("bearertoken")
 			if (bearerToken) {
 				attemptVerification().then(res => {
-					if (!res.error) setState(s => ({ ...s, role: res.role }))
+					if (res.error) handleLoginAttempt(false, null, state.timestamp, setState)
+					else setState(s => ({ ...s, role: res.role }))
 				})
 			}
 		}

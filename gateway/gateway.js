@@ -27,12 +27,16 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 
 const services = require("./services.js")
 for(const apiService of services){
-	const {serviceOn, log, postPathRegex, getPathRegex, baseURL} = apiService
+	const {serviceOn, log, postPathRegex, getPathRegex, deletePathRegex, baseURL} = apiService
 
 	if(serviceOn){
 		console.log(log)
-		app.use(new RegExp(postPathRegex.source + "|" + getPathRegex.source), createProxyMiddleware((pathname, req) => {
-			return (pathname.match(postPathRegex) && req.method === "POST") || (pathname.match(getPathRegex) && req.method === "GET")
+		const sources = [postPathRegex.source, getPathRegex.source]
+		if (deletePathRegex) sources.push(deletePathRegex.source)
+		app.use(new RegExp(sources.join("|")), createProxyMiddleware((pathname, req) => {
+			return (pathname.match(postPathRegex) && req.method === "POST")
+				|| (pathname.match(getPathRegex) && req.method === "GET")
+				|| (deletePathRegex && pathname.match(deletePathRegex) && req.method === "DELETE")
 		}, {
 			target: baseURL,
 			logLevel: "silent",
