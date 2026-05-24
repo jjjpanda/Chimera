@@ -27,10 +27,36 @@ describe("File Routes", () => {
 	})
 
 	describe("/file/pathDelete", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		test("returns 401 with no cookie", (done) => {
+			supertest(app)
+				.post("/file/pathDelete")
+				.send({})
+				.expect(401, done)
+		})
+
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/file/pathDelete")
+				.send({})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
 	})
 
 	describe("/file/pathClean", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		test("returns 401 with no cookie", (done) => {
+			supertest(app)
+				.post("/file/pathClean")
+				.send({})
+				.expect(401, done)
+		})
+
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/file/pathClean")
+				.send({})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
 	})
 })
