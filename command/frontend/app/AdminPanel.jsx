@@ -92,7 +92,7 @@ const AdminPanel = () => {
         <Space direction="vertical" style={{ width: "100%", padding: 16 }}>
             <Modal
                 title={`Edit User: ${editTarget?.username}`}
-                open={!!editTarget}
+                visible={!!editTarget}
                 onCancel={() => { setEditTarget(null); editForm.resetFields() }}
                 onOk={() => editForm.validateFields().then(values => updateUser(editTarget.username, values))}
             >
