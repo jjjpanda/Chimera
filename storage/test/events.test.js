@@ -140,6 +140,18 @@ describe("Events Routes", () => {
 			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
 		})
 
+		test("aggregates per-camera stats when cameras are configured", async () => {
+			lib.loadCameras.mockReturnValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body.cameras).toEqual([
+				{ id: 1, name: "Front", used_gb: 0.5, frame_count: 0 },
+				{ id: 2, name: "Back", used_gb: 0.5, frame_count: 0 }
+			])
+		})
+
 		test("returns 500 on db error", async () => {
 			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
