@@ -349,6 +349,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when deleting admin with multiple admins", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }, { username: "other" }], rowCount: 2 })
 			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
