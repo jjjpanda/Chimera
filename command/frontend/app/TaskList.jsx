@@ -1,5 +1,6 @@
 import React from "react"
 import useTasks from "../hooks/useTasks.js"
+import { useRole } from "./AuthContext.jsx"
 
 import {Tabs, List, Button, Card} from "antd"
 import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from "@ant-design/icons"
@@ -11,6 +12,7 @@ import cronstrue from "cronstrue"
 
 const TaskList = (props) => {
 	const [state, restartProcess, stopProcess, deleteProcess] = useTasks()
+	const role = useRole()
 
 	const processListSortedUpcoming = [...state.processList.sort((a, b) => {
 		const secondsToNowB = moment(cronParser.parseExpression(b.cronString).next().toString()).diff(moment(), "seconds")
@@ -24,17 +26,17 @@ const TaskList = (props) => {
 			itemLayout='horizontal'
 			dataSource={items}
 			renderItem={item => (
-				<List.Item actions={[<Button onClick={() => {
+				<List.Item actions={role === "admin" ? [<Button onClick={() => {
 					if(item.running){
 						stopProcess(item.id)
 					}
 					else{
 						restartProcess(item.id)
 					}
-				}} icon={item.running ? <PauseCircleFilled /> : <PlayCircleFilled />}/>, 
+				}} icon={item.running ? <PauseCircleFilled /> : <PlayCircleFilled />}/>,
 				<Button onClick={() => {
 					deleteProcess(item.id)
-				}} icon={<DeleteFilled />}/>]}
+				}} icon={<DeleteFilled />}/>] : []}
 				>
 					<List.Item.Meta
 						title={`Task: ${item.url}`}

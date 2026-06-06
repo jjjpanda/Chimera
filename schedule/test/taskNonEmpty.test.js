@@ -3,6 +3,7 @@ const app = require("../backend/schedule.js")
 
 jest.mock("lib")
 jest.mock("axios")
+jest.mock("pg")
 jest.mock("memory", () => ({
 	client: (name) => ({
 		emit: (event, ...args) => {

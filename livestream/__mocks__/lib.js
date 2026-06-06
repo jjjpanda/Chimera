@@ -10,4 +10,6 @@ lib.auth.authorize = jest.fn().mockImplementation((req={headers:{}}, res, next) 
 	}
 })
 
+lib.auth.createAuthorize = jest.fn().mockReturnValue(lib.auth.authorize)
+
 module.exports = lib

@@ -2,6 +2,7 @@ var path       = require("path")
 var express    = require("express")
 const { auth, helmetOptions, tracker } = require("lib")
 const helmet = require("helmet")
+const pool = require("./lib/pool")
 
 var app = express()
 
@@ -15,8 +16,9 @@ app.use(express.json())
 
 app.use("/storage/health", require("heartbeat").heart)
 
-app.use(auth.authorize)
+app.use(auth.createAuthorize(pool))
 
+app.use("/", require("./routes/events.js"))
 app.use("/motion", require("./routes/motion.js"))
 app.use("/database", require("./routes/database.js"))
 

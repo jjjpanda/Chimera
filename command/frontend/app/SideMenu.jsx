@@ -5,17 +5,19 @@ import useThemeSwitch from "../hooks/useThemeSwitch"
 import { Layout, Menu } from "antd"
 const { Sider } = Layout
 import { TabBar } from "antd-mobile"
-import { BulbFilled, BulbOutlined, HomeOutlined, VideoCameraOutlined, PlayCircleOutlined, HistoryOutlined, StockOutlined } from "@ant-design/icons"
+import { BulbFilled, BulbOutlined, HomeOutlined, VideoCameraOutlined, PlayCircleOutlined, HistoryOutlined, StockOutlined, TeamOutlined } from "@ant-design/icons"
 
 import { indexToRoute } from "../js/routeIndexMapping"
+import { useRole } from "./AuthContext.jsx"
 
 const SideMenu = (props) => {
 	const [collapsed, setCollapsed] = useState(true)
 	const [isDarkTheme, switchTheme, triggerSwitchModal] = useThemeSwitch()
+	const role = useRole()
 
 	const navigate = useNavigate()
 
-	const handleMenuClick = (info) => { 
+	const handleMenuClick = (info) => {
 		console.log(info)
 		let key = info && props.mobile ? info : info.key
 		if(key == "theme"){
@@ -32,6 +34,9 @@ const SideMenu = (props) => {
 		{ key: "route-2", icon: <PlayCircleOutlined />, title:"Processes" },
 		{ key: "route-3", icon: <HistoryOutlined />, title:"Scrubber" },
 		{ key: "route-4", icon: <StockOutlined />, title:"Stats" },
+		...(role === "admin" ? [
+			{ key: "route-5", icon: <TeamOutlined />, title:"Users" },
+		] : []),
 		{ key: "theme", icon: isDarkTheme ? <BulbFilled /> : <BulbOutlined />, title:"Theme" },
 	]
 
