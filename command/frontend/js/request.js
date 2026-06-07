@@ -1,9 +1,5 @@
-import { 
-	Toast
-} from "antd-mobile"
-
 import { saveAs } from "file-saver"
-import { call } from "file-loader"
+import toast from "./toast.js"
 
 const request = (url, opt, callback) => {
 	return callback(fetch(url, opt))
@@ -11,75 +7,49 @@ const request = (url, opt, callback) => {
 
 const statusProcessing = (prom, code, callback) => {
 	prom
-		.then(res => {
-			if(res.status === code){
-				callback(true)
-			}
-			else{
-				callback(false)
-			}
-		})
-		.catch(e => callback(false))
+		.then(res => callback(res.status === code))
+		.catch(() => callback(false))
 }
 
 const jsonProcessing = (prom, callback) => {
 	prom
-		.then(res => {
-			console.log(res, res.status)
-			return res.text()
-		})
-		.then((res) => {
+		.then(res => res.text())
+		.then((text) => {
 			try {
-				const resp = JSON.parse(res)
-				return resp
+				return JSON.parse(text)
 			} catch (e) {
-				console.log("ERROR", e, res)
-				return res
+				return text
 			}
 		})
 		.then((data) => callback(data))
-		.catch(e => callback(undefined))
+		.catch(() => callback(undefined))
 }
 
 const downloadProcessing = (prom, callback) => {
-	prom.then(resp => {
-		return resp.blob()
-	}).then(blob => {
-		//console.log(blob)
+	prom.then(resp => resp.blob()).then(blob => {
 		const fr = new FileReader()
 		fr.onload = () => {
-			let res 
+			let res
 			try {
-				res = JSON.parse(this.result)
+				res = JSON.parse(fr.result)
 			} catch (e) {
 				res = undefined
 			}
 
-			console.log(res)
-
-			if(res != undefined){
-				if(res.frameLimitMet){
-					setTimeout(() => {
-						Toast.fail("Size Limit Met", 0)
-					}, 2500)
+			if (res !== undefined) {
+				if (res.frameLimitMet) {
+					toast("Size Limit Met")
+				} else if (res.url === undefined) {
+					toast("No Frames")
 				}
-				else if(res.url == undefined){
-					setTimeout(() => {
-						Toast.fail("No Frames", 0)
-					}, 2500)
-				}
-				setTimeout(() => {
-					Toast.hide()
-					callback()
-				}, 5000)  
-			}
-			else{
+				setTimeout(() => callback && callback(), 2500)
+			} else {
 				saveAs(blob)
-				Toast.hide()
+				if (callback) callback()
 			}
-		}                        
+		}
 		fr.readAsText(blob)
 	})
 }
 
-export {request, statusProcessing, jsonProcessing, downloadProcessing}
+export { request, statusProcessing, jsonProcessing, downloadProcessing }

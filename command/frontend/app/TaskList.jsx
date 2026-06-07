@@ -1,67 +1,103 @@
 import React from "react"
 import useTasks from "../hooks/useTasks.js"
 import { useRole } from "./AuthContext.jsx"
-
-import {Tabs, List, Button, Card} from "antd"
-import {RightOutlined, PauseCircleFilled, DeleteFilled, PlayCircleFilled} from "@ant-design/icons"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
-const cronParser = require("cron-parser")
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
+import { Button } from "../components/ui/button"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
+import { RotateCcw, Square, Trash2, ArrowRight } from "lucide-react"
+
 import moment from "moment"
 import cronstrue from "cronstrue"
+import cronParser from "cron-parser"
+
+const nextRunSeconds = (cronString) => {
+	try {
+		return moment(cronParser.parseExpression(cronString).next().toString()).diff(moment(), "seconds")
+	} catch (e) {
+		return Number.MAX_SAFE_INTEGER
+	}
+}
+
+const humanCron = (cronString) => {
+	try {
+		return cronstrue.toString(cronString)
+	} catch (e) {
+		return cronString || ""
+	}
+}
 
 const TaskList = (props) => {
-	const [state, restartProcess, stopProcess, deleteProcess] = useTasks()
+	const [state, restartTask, stopTask, deleteTask] = useTasks()
 	const role = useRole()
 
-	const processListSortedUpcoming = [...state.processList.sort((a, b) => {
-		const secondsToNowB = moment(cronParser.parseExpression(b.cronString).next().toString()).diff(moment(), "seconds")
-		const secondsToNowA = moment(cronParser.parseExpression(a.cronString).next().toString()).diff(moment(), "seconds")
-		return secondsToNowA - secondsToNowB
-	})]
-	const processListSortedAll = [...state.processList.sort((a, b) => a.id.localeCompare(b.id))]
+	const processListSortedUpcoming = [...state.processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
+	const processListSortedAll = [...state.processList].sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
-	const processList = (items) => (
-		<List
-			itemLayout='horizontal'
-			dataSource={items}
-			renderItem={item => (
-				<List.Item actions={role === "admin" ? [<Button onClick={() => {
-					if(item.running){
-						stopProcess(item.id)
-					}
-					else{
-						restartProcess(item.id)
-					}
-				}} icon={item.running ? <PauseCircleFilled /> : <PlayCircleFilled />}/>,
-				<Button onClick={() => {
-					deleteProcess(item.id)
-				}} icon={<DeleteFilled />}/>] : []}
-				>
-					<List.Item.Meta
-						title={`Task: ${item.url}`}
-						avatar={<RightOutlined />}
-						description={`${cronstrue.toString(item.cronString)}`}
-					/>
-				</List.Item>
-			)}     
-		/>
-	)
+	const renderList = (items) => {
+		if (state.loading) {
+			return <p className="py-4 text-center text-sm text-muted">Loading…</p>
+		}
+		if (!items.length) {
+			return <p className="py-4 text-center text-sm text-muted">No tasks</p>
+		}
+		return (
+			<ul className="divide-y divide-border">
+				{items.map((item) => (
+					<li key={item.id} className="flex items-center gap-3 py-2">
+						<ArrowRight className="size-3.5 shrink-0 text-muted" />
+						<div className="min-w-0 flex-1">
+							<p className="truncate text-sm text-primary">{item.url}</p>
+							<p className="text-xs text-muted">{humanCron(item.cronString)}</p>
+						</div>
+						{role === "admin" && (
+							<div className="flex shrink-0 gap-1">
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7"
+									onClick={() => item.running ? stopTask(item.id) : restartTask(item.id)}
+								>
+									{item.running
+										? <Square className="size-3.5" />
+										: <RotateCcw className="size-3.5" />
+									}
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="size-7 text-danger hover:text-danger"
+									onClick={() => deleteTask(item.id)}
+								>
+									<Trash2 className="size-3.5" />
+								</Button>
+							</div>
+						)}
+					</li>
+				))}
+			</ul>
+		)
+	}
 
 	return (
-		<Card 
-			title={"Scheduled Tasks"}
-			extra={ (props.withButton ? <NavigateToRoute to={"/process"} /> : null) }
-			size="small"
-		>
-			<Tabs>
-				<Tabs.TabPane tab="Upcoming Tasks" key="1">
-					{processList(processListSortedUpcoming)}
-				</Tabs.TabPane>
-				<Tabs.TabPane tab="All Tasks" key="2">
-					{processList(processListSortedAll)}
-				</Tabs.TabPane>
-			</Tabs>
+		<Card className="h-full">
+			<CardHeader className="pb-2">
+				<div className="flex items-center justify-between">
+					<CardTitle className="text-sm">Scheduled Tasks</CardTitle>
+					{props.withButton && <NavigateToRoute to="/schedule" />}
+				</div>
+			</CardHeader>
+			<CardContent>
+				<Tabs defaultValue="upcoming">
+					<TabsList className="mb-2 w-full">
+						<TabsTrigger value="upcoming" className="flex-1">Upcoming</TabsTrigger>
+						<TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+					</TabsList>
+					<TabsContent value="upcoming">{renderList(processListSortedUpcoming)}</TabsContent>
+					<TabsContent value="all">{renderList(processListSortedAll)}</TabsContent>
+				</Tabs>
+			</CardContent>
 		</Card>
 	)
 }

@@ -2,7 +2,6 @@ import React from "react"
 import { Navigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
 
-import { Row, Col, Space, Card } from "antd"
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
 import FileStatsLineChart from "./FileStatsLineChart.jsx"
@@ -11,75 +10,40 @@ import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
 import StatusTree from "./StatusTree"
 import AdminPanel from "./AdminPanel"
+import ScheduleDashboard from "./ScheduleDashboard.jsx"
 
-const DesktopView = (props) => {
-	const {index} = props
+const DesktopView = ({ index }) => {
 	const role = useRole()
 
-	if(index == "route-1"){
-		return <LiveVideo grid />
-	}
-	else if(index == "route-2"){
-		return <Row>
-			<Col span={18}>
-				<ProcessList showFooter />
-			</Col>
-			<Col span={6}>
-				<TaskList />
-			</Col>
-		</Row>
-	}
-	else if(index == "route-3"){
-		return <Space direction="vertical" style={{width: "100%"}}>
-			<SummaryScrubber />
-		</Space> 
-	}
-	else if(index == "route-4"){
-		return <Space direction="vertical" style={{width: "100%"}}>
-			<Row>
-				<Col span={6} style={{height: "80vh"}}>
-					<FileStatsPieChart />
-				</Col>
-				<Col span={2}>
-				</Col>
-				<Col span={16}>
-					<FileStatsLineChart />
-				</Col>
-			</Row>
-		</Space>
-	}
-	else if(index == "route-5"){
-		return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
-	}
-	else{
-		return (
-			<Space direction="vertical">
-				<Row style={{minHeight: "50vh"}}>
-					<Col span={8} >
-						<StatusTree />
-					</Col>
-					<Col span={8} >
-						<FileStatsPieChart withButton/>
-					</Col>
-					<Col span={8}>
-						<LiveVideo />
-					</Col>
-				</Row>
-				<Row style={{minHeight: "50vh"}}>
-					<Col span={7}>
-						<TaskList withButton/>
-					</Col>
-					<Col span={7}>
-						<ProcessList withButton/>
-					</Col>
-					<Col span={10}>
-						<SummaryScrubber numberOfFrames={10} withButton />
-					</Col>
-				</Row>
-			</Space>
-		)
-	}
-    
+	if (index === "route-1") return <LiveVideo grid />
+
+	if (index === "route-2") return <SummaryScrubber />
+
+	if (index === "route-3") return (
+		<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			<div className="lg:col-span-1"><FileStatsPieChart /></div>
+			<div className="lg:col-span-2"><FileStatsLineChart /></div>
+		</div>
+	)
+
+	if (index === "route-4") return <ScheduleDashboard />
+
+	if (index === "route-5") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
+
+	return (
+		<div className="space-y-4">
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<StatusTree />
+				<FileStatsPieChart withButton />
+				<LiveVideo />
+			</div>
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<TaskList withButton />
+				<ProcessList withButton />
+				<SummaryScrubber numberOfFrames={10} withButton />
+			</div>
+		</div>
+	)
 }
 
 export default DesktopView

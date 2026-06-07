@@ -1,11 +1,11 @@
-import {useEffect, useState} from "react"
+import { useState } from "react"
 
 import moment from "moment"
 
 const useCamDateNumInfo = (extraOverride) => {
 	const [info, setInfo] = useState({
 		camera: 0,
-		cameras: JSON.parse(process.env.cameras || "[]"),
+		cameras: [],
 
 		days: 1,
 		startDate: moment().subtract(1, "day"),

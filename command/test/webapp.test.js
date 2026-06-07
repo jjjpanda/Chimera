@@ -4,7 +4,7 @@ const app = require("../backend/command.js")
 jest.mock("memory")
 
 describe("Web App Routes", () => {
-	const webAppRoutes = ["/", "/live/", "/process/", "/scrub/", "/stats/", "/login/"]
+	const webAppRoutes = ["/", "/live/", "/schedule/", "/scrub/", "/stats/", "/login/"]
 
 	test("Web app routes respond with 200", (done) => { 
 		Promise.all(webAppRoutes.map(route => (resolve, reject) => {

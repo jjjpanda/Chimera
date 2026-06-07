@@ -1,9 +1,10 @@
 import React, { useState } from "react"
-import { Card, Space, Button, Modal, Input } from "antd"
-import { RightCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons"
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
+import { Button } from "../components/ui/button"
 
 const SetupForm = ({ trySetup, tokenRequired }) => {
-	const [modalVisible, setModalVisible] = useState(false)
 	const [status, setStatus] = useState(null)
 	const [username, setUsername] = useState("")
 	const [password, setPassword] = useState("")
@@ -12,51 +13,70 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 	const onSubmit = () => {
 		trySetup(username, password, tokenRequired ? token : undefined, (success) => {
 			setStatus(success ? "done" : "failed")
-			if (success) setModalVisible(false)
 		})
 	}
 
+	const handleKeyDown = (e) => {
+		if (e.key === "Enter") onSubmit()
+	}
+
 	return (
-		<Space>
-			<Card
-				size="small"
-				title="First-time Setup"
-				extra={status === null ? <RightCircleOutlined /> : (status === "failed" ? <CloseCircleOutlined /> : <CheckCircleOutlined />)}
-			>
-				<Button type="primary" onClick={() => setModalVisible(true)}>
-					Setup
-				</Button>
+		<div className="min-h-screen bg-bg flex items-center justify-center">
+			<Card className="w-80 bg-surface border-border">
+				<CardHeader className="items-center gap-2 pb-2">
+					<img src="/res/logo.png" alt="Chimera" className="h-12 w-12 object-contain" />
+					<CardTitle className="text-primary text-xl">Chimera</CardTitle>
+					<p className="text-muted text-sm">Create your account</p>
+				</CardHeader>
+				<CardContent className="flex flex-col gap-4">
+					<div className="flex flex-col gap-1">
+						<Label className="text-muted">Username</Label>
+						<Input
+							className="bg-surface-raised border-border text-primary placeholder:text-muted"
+							placeholder="username"
+							value={username}
+							onChange={e => setUsername(e.target.value)}
+							onKeyDown={handleKeyDown}
+							autoComplete="username"
+						/>
+					</div>
+					<div className="flex flex-col gap-1">
+						<Label className="text-muted">Password</Label>
+						<Input
+							className="bg-surface-raised border-border text-primary placeholder:text-muted"
+							type="password"
+							placeholder="password"
+							value={password}
+							onChange={e => setPassword(e.target.value)}
+							onKeyDown={handleKeyDown}
+							autoComplete="new-password"
+						/>
+					</div>
+					{tokenRequired && (
+						<div className="flex flex-col gap-1">
+							<Label className="text-muted">Setup Token</Label>
+							<Input
+								className="bg-surface-raised border-border text-primary placeholder:text-muted"
+								type="password"
+								placeholder="setup token"
+								value={token}
+								onChange={e => setToken(e.target.value)}
+								onKeyDown={handleKeyDown}
+							/>
+						</div>
+					)}
+					{status === "failed" && (
+						<p className="text-danger text-sm">Setup failed. Check your credentials.</p>
+					)}
+					<Button
+						className="bg-accent text-accent-foreground hover:opacity-90 w-full"
+						onClick={onSubmit}
+					>
+						Create Account
+					</Button>
+				</CardContent>
 			</Card>
-			<Modal
-				title="First-time Setup"
-				visible={modalVisible}
-				onOk={onSubmit}
-				onCancel={() => setModalVisible(false)}
-			>
-				<Input
-					placeholder="username"
-					onChange={e => setUsername(e.target.value)}
-					onPressEnter={onSubmit}
-					value={username}
-					style={{marginBottom: 8}}
-				/>
-				<Input.Password
-					placeholder="password"
-					onChange={e => setPassword(e.target.value)}
-					onPressEnter={onSubmit}
-					value={password}
-					style={{marginBottom: tokenRequired ? 8 : 0}}
-				/>
-				{tokenRequired && (
-					<Input.Password
-						placeholder="setup token"
-						onChange={e => setToken(e.target.value)}
-						onPressEnter={onSubmit}
-						value={token}
-					/>
-				)}
-			</Modal>
-		</Space>
+		</div>
 	)
 }
 

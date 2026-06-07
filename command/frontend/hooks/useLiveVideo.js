@@ -1,36 +1,32 @@
-import {useEffect, useState} from "react"
+import { useEffect, useState } from "react"
 
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 
-const listVideos = (state, setState) => {
-	setState((oldState) => ({
-		...oldState,
-		loading: true,
-		videoList: []
-	}))
+const listVideos = (cameras, setState) => {
+	setState((old) => ({ ...old, loading: true, videoList: [] }))
 	request("/livestream/status", {
 		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
+		headers: { "Content-Type": "application/json" },
 		mode: "cors"
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			console.log(data)
-			if(DataTransferItemList){
-				setState((oldState) => ({
-					...oldState,
-					loading: false,
-					videoList: data.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
-						return camNumA - camNumB
-					}).map((num) => ({
-						camera: oldState.cameras[num - 1],
+			const nums = data
+				.map((cam) => parseInt(cam.name.split("_")[3]))
+				.sort((a, b) => a - b)
+			setState((old) => ({
+				...old,
+				loading: false,
+				lastUpdated: moment().format("h:mm:ss a"),
+				videoList: nums.map((num, idx) => {
+					const cam = cameras.find((c) => c.id === num) || cameras[idx]
+					return {
+						camera: cam ? cam.name : `Camera ${num}`,
+						online: true,
 						url: `/livestream/feed/${num}/video.m3u8`
-					})),
-					lastUpdated: moment().format("h:mm:ss a")
-				}))
-			}	
+					}
+				})
+			}))
 		})
 	})
 }
@@ -38,20 +34,22 @@ const listVideos = (state, setState) => {
 const attemptRestart = (camera) => {
 	request("/livestream/restart", {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({camera}),
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ camera }),
 		mode: "cors"
 	})
 }
 
-const useLiveVideo = (initialState) => {
-	const [state, setState] = useState(initialState)
+const useLiveVideo = (cameras) => {
+	const [state, setState] = useState({
+		loading: false,
+		lastUpdated: moment().format("h:mm:ss a"),
+		videoList: []
+	})
 
 	useEffect(() => {
-		listVideos(state, setState)
-	}, [])
+		listVideos(cameras, setState)
+	}, [cameras])
 
 	return [state, setState, attemptRestart]
 }

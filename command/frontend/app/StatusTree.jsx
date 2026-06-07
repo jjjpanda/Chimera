@@ -1,88 +1,46 @@
 import React from "react"
 import useChimeraStatus from "../hooks/useChimeraStatus"
+import useCameras from "../hooks/useCameras.js"
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
+import { cn } from "../lib/utils"
 
-import {Tree, Card} from "antd"
-import {CheckCircleOutlined, WarningOutlined, LoadingOutlined } from "@ant-design/icons"
+const StatusDot = ({ status }) => (
+	<span className={cn(
+		"inline-block size-2.5 rounded-full shrink-0",
+		status === "up" && "bg-emerald-500",
+		status === "down" && "bg-danger",
+		(!status || status === "loading") && "bg-muted animate-pulse"
+	)} />
+)
 
-const StatusIcon = ({status}) => {
-	switch(status){
-	case "up":
-		return <CheckCircleOutlined />
-	case "down":
-		return <WarningOutlined />
-	default:
-		return <LoadingOutlined />
-	}
-}
+const StatusRow = ({ label, status, indent = false }) => (
+	<div className={cn("flex items-center justify-between py-1", indent && "pl-4")}>
+		<span className="text-sm text-primary capitalize">{label}</span>
+		<StatusDot status={status} />
+	</div>
+)
+
+const services = ["command", "schedule", "storage", "motion", "database", "livestream", "memory", "object"]
 
 const StatusTree = () => {
 	const [status] = useChimeraStatus()
+	const [cameras] = useCameras()
 
-	console.log("STATUS IN RENDER", status)
-
-	return <Card
-		title="Status"
-		style={{height: "100%"}}
-		size="small"
-		showIcon 
-		selectable={true} 
-		cover={
-			<Tree  
-				showIcon
-				defaultExpandAll
-				treeData={[{
-					key: "chimera",
-					title: "chimera",
-					children: [{
-						key: "command",
-						icon: <StatusIcon status={status.command} />,
-						title: "command",
-						isLeaf: true
-					},{
-						key: "schedule",
-						icon: <StatusIcon status={status.schedule} />,
-						title: "schedule",
-						isLeaf: true
-					},{
-						key: "storage",
-						icon: <StatusIcon status={status.storage} />,
-						title: "storage",
-						children: [{
-							key: "motion",
-							icon: <StatusIcon status={status.motion} />,
-							title: "motion",
-							isLeaf: true
-						}, {
-							key: "database",
-							icon: <StatusIcon status={status.database} />,
-							title: "database",
-							isLeaf: true
-						}]
-					},{
-						key: "livestream",
-						icon: <StatusIcon status={status.livestream} />,
-						title: "livestream",
-						children: JSON.parse(process.env.cameras || "[]").map((camera) => ({
-							key: `${camera}-live`,
-							icon: <StatusIcon status={status[`cam ${camera}`]} />,
-							title: camera,
-							isLeaf: true
-						}))
-					},{
-						key: "memory",
-						icon: <StatusIcon status={status.memory} />,
-						title: "memory",
-						isLeaf: true
-					},{
-						key: "object",
-						icon: <StatusIcon status={status.object} />,
-						title: "object",
-						isLeaf: true
-					}]
-				}]}
-			/>  
-		}
-	/>
+	return (
+		<Card className="h-full">
+			<CardHeader className="pb-2">
+				<CardTitle className="text-sm">System Status</CardTitle>
+			</CardHeader>
+			<CardContent className="divide-y divide-border">
+				{services.map((svc) => (
+					<StatusRow key={svc} label={svc} status={status[svc]} />
+				))}
+				{cameras.map((cam) => (
+					<StatusRow key={cam.id} label={cam.name} status={status[`cam ${cam.name}`]} indent />
+				))}
+			</CardContent>
+		</Card>
+	)
 }
 
 export default StatusTree

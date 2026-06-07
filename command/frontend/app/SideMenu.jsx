@@ -1,75 +1,77 @@
-import React, { useState } from "react"
+import React from "react"
 import { useNavigate } from "react-router-dom"
-import useThemeSwitch from "../hooks/useThemeSwitch"
-
-import { Layout, Menu } from "antd"
-const { Sider } = Layout
-import { TabBar } from "antd-mobile"
-import { BulbFilled, BulbOutlined, HomeOutlined, VideoCameraOutlined, PlayCircleOutlined, HistoryOutlined, StockOutlined, TeamOutlined } from "@ant-design/icons"
+import { Home, Video, Clapperboard, BarChart3, CalendarClock, Users } from "lucide-react"
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
+import { cn } from "../lib/utils"
 
-const SideMenu = (props) => {
-	const [collapsed, setCollapsed] = useState(true)
-	const [isDarkTheme, switchTheme, triggerSwitchModal] = useThemeSwitch()
+const SideMenu = ({ index, mobile }) => {
 	const role = useRole()
-
 	const navigate = useNavigate()
 
-	const handleMenuClick = (info) => {
-		console.log(info)
-		let key = info && props.mobile ? info : info.key
-		if(key == "theme"){
-			triggerSwitchModal()
-		}
-		else if(props.index != key){
-			navigate(indexToRoute(key))
-		}
-	}
-
 	const tabs = [
-		{ key: "route-0", icon: <HomeOutlined />, title:"Chimera" },
-		{ key: "route-1", icon: <VideoCameraOutlined />, title:"Live" },
-		{ key: "route-2", icon: <PlayCircleOutlined />, title:"Processes" },
-		{ key: "route-3", icon: <HistoryOutlined />, title:"Scrubber" },
-		{ key: "route-4", icon: <StockOutlined />, title:"Stats" },
-		...(role === "admin" ? [
-			{ key: "route-5", icon: <TeamOutlined />, title:"Users" },
-		] : []),
-		{ key: "theme", icon: isDarkTheme ? <BulbFilled /> : <BulbOutlined />, title:"Theme" },
+		{ key: "route-0", icon: Home, title: "Home" },
+		{ key: "route-1", icon: Video, title: "Live" },
+		{ key: "route-2", icon: Clapperboard, title: "Recordings" },
+		{ key: "route-3", icon: BarChart3, title: "Stats" },
+		{ key: "route-4", icon: CalendarClock, title: "Schedule" },
+		...(role === "admin" ? [{ key: "route-5", icon: Users, title: "Admin" }] : [])
 	]
 
-	if(props.mobile){
+	const go = (key) => {
+		if (index !== key) navigate(indexToRoute(key))
+	}
+
+	if (mobile) {
 		return (
-			<TabBar activeKey={props.index} onChange={handleMenuClick}>
-				{tabs.map(tab => (
-					<TabBar.Item key={tab.key} icon={tab.icon} title={tab.title} />
-				))}
-			</TabBar>
+			<nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface px-1 py-1.5">
+				{tabs.map(({ key, icon: Icon, title }) => {
+					const active = index === key
+					return (
+						<button
+							key={key}
+							onClick={() => go(key)}
+							className={cn(
+								"flex flex-1 flex-col items-center gap-0.5 rounded-md py-1 text-[11px] font-medium transition-colors",
+								active ? "text-accent" : "text-muted hover:text-primary"
+							)}
+						>
+							<Icon className="size-5" />
+							<span className="leading-none">{title}</span>
+						</button>
+					)
+				})}
+			</nav>
 		)
 	}
-	else{
-		return (
-			<Sider
-				collapsible 
-				collapsed={collapsed} 
-				onCollapse={(c) => setCollapsed(c)}
-			>
-				<img 
-					style={{ display: "inherit", objectFit: "contain", height: "20px" }} 
-					src={"/res/logo.png"}
-				/>
-				<Menu theme="dark" defaultSelectedKeys={[props.index]} onClick={handleMenuClick}>
-					{tabs.map((tab) => (
-						<Menu.Item key={tab.key} icon={tab.icon}>
-							{tab.title}
-						</Menu.Item>
-					))}
-				</Menu>
-			</Sider>
-		)
-	}
+
+	return (
+		<aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-surface">
+			<div className="flex items-center gap-2 px-4 py-4">
+				<img src="/res/logo.png" alt="Chimera" className="h-8 w-8 object-contain" />
+				<span className="text-lg font-semibold tracking-tight">Chimera</span>
+			</div>
+			<nav className="flex-1 space-y-1 px-2">
+				{tabs.map(({ key, icon: Icon, title }) => {
+					const active = index === key
+					return (
+						<button
+							key={key}
+							onClick={() => go(key)}
+							className={cn(
+								"flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+								active ? "bg-accent/15 text-accent" : "text-muted hover:bg-surface-raised hover:text-primary"
+							)}
+						>
+							<Icon className="size-5 shrink-0" />
+							<span>{title}</span>
+						</button>
+					)
+				})}
+			</nav>
+		</aside>
+	)
 }
 
 export default SideMenu
