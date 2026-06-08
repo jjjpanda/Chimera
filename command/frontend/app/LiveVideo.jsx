@@ -42,7 +42,7 @@ const Feed = ({ video, onExpand }) => (
 
 const LiveVideo = (props) => {
 	const [cameras, camsLoading] = useCameras()
-	const [state, , restart] = useLiveVideo(cameras)
+	const [state, refresh, restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
 	const [activeDialog, setActiveDialog] = useState(null)
 	const squarify = useSquarifyVideos()
@@ -70,6 +70,11 @@ const LiveVideo = (props) => {
 	if (props.list) {
 		return (
 			<div className="flex flex-col gap-3">
+				<div className="flex justify-end">
+					<Button variant="ghost" size="icon" className="size-7" onClick={refresh}>
+						<RefreshCw className="size-3.5" />
+					</Button>
+				</div>
 				{state.videoList.map((video, i) => (
 					<Feed key={i} video={video} />
 				))}
@@ -80,6 +85,11 @@ const LiveVideo = (props) => {
 	if (props.grid) {
 		return (
 			<div className="flex flex-col gap-2">
+				<div className="flex justify-end">
+					<Button variant="ghost" size="icon" className="size-7" onClick={refresh}>
+						<RefreshCw className="size-3.5" />
+					</Button>
+				</div>
 				{videos.map((row, ri) => (
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
 						{row.map((video, ci) =>
@@ -100,7 +110,12 @@ const LiveVideo = (props) => {
 		<Card className="h-full">
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="text-sm">Live Video</CardTitle>
-				<NavigateToRoute to="/live" />
+				<div className="flex items-center gap-1">
+					<Button variant="ghost" size="icon" className="size-6" onClick={refresh}>
+						<RefreshCw className="size-3" />
+					</Button>
+					<NavigateToRoute to="/live" />
+				</div>
 			</CardHeader>
 			<CardContent className="p-0">
 				{state.videoList.length > 0 && (
@@ -117,21 +132,11 @@ const LiveVideo = (props) => {
 								<Feed video={video} onExpand={() => setActiveDialog(video)} />
 								<div className="flex items-center justify-between px-3 py-2">
 									<span className="text-xs text-muted">{video.camera}</span>
-									<div className="flex items-center gap-2">
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-6"
-											onClick={() => restart(i + 1)}
-										>
-											<RefreshCw className="size-3" />
-										</Button>
-										{!props.mobile && (
-											<a href="/object" className="text-xs text-accent hover:underline">
-												object view
-											</a>
-										)}
-									</div>
+									{!props.mobile && (
+										<a href="/object" className="text-xs text-accent hover:underline">
+											object view
+										</a>
+									)}
 								</div>
 							</TabsContent>
 						))}

@@ -47,11 +47,13 @@ const useLiveVideo = (cameras) => {
 		videoList: []
 	})
 
+	const refresh = () => listVideos(cameras, setState)
+
 	useEffect(() => {
-		listVideos(cameras, setState)
+		refresh()
 	}, [cameras])
 
-	return [state, setState, attemptRestart]
+	return [state, refresh, attemptRestart]
 }
 
 export default useLiveVideo
