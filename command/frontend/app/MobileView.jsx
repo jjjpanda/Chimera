@@ -5,6 +5,8 @@ import { useRole } from "./AuthContext"
 import LiveVideo from "./LiveVideo"
 import FileStatsPieChart from "./FileStatsPieChart.jsx"
 import FileStatsLineChart from "./FileStatsLineChart.jsx"
+import StorageWidget from "./StorageWidget.jsx"
+import DataManager from "./DataManager.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
@@ -30,11 +32,14 @@ const MobileView = ({ index }) => {
 
 	if (index === "route-5") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
 
+	if (index === "route-6") return role === "admin" ? <DataManager /> : <Navigate to="/" />
+
 	return (
 		<div className="space-y-4">
 			<LiveVideo mobile />
 			<SummaryScrubber numberOfFrames={10} withButton mobile />
 			<StatusTree />
+			{role === "admin" && <StorageWidget />}
 		</div>
 	)
 }

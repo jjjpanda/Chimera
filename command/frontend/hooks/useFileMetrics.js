@@ -146,7 +146,7 @@ const useFileMetrics = (initialState, cameras = []) => {
 		</Dialog>
 	)
 
-	return [state, setState, handleDelete, DeleteDialog]
+	return [state, setState, handleDelete, DeleteDialog, () => cameraUpdate(setState)]
 }
 
 export default useFileMetrics

@@ -10,6 +10,8 @@ const routeToIndex = (r) => {
 		return "route-4"
 	case "admin":
 		return "route-5"
+	case "data":
+		return "route-6"
 	default:
 		return "route-0"
 	}
@@ -27,6 +29,8 @@ const indexToRoute = (i) => {
 		return "/schedule"
 	case "route-5":
 		return "/admin"
+	case "route-6":
+		return "/data"
 	default:
 		return "/"
 	}
