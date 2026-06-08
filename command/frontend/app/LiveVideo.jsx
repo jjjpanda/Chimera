@@ -8,36 +8,36 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Dialog, DialogContent } from "../components/ui/dialog"
 import { Button } from "../components/ui/button"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Maximize2 } from "lucide-react"
 import { cn } from "../lib/utils"
 
-const CameraCard = ({ video, onClick }) => (
-	<div
-		className="relative w-full overflow-hidden rounded-lg cursor-pointer bg-black aspect-video"
-		onClick={onClick}
-	>
-		<img
-			src={`/livestream/feed/thumbnail`}
-			alt={video.camera}
-			className="object-cover w-full h-full opacity-60"
-			onError={(e) => { e.target.style.display = "none" }}
-		/>
-		<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-		<div className="absolute bottom-2 left-3 flex items-center gap-2">
-			<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
-			<span className="text-sm font-medium text-primary drop-shadow">{video.camera}</span>
-		</div>
-	</div>
-)
-
-const HlsPlayer = ({ src }) => (
+const HlsPlayer = ({ src, className }) => (
 	<ReactHlsPlayer
 		src={src}
 		autoPlay={false}
 		controls={true}
-		width="100%"
-		height="auto"
+		className={className}
 	/>
+)
+
+const Feed = ({ video, onExpand }) => (
+	<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+		<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
+		<div className="pointer-events-none absolute left-3 top-2 flex items-center gap-2">
+			<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
+			<span className="text-sm font-medium text-primary drop-shadow">{video.camera}</span>
+		</div>
+		{onExpand && (
+			<Button
+				variant="ghost"
+				size="icon"
+				className="absolute right-2 top-2 size-7 bg-black/40 text-white hover:bg-black/60"
+				onClick={onExpand}
+			>
+				<Maximize2 className="size-3.5" />
+			</Button>
+		)}
+	</div>
 )
 
 const LiveVideo = (props) => {
@@ -51,17 +51,27 @@ const LiveVideo = (props) => {
 		setVideos(props.grid ? squarify(state.videoList) : state.videoList)
 	}, [state.videoList, props.grid])
 
+	const expandDialog = (
+		<Dialog open={!!activeDialog} onOpenChange={() => setActiveDialog(null)}>
+			<DialogContent className="max-w-3xl bg-surface border-border p-0 overflow-hidden">
+				{activeDialog && (
+					<div>
+						<HlsPlayer src={activeDialog.url} className="w-full" />
+						<div className="flex items-center gap-2 px-4 py-2">
+							<span className={cn("size-2 rounded-full shrink-0", activeDialog.online ? "bg-emerald-500" : "bg-danger")} />
+							<span className="text-sm text-primary">{activeDialog.camera}</span>
+						</div>
+					</div>
+				)}
+			</DialogContent>
+		</Dialog>
+	)
+
 	if (props.list) {
 		return (
 			<div className="flex flex-col gap-3">
 				{state.videoList.map((video, i) => (
-					<div key={i} className="relative">
-						<HlsPlayer src={video.url} />
-						<div className="flex items-center gap-2 mt-1 px-1">
-							<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
-							<span className="text-sm text-muted">{video.camera}</span>
-						</div>
-					</div>
+					<Feed key={i} video={video} />
 				))}
 			</div>
 		)
@@ -74,26 +84,12 @@ const LiveVideo = (props) => {
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
 						{row.map((video, ci) =>
 							video ? (
-								<div key={ci}>
-									<CameraCard video={video} onClick={() => setActiveDialog(video)} />
-								</div>
+								<Feed key={ci} video={video} onExpand={() => setActiveDialog(video)} />
 							) : null
 						)}
 					</div>
 				))}
-				<Dialog open={!!activeDialog} onOpenChange={() => setActiveDialog(null)}>
-					<DialogContent className="max-w-3xl bg-surface border-border p-0 overflow-hidden">
-						{activeDialog && (
-							<div>
-								<HlsPlayer src={activeDialog.url} />
-								<div className="flex items-center gap-2 px-4 py-2">
-									<span className={cn("size-2 rounded-full shrink-0", activeDialog.online ? "bg-emerald-500" : "bg-danger")} />
-									<span className="text-sm text-primary">{activeDialog.camera}</span>
-								</div>
-							</div>
-						)}
-					</DialogContent>
-				</Dialog>
+				{expandDialog}
 			</div>
 		)
 	}
@@ -118,7 +114,7 @@ const LiveVideo = (props) => {
 						</TabsList>
 						{state.videoList.map((video, i) => (
 							<TabsContent key={i} value={String(i)} className="mt-0">
-								<CameraCard video={video} onClick={() => setActiveDialog(video)} />
+								<Feed video={video} onExpand={() => setActiveDialog(video)} />
 								<div className="flex items-center justify-between px-3 py-2">
 									<span className="text-xs text-muted">{video.camera}</span>
 									<div className="flex items-center gap-2">
@@ -142,19 +138,7 @@ const LiveVideo = (props) => {
 					</Tabs>
 				)}
 			</CardContent>
-			<Dialog open={!!activeDialog} onOpenChange={() => setActiveDialog(null)}>
-				<DialogContent className="max-w-3xl bg-surface border-border p-0 overflow-hidden">
-					{activeDialog && (
-						<div>
-							<HlsPlayer src={activeDialog.url} />
-							<div className="flex items-center gap-2 px-4 py-2">
-								<span className={cn("size-2 rounded-full shrink-0", activeDialog.online ? "bg-emerald-500" : "bg-danger")} />
-								<span className="text-sm text-primary">{activeDialog.camera}</span>
-							</div>
-						</div>
-					)}
-				</DialogContent>
-			</Dialog>
+			{expandDialog}
 		</Card>
 	)
 }

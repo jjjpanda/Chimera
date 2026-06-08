@@ -21,8 +21,8 @@ const MobileView = ({ index }) => {
 
 	if (index === "route-3") return (
 		<div className="space-y-4">
-			<div className="flex h-[360px]"><FileStatsPieChart mobile /></div>
-			<div className="flex h-[360px]"><FileStatsLineChart mobile /></div>
+			<div className="h-[360px] w-full"><FileStatsPieChart mobile /></div>
+			<div className="h-[360px] w-full"><FileStatsLineChart mobile /></div>
 		</div>
 	)
 

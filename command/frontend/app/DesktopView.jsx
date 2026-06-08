@@ -21,8 +21,8 @@ const DesktopView = ({ index }) => {
 
 	if (index === "route-3") return (
 		<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-			<div className="lg:col-span-1"><FileStatsPieChart /></div>
-			<div className="lg:col-span-2"><FileStatsLineChart /></div>
+			<div className="lg:col-span-1 h-[70vh]"><FileStatsPieChart /></div>
+			<div className="lg:col-span-2 h-[70vh]"><FileStatsLineChart /></div>
 		</div>
 	)
 
