@@ -1,6 +1,6 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Home, Video, Clapperboard, BarChart3, CalendarClock, Users } from "lucide-react"
+import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users } from "lucide-react"
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
@@ -10,13 +10,24 @@ const SideMenu = ({ index, mobile }) => {
 	const role = useRole()
 	const navigate = useNavigate()
 
-	const tabs = [
+	const mobileTabs = [
+		{ key: "route-1", icon: Scissors, title: "Clip" },
+		{ key: "route-2", icon: Video, title: "Live" },
 		{ key: "route-0", icon: Home, title: "Home" },
-		{ key: "route-1", icon: Video, title: "Live" },
-		{ key: "route-2", icon: Clapperboard, title: "Recordings" },
-		{ key: "route-3", icon: BarChart3, title: "Stats" },
-		{ key: "route-4", icon: CalendarClock, title: "Schedule" },
-		...(role === "admin" ? [{ key: "route-5", icon: Users, title: "Admin" }] : [])
+		{ key: "route-3", icon: Rewind, title: "Recordings" },
+		{ key: "route-4", icon: Activity, title: "Stats" },
+	]
+
+	const desktopTabs = [
+		{ key: "route-0", icon: Home, title: "Home" },
+		{ key: "route-2", icon: Video, title: "Live" },
+		{ key: "route-1", icon: Scissors, title: "Clip Maker" },
+		{ key: "route-3", icon: Rewind, title: "Recordings" },
+		{ key: "route-4", icon: Activity, title: "Stats" },
+		{ key: "route-5", icon: CalendarClock, title: "Schedule" },
+		...(role === "admin" ? [
+			{ key: "route-6", icon: Users, title: "Admin" },
+		] : [])
 	]
 
 	const go = (key) => {
@@ -26,7 +37,7 @@ const SideMenu = ({ index, mobile }) => {
 	if (mobile) {
 		return (
 			<nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface px-1 py-1.5">
-				{tabs.map(({ key, icon: Icon, title }) => {
+				{mobileTabs.map(({ key, icon: Icon, title }) => {
 					const active = index === key
 					return (
 						<button
@@ -53,7 +64,7 @@ const SideMenu = ({ index, mobile }) => {
 				<span className="text-lg font-semibold tracking-tight">Chimera</span>
 			</div>
 			<nav className="flex-1 space-y-1 px-2">
-				{tabs.map(({ key, icon: Icon, title }) => {
+				{desktopTabs.map(({ key, icon: Icon, title }) => {
 					const active = index === key
 					return (
 						<button

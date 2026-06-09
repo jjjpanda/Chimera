@@ -3,10 +3,10 @@ import { Navigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
 
 import LiveVideo from "./LiveVideo"
-import FileStatsPieChart from "./FileStatsPieChart.jsx"
-import FileStatsLineChart from "./FileStatsLineChart.jsx"
+import ClipMaker from "./ClipMaker"
+import RecordingsList from "./RecordingsList"
+import Stats from "./Stats.jsx"
 import StorageWidget from "./StorageWidget.jsx"
-import DataManager from "./DataManager.jsx"
 import SummaryScrubber from "./SummaryScrubber"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
@@ -17,22 +17,17 @@ import ScheduleDashboard from "./ScheduleDashboard.jsx"
 const DesktopView = ({ index }) => {
 	const role = useRole()
 
-	if (index === "route-1") return <LiveVideo grid />
+	if (index === "route-1") return <ClipMaker />
 
-	if (index === "route-2") return <SummaryScrubber />
+	if (index === "route-2") return <LiveVideo grid />
 
-	if (index === "route-3") return (
-		<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-			<div className="lg:col-span-1 h-[70vh]"><FileStatsPieChart /></div>
-			<div className="lg:col-span-2 h-[70vh]"><FileStatsLineChart /></div>
-		</div>
-	)
+	if (index === "route-3") return <RecordingsList />
 
-	if (index === "route-4") return <ScheduleDashboard />
+	if (index === "route-4") return <Stats />
 
-	if (index === "route-5") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
+	if (index === "route-5") return <ScheduleDashboard />
 
-	if (index === "route-6") return role === "admin" ? <DataManager /> : <Navigate to="/" />
+	if (index === "route-6") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
 
 	return (
 		<div className="space-y-4">
@@ -44,7 +39,7 @@ const DesktopView = ({ index }) => {
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 				<TaskList withButton />
 				<ProcessList withButton />
-				<SummaryScrubber numberOfFrames={10} withButton />
+				<SummaryScrubber numberOfFrames={10} />
 			</div>
 		</div>
 	)

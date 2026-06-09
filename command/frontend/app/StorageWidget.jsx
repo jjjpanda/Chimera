@@ -53,7 +53,7 @@ const StorageWidget = () => {
 					}
 					{` • ${usage.total_frames.toLocaleString()} frames`}
 				</p>
-				<Button onClick={() => navigate("/data")} className="mt-auto w-full">Manage Data</Button>
+				<Button onClick={() => navigate("/stats")} className="mt-auto w-full">Manage Data</Button>
 			</CardContent>
 		</Card>
 	)

@@ -1,10 +1,9 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Minus, Plus } from "lucide-react"
 import useStorageUsage from "../hooks/useStorageUsage.js"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog"
 import formatBytes from "../js/formatBytes.js"
 import colors from "../js/colors.js"
@@ -13,13 +12,11 @@ import { request, jsonProcessing } from "../js/request.js"
 const ACCENT = "#C97B3A"
 const segmentColor = (i) => i === 0 ? ACCENT : colors[i % colors.length]
 
-const today = new Date().toISOString().split("T")[0]
-
 const DataManager = () => {
 	const navigate = useNavigate()
 	const [usage, refresh] = useStorageUsage()
 
-	const [cutoffDate, setCutoffDate] = useState("")
+	const [days, setDays] = useState(3)
 	const [pending, setPending] = useState(null)
 	const [deleting, setDeleting] = useState(false)
 
@@ -34,7 +31,6 @@ const DataManager = () => {
 		const done = () => { setDeleting(false); refresh() }
 
 		if (pending.type === "all") {
-			const days = Math.ceil((Date.now() - new Date(cutoffDate).getTime()) / 86400000)
 			Promise.all(usage.cameras.map(cam => new Promise(resolve => {
 				request("/file/pathClean", {
 					method: "POST",
@@ -43,7 +39,11 @@ const DataManager = () => {
 				}, prom => jsonProcessing(prom, resolve))
 			}))).then(done)
 		} else {
-			request(`/camera/${pending.cameraId}`, { method: "DELETE" }, prom => jsonProcessing(prom, done))
+			request("/file/pathClean", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ camera: pending.cameraId, days })
+			}, prom => jsonProcessing(prom, done))
 		}
 	}
 
@@ -94,24 +94,28 @@ const DataManager = () => {
 
 			<Card>
 				<CardHeader className="pb-2">
-					<CardTitle className="text-base">Clear Before Date</CardTitle>
-					<p className="text-xs text-muted">Delete footage from all cameras recorded before the selected date.</p>
+					<CardTitle className="text-base">Clear Old Footage</CardTitle>
+					<p className="text-xs text-muted">Delete frames older than a set age, per camera.</p>
 				</CardHeader>
 				<CardContent className="space-y-3">
-					<Input
-						type="date"
-						max={today}
-						value={cutoffDate}
-						onChange={e => setCutoffDate(e.target.value)}
-						className="w-full"
-					/>
-					<div className="flex justify-end">
+					<div className="flex items-center gap-1">
+						<span className="text-sm text-muted mr-2">Older than</span>
 						<Button
-							variant="destructive"
-							disabled={!cutoffDate || deleting}
-							onClick={() => setPending({ type: "all" })}
+							variant="outline"
+							size="icon"
+							className="size-8"
+							onClick={() => setDays(d => Math.max(1, d - 1))}
 						>
-							Delete Frame Data
+							<Minus className="size-3.5" />
+						</Button>
+						<span className="w-16 text-center text-sm font-medium">{days} {days === 1 ? "day" : "days"}</span>
+						<Button
+							variant="outline"
+							size="icon"
+							className="size-8"
+							onClick={() => setDays(d => d + 1)}
+						>
+							<Plus className="size-3.5" />
 						</Button>
 					</div>
 				</CardContent>
@@ -119,39 +123,47 @@ const DataManager = () => {
 
 			<Card>
 				<CardHeader className="pb-2">
-					<CardTitle className="text-base">Clear by Camera</CardTitle>
-					<p className="text-xs text-muted">Delete all footage from a specific camera.</p>
+					<CardTitle className="text-base">By Camera</CardTitle>
+					<p className="text-xs text-muted">older than {days} {days === 1 ? "day" : "days"}</p>
 				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-						{usage.cameras.map((cam, i) => (
-							<div key={cam.id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
-								<div className="h-2 w-full rounded-full" style={{ backgroundColor: segmentColor(i) }} />
+				<CardContent className="flex flex-col gap-2">
+					{usage.cameras.map((cam, i) => (
+						<div key={cam.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+							<div className="size-2 rounded-full shrink-0" style={{ backgroundColor: segmentColor(i) }} />
+							<div className="flex-1 min-w-0">
 								<p className="text-sm font-medium">{cam.name}</p>
-								<p className="text-xs text-muted">{formatBytes(cam.used_gb * 1e9, 1)}</p>
-								<Button
-									variant="destructive"
-									size="sm"
-									disabled={deleting}
-									onClick={() => setPending({ type: "camera", cameraId: cam.id, cameraName: cam.name })}
-								>
-									Delete
-								</Button>
+								<p className="text-xs text-muted">{formatBytes(cam.used_gb * 1e9, 1)} clearable</p>
 							</div>
-						))}
-					</div>
+							<Button
+								variant="outline"
+								size="sm"
+								className="text-danger border-danger hover:bg-danger/10 shrink-0"
+								disabled={deleting}
+								onClick={() => setPending({ type: "camera", cameraId: cam.id, cameraName: cam.name })}
+							>
+								Clear
+							</Button>
+						</div>
+					))}
+					<Button
+						className="w-full mt-2 bg-accent text-accent-foreground hover:opacity-90"
+						disabled={deleting}
+						onClick={() => setPending({ type: "all" })}
+					>
+						Clear All Cameras — older than {days} {days === 1 ? "day" : "days"}
+					</Button>
 				</CardContent>
 			</Card>
 
 			<Dialog open={!!pending} onOpenChange={open => !open && setPending(null)}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Confirm Delete</DialogTitle>
+						<DialogTitle>Confirm Clear</DialogTitle>
 					</DialogHeader>
 					<p className="text-sm text-muted">
 						{pending?.type === "all"
-							? `Delete all footage from all cameras recorded before ${cutoffDate}?`
-							: `Delete all footage from ${pending?.cameraName}?`
+							? `Delete footage older than ${days} ${days === 1 ? "day" : "days"} from all cameras?`
+							: `Delete footage older than ${days} ${days === 1 ? "day" : "days"} from ${pending?.cameraName}?`
 						}
 					</p>
 					<DialogFooter>
