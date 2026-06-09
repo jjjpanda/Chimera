@@ -61,15 +61,8 @@ const createVideoList = (camera, start, end, skip, callback) => {
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
-		if(save){
-			webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
-		}
-		else{
-			res.send({
-				id: rand,
-				url: undefined,
-			})
-		}
+		webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+		res.send({ id: rand, url: undefined })
 	}
 	else {
 		if(save){

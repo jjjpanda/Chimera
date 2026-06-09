@@ -39,15 +39,8 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 	const rand = generateID()
 
 	if(frames == 0){
-		if(save){
-			webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
-		}
-		else{
-			res.send({
-				id: rand,
-				url: undefined
-			})
-		}
+		webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+		res.send({ id: rand, url: undefined })
 	}
 	else{
 		if(save){
