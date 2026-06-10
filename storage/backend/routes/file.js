@@ -12,7 +12,8 @@ const {
 	deleteFileDirectory,
 	deleteFilesBeforeDateGlob,
 	fileStats,
-	cameraMetrics
+	cameraMetrics,
+	autoClean
 } = require("./lib/file.js")
 
 app.post("/pathSize", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("size")) 
@@ -22,5 +23,6 @@ app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath
 
 app.get("/pathStats", fileStats)
 app.post("/pathMetrics", cameraMetrics)
+app.post("/pathAutoClean", requireAdmin, autoClean)
 
 module.exports = app

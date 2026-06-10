@@ -232,8 +232,8 @@ const ClipMaker = () => {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				camera: String(camId),
-				start: start.utc().second(0).format("YYYYMMDD-HHmmss"),
-				end: end.utc().second(0).format("YYYYMMDD-HHmmss"),
+				start: start.utc().format("YYYYMMDD-HHmmss"),
+				end: end.utc().format("YYYYMMDD-HHmmss"),
 				frames: number
 			})
 		}, prom => jsonProcessing(prom, data => {
@@ -286,8 +286,8 @@ const ClipMaker = () => {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				camera: String(camId),
-				start: moment(trimStart).utc().second(0).format("YYYYMMDD-HHmmss"),
-				end: moment(trimEnd).utc().second(0).format("YYYYMMDD-HHmmss"),
+				start: moment(trimStart).utc().format("YYYYMMDD-HHmmss"),
+				end: moment(trimEnd).utc().format("YYYYMMDD-HHmmss"),
 				save: true,
 				...(type === "video" ? { fps } : { skip })
 			})
@@ -313,8 +313,8 @@ const ClipMaker = () => {
 				const [y, m, d] = val.split("-")
 				next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
 			} else {
-				const [h, min] = val.split(":")
-				next.hour(parseInt(h)).minute(parseInt(min))
+				const [h, min, sec] = val.split(":")
+				next.hour(parseInt(h)).minute(parseInt(min)).second(sec ? parseInt(sec) : 0)
 			}
 			return next
 		})
@@ -361,7 +361,7 @@ const ClipMaker = () => {
 					<div className="flex items-center justify-between min-h-[18px]">
 						<div className="text-xs text-muted">
 							{trimming ? (
-								<span>{trimStart.format("MM/DD HH:mm")} → {trimEnd.format("MM/DD HH:mm")}</span>
+								<span>{trimStart.format("MM/DD HH:mm:ss")} → {trimEnd.format("MM/DD HH:mm:ss")}</span>
 							) : scrubTime ? (
 								<span>{scrubTime.format("MM/DD HH:mm:ss")}</span>
 							) : null}
@@ -389,8 +389,8 @@ const ClipMaker = () => {
 
 				{trimming && (
 					<div className="flex justify-between text-[10px] text-muted/50">
-						<span>{startDate.format("MM/DD HH:mm")}</span>
-						<span>{endDate.format("MM/DD HH:mm")}</span>
+						<span>{startDate.format("MM/DD HH:mm:ss")}</span>
+						<span>{endDate.format("MM/DD HH:mm:ss")}</span>
 					</div>
 				)}
 			</div>
@@ -454,9 +454,9 @@ const ClipMaker = () => {
 							onChange={e => setDatePart(setStartDate, "date", e.target.value)} />
 						<Input type="date" value={endDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setEndDate, "date", e.target.value)} />
-						<Input type="time" value={startDate.format("HH:mm")}
+						<Input type="time" step="1" value={startDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setStartDate, "time", e.target.value)} />
-						<Input type="time" value={endDate.format("HH:mm")}
+						<Input type="time" step="1" value={endDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setEndDate, "time", e.target.value)} />
 					</div>
 				</div>

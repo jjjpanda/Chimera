@@ -65,6 +65,7 @@ env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
 
 env.storage += writeVarLine("storage_MAX_GB")
+env.schedule += writeVarLine("storage_MAX_GB")
 
 env.lib += writeVarLine("alert_URL")
 env.lib += writeVarLine("admin_alert_URL")

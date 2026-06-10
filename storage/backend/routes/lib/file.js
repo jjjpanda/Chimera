@@ -1,4 +1,6 @@
 const path = require("path")
+const fs = require("fs")
+const { execFile } = require("child_process")
 const rimraf = require("rimraf")
 const moment = require("moment")
 
@@ -106,6 +108,51 @@ module.exports = {
 		}).catch(err => {
 			console.log("err", err)
 		})
+	},
+
+	autoClean: async (req, res) => {
+		try {
+			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
+			if (!maxGb) return res.send({ skipped: true })
+
+			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
+
+			const usedBytes = await new Promise(resolve =>
+				execFile("du", ["-sb", capturesPath], (err, stdout) =>
+					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
+				)
+			)
+
+			const targetBytes = maxGb * 0.9 * 1e9
+			if (usedBytes <= targetBytes) return res.send({ cleaned: false })
+
+			const toFree = usedBytes - targetBytes
+			const result = await pool.query(
+				"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
+			)
+
+			let freed = 0
+			const toDelete = []
+			for (const row of result.rows) {
+				if (freed >= toFree) break
+				toDelete.push(row)
+				freed += parseInt(row.size) || 0
+			}
+
+			if (toDelete.length === 0) return res.send({ cleaned: false })
+
+			const ids = toDelete.map(r => r.id)
+
+			await Promise.all(toDelete.map(row =>
+				fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
+			))
+
+			await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [ids])
+
+			res.send({ cleaned: true, deleted: toDelete.length })
+		} catch (err) {
+			res.status(500).send({ error: "cleanup failed" })
+		}
 	},
 
 	cameraMetrics: (req, res) => {

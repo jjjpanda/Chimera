@@ -113,6 +113,27 @@ module.exports = {
 
 	sendList: (req, res) => {
 		res.send({tasks: req.body.list})
+	},
+
+	autoRegisterCleanup: () => {
+		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
+		if (!maxGb) return
+		const id = "task-auto-cleanup"
+		const register = () => {
+			client.emit("destroyTask", id, () => {
+				client.off(id)
+				client.on(id, generateTask("/file/pathAutoClean", id, {}))
+				client.emit("createTask", {
+					id,
+					url: "/file/pathAutoClean",
+					body: {},
+					cronString: "0 * * * *",
+					running: true
+				})
+			})
+		}
+		if (client.connected) register()
+		else client.once("connect", register)
 	}
 }
 
