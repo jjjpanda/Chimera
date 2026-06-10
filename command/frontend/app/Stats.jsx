@@ -24,6 +24,7 @@ const Stats = () => {
 
 	const [days, setDays] = useState(7)
 	const [clearDays, setClearDays] = useState(3)
+	const clearLabel = (d) => d === 0 ? "all footage" : `older than ${d} ${d === 1 ? "day" : "days"}`
 	const [pending, setPending] = useState(null)
 	const [deleting, setDeleting] = useState(false)
 
@@ -41,20 +42,22 @@ const Stats = () => {
 		const stats = fileStatsState.fileStats
 		if (!stats.length) return { chartData: [], totalNow: 0, delta: 0 }
 
-		const cutoff = moment().subtract(days, "days").startOf("day").valueOf()
+		const cutoff = (days === 1 ? moment().startOf("day") : moment().subtract(days, "days").startOf("day")).valueOf()
 		const filtered = stats.filter(p => p.timestamp >= cutoff)
 		if (!filtered.length) return { chartData: [], totalNow: 0, delta: 0 }
 
 		const cameraKeys = Object.keys(filtered[0]).filter(k => k !== "timestamp")
 
-		const byDay = {}
+		const byPeriod = {}
 		filtered.forEach(point => {
-			const day = moment(point.timestamp).format("YYYY-MM-DD")
+			const period = days === 1
+				? moment(point.timestamp).format("YYYY-MM-DD HH:00")
+				: moment(point.timestamp).format("YYYY-MM-DD")
 			const total = cameraKeys.reduce((acc, k) => acc + (point[k] || 0), 0)
-			byDay[day] = total
+			byPeriod[period] = total
 		})
 
-		const chartData = Object.entries(byDay)
+		const chartData = Object.entries(byPeriod)
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([day, total]) => ({ day, total }))
 
@@ -94,20 +97,26 @@ const Stats = () => {
 		<div className="space-y-4">
 			<Card>
 				<CardContent className="space-y-3 pt-4">
-					<div className="flex h-3 w-full overflow-hidden rounded-full">
-						{usage.cameras.length > 0
-							? usage.cameras.map((cam, i) => (
-								<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
-							))
-							: <div className="flex-1 rounded-full bg-muted" />
-						}
+					<div className="flex items-center gap-2">
+						<span className="text-[10px] text-muted w-14 shrink-0">by camera</span>
+						<div className="flex h-3 flex-1 overflow-hidden rounded-full">
+							{usage.cameras.length > 0
+								? usage.cameras.map((cam, i) => (
+									<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
+								))
+								: <div className="flex-1 rounded-full bg-muted" />
+							}
+						</div>
 					</div>
 					{usage.max_gb > 0 && (
-						<div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-							<div
-								className="h-full rounded-full bg-primary transition-all"
-								style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
-							/>
+						<div className="flex items-center gap-2">
+							<span className="text-[10px] text-muted w-14 shrink-0">vs max</span>
+							<div className="flex h-3 flex-1 overflow-hidden rounded-full bg-muted">
+								<div
+									className="h-full rounded-full bg-primary transition-all"
+									style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
+								/>
+							</div>
 						</div>
 					)}
 					<p className="text-sm text-muted">
@@ -122,7 +131,7 @@ const Stats = () => {
 
 			<div className="flex justify-center">
 				<div className="flex rounded-full border border-border bg-surface-raised p-0.5">
-					{[7, 30].map(d => (
+					{[1, 7, 30].map(d => (
 						<button
 							key={d}
 							onClick={() => setDays(d)}
@@ -131,7 +140,7 @@ const Stats = () => {
 								days === d ? "bg-accent text-accent-foreground" : "text-muted hover:text-primary"
 							)}
 						>
-							{d} Days
+							{d === 1 ? "1 Day" : `${d} Days`}
 						</button>
 					))}
 				</div>
@@ -143,7 +152,7 @@ const Stats = () => {
 						<div>
 							<p className="text-base font-semibold text-accent">Storage Growth</p>
 							<p className="text-xs text-muted mt-0.5">
-								Total recorded {days === 7 ? "this week" : "this month"}
+								Total recorded {days === 1 ? "today" : days === 7 ? "this week" : "this month"}
 							</p>
 						</div>
 						<div className="text-right">
@@ -166,7 +175,7 @@ const Stats = () => {
 								</defs>
 								<XAxis
 									dataKey="day"
-									tickFormatter={d => moment(d).format("ddd")}
+									tickFormatter={d => days === 1 ? moment(d).format("ha") : moment(d).format("ddd")}
 									tick={{ fill: MUTED, fontSize: 11 }}
 									axisLine={false}
 									tickLine={false}
@@ -194,11 +203,11 @@ const Stats = () => {
 							<div className="flex items-center gap-1">
 								<span className="text-xs text-muted mr-1">Older than</span>
 								<Button variant="outline" size="icon" className="size-7"
-									onClick={() => setClearDays(d => Math.max(1, d - 1))}>
+									onClick={() => setClearDays(d => Math.max(0, d - 1))}>
 									<Minus className="size-3" />
 								</Button>
 								<span className="w-14 text-center text-xs font-medium">
-									{clearDays} {clearDays === 1 ? "day" : "days"}
+									{clearDays === 0 ? "all" : `${clearDays} ${clearDays === 1 ? "day" : "days"}`}
 								</span>
 								<Button variant="outline" size="icon" className="size-7"
 									onClick={() => setClearDays(d => d + 1)}>
@@ -240,7 +249,7 @@ const Stats = () => {
 								disabled={deleting}
 								onClick={() => setPending({ type: "all" })}
 							>
-								Clear All — older than {clearDays} {clearDays === 1 ? "day" : "days"}
+								Clear All — {clearLabel(clearDays)}
 							</Button>
 						</div>
 					)}
@@ -254,8 +263,8 @@ const Stats = () => {
 					</DialogHeader>
 					<p className="text-sm text-muted">
 						{pending?.type === "all"
-							? `Delete footage older than ${clearDays} ${clearDays === 1 ? "day" : "days"} from all cameras?`
-							: `Delete footage older than ${clearDays} ${clearDays === 1 ? "day" : "days"} from ${pending?.cameraName}?`
+							? `Delete ${clearLabel(clearDays)} from all cameras?`
+							: `Delete ${clearLabel(clearDays)} from ${pending?.cameraName}?`
 						}
 					</p>
 					<DialogFooter>

@@ -17,6 +17,7 @@ const DataManager = () => {
 	const [usage, refresh] = useStorageUsage()
 
 	const [days, setDays] = useState(3)
+	const daysLabel = (d) => d === 0 ? "all footage" : `older than ${d} ${d === 1 ? "day" : "days"}`
 	const [pending, setPending] = useState(null)
 	const [deleting, setDeleting] = useState(false)
 
@@ -58,20 +59,26 @@ const DataManager = () => {
 
 			<Card>
 				<CardContent className="space-y-3 pt-4">
-					<div className="flex h-3 w-full overflow-hidden rounded-full">
-						{usage.cameras.length > 0
-							? usage.cameras.map((cam, i) => (
-								<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
-							))
-							: <div className="flex-1 rounded-full bg-muted" />
-						}
+					<div className="flex items-center gap-2">
+						<span className="text-[10px] text-muted w-14 shrink-0">by camera</span>
+						<div className="flex h-3 flex-1 overflow-hidden rounded-full">
+							{usage.cameras.length > 0
+								? usage.cameras.map((cam, i) => (
+									<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
+								))
+								: <div className="flex-1 rounded-full bg-muted" />
+							}
+						</div>
 					</div>
 					{usage.max_gb > 0 && (
-						<div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-							<div
-								className="h-full rounded-full bg-primary transition-all"
-								style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
-							/>
+						<div className="flex items-center gap-2">
+							<span className="text-[10px] text-muted w-14 shrink-0">vs max</span>
+							<div className="flex h-3 flex-1 overflow-hidden rounded-full bg-muted">
+								<div
+									className="h-full rounded-full bg-primary transition-all"
+									style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
+								/>
+							</div>
 						</div>
 					)}
 					<div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -104,11 +111,11 @@ const DataManager = () => {
 							variant="outline"
 							size="icon"
 							className="size-8"
-							onClick={() => setDays(d => Math.max(1, d - 1))}
+							onClick={() => setDays(d => Math.max(0, d - 1))}
 						>
 							<Minus className="size-3.5" />
 						</Button>
-						<span className="w-16 text-center text-sm font-medium">{days} {days === 1 ? "day" : "days"}</span>
+						<span className="w-16 text-center text-sm font-medium">{days === 0 ? "all" : `${days} ${days === 1 ? "day" : "days"}`}</span>
 						<Button
 							variant="outline"
 							size="icon"
@@ -124,7 +131,7 @@ const DataManager = () => {
 			<Card>
 				<CardHeader className="pb-2">
 					<CardTitle className="text-base">By Camera</CardTitle>
-					<p className="text-xs text-muted">older than {days} {days === 1 ? "day" : "days"}</p>
+					<p className="text-xs text-muted">{daysLabel(days)}</p>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-2">
 					{usage.cameras.map((cam, i) => (
@@ -150,7 +157,7 @@ const DataManager = () => {
 						disabled={deleting}
 						onClick={() => setPending({ type: "all" })}
 					>
-						Clear All Cameras — older than {days} {days === 1 ? "day" : "days"}
+						Clear All Cameras — {daysLabel(days)}
 					</Button>
 				</CardContent>
 			</Card>
@@ -162,8 +169,8 @@ const DataManager = () => {
 					</DialogHeader>
 					<p className="text-sm text-muted">
 						{pending?.type === "all"
-							? `Delete footage older than ${days} ${days === 1 ? "day" : "days"} from all cameras?`
-							: `Delete footage older than ${days} ${days === 1 ? "day" : "days"} from ${pending?.cameraName}?`
+							? `Delete ${daysLabel(days)} from all cameras?`
+							: `Delete ${daysLabel(days)} from ${pending?.cameraName}?`
 						}
 					</p>
 					<DialogFooter>

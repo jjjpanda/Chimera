@@ -25,6 +25,15 @@ const lerp = (a, b, t) => moment(a.valueOf() + t * (b.valueOf() - a.valueOf()))
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
+const parseFrameTime = (url) => {
+	const filename = url.split("/").pop()
+	if (filename.indexOf("-") === 8) {
+		const t = moment(filename.slice(0, 8) + "-" + filename.slice(9, 15), "YYYYMMDD-HHmmss", true)
+		if (t.isValid()) return t
+	}
+	return null
+}
+
 const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrimChange, trimming, disabled }) => {
 	const trackRef = useRef(null)
 	const scrubIdxRef = useRef(scrubIdx)
@@ -147,9 +156,14 @@ const ClipMaker = () => {
 	const [generating, setGenerating] = useState(null)
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
+	const [frameTimes, setFrameTimes] = useState([])
 
 	const canvasRef = useRef(null)
 	const imageCache = useRef({})
+
+	useEffect(() => {
+		setFrameTimes(frames.map(parseFrameTime))
+	}, [frames])
 
 	useEffect(() => {
 		const canvas = canvasRef.current
@@ -179,26 +193,23 @@ const ClipMaker = () => {
 		canvas.getContext("2d").drawImage(img, 0, 0)
 	}, [scrubIdx, frames, imagesLoaded])
 
-	// Snap trim times to frame positions so displayed times match scrub dot exactly
+	const frameTime = (idx) => {
+		if (frames.length === 0) return null
+		return frameTimes[idx] ?? lerp(startDate, endDate, idx / Math.max(1, frames.length - 1))
+	}
+
 	const trimStart = useMemo(() => {
-		if (frames.length > 1) {
-			const frame = Math.round(trimRange[0] / 100 * (frames.length - 1))
-			return lerp(startDate, endDate, frame / (frames.length - 1))
-		}
-		return lerp(startDate, endDate, trimRange[0] / 100)
-	}, [startDate, endDate, trimRange, frames.length])
+		const idx = Math.round(trimRange[0] / 100 * Math.max(0, frames.length - 1))
+		return frameTime(idx) ?? lerp(startDate, endDate, trimRange[0] / 100)
+	}, [startDate, endDate, trimRange, frames.length, frameTimes])
 
 	const trimEnd = useMemo(() => {
-		if (frames.length > 1) {
-			const frame = Math.round(trimRange[1] / 100 * (frames.length - 1))
-			return lerp(startDate, endDate, frame / (frames.length - 1))
-		}
-		return lerp(startDate, endDate, trimRange[1] / 100)
-	}, [startDate, endDate, trimRange, frames.length])
+		const idx = Math.round(trimRange[1] / 100 * Math.max(0, frames.length - 1))
+		return frameTime(idx) ?? lerp(startDate, endDate, trimRange[1] / 100)
+	}, [startDate, endDate, trimRange, frames.length, frameTimes])
 
-	const scrubTime = useMemo(() =>
-		frames.length > 0 ? lerp(startDate, endDate, scrubIdx / Math.max(1, frames.length - 1)) : null,
-		[startDate, endDate, scrubIdx, frames.length]
+	const scrubTime = useMemo(() => frameTime(scrubIdx),
+		[frameTimes, scrubIdx, startDate, endDate, frames.length]
 	)
 
 	const downloadingImages = frames.length > 0 && imagesLoaded < frames.length
@@ -233,7 +244,7 @@ const ClipMaker = () => {
 	}
 
 	const clickPreset = (p) => {
-		setSavedDates({ start: startDate, end: endDate })
+		if (!savedDates) setSavedDates({ start: startDate, end: endDate })
 		setStartDate(moment().subtract(p.value, p.unit))
 		setEndDate(moment())
 		setPendingPreset(p)
@@ -293,17 +304,21 @@ const ClipMaker = () => {
 		}))
 	}
 
-	const setDatePart = (setter, part, val) => setter(prev => {
-		const next = prev.clone()
-		if (part === "date") {
-			const [y, m, d] = val.split("-")
-			next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
-		} else {
-			const [h, min] = val.split(":")
-			next.hour(parseInt(h)).minute(parseInt(min))
-		}
-		return next
-	})
+	const setDatePart = (setter, part, val) => {
+		setPendingPreset(null)
+		setSavedDates(null)
+		setter(prev => {
+			const next = prev.clone()
+			if (part === "date") {
+				const [y, m, d] = val.split("-")
+				next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
+			} else {
+				const [h, min] = val.split(":")
+				next.hour(parseInt(h)).minute(parseInt(min))
+			}
+			return next
+		})
+	}
 
 	return (
 		<div className="flex flex-col gap-0">
@@ -381,6 +396,28 @@ const ClipMaker = () => {
 			</div>
 
 			<div className="flex flex-col gap-4 px-4 pt-2 pb-4">
+				<div className="flex flex-col gap-1.5">
+					<Label>Range</Label>
+					<div className="flex flex-wrap gap-1">
+						<Button variant="ghost" size="sm" className="h-6 px-1 text-xs" onClick={cancelPreset} disabled={!pendingPreset}>
+							<X className="size-3" />
+						</Button>
+						{PRESETS.map(p => {
+							const isPending = pendingPreset?.label === p.label
+							return (
+								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs"
+									onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
+									{isPending ? <Check className="size-3" /> : p.label}
+								</Button>
+							)
+						})}
+					</div>
+				</div>
+
+				<Button variant="outline" className="w-full" onClick={confirmPreset} disabled={loading}>
+					{fetching ? "Fetching…" : downloadingImages ? "Loading…" : "Load Preview"}
+				</Button>
+
 				<div className="grid grid-cols-2 gap-3">
 					<div className="flex flex-col gap-1.5">
 						<Label>Camera</Label>
@@ -423,36 +460,6 @@ const ClipMaker = () => {
 							onChange={e => setDatePart(setEndDate, "time", e.target.value)} />
 					</div>
 				</div>
-
-				<div className="flex flex-col gap-1.5">
-					<Label>Range</Label>
-					<div className="flex flex-wrap gap-1">
-						{PRESETS.map(p => (
-							<Button key={p.label} variant={pendingPreset?.label === p.label ? "default" : "outline"} size="sm" className="h-6 px-2 text-xs"
-								onClick={() => clickPreset(p)}>
-								{p.label}
-							</Button>
-						))}
-					</div>
-					{pendingPreset && (
-						<div className="flex items-center justify-between">
-							<span className="text-xs text-muted">{pendingPreset.label}</span>
-							<div className="flex gap-1">
-								<Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={cancelPreset}>
-									<X className="size-3" />
-								</Button>
-								<Button size="sm" className="h-6 gap-1 px-2 text-xs" onClick={confirmPreset}>
-									<Check className="size-3" />
-									Load
-								</Button>
-							</div>
-						</div>
-					)}
-				</div>
-
-				<Button variant="outline" className="w-full" onClick={loadPreview} disabled={loading}>
-					{fetching ? "Fetching…" : downloadingImages ? "Loading…" : "Load Preview"}
-				</Button>
 
 				<div className="grid grid-cols-2 gap-2">
 					<div className="flex flex-col gap-1.5">
