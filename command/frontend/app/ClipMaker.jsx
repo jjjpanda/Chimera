@@ -28,7 +28,7 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const parseFrameTime = (url) => {
 	const filename = url.split("/").pop()
 	if (filename.indexOf("-") === 8) {
-		const t = moment(filename.slice(0, 8) + "-" + filename.slice(9, 15), "YYYYMMDD-HHmmss", true)
+		const t = moment.utc(filename.slice(0, 8) + "-" + filename.slice(9, 15), "YYYYMMDD-HHmmss", true).local()
 		if (t.isValid()) return t
 	}
 	return null
@@ -286,8 +286,8 @@ const ClipMaker = () => {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				camera: String(camId),
-				start: moment(trimStart).second(0).format("YYYYMMDD-HHmmss"),
-				end: moment(trimEnd).second(0).format("YYYYMMDD-HHmmss"),
+				start: moment(trimStart).utc().second(0).format("YYYYMMDD-HHmmss"),
+				end: moment(trimEnd).utc().second(0).format("YYYYMMDD-HHmmss"),
 				save: true,
 				...(type === "video" ? { fps } : { skip })
 			})

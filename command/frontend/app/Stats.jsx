@@ -3,6 +3,7 @@ import { Minus, Plus } from "lucide-react"
 import { ChevronRight } from "lucide-react"
 import useFileStats from "../hooks/useFileStats"
 import useStorageUsage from "../hooks/useStorageUsage"
+import useClearFootage from "../hooks/useClearFootage"
 import { useRole } from "./AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -11,7 +12,6 @@ import { Area, AreaChart, ResponsiveContainer, XAxis } from "recharts"
 import formatBytes from "../js/formatBytes"
 import colors from "../js/colors"
 import { cn } from "../lib/utils"
-import { request, jsonProcessing } from "../js/request"
 import moment from "moment"
 
 const ACCENT = "#C97B3A"
@@ -23,12 +23,9 @@ const Stats = () => {
 	const isAdmin = role === "admin"
 
 	const [days, setDays] = useState(7)
-	const [clearDays, setClearDays] = useState(3)
 	const clearLabel = (d) => d === 0 ? "all footage" : `older than ${d} ${d === 1 ? "day" : "days"}`
-	const [pending, setPending] = useState(null)
-	const [deleting, setDeleting] = useState(false)
 
-	const [fileStatsState] = useFileStats({
+	const [fileStatsState, , refreshFileStats] = useFileStats({
 		loading: "refreshing",
 		cameras: [],
 		days: 7,
@@ -37,6 +34,9 @@ const Stats = () => {
 		hide: {}
 	})
 	const [usage, refreshUsage] = useStorageUsage()
+
+	const onDone = () => { refreshUsage(); refreshFileStats() }
+	const { days: clearDays, setDays: setClearDays, pending, setPending, deleting, confirmDelete } = useClearFootage(usage.cameras, onDone)
 
 	const { chartData, totalNow, delta } = useMemo(() => {
 		const stats = fileStatsState.fileStats
@@ -67,31 +67,10 @@ const Stats = () => {
 		return { chartData, totalNow, delta }
 	}, [fileStatsState.fileStats, days])
 
-	const confirmDelete = () => {
-		if (!pending) return
-		setDeleting(true)
-		setPending(null)
-		const done = () => { setDeleting(false); refreshUsage() }
-		if (pending.type === "all") {
-			Promise.all(usage.cameras.map(cam => new Promise(resolve => {
-				request("/file/pathClean", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ camera: cam.id, days: clearDays })
-				}, prom => jsonProcessing(prom, resolve))
-			}))).then(done)
-		} else {
-			request("/file/pathClean", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ camera: pending.cameraId, days: clearDays })
-			}, prom => jsonProcessing(prom, done))
-		}
-	}
-
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
 	const sortedCameras = [...usage.cameras].sort((a, b) => b.used_gb - a.used_gb)
+	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
 
 	return (
 		<div className="space-y-4">
@@ -102,7 +81,7 @@ const Stats = () => {
 						<div className="flex h-3 flex-1 overflow-hidden rounded-full">
 							{usage.cameras.length > 0
 								? usage.cameras.map((cam, i) => (
-									<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
+									<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
 								))
 								: <div className="flex-1 rounded-full bg-muted" />
 							}

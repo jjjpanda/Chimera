@@ -20,11 +20,13 @@ const statsUpdate = (state, setState) => {
 const useFileStats = (initialState) => {
 	const [state, setState] = useState(initialState)
 
+	const refresh = () => statsUpdate(state, setState)
+
 	useEffect(() => {
-		statsUpdate(state, setState)
+		refresh()
 	}, [])
 
-	return [state, setState]
+	return [state, setState, refresh]
 }
 
 export default useFileStats

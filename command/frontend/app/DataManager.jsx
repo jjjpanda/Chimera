@@ -1,13 +1,13 @@
-import React, { useState } from "react"
+import React from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Minus, Plus } from "lucide-react"
 import useStorageUsage from "../hooks/useStorageUsage.js"
+import useClearFootage from "../hooks/useClearFootage.js"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog"
 import formatBytes from "../js/formatBytes.js"
 import colors from "../js/colors.js"
-import { request, jsonProcessing } from "../js/request.js"
 
 const ACCENT = "#C97B3A"
 const segmentColor = (i) => i === 0 ? ACCENT : colors[i % colors.length]
@@ -15,38 +15,13 @@ const segmentColor = (i) => i === 0 ? ACCENT : colors[i % colors.length]
 const DataManager = () => {
 	const navigate = useNavigate()
 	const [usage, refresh] = useStorageUsage()
+	const { days, setDays, pending, setPending, deleting, confirmDelete } = useClearFootage(usage.cameras, refresh)
 
-	const [days, setDays] = useState(3)
 	const daysLabel = (d) => d === 0 ? "all footage" : `older than ${d} ${d === 1 ? "day" : "days"}`
-	const [pending, setPending] = useState(null)
-	const [deleting, setDeleting] = useState(false)
 
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
-
-	const confirmDelete = () => {
-		if (!pending) return
-		setDeleting(true)
-		setPending(null)
-
-		const done = () => { setDeleting(false); refresh() }
-
-		if (pending.type === "all") {
-			Promise.all(usage.cameras.map(cam => new Promise(resolve => {
-				request("/file/pathClean", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ camera: cam.id, days })
-				}, prom => jsonProcessing(prom, resolve))
-			}))).then(done)
-		} else {
-			request("/file/pathClean", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ camera: pending.cameraId, days })
-			}, prom => jsonProcessing(prom, done))
-		}
-	}
+	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
 
 	return (
 		<div className="space-y-4">
@@ -64,7 +39,7 @@ const DataManager = () => {
 						<div className="flex h-3 flex-1 overflow-hidden rounded-full">
 							{usage.cameras.length > 0
 								? usage.cameras.map((cam, i) => (
-									<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
+									<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
 								))
 								: <div className="flex-1 rounded-full bg-muted" />
 							}

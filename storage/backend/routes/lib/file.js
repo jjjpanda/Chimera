@@ -77,19 +77,19 @@ module.exports = {
 	},
 
 	deleteFilesBeforeDateGlob: (req, res) => {
+		if(req.numberOfFilesDeletedInDatabase == 0){
+			return res.send({deleted: false})
+		}
 		const {days} = req.body
 		const now = moment()
 		const beforeDate = moment().subtract(days, "days")
 		const clobArr = generateBeforeDateGlobNotPatternsArray(now, beforeDate)
-		if(clobArr.length == 0 || req.numberOfFilesDeletedInDatabase == 0){
-			res.send({deleted: false})
-		}
-		else{
-			const glob = `./!(${clobArr.join("|")})*.jpg`
-			rimraf(path.join(req.body.appendedPath, glob), (err) => {
-				res.send({deleted: !err})
-			})
-		}
+		const glob = clobArr.length == 0
+			? "*.jpg"
+			: `./!(${clobArr.join("|")})*.jpg`
+		rimraf(path.join(req.body.appendedPath, glob), (err) => {
+			res.send({deleted: !err})
+		})
 	},
 
 	fileStats: (req, res) => {
