@@ -6,6 +6,7 @@ import { RotateCcw, Square, Trash2 } from "lucide-react"
 import useTasks from "../hooks/useTasks.js"
 import useScheduler from "../hooks/useScheduler.js"
 import useCameras from "../hooks/useCameras.js"
+import useTaskRuns from "../hooks/useTaskRuns.js"
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -38,6 +39,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
+	const [{ runs, loading: runsLoading }, refreshRuns] = useTaskRuns()
 
 	const [pickerState, setPickerState] = useState(null)
 	const [outputType, setOutputType] = useState("video")
@@ -67,7 +69,8 @@ const ScheduleDashboard = ({ mobile = false }) => {
 	const body = pickerState ? JSON.stringify(buildBody(pickerState) ?? {}) : "{}"
 
 	return (
-		<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
+		<div className="flex flex-col gap-6">
+			<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
 			<Card className="flex-1 bg-surface border-border">
 				<CardHeader>
 					<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
@@ -111,9 +114,11 @@ const ScheduleDashboard = ({ mobile = false }) => {
 												<Button variant="ghost" size="icon" onClick={() => stopTask(task.id)} title="Stop">
 													<Square className="h-4 w-4 text-muted" />
 												</Button>
-												<Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} title="Destroy">
-													<Trash2 className="h-4 w-4 text-danger" />
-												</Button>
+												{!task.protected && (
+													<Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} title="Destroy">
+														<Trash2 className="h-4 w-4 text-danger" />
+													</Button>
+												)}
 											</div>
 										</TableCell>
 									</TableRow>
@@ -152,6 +157,49 @@ const ScheduleDashboard = ({ mobile = false }) => {
 						body={body}
 						onEnter={handleSchedule}
 					/>
+				</CardContent>
+			</Card>
+			</div>
+
+			<Card className="bg-surface border-border">
+				<CardHeader>
+					<CardTitle className="text-primary">Run History</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{runsLoading ? (
+						<p className="text-muted text-sm">Loading…</p>
+					) : runs.length === 0 ? (
+						<p className="text-muted text-sm">No runs recorded yet.</p>
+					) : (
+						<Table>
+							<TableHeader>
+								<TableRow className="border-border">
+									<TableHead className="text-muted">Task</TableHead>
+									<TableHead className="text-muted">URL</TableHead>
+									<TableHead className="text-muted">Status</TableHead>
+									<TableHead className="text-muted">HTTP</TableHead>
+									<TableHead className="text-muted">Error</TableHead>
+									<TableHead className="text-muted">When</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{runs.map((run) => (
+									<TableRow key={run.id} className="border-border">
+										<TableCell className="text-primary font-mono text-xs">{run.task_id}</TableCell>
+										<TableCell className="text-muted text-xs max-w-40 truncate" title={run.url}>{run.url}</TableCell>
+										<TableCell>
+											<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white"}>
+												{run.status}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-muted text-xs">{run.http_status ?? "—"}</TableCell>
+										<TableCell className="text-muted text-xs max-w-48 truncate" title={run.error ?? ""}>{run.error ?? "—"}</TableCell>
+										<TableCell className="text-muted text-xs" title={run.ran_at}>{moment(run.ran_at).fromNow()}</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					)}
 				</CardContent>
 			</Card>
 		</div>

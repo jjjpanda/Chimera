@@ -4,10 +4,9 @@ import useStorageUsage from "../hooks/useStorageUsage.js"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import formatBytes from "../js/formatBytes.js"
-import colors from "../js/colors.js"
+import colors, { CHART_ACCENT } from "../js/colors.js"
 
-const ACCENT = "#C97B3A"
-const segmentColor = (i) => i === 0 ? ACCENT : colors[i % colors.length]
+const segmentColor = (i) => i === 0 ? CHART_ACCENT : colors[i % colors.length]
 
 const StorageWidget = () => {
 	const navigate = useNavigate()
@@ -15,6 +14,7 @@ const StorageWidget = () => {
 
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
+	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
 
 	return (
 		<Card className="h-full">
@@ -25,7 +25,7 @@ const StorageWidget = () => {
 				<div className="flex h-3 w-full overflow-hidden rounded-full">
 					{usage.cameras.length > 0
 						? usage.cameras.map((cam, i) => (
-							<div key={cam.id} style={{ flex: cam.used_gb || 0.001, backgroundColor: segmentColor(i) }} />
+							<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
 						))
 						: <div className="flex-1 rounded-full bg-muted" />
 					}

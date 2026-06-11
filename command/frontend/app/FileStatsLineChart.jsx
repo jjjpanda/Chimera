@@ -7,13 +7,10 @@ import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } f
 
 import moment from "moment"
 import formatBytes from "../js/formatBytes.js"
-import colors from "../js/colors.js"
+import colors, { CHART_ACCENT, CHART_MUTED, TOOLTIP_BG, TOOLTIP_BORDER, TOOLTIP_TEXT } from "../js/colors.js"
 
-const ACCENT = "#C97B3A"
-const MUTED = "#9A7A6A"
-const TOOLTIP_BG = "#3D1A0A"
-const TOOLTIP_BORDER = "#4A2510"
-const TOOLTIP_TEXT = "#F5EDE3"
+const ACCENT = CHART_ACCENT
+const MUTED = CHART_MUTED
 
 const customTooltip = ({ active, payload }) => {
 	if (active && payload && payload.length) {

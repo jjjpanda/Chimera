@@ -12,7 +12,6 @@ import toast from "../js/toast"
 import moment from "moment"
 
 const PRESETS = [
-	{ label: "15m", value: 15, unit: "minutes" },
 	{ label: "30m", value: 30, unit: "minutes" },
 	{ label: "1h",  value: 1,  unit: "hours" },
 	{ label: "3h",  value: 3,  unit: "hours" },
@@ -129,7 +128,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 
 			{!disabled && (
 				<div
-					className="absolute w-4 h-4 rounded-full bg-foreground border-2 border-background shadow z-20 touch-none"
+					className="absolute w-5 h-5 rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab"
 					style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
 					onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "scrub") }}
 				/>
@@ -175,7 +174,16 @@ const ClipMaker = () => {
 		frames.forEach(url => {
 			if (imageCache.current[url]) return
 			const img = new Image()
-			img.onload = img.onerror = () => setImagesLoaded(n => n + 1)
+			let settled = false
+			let timer
+			const settle = () => {
+				if (settled) return
+				settled = true
+				clearTimeout(timer)
+				setImagesLoaded(n => n + 1)
+			}
+			img.onload = img.onerror = settle
+			timer = setTimeout(settle, 10000)
 			img.src = url
 			imageCache.current[url] = img
 		})

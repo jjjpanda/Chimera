@@ -4,19 +4,18 @@ import { ChevronRight } from "lucide-react"
 import useFileStats from "../hooks/useFileStats"
 import useStorageUsage from "../hooks/useStorageUsage"
 import useClearFootage from "../hooks/useClearFootage"
+import useDailyStats from "../hooks/useDailyStats"
 import { useRole } from "./AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog"
 import { Area, AreaChart, ResponsiveContainer, XAxis } from "recharts"
 import formatBytes from "../js/formatBytes"
-import colors from "../js/colors"
+import colors, { CHART_ACCENT, CHART_MUTED } from "../js/colors"
 import { cn } from "../lib/utils"
 import moment from "moment"
 
-const ACCENT = "#C97B3A"
-const MUTED = "#9A7A6A"
-const segmentColor = (i) => i === 0 ? ACCENT : colors[i % colors.length]
+const segmentColor = (i) => i === 0 ? CHART_ACCENT : colors[i % colors.length]
 
 const Stats = () => {
 	const role = useRole()
@@ -33,17 +32,18 @@ const Stats = () => {
 		fileStats: [],
 		hide: {}
 	})
+	const [dailyStats, refreshDailyStats] = useDailyStats()
 	const [usage, refreshUsage] = useStorageUsage()
 
-	const onDone = () => { refreshUsage(); refreshFileStats() }
+	const onDone = () => { refreshUsage(); refreshFileStats(); refreshDailyStats() }
 	const { days: clearDays, setDays: setClearDays, pending, setPending, deleting, confirmDelete } = useClearFootage(usage.cameras, onDone)
 
 	const { chartData, totalNow, delta } = useMemo(() => {
-		const stats = fileStatsState.fileStats
-		if (!stats.length) return { chartData: [], totalNow: 0, delta: 0 }
+		const raw = days === 1 ? dailyStats : fileStatsState.fileStats
+		if (!raw.length) return { chartData: [], totalNow: 0, delta: 0 }
 
 		const cutoff = (days === 1 ? moment().startOf("day") : moment().subtract(days, "days").startOf("day")).valueOf()
-		const filtered = stats.filter(p => p.timestamp >= cutoff)
+		const filtered = raw.filter(p => p.timestamp >= cutoff)
 		if (!filtered.length) return { chartData: [], totalNow: 0, delta: 0 }
 
 		const cameraKeys = Object.keys(filtered[0]).filter(k => k !== "timestamp")
@@ -51,21 +51,21 @@ const Stats = () => {
 		const byPeriod = {}
 		filtered.forEach(point => {
 			const period = days === 1
-				? moment(point.timestamp).format("YYYY-MM-DD HH:00")
+				? moment(point.timestamp).format("YYYY-MM-DD HH:mm")
 				: moment(point.timestamp).format("YYYY-MM-DD")
 			const total = cameraKeys.reduce((acc, k) => acc + (point[k] || 0), 0)
-			byPeriod[period] = total
+			byPeriod[period] = (byPeriod[period] || 0) + total
 		})
 
 		const chartData = Object.entries(byPeriod)
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([day, total]) => ({ day, total }))
 
-		const totalNow = chartData[chartData.length - 1].total
-		const delta = chartData.length > 1 ? totalNow - chartData[0].total : 0
+		const totalNow = chartData.reduce((s, p) => s + p.total, 0)
+		const delta = chartData.length > 1 ? chartData[chartData.length - 1].total - chartData[0].total : 0
 
 		return { chartData, totalNow, delta }
-	}, [fileStatsState.fileStats, days])
+	}, [fileStatsState.fileStats, dailyStats, days])
 
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
@@ -148,14 +148,14 @@ const Stats = () => {
 							<AreaChart data={chartData} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
 								<defs>
 									<linearGradient id="storageGrad" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="5%" stopColor={ACCENT} stopOpacity={0.3} />
-										<stop offset="95%" stopColor={ACCENT} stopOpacity={0} />
+										<stop offset="5%" stopColor={CHART_ACCENT} stopOpacity={0.3} />
+										<stop offset="95%" stopColor={CHART_ACCENT} stopOpacity={0} />
 									</linearGradient>
 								</defs>
 								<XAxis
 									dataKey="day"
-									tickFormatter={d => days === 1 ? moment(d).format("ha") : moment(d).format("ddd")}
-									tick={{ fill: MUTED, fontSize: 11 }}
+									tickFormatter={d => days === 1 ? moment(d, "YYYY-MM-DD HH:mm").format("h:mma") : moment(d).format("ddd")}
+									tick={{ fill: CHART_MUTED, fontSize: 11 }}
 									axisLine={false}
 									tickLine={false}
 									interval="preserveStartEnd"
@@ -163,7 +163,7 @@ const Stats = () => {
 								<Area
 									type="monotone"
 									dataKey="total"
-									stroke={ACCENT}
+									stroke={CHART_ACCENT}
 									fill="url(#storageGrad)"
 									strokeWidth={2}
 									dot={false}

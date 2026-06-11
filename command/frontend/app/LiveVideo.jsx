@@ -130,13 +130,8 @@ const LiveVideo = (props) => {
 						{state.videoList.map((video, i) => (
 							<TabsContent key={i} value={String(i)} className="mt-0">
 								<Feed video={video} onExpand={() => setActiveDialog(video)} />
-								<div className="flex items-center justify-between px-3 py-2">
+								<div className="flex items-center justify-end px-3 py-2">
 									<span className="text-xs text-muted">{video.camera}</span>
-									{!props.mobile && (
-										<a href="/object" className="text-xs text-accent hover:underline">
-											object view
-										</a>
-									)}
 								</div>
 							</TabsContent>
 						))}

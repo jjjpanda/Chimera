@@ -64,14 +64,16 @@ const TaskList = (props) => {
 										: <RotateCcw className="size-3.5" />
 									}
 								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7 text-danger hover:text-danger"
-									onClick={() => deleteTask(item.id)}
-								>
-									<Trash2 className="size-3.5" />
-								</Button>
+								{item.id !== "task-auto-cleanup" && (
+									<Button
+										variant="ghost"
+										size="icon"
+										className="size-7 text-danger hover:text-danger"
+										onClick={() => deleteTask(item.id)}
+									>
+										<Trash2 className="size-3.5" />
+									</Button>
+								)}
 							</div>
 						)}
 					</li>

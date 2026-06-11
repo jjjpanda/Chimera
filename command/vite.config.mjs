@@ -45,7 +45,6 @@ return {
 			"/usage": gatewayTarget,
 			"/task": gatewayTarget,
 			"/livestream": gatewayTarget,
-			"/object": gatewayTarget,
 			"/memory": { target: `ws://localhost:${env.gateway_PORT}`, ws: true },
 		}
 	}

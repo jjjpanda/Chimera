@@ -39,6 +39,33 @@ describe("File Routes", () => {
 		test("bruh", () => expect(2+2).toBe(4))
 	})
 
+	describe("/file/dailyStats", () => {
+		afterEach(() => { delete process.env.cameras })
+
+		test("maps rows to per-camera byte totals", async () => {
+			process.env.cameras = JSON.stringify(["cam1", "cam2"])
+			const ts = new Date("2026-06-11T10:00:00Z")
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [
+				{ timestamp: ts, cam1: "100", cam2: "200" }
+			] }))
+			const res = await supertest(app)
+				.get("/file/dailyStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual([{ timestamp: ts.getTime(), cam1: 100, cam2: 200 }])
+		})
+
+		test("returns 500 on db error", async () => {
+			process.env.cameras = JSON.stringify(["cam1"])
+			query.mockRejectedValueOnce(new Error("db error"))
+			const res = await supertest(app)
+				.get("/file/dailyStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
+	})
+
 	describe("/file/pathDelete", () => {
 		test("returns 401 with no cookie", (done) => {
 			supertest(app)

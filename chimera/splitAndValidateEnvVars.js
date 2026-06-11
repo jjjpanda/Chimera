@@ -79,8 +79,6 @@ env.gateway += writeVarLine("command_PROXY_ON")
 env.gateway += writeVarLine("schedule_PROXY_ON")
 env.gateway += writeVarLine("storage_PROXY_ON")
 env.gateway += writeVarLine("livestream_PROXY_ON")
-env.gateway += writeVarLine("object_PROXY_ON")
-
 env.gateway += writeVarLine("gateway_ON")
 env.gateway += writeVarLine("gateway_PORT")
 
@@ -135,23 +133,6 @@ env.gateway += writeVarLine("livestream_HOST")
 
 env.livestream += writeVarLine("livestream_FOLDERPATH")
 confirmPath("livestream_FOLDERPATH", true)
-
-writeVarLine("object_ON")
-writeVarLine("object_PORT")
-env.gateway += writeVarLine("object_HOST")
-writeVarLine("object_FULL_URL")
-env.lib += writeVarLine("object_AUTH")
-
-writeVarLine("object_CAMERA_URLS")
-writeVarLine("object_minimumConfidence")
-writeVarLine("object_alertUrls")
-
-writeVarLine("object_headless_ON")
-writeVarLine("object_browser_FILEPATH")
-confirmPath("object_browser_FILEPATH")
-writeVarLine("object_data_FOLDERPATH")
-//confirmPath("object_data_FOLDERPATH", true) removed because of cross os issues in path detection for puppet
-writeVarLine("object_THROTTLE")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")

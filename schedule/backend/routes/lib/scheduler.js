@@ -5,6 +5,7 @@ const axios  = require("axios").default.create({
 const moment   = require("moment")
 
 const { webhookAlert, randomID, jsonFileHanding, auth } = require("lib")
+const pool = require("../../lib/pool")
 
 const {schedulableUrls} = auth
 
@@ -102,9 +103,9 @@ module.exports = {
 		client.emit("listTask", tasks => {
 			req.body.list = Object.entries(tasks).filter(([id, entry]) => {
 				return id && entry && id.includes("task")
-			}).map(([id, {url, cronString, body, running}]) => {
+			}).map(([id, {url, cronString, body, running, protected: isProtected}]) => {
 				return {
-					id, url, cronString, body, running
+					id, url, cronString, body, running, protected: isProtected
 				}
 			})
 			next()
@@ -113,6 +114,19 @@ module.exports = {
 
 	sendList: (req, res) => {
 		res.send({tasks: req.body.list})
+	},
+
+	taskRuns: async (req, res) => {
+		try {
+			const { taskId } = req.params
+			const query = taskId
+				? `SELECT * FROM task_runs WHERE task_id=$1 ORDER BY ran_at DESC LIMIT 200`
+				: `SELECT * FROM task_runs ORDER BY ran_at DESC LIMIT 200`
+			const { rows } = await pool.query(query, taskId ? [taskId] : [])
+			res.send({ runs: rows })
+		} catch (e) {
+			res.status(500).send({ error: true })
+		}
 	},
 
 	autoRegisterCleanup: () => {
@@ -127,8 +141,9 @@ module.exports = {
 					id,
 					url: "/file/pathAutoClean",
 					body: {},
-					cronString: "0 * * * *",
-					running: true
+					cronString: "*/10 * * * *",
+					running: true,
+					protected: true
 				})
 			})
 		}
@@ -148,9 +163,17 @@ const generateTask = (url, id, body) => () => {
 	}).then(({data}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
 		console.log(data)
+		pool.query(
+			`INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, 'success', 200)`,
+			[id, url]
+		).catch(err => console.log("RUN INSERT ERROR", err))
 	}).catch(({response, message}) => {
-		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ❌ \nerror ${message} | code ${response.status}`)
-		console.log(`code ${response.status} | error ${message}`)
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
+		console.log(`code ${response?.status} | error ${message}`)
+		pool.query(
+			`INSERT INTO task_runs (task_id, url, status, http_status, error) VALUES ($1, $2, 'failure', $3, $4)`,
+			[id, url, response?.status ?? null, message]
+		).catch(err => console.log("RUN INSERT ERROR", err))
 	})
 }
 

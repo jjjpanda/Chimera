@@ -15,11 +15,11 @@ module.exports = {
 					foreground: "#FFFFFF"
 				},
 				secondary: {
-					DEFAULT: "#8F4EC7",
+					DEFAULT: "#9651d2",
 					foreground: "#FFFFFF"
 				},
 				primary: "#F5F5F7",
-				muted: "#A1A1AA",
+				muted: "#8a8a94",
 				border: "#27272A",
 				info: {
 					DEFAULT: "#24B2F0",

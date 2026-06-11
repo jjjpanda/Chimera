@@ -12,6 +12,7 @@ const {
 	deleteFileDirectory,
 	deleteFilesBeforeDateGlob,
 	fileStats,
+	dailyStats,
 	cameraMetrics,
 	autoClean
 } = require("./lib/file.js")
@@ -22,6 +23,7 @@ app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPat
 app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, updateDeletionOfFiles("files"), deleteFilesBeforeDateGlob)
 
 app.get("/pathStats", fileStats)
+app.get("/dailyStats", dailyStats)
 app.post("/pathMetrics", cameraMetrics)
 app.post("/pathAutoClean", requireAdmin, autoClean)
 

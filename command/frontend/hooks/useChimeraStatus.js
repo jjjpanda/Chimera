@@ -9,8 +9,7 @@ const baseStatusUrls = [
 	{ statusType: "motion", url: "/motion/status" },
 	{ statusType: "database", url: "/database/status" },
 	{ statusType: "livestream", url: "/livestream/health" },
-	{ statusType: "memory", url: "/memory/status" },
-	{ statusType: "object", url: "/object/status" }
+	{ statusType: "memory", url: "/memory/status" }
 ]
 
 const useChimeraStatus = () => {

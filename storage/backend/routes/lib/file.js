@@ -94,6 +94,20 @@ module.exports = {
 		})
 	},
 
+	dailyStats: (req, res) => {
+		const cameras = JSON.parse(process.env.cameras)
+		queryForDailyStats(cameras).then(values => {
+			const stats = values.rows.map(row => ({
+				timestamp: moment(row.timestamp).valueOf(),
+				...cameras.reduce((obj, cam) => ({ ...obj, [cam]: parseInt(row[cam]) || 0 }), {})
+			}))
+			res.send(stats)
+		}).catch(err => {
+			console.log("err", err)
+			res.status(500).send({ error: true })
+		})
+	},
+
 	fileStats: (req, res) => {
 		const cameras = JSON.parse(process.env.cameras)
 		queryForGroupedStats(cameras).then(values => {
@@ -127,29 +141,33 @@ module.exports = {
 			if (usedBytes <= targetBytes) return res.send({ cleaned: false })
 
 			const toFree = usedBytes - targetBytes
-			const result = await pool.query(
-				"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
-			)
-
 			let freed = 0
-			const toDelete = []
-			for (const row of result.rows) {
-				if (freed >= toFree) break
-				toDelete.push(row)
-				freed += parseInt(row.size) || 0
+			let deleted = 0
+
+			while (freed < toFree) {
+				const { rows } = await pool.query(
+					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
+				)
+				if (rows.length === 0) break
+
+				const batch = []
+				for (const row of rows) {
+					if (freed >= toFree) break
+					batch.push(row)
+					freed += parseInt(row.size) || 0
+				}
+
+				await Promise.all(batch.map(row =>
+					fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
+				))
+				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
+				deleted += batch.length
+
+				if (batch.length < rows.length) break
 			}
 
-			if (toDelete.length === 0) return res.send({ cleaned: false })
-
-			const ids = toDelete.map(r => r.id)
-
-			await Promise.all(toDelete.map(row =>
-				fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
-			))
-
-			await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [ids])
-
-			res.send({ cleaned: true, deleted: toDelete.length })
+			if (deleted === 0) return res.send({ cleaned: false })
+			res.send({ cleaned: true, deleted })
 		} catch (err) {
 			res.status(500).send({ error: "cleanup failed" })
 		}
@@ -193,6 +211,11 @@ const queryToUpdateDatabaseForDeletion = (camera, deleting, before="") => {
 const queryToAddToDeletionsTable = (camera, size, count) => {
 	const now = moment().format("YYYY-MM-DD HH:mm:ss")
 	return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
+}
+
+const queryForDailyStats = (cameras) => {
+	const cols = cameras.map((cam, i) => `SUM(CASE WHEN camera=${i + 1} THEN size ELSE 0 END) as "${cam}"`)
+	return pool.query(`SELECT date_trunc('minute', timestamp) as timestamp,${cols.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const queryForGroupedStats = (cameras) => {

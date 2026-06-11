@@ -53,13 +53,4 @@ if(process.env.livestream_ON === "true"){
 	}
 }
 
-if(process.env.object_ON === "true"){
-	config.apps.push({
-		script: "npx object",
-		name: "object",
-		log: `./log/object.${isDev ? "dev" : "pm2"}.log`,
-		log_date_format:"YYYY-MM-DD HH:mm:ss",
-	})
-}
-
 module.exports = config

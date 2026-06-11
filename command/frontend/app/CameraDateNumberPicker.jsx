@@ -9,13 +9,26 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 
-import moment from "moment"
 
 const CameraDateNumberPicker = (props) => {
 	const [cameras] = useCameras()
 	const [state, setState] = useCamDateNumInfo({ ...props, modified: false })
 
 	const update = (patch) => setState((s) => ({ ...s, ...patch, modified: true }))
+
+	const updateDatePart = (field, part, val) => {
+		setState(s => {
+			const next = s[field].clone()
+			if (part === "date") {
+				const [y, m, d] = val.split("-")
+				next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
+			} else {
+				const [h, min, sec] = val.split(":")
+				next.hour(parseInt(h)).minute(parseInt(min)).second(sec ? parseInt(sec) : 0)
+			}
+			return { ...s, [field]: next, modified: true }
+		})
+	}
 
 	const onReset = () => setState((s) => ({ ...s, ...props, modified: false }))
 
@@ -51,24 +64,22 @@ const CameraDateNumberPicker = (props) => {
 					/>
 				</div>
 			) : (
-				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-					<div className="flex flex-col gap-1.5">
+				<>
+					<div className="grid grid-cols-2 gap-x-3 gap-y-0">
 						<Label>Start</Label>
-						<Input
-							type="datetime-local"
-							value={state.startDate.format("YYYY-MM-DDTHH:mm")}
-							onChange={(e) => update({ startDate: moment(e.target.value) })}
-						/>
-					</div>
-					<div className="flex flex-col gap-1.5">
 						<Label>End</Label>
-						<Input
-							type="datetime-local"
-							value={state.endDate.format("YYYY-MM-DDTHH:mm")}
-							onChange={(e) => update({ endDate: moment(e.target.value) })}
-						/>
 					</div>
-				</div>
+					<div className="grid grid-cols-2 gap-x-3 gap-y-2">
+						<Input type="date" value={state.startDate.format("YYYY-MM-DD")}
+							onChange={e => updateDatePart("startDate", "date", e.target.value)} />
+						<Input type="date" value={state.endDate.format("YYYY-MM-DD")}
+							onChange={e => updateDatePart("endDate", "date", e.target.value)} />
+						<Input type="time" step="1" value={state.startDate.format("HH:mm:ss")}
+							onChange={e => updateDatePart("startDate", "time", e.target.value)} />
+						<Input type="time" step="1" value={state.endDate.format("HH:mm:ss")}
+							onChange={e => updateDatePart("endDate", "time", e.target.value)} />
+					</div>
+				</>
 			)}
 
 			<div className="flex items-end gap-2">

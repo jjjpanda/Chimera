@@ -3,6 +3,19 @@ const { auth, helmetOptions, tracker } = require("lib")
 const helmet = require("helmet")
 const pool = require("./lib/pool")
 
+const createTaskRunsTable = `
+	CREATE TABLE IF NOT EXISTS task_runs (
+		id SERIAL PRIMARY KEY,
+		task_id TEXT NOT NULL,
+		url TEXT NOT NULL,
+		status TEXT NOT NULL,
+		http_status INTEGER,
+		error TEXT,
+		ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	)
+`
+pool.query(createTaskRunsTable).catch(err => console.log("TASK RUNS TABLE ERROR", err))
+
 var app = express()
 
 app.use(tracker)

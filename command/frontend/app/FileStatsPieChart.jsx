@@ -7,13 +7,9 @@ import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "rechar
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
 import formatBytes from "../js/formatBytes.js"
-import colors from "../js/colors.js"
+import colors, { CHART_ACCENT, TOOLTIP_BG, TOOLTIP_BORDER, TOOLTIP_TEXT } from "../js/colors.js"
 
-const ACCENT = "#C97B3A"
-const SURFACE_RAISED = "#3D1A0A"
-const TOOLTIP_BG = "#3D1A0A"
-const TOOLTIP_BORDER = "#4A2510"
-const TOOLTIP_TEXT = "#F5EDE3"
+const ACCENT = CHART_ACCENT
 
 const customTooltip = ({ active, payload }) => {
 	if (active && payload && payload.length) {
