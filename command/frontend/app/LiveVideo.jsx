@@ -16,17 +16,20 @@ const HlsPlayer = ({ src, className }) => (
 		src={src}
 		autoPlay={false}
 		controls={true}
+		playsInline
 		className={className}
 	/>
 )
 
-const Feed = ({ video, onExpand }) => (
+const Feed = ({ video, onExpand, hideLabel }) => (
 	<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
 		<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
-		<div className="pointer-events-none absolute left-3 top-2 flex items-center gap-2">
-			<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
-			<span className="text-sm font-medium text-primary drop-shadow">{video.camera}</span>
-		</div>
+		{!hideLabel && (
+			<div className="pointer-events-none absolute left-3 top-2 flex items-center gap-2">
+				<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
+				<span className="text-sm font-medium text-primary drop-shadow">{video.camera}</span>
+			</div>
+		)}
 		{onExpand && (
 			<Button
 				variant="ghost"
@@ -123,16 +126,13 @@ const LiveVideo = (props) => {
 						<TabsList className="w-full rounded-none border-b border-border bg-surface-raised">
 							{state.videoList.map((video, i) => (
 								<TabsTrigger key={i} value={String(i)} className="flex-1 text-xs">
-									{i + 1}
+									{video.camera}
 								</TabsTrigger>
 							))}
 						</TabsList>
 						{state.videoList.map((video, i) => (
 							<TabsContent key={i} value={String(i)} className="mt-0">
-								<Feed video={video} onExpand={() => setActiveDialog(video)} />
-								<div className="flex items-center justify-end px-3 py-2">
-									<span className="text-xs text-muted">{video.camera}</span>
-								</div>
+								<Feed video={video} onExpand={() => setActiveDialog(video)} hideLabel />
 							</TabsContent>
 						))}
 					</Tabs>

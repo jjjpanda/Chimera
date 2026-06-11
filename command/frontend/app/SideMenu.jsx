@@ -4,6 +4,7 @@ import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users } from "l
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
+import SignOutButton from "./SignOutButton.jsx"
 import { cn } from "../lib/utils"
 
 const SideMenu = ({ index, mobile }) => {
@@ -48,7 +49,10 @@ const SideMenu = ({ index, mobile }) => {
 								active ? "text-accent" : "text-muted hover:text-primary"
 							)}
 						>
-							<Icon className="size-5" />
+							{key === "route-0"
+						? <img src="/res/logo.png" alt="Home" className="size-5 object-contain" />
+						: <Icon className="size-5" />
+					}
 							<span className="leading-none">{title}</span>
 						</button>
 					)
@@ -81,6 +85,9 @@ const SideMenu = ({ index, mobile }) => {
 					)
 				})}
 			</nav>
+			<div className="px-2 py-3">
+				<SignOutButton className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-muted hover:bg-surface-raised hover:text-primary" />
+			</div>
 		</aside>
 	)
 }

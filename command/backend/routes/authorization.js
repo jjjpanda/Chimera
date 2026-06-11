@@ -51,7 +51,7 @@ app.post("/verify", authorize, (req, res) => {
 
 app.get("/users", authorize, requireAdmin, async (req, res) => {
 	try {
-		const result = await pool.query("SELECT username, role FROM auth ORDER BY username")
+		const result = await pool.query("SELECT username, role, last_login FROM auth ORDER BY username")
 		res.json(result.rows)
 	} catch (e) {
 		res.status(500).json({ error: true })

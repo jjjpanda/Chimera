@@ -19,6 +19,7 @@ import {
 import { Label } from "../components/ui/label"
 import { XCircle, Trash2, Plus, Download } from "lucide-react"
 import { cn } from "../lib/utils"
+import NavigateToRoute from "./NavigateToRoute"
 
 import moment from "moment"
 
@@ -49,9 +50,12 @@ const ProcessList = (props) => {
 	return (
 		<Card className="h-full">
 			<CardHeader className="pb-2">
-				<CardTitle className="text-sm">Processes</CardTitle>
+				<div className="flex items-center justify-between">
+					<CardTitle className="text-sm">Processes</CardTitle>
+					{props.mini && <NavigateToRoute to="/recordings" />}
+				</div>
 			</CardHeader>
-			<CardContent className="flex flex-col gap-2">
+			<CardContent className={cn("flex flex-col gap-2", props.mini && "max-h-64 overflow-y-auto")}>
 				{state.loading && (
 					<p className="py-4 text-center text-sm text-muted">Loading…</p>
 				)}
@@ -79,8 +83,8 @@ const ProcessList = (props) => {
 								<span>Start: {startTime}</span>
 								<span>End: {endTime}</span>
 							</div>
-							{!props.mobile && !process.running && process.type === "mp4" && (
-								<video src={process.link} type="video/mp4" controls className="w-full rounded" />
+							{!props.mini && !props.mobile && !process.running && process.type === "mp4" && (
+								<video src={new URL(process.link).pathname} type="video/mp4" controls className="w-32 rounded" />
 							)}
 							<div className="flex gap-2">
 								<Button

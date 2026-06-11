@@ -30,6 +30,7 @@ return {
 		emptyOutDir: true
 	},
 	server: {
+		allowedHosts: ["stand-mixer"],
 		proxy: {
 			"/authorization": gatewayTarget,
 			"/cameras": gatewayTarget,

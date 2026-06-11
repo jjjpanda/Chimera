@@ -14,7 +14,7 @@ import AuthContext from "./app/AuthContext.jsx"
 import useAuth from "./hooks/useAuth.js"
 
 const App = () => {
-	const [loaded, setup, tokenRequired, loggedIn, role, tryLogin, trySetup] = useAuth()
+	const [loaded, setup, tokenRequired, loggedIn, role, tryLogin, trySetup, signOut] = useAuth()
 	const [key, setKey] = useState(0)
 
 	useEffect(() => {
@@ -26,7 +26,7 @@ const App = () => {
 	if (setup === false) return <SetupForm trySetup={trySetup} tokenRequired={tokenRequired} />
 
 	return (
-		<AuthContext.Provider value={{ role }}>
+		<AuthContext.Provider value={{ role, signOut }}>
 			<Router key={`ROUTER-${key}`}>
 				<Routes>
 					<Route

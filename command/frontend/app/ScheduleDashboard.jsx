@@ -1,7 +1,8 @@
 import React, { useState } from "react"
+import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
-import { RotateCcw, Square, Trash2 } from "lucide-react"
+import { RotateCcw, Square, Trash2, Minus, Plus } from "lucide-react"
 
 import useTasks from "../hooks/useTasks.js"
 import useScheduler from "../hooks/useScheduler.js"
@@ -11,6 +12,7 @@ import useTaskRuns from "../hooks/useTaskRuns.js"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Badge } from "../components/ui/badge"
+import { Label } from "../components/ui/label"
 import { Separator } from "../components/ui/separator"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/table"
@@ -36,6 +38,8 @@ const taskSummary = (task) => {
 }
 
 const ScheduleDashboard = ({ mobile = false }) => {
+	const role = useRole()
+	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
@@ -43,6 +47,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 
 	const [pickerState, setPickerState] = useState(null)
 	const [outputType, setOutputType] = useState("video")
+	const [fps, setFps] = useState(20)
 
 	const buildBody = (state) => {
 		const cam = cameras[state.camera]
@@ -53,6 +58,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 			end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
 			skip: state.number,
 			save: true,
+			...(outputType === "video" ? { fps } : {})
 		}
 	}
 
@@ -81,6 +87,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 					) : processList.length === 0 ? (
 						<p className="text-muted text-sm">No scheduled tasks.</p>
 					) : (
+						<div className="max-h-72 overflow-y-auto">
 						<Table>
 							<TableHeader>
 								<TableRow className="border-border">
@@ -88,7 +95,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 									<TableHead className="text-muted">Schedule</TableHead>
 									<TableHead className="text-muted">Task</TableHead>
 									<TableHead className="text-muted">Status</TableHead>
-									<TableHead className="text-muted text-right">Actions</TableHead>
+									{isAdmin && <TableHead className="text-muted text-right">Actions</TableHead>}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -106,6 +113,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 												{task.running ? "running" : "stopped"}
 											</Badge>
 										</TableCell>
+										{isAdmin && (
 										<TableCell className="text-right">
 											<div className="flex justify-end gap-1">
 												<Button variant="ghost" size="icon" onClick={() => restartTask(task.id)} title="Restart">
@@ -121,44 +129,63 @@ const ScheduleDashboard = ({ mobile = false }) => {
 												)}
 											</div>
 										</TableCell>
+									)}
 									</TableRow>
 								))}
 							</TableBody>
 						</Table>
+						</div>
 					)}
 				</CardContent>
 			</Card>
 
-			<Card className={cn("bg-surface border-border", mobile ? "w-full" : "w-full xl:w-96 xl:shrink-0")}>
-				<CardHeader>
-					<CardTitle className="text-primary">Schedule a Task</CardTitle>
-				</CardHeader>
-				<CardContent className="flex flex-col gap-4">
-					<CameraDateNumberPicker
-						numberType="Skip"
-						onChange={setPickerState}
-					/>
+			{isAdmin && (
+				<Card className={cn("bg-surface border-border", mobile ? "w-full" : "w-full xl:w-96 xl:shrink-0")}>
+					<CardHeader>
+						<CardTitle className="text-primary">Schedule a Task</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-col gap-4">
+						<CameraDateNumberPicker
+							numberType="Skip"
+							onChange={setPickerState}
+						/>
 
-					<Separator className="bg-border" />
+						<Separator className="bg-border" />
 
-					<Tabs value={outputType} onValueChange={setOutputType}>
-						<TabsList className="bg-surface-raised">
-							<TabsTrigger value="video" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-								Video
-							</TabsTrigger>
-							<TabsTrigger value="zip" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-								Zip
-							</TabsTrigger>
-						</TabsList>
-					</Tabs>
+						<Tabs value={outputType} onValueChange={setOutputType}>
+							<TabsList className="bg-surface-raised">
+								<TabsTrigger value="video" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+									Video
+								</TabsTrigger>
+								<TabsTrigger value="zip" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+									Zip
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
 
-					<Scheduler
-						url={url}
-						body={body}
-						onEnter={handleSchedule}
-					/>
-				</CardContent>
-			</Card>
+						{outputType === "video" && (
+							<div className="flex items-center justify-between">
+								<Label className="text-xs text-muted">FPS</Label>
+								<div className="flex items-center gap-1">
+									<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => Math.max(1, f - 5))}>
+										<Minus className="size-3" />
+									</Button>
+									<span className="w-8 text-center text-sm">{fps}</span>
+									<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => f + 5)}>
+										<Plus className="size-3" />
+									</Button>
+								</div>
+							</div>
+						)}
+
+						<Scheduler
+							url={url}
+							body={body}
+							onEnter={handleSchedule}
+						/>
+					</CardContent>
+				</Card>
+			)}
 			</div>
 
 			<Card className="bg-surface border-border">
@@ -171,6 +198,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 					) : runs.length === 0 ? (
 						<p className="text-muted text-sm">No runs recorded yet.</p>
 					) : (
+						<div className="max-h-80 overflow-y-auto">
 						<Table>
 							<TableHeader>
 								<TableRow className="border-border">
@@ -199,6 +227,7 @@ const ScheduleDashboard = ({ mobile = false }) => {
 								))}
 							</TableBody>
 						</Table>
+						</div>
 					)}
 				</CardContent>
 			</Card>

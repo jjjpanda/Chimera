@@ -103,7 +103,12 @@ const useAuth = () => {
 		})
 	}
 
-	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, tryLogin, trySetup]
+	const signOut = () => {
+		Cookies.remove("bearertoken")
+		setState(s => ({ ...s, loggedIn: false, role: null }))
+	}
+
+	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, tryLogin, trySetup, signOut]
 }
 
 export default useAuth

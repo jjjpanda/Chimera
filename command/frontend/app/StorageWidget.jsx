@@ -14,7 +14,7 @@ const StorageWidget = () => {
 
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
-	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
+	const maxCamGb = Math.max(...usage.cameras.map(c => c.used_gb), 0.001)
 
 	return (
 		<Card className="h-full">
@@ -22,30 +22,45 @@ const StorageWidget = () => {
 				<CardTitle className="text-sm font-medium">Storage Usage</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
-				<div className="flex h-3 w-full overflow-hidden rounded-full">
-					{usage.cameras.length > 0
-						? usage.cameras.map((cam, i) => (
-							<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
-						))
-						: <div className="flex-1 rounded-full bg-muted" />
-					}
-				</div>
+				{usage.cameras.length > 0 ? (
+					<div className="flex flex-col gap-2">
+						{usage.cameras.map((cam, i) => (
+							<div key={cam.id} className="flex flex-col gap-1">
+								<div className="flex items-center justify-between text-xs">
+									<span className="flex items-center gap-1.5 text-primary">
+										<span className="inline-block size-2 rounded-full shrink-0" style={{ backgroundColor: segmentColor(i) }} />
+										{cam.name}
+									</span>
+									<span className="text-muted">{formatBytes(cam.used_gb * 1e9, 1)}</span>
+								</div>
+								<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+									<div
+										className="h-full rounded-full transition-all"
+										style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: segmentColor(i) }}
+									/>
+								</div>
+							</div>
+						))}
+					</div>
+				) : (
+					<div className="h-2 w-full rounded-full bg-muted" />
+				)}
+
 				{usage.max_gb > 0 && (
-					<div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-						<div
-							className="h-full rounded-full bg-primary transition-all"
-							style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
-						/>
+					<div className="flex flex-col gap-1">
+						<div className="flex items-center justify-between text-xs text-muted">
+							<span>Total</span>
+							<span>{Math.round(Math.min(100, (usage.used_gb / usage.max_gb) * 100))}%</span>
+						</div>
+						<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+							<div
+								className="h-full rounded-full bg-primary transition-all"
+								style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
+							/>
+						</div>
 					</div>
 				)}
-				<div className="flex flex-wrap gap-x-3 gap-y-1">
-					{usage.cameras.map((cam, i) => (
-						<span key={cam.id} className="flex items-center gap-1 text-xs text-muted">
-							<span className="inline-block size-2 rounded-full" style={{ backgroundColor: segmentColor(i) }} />
-							{cam.name}
-						</span>
-					))}
-				</div>
+
 				<p className="text-xs text-muted">
 					{usage.max_gb > 0
 						? `${formatBytes(usedBytes, 1)} / ${formatBytes(maxBytes, 1)} USED`

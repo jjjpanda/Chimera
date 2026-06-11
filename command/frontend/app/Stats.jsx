@@ -71,6 +71,7 @@ const Stats = () => {
 	const maxBytes = usage.max_gb * 1e9
 	const sortedCameras = [...usage.cameras].sort((a, b) => b.used_gb - a.used_gb)
 	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
+	const maxCamGb = Math.max(...usage.cameras.map(c => c.used_gb), 0.001)
 
 	return (
 		<div className="space-y-4">
@@ -196,31 +197,41 @@ const Stats = () => {
 						)}
 					</div>
 				</CardHeader>
-				<CardContent className="flex flex-col divide-y divide-border p-0 pb-2">
-					{sortedCameras.map((cam, i) => (
-						<div key={cam.id} className="flex items-center gap-3 px-4 py-3">
-							<div className="size-3 rounded-full shrink-0" style={{ backgroundColor: segmentColor(i) }} />
-							<div className="flex-1 min-w-0">
-								<p className="text-sm font-medium">{cam.name}</p>
+				<CardContent className="p-0 pb-2">
+					<div className="flex flex-col divide-y divide-border overflow-y-auto max-h-96">
+						{sortedCameras.map((cam, i) => (
+							<div key={cam.id} className="flex flex-col gap-1.5 px-4 py-3">
+								<div className="flex items-center gap-3">
+									<div className="size-3 rounded-full shrink-0" style={{ backgroundColor: segmentColor(i) }} />
+									<div className="flex-1 min-w-0">
+										<p className="text-sm font-medium">{cam.name}</p>
+									</div>
+									<p className="text-sm font-semibold">
+										{formatBytes(cam.used_gb * 1e9, 1)}
+									</p>
+									{isAdmin ? (
+										<Button
+											variant="outline"
+											size="sm"
+											className="text-danger border-danger hover:bg-danger/10 shrink-0 ml-2"
+											disabled={deleting}
+											onClick={() => setPending({ type: "camera", cameraId: cam.id, cameraName: cam.name })}
+										>
+											Clear
+										</Button>
+									) : (
+										<ChevronRight className="size-4 text-muted shrink-0 ml-1" />
+									)}
+								</div>
+								<div className="ml-[22px] h-1.5 overflow-hidden rounded-full bg-muted">
+									<div
+										className="h-full rounded-full transition-all"
+										style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: segmentColor(i) }}
+									/>
+								</div>
 							</div>
-							<p className="text-sm font-semibold">
-								{formatBytes(cam.used_gb * 1e9, 1)}
-							</p>
-							{isAdmin ? (
-								<Button
-									variant="outline"
-									size="sm"
-									className="text-danger border-danger hover:bg-danger/10 shrink-0 ml-2"
-									disabled={deleting}
-									onClick={() => setPending({ type: "camera", cameraId: cam.id, cameraName: cam.name })}
-								>
-									Clear
-								</Button>
-							) : (
-								<ChevronRight className="size-4 text-muted shrink-0 ml-1" />
-							)}
-						</div>
-					))}
+						))}
+					</div>
 					{isAdmin && sortedCameras.length > 0 && (
 						<div className="px-4 pt-3 pb-1">
 							<Button

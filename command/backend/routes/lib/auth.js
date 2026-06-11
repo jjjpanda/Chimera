@@ -35,6 +35,7 @@ module.exports = {
 
 	login: (req, res) => {
 		const { username } = req.body
+		pool.query("UPDATE auth SET last_login = NOW() WHERE username = $1", [username]).catch(() => {})
 		jwt.sign({ username, role: req.userRole }, secretKey, { expiresIn: "30d" },
 			(err, token) => {
 				res.cookie("bearertoken", `Bearer ${token}`, {

@@ -43,7 +43,7 @@ const TaskList = (props) => {
 			return <p className="py-4 text-center text-sm text-muted">No tasks</p>
 		}
 		return (
-			<ul className="divide-y divide-border">
+			<ul className="divide-y divide-border max-h-56 overflow-y-auto">
 				{items.map((item) => (
 					<li key={item.id} className="flex items-center gap-3 py-2">
 						<ArrowRight className="size-3.5 shrink-0 text-muted" />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
+import moment from "moment"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/table"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -9,10 +9,11 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 
 const ROLES = ["user", "admin"]
 
-const AdminPanel = () => {
+const AdminPanel = ({ withButton } = {}) => {
 	const [users, setUsers] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [addOpen, setAddOpen] = useState(false)
@@ -84,6 +85,35 @@ const AdminPanel = () => {
 		})
 	}
 
+	if (withButton) {
+		return (
+			<Card className="h-full">
+				<CardHeader className="pb-2">
+					<div className="flex items-center justify-between">
+						<CardTitle className="text-sm">Users</CardTitle>
+						<NavigateToRoute to="/admin" />
+					</div>
+				</CardHeader>
+				<CardContent>
+					{loading ? (
+						<p className="py-4 text-center text-sm text-muted">Loading…</p>
+					) : (
+						<ul className="divide-y divide-border">
+							{users.map(user => (
+								<li key={user.username} className="flex items-center justify-between py-2">
+									<span className="text-sm text-primary">{user.username}</span>
+									<Badge className={user.role === "admin" ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted border border-border"}>
+										{user.role}
+									</Badge>
+								</li>
+							))}
+						</ul>
+					)}
+				</CardContent>
+			</Card>
+		)
+	}
+
 	return (
 		<div className="p-4">
 			<Card className="bg-surface border-border">
@@ -142,28 +172,20 @@ const AdminPanel = () => {
 					</Dialog>
 				</CardHeader>
 				<CardContent>
-					<Table>
-						<TableHeader>
-							<TableRow className="border-border hover:bg-transparent">
-								<TableHead className="text-muted">Username</TableHead>
-								<TableHead className="text-muted">Role</TableHead>
-								<TableHead className="text-muted">Actions</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{loading ? (
-								<TableRow>
-									<TableCell colSpan={3} className="text-center text-muted">Loading...</TableCell>
-								</TableRow>
-							) : users.map(user => (
-								<TableRow key={user.username} className="border-border hover:bg-surface-raised">
-									<TableCell className="text-primary">{user.username}</TableCell>
-									<TableCell>
-										<Badge className={user.role === "admin" ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted border border-border"}>
-											{user.role}
-										</Badge>
-									</TableCell>
-									<TableCell className="flex gap-2">
+					{loading ? (
+						<p className="py-4 text-center text-sm text-muted">Loading…</p>
+					) : (
+						<ul className="divide-y divide-border">
+							{users.map(user => (
+								<li key={user.username} className="flex flex-wrap items-center gap-2 py-3">
+									<div className="flex-1 min-w-0">
+										<p className="text-primary font-medium truncate">{user.username}</p>
+										<p className="text-xs text-muted">{user.last_login ? moment(user.last_login).fromNow() : "never logged in"}</p>
+									</div>
+									<Badge className={user.role === "admin" ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted border border-border"}>
+										{user.role}
+									</Badge>
+									<div className="flex gap-2">
 										<Dialog open={editTarget?.username === user.username} onOpenChange={open => {
 											if (open) { setEditTarget(user); setEditForm({ role: user.role, password: "" }) }
 											else setEditTarget(null)
@@ -226,11 +248,11 @@ const AdminPanel = () => {
 												</DialogFooter>
 											</DialogContent>
 										</Dialog>
-									</TableCell>
-								</TableRow>
+									</div>
+								</li>
 							))}
-						</TableBody>
-					</Table>
+						</ul>
+					)}
 				</CardContent>
 			</Card>
 		</div>
