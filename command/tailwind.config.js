@@ -5,21 +5,29 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				bg: "#130800",
+				bg: "#050505",
 				surface: {
-					DEFAULT: "#2A1005",
-					raised: "#3D1A0A"
+					DEFAULT: "#0F0F12",
+					raised: "#17171C"
 				},
 				accent: {
-					DEFAULT: "#C97B3A",
-					foreground: "#1A0A02"
+					DEFAULT: "#8f0b0b",
+					foreground: "#FFFFFF"
 				},
-				primary: "#F5EDE3",
-				muted: "#9A7A6A",
-				border: "#4A2510",
+				secondary: {
+					DEFAULT: "#8F4EC7",
+					foreground: "#FFFFFF"
+				},
+				primary: "#F5F5F7",
+				muted: "#A1A1AA",
+				border: "#27272A",
+				info: {
+					DEFAULT: "#24B2F0",
+					foreground: "#081018"
+				},
 				danger: {
-					DEFAULT: "#E05252",
-					foreground: "#F5EDE3"
+					DEFAULT: "#912a2a",
+					foreground: "#FFFFFF"
 				}
 			},
 			fontFamily: {
