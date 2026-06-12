@@ -1,7 +1,9 @@
 const supertest = require("supertest")
 const app = require("../backend/storage.js")
 
-var {generateID, fileName, parseFileName}    = require("../backend/routes/lib/converter.js")
+const moment = require("moment")
+var {generateID, fileName, parseFileName, validateDays}    = require("../backend/routes/lib/converter.js")
+const dateFormat = require("../backend/routes/lib/dateFormat.js")
 
 const fileList = [
 	"20210101-000000-00.jpg",
@@ -107,6 +109,57 @@ describe("Convert Routes", () => {
 				.send({})
 				.set("Cookie", "userCookie")
 				.expect(403, done)
+		})
+	})
+
+	describe("validateDays window", () => {
+		test("hours sets a start/end window ending now", () => {
+			const req = { body: { hours: 5 } }
+			const next = jest.fn()
+			validateDays(req, {}, next)
+			const start = moment(req.body.start, dateFormat)
+			const end = moment(req.body.end, dateFormat)
+			expect(end.diff(start, "hours")).toBe(5)
+			expect(next).toHaveBeenCalled()
+		})
+
+		test("days sets a start/end window ending now", () => {
+			const req = { body: { days: 2 } }
+			const next = jest.fn()
+			validateDays(req, {}, next)
+			const start = moment(req.body.start, dateFormat)
+			const end = moment(req.body.end, dateFormat)
+			expect(end.diff(start, "days")).toBe(2)
+			expect(next).toHaveBeenCalled()
+		})
+
+		test("hours takes precedence over days", () => {
+			const req = { body: { hours: 1, days: 30 } }
+			const next = jest.fn()
+			validateDays(req, {}, next)
+			const start = moment(req.body.start, dateFormat)
+			const end = moment(req.body.end, dateFormat)
+			expect(end.diff(start, "hours")).toBe(1)
+			expect(next).toHaveBeenCalled()
+		})
+
+		test("neither leaves the window untouched", () => {
+			const req = { body: { camera: 1 } }
+			const next = jest.fn()
+			validateDays(req, {}, next)
+			expect(req.body.start).toBeUndefined()
+			expect(req.body.end).toBeUndefined()
+			expect(next).toHaveBeenCalled()
+		})
+	})
+
+	describe("/convert/listFramesVideo with hours", () => {
+		test("hours window flows through the middleware chain", (done) => {
+			supertest(app)
+				.post("/convert/listFramesVideo")
+				.send({ camera: 1, hours: 5 })
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200, { list: [] }, done)
 		})
 	})
 

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
-import { RotateCcw, Square, Trash2, Minus, Plus } from "lucide-react"
+import { Trash2, Minus, Plus } from "lucide-react"
 
 import useTasks from "../hooks/useTasks.js"
 import useScheduler from "../hooks/useScheduler.js"
@@ -12,13 +12,24 @@ import useTaskRuns from "../hooks/useTaskRuns.js"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Badge } from "../components/ui/badge"
+import { Switch } from "../components/ui/switch"
 import { Label } from "../components/ui/label"
 import { Separator } from "../components/ui/separator"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog"
 
-import CameraDateNumberPicker from "./CameraDateNumberPicker"
 import Scheduler from "./Scheduler"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
+import { Input } from "../components/ui/input"
+
+const SCHEDULE_PRESETS = [
+	{ label: "30m", hours: 0.5 },
+	{ label: "1h",  hours: 1 },
+	{ label: "4h",  hours: 4 },
+	{ label: "12h", hours: 12 },
+	{ label: "24h", hours: 24 },
+]
 
 import { cn } from "../lib/utils"
 
@@ -31,51 +42,71 @@ const humanCron = (cronString) => {
 	}
 }
 
-const taskSummary = (task) => {
-	const label = task.url?.split("/").filter(Boolean).join(" › ") ?? task.url ?? "—"
-	const cam = task.body?.camera ? `cam ${task.body.camera}` : null
-	return cam ? `${label} · ${cam}` : label
+const taskSummary = (task, cameras = []) => {
+	const parts = task.url?.split("/").filter(Boolean) ?? []
+	const label = parts.map((p, i) =>
+		i === parts.length - 1 ? p.replace(/^create/i, "").toLowerCase() : p
+	).join(" › ") || "—"
+	const camId = task.body?.camera
+	const cam = camId
+		? (cameras.find(c => String(c.id) === String(camId))?.name ?? `cam ${camId}`)
+		: null
+	const hours = task.body?.hours
+	const window = hours != null ? `past ${hours < 1 ? `${hours * 60}m` : `${hours}h`}` : null
+	return [label, cam, window].filter(Boolean).join(" · ")
 }
 
 const ScheduleDashboard = ({ mobile = false }) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
-	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
+	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
 	const [{ runs, loading: runsLoading }, refreshRuns] = useTaskRuns()
 
-	const [pickerState, setPickerState] = useState(null)
+	const [deleteTarget, setDeleteTarget] = useState(null)
+
 	const [outputType, setOutputType] = useState("video")
 	const [fps, setFps] = useState(20)
+	const [schedCamera, setSchedCamera] = useState(0)
+	const [schedPreset, setSchedPreset] = useState(SCHEDULE_PRESETS[1])
+	const [schedSkip, setSchedSkip] = useState(1)
+	const [schedulerKey, setSchedulerKey] = useState(0)
 
-	const buildBody = (state) => {
-		const cam = cameras[state.camera]
-		if (!cam) return null
-		return {
+	const handleSchedule = (url, cronString) => {
+		const cam = cameras[schedCamera]
+		if (!cam || !schedPreset) return
+		const body = {
 			camera: String(cam.id),
-			start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
-			end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
-			skip: state.number,
+			hours: schedPreset.hours,
+			skip: schedSkip,
 			save: true,
 			...(outputType === "video" ? { fps } : {})
 		}
-	}
-
-	const handleSchedule = (url, _body, cronString) => {
-		if (!pickerState) return
-		const body = buildBody(pickerState)
-		if (!body) return
 		scheduleTask(url, JSON.stringify(body), cronString, () => {
-			setPickerState(null)
+			setSchedulerKey(k => k + 1)
+			reloadTasks()
 		})
 	}
 
 	const url = outputType === "video" ? "/convert/createVideo" : "/convert/createZip"
-	const body = pickerState ? JSON.stringify(buildBody(pickerState) ?? {}) : "{}"
 
 	return (
 		<div className="flex flex-col gap-6">
+		<Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+			<DialogContent className="max-w-sm">
+				<DialogHeader>
+					<DialogTitle>Delete task?</DialogTitle>
+					<DialogDescription>
+						{deleteTarget ? taskSummary(deleteTarget, cameras) : ""}
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+					<Button variant="destructive" onClick={() => { deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 			<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
 			<Card className="flex-1 bg-surface border-border">
 				<CardHeader>
@@ -94,7 +125,6 @@ const ScheduleDashboard = ({ mobile = false }) => {
 									<TableHead className="text-muted">ID</TableHead>
 									<TableHead className="text-muted">Schedule</TableHead>
 									<TableHead className="text-muted">Task</TableHead>
-									<TableHead className="text-muted">Status</TableHead>
 									{isAdmin && <TableHead className="text-muted text-right">Actions</TableHead>}
 								</TableRow>
 							</TableHeader>
@@ -105,25 +135,18 @@ const ScheduleDashboard = ({ mobile = false }) => {
 										<TableCell className="text-primary text-xs max-w-40 truncate" title={humanCron(task.cronString)}>
 											{humanCron(task.cronString)}
 										</TableCell>
-										<TableCell className="text-muted text-xs max-w-48 truncate" title={taskSummary(task)}>
-											{taskSummary(task)}
-										</TableCell>
-										<TableCell>
-											<Badge className={task.running ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted"}>
-												{task.running ? "running" : "stopped"}
-											</Badge>
+										<TableCell className="text-muted text-xs max-w-48 truncate" title={taskSummary(task, cameras)}>
+											{taskSummary(task, cameras)}
 										</TableCell>
 										{isAdmin && (
 										<TableCell className="text-right">
-											<div className="flex justify-end gap-1">
-												<Button variant="ghost" size="icon" onClick={() => restartTask(task.id)} title="Restart">
-													<RotateCcw className="h-4 w-4 text-accent" />
-												</Button>
-												<Button variant="ghost" size="icon" onClick={() => stopTask(task.id)} title="Stop">
-													<Square className="h-4 w-4 text-muted" />
-												</Button>
+											<div className="flex justify-end items-center gap-2">
+												<Switch
+													checked={task.running}
+													onCheckedChange={() => task.running ? stopTask(task.id) : restartTask(task.id)}
+												/>
 												{!task.protected && (
-													<Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} title="Destroy">
+													<Button variant="ghost" size="icon" onClick={() => setDeleteTarget(task)} title="Destroy">
 														<Trash2 className="h-4 w-4 text-danger" />
 													</Button>
 												)}
@@ -145,10 +168,53 @@ const ScheduleDashboard = ({ mobile = false }) => {
 						<CardTitle className="text-primary">Schedule a Task</CardTitle>
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
-						<CameraDateNumberPicker
-							numberType="Skip"
-							onChange={setPickerState}
-						/>
+						<div className="flex flex-col gap-1.5">
+							<Label className="text-xs text-muted">Camera</Label>
+							<Select value={String(schedCamera)} onValueChange={v => setSchedCamera(parseInt(v))}>
+								<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
+								<SelectContent>
+									{cameras.map((cam, i) => (
+										<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+
+						<div className="flex flex-col gap-1.5">
+							<Label className="text-xs text-muted">Window</Label>
+							<div className="flex gap-1">
+								{SCHEDULE_PRESETS.map(p => (
+									<Button
+										key={p.label}
+										variant={schedPreset?.label === p.label ? "default" : "outline"}
+										size="sm"
+										className="flex-1 px-0"
+										onClick={() => setSchedPreset(p)}
+									>
+										{p.label}
+									</Button>
+								))}
+							</div>
+						</div>
+
+						<div className="flex items-center justify-between">
+							<Label className="text-xs text-muted">Skip</Label>
+							<div className="flex items-center gap-1">
+								<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
+									<Minus className="size-3" />
+								</Button>
+								<Input
+									type="number"
+									min={1}
+									value={schedSkip}
+									onChange={e => setSchedSkip(Math.max(1, parseInt(e.target.value) || 1))}
+									className="w-12 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+								/>
+								<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => s + 1)}>
+									<Plus className="size-3" />
+								</Button>
+							</div>
+						</div>
 
 						<Separator className="bg-border" />
 
@@ -179,8 +245,8 @@ const ScheduleDashboard = ({ mobile = false }) => {
 						)}
 
 						<Scheduler
+							key={schedulerKey}
 							url={url}
-							body={body}
 							onEnter={handleSchedule}
 						/>
 					</CardContent>

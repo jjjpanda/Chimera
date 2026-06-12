@@ -22,7 +22,7 @@ const cronIsInvalid = (cronString) => {
 	}
 }
 
-const Scheduler = ({ cronString: initial = "", url, body, onEnter }) => {
+const Scheduler = ({ cronString: initial = "", url, onEnter }) => {
 	const [cronString, setCronString] = useState(initial)
 
 	return (
@@ -33,7 +33,7 @@ const Scheduler = ({ cronString: initial = "", url, body, onEnter }) => {
 					onChange={(e) => setCronString(e.target.value)}
 					placeholder="* * * * *"
 				/>
-				<Button disabled={cronIsInvalid(cronString)} onClick={() => onEnter(url, body, cronString)}>
+				<Button disabled={cronIsInvalid(cronString)} onClick={() => onEnter(url, cronString)}>
 					Schedule
 				</Button>
 			</div>

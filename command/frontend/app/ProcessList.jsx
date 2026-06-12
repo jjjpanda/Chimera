@@ -171,8 +171,7 @@ const ProcessList = (props) => {
 						{dialog.days ? (
 							<Scheduler
 								url={dialog.processType === "video" ? "/convert/createVideo" : "/convert/createZip"}
-								body=""
-								onEnter={(url, body, cronString) => scheduleProcessFn(dialog.processType, cronString)}
+								onEnter={(url, cronString) => scheduleProcessFn(dialog.processType, cronString)}
 							/>
 						) : (
 							<DialogFooter>

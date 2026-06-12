@@ -21,6 +21,8 @@ const AdminPanel = ({ withButton } = {}) => {
 	const [editTarget, setEditTarget] = useState(null)
 	const [editForm, setEditForm] = useState({ role: "", password: "" })
 	const [deleteTarget, setDeleteTarget] = useState(null)
+	const [expandedSessions, setExpandedSessions] = useState({})
+	const [sessions, setSessions] = useState({})
 
 	const fetchUsers = () => {
 		setLoading(true)
@@ -69,6 +71,33 @@ const AdminPanel = ({ withButton } = {}) => {
 				fetchUsers()
 			}
 		})
+	}
+
+	const toggleSessions = (username) => {
+		if (expandedSessions[username]) {
+			setExpandedSessions(s => ({ ...s, [username]: false }))
+			return
+		}
+		setExpandedSessions(s => ({ ...s, [username]: true }))
+		request(`/authorization/users/${encodeURIComponent(username)}/sessions`, { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+			.then(data => {
+				if (!data.error) setSessions(s => ({ ...s, [username]: data }))
+			})
+	}
+
+	const revokeSession = (username, id) => {
+		request(`/authorization/sessions/${id}`, { method: "DELETE" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+			.then(res => {
+				if (res.error) {
+					toast("Failed to revoke session")
+				} else {
+					toast("Session revoked")
+					setSessions(s => ({
+						...s,
+						[username]: (s[username] || []).map(sess => sess.id === id ? { ...sess, revoked: true } : sess)
+					}))
+				}
+			})
 	}
 
 	const deleteUser = () => {
@@ -177,7 +206,8 @@ const AdminPanel = ({ withButton } = {}) => {
 					) : (
 						<ul className="divide-y divide-border">
 							{users.map(user => (
-								<li key={user.username} className="flex flex-wrap items-center gap-2 py-3">
+								<li key={user.username} className="py-3">
+									<div className="flex flex-wrap items-center gap-2">
 									<div className="flex-1 min-w-0">
 										<p className="text-primary font-medium truncate">{user.username}</p>
 										<p className="text-xs text-muted">{user.last_login ? moment(user.last_login).fromNow() : "never logged in"}</p>
@@ -186,6 +216,9 @@ const AdminPanel = ({ withButton } = {}) => {
 										{user.role}
 									</Badge>
 									<div className="flex gap-2">
+										<Button size="sm" variant="outline" className="border-border text-primary hover:bg-surface-raised" onClick={() => toggleSessions(user.username)}>
+											{expandedSessions[user.username] ? "Hide Sessions" : "Sessions"}
+										</Button>
 										<Dialog open={editTarget?.username === user.username} onOpenChange={open => {
 											if (open) { setEditTarget(user); setEditForm({ role: user.role, password: "" }) }
 											else setEditTarget(null)
@@ -249,6 +282,32 @@ const AdminPanel = ({ withButton } = {}) => {
 											</DialogContent>
 										</Dialog>
 									</div>
+									</div>
+									{expandedSessions[user.username] && (
+										<div className="mt-2 ml-1 border-l-2 border-border pl-3">
+											{!(sessions[user.username]) ? (
+												<p className="text-xs text-muted py-1">Loading…</p>
+											) : sessions[user.username].length === 0 ? (
+												<p className="text-xs text-muted py-1">No sessions</p>
+											) : (
+												<ul className="flex flex-col gap-1">
+													{sessions[user.username].map(sess => (
+														<li key={sess.id} className={`flex items-start justify-between gap-2 py-1 ${sess.revoked ? "opacity-40" : ""}`}>
+															<div className="flex flex-col min-w-0">
+																<span className="text-xs text-primary">{sess.ip || "unknown IP"} · {sess.user_agent ? sess.user_agent.slice(0, 60) + (sess.user_agent.length > 60 ? "…" : "") : "unknown agent"}</span>
+																<span className="text-xs text-muted">issued {moment(sess.issued_at).fromNow()} · {sess.last_seen ? `seen ${moment(sess.last_seen).fromNow()}` : "never seen"}</span>
+															</div>
+															{sess.revoked ? (
+																<Badge className="bg-surface-raised text-muted border border-border shrink-0">revoked</Badge>
+															) : (
+																<Button size="sm" variant="outline" className="border-danger text-danger hover:bg-danger/10 shrink-0" onClick={() => revokeSession(user.username, sess.id)}>Revoke</Button>
+															)}
+														</li>
+													))}
+												</ul>
+											)}
+										</div>
+									)}
 								</li>
 							))}
 						</ul>

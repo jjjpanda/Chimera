@@ -70,10 +70,13 @@ module.exports = {
 	},
 
 	validateDays: (req, res, next) => {
-		let { days } = req.body
-		if(days != undefined){
-			req.start = moment().subtract(days, "days")
-			req.end = moment()
+		const { days, hours } = req.body
+		if (hours != undefined) {
+			req.body.start = moment().subtract(hours, "hours").format(dateFormat)
+			req.body.end = moment().format(dateFormat)
+		} else if (days != undefined) {
+			req.body.start = moment().subtract(days, "days").format(dateFormat)
+			req.body.end = moment().format(dateFormat)
 		}
 		next()
 	},

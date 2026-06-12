@@ -5,8 +5,9 @@ import NavigateToRoute from "./NavigateToRoute.jsx"
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
+import { Switch } from "../components/ui/switch"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
-import { RotateCcw, Square, Trash2, ArrowRight } from "lucide-react"
+import { Trash2, ArrowRight } from "lucide-react"
 
 import moment from "moment"
 import cronstrue from "cronstrue"
@@ -52,18 +53,11 @@ const TaskList = (props) => {
 							<p className="text-xs text-muted">{humanCron(item.cronString)}</p>
 						</div>
 						{role === "admin" && (
-							<div className="flex shrink-0 gap-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-7"
-									onClick={() => item.running ? stopTask(item.id) : restartTask(item.id)}
-								>
-									{item.running
-										? <Square className="size-3.5" />
-										: <RotateCcw className="size-3.5" />
-									}
-								</Button>
+							<div className="flex shrink-0 items-center gap-2">
+								<Switch
+									checked={item.running}
+									onCheckedChange={() => item.running ? stopTask(item.id) : restartTask(item.id)}
+								/>
 								{item.id !== "task-auto-cleanup" && (
 									<Button
 										variant="ghost"

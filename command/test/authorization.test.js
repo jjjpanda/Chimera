@@ -373,4 +373,79 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: true, errors: "cannot delete last admin" })
 		})
 	})
+
+	describe("GET /authorization/users/:username/sessions", () => {
+		test("redirects to login with no token", async () => {
+			const res = await supertest(app).get("/authorization/users/bob/sessions")
+			expect(res.status).toBe(303)
+		})
+
+		test("returns 403 for non-admin token", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
+			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const res = await supertest(app)
+				.get("/authorization/users/bob/sessions")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(403)
+		})
+
+		test("returns 200 with session list for admin", async () => {
+			const sessions = [{ id: 1, issued_at: "t", last_seen: null, ip: "1.2.3.4", user_agent: "ua", revoked: false }]
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: sessions })
+			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const res = await supertest(app)
+				.get("/authorization/users/bob/sessions")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual(sessions)
+		})
+	})
+
+	describe("DELETE /authorization/sessions/:id", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).delete("/authorization/sessions/1")
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 403 for non-admin token", async () => {
+			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const res = await supertest(app)
+				.delete("/authorization/sessions/1")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(403)
+		})
+
+		test("returns 400 for non-numeric id", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const res = await supertest(app)
+				.delete("/authorization/sessions/abc")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test("returns 404 when session does not exist", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const res = await supertest(app)
+				.delete("/authorization/sessions/999")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(404)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test("returns 200 on successful revoke", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }], rowCount: 1 })
+			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const res = await supertest(app)
+				.delete("/authorization/sessions/5")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+	})
 })

@@ -1,6 +1,7 @@
 const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
+const { randomUUID } = require("crypto")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -33,10 +34,18 @@ module.exports = {
 		})
 	},
 
-	login: (req, res) => {
+	login: async (req, res) => {
 		const { username } = req.body
+		const jti = randomUUID()
+		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim() || null
+		const userAgent = req.headers["user-agent"] || null
 		pool.query("UPDATE auth SET last_login = NOW() WHERE username = $1", [username]).catch(() => {})
-		jwt.sign({ username, role: req.userRole }, secretKey, { expiresIn: "30d" },
+		try {
+			await pool.query("INSERT INTO sessions(username, jti, ip, user_agent) VALUES($1, $2, $3, $4)", [username, jti, ip, userAgent])
+		} catch {
+			return res.status(500).json({ error: true })
+		}
+		jwt.sign({ username, role: req.userRole, jti }, secretKey, { expiresIn: "30d" },
 			(err, token) => {
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000

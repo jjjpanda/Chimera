@@ -87,11 +87,14 @@ const useTasks = () => {
 		listTasks(setState)
 	}, [key])
 
+	const reload = () => setKey(k => k + 1)
+
 	return [
-		state, 
+		state,
 		restartTasksGenerator(key, setKey),
 		stopTasksGenerator(key, setKey),
-		deleteTasksGenerator(key, setKey)
+		deleteTasksGenerator(key, setKey),
+		reload
 	]
 }
 

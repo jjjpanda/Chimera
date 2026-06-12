@@ -340,6 +340,8 @@ const ClipMaker = ({ mini } = {}) => {
 		return counts.length > 0 ? Math.max(...counts) : 0
 	}, [multiCam, camStates])
 
+	const multiRows = selectedCams.length > 0 ? Math.ceil(selectedCams.length / 2) : 2
+
 	// multi-cam: paint canvases on scrub, syncing by timestamp
 	useEffect(() => {
 		if (!multiCam) return
@@ -582,7 +584,7 @@ const ClipMaker = ({ mini } = {}) => {
 		el.setPointerCapture(e.pointerId)
 		const startY = e.clientY
 		const startH = previewHeight
-		const maxH = (multiCam ? 0.5 : 1) * Math.min(window.innerWidth * 9/16, window.innerHeight * 0.75)
+		const maxH = Math.min(window.innerWidth * 9/16, window.innerHeight * 2/3) / (multiCam ? multiRows : 1)
 		const move = (ev) => setPreviewHeight(clamp(startH + ev.clientY - startY, 80, maxH))
 		const up = () => {
 			el.removeEventListener("pointermove", move)
@@ -617,7 +619,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 			{multiCam ? (
 				<>
-					<div className="relative w-full grid grid-cols-2 gap-px bg-border" style={{ height: previewHeight * 2 }}>
+					<div className="relative w-full grid grid-cols-2 gap-px bg-border" style={{ height: previewHeight * multiRows }}>
 						{[0, 1, 2, 3].map(i => {
 							const camIdx = selectedCams[i]
 							const cam = camIdx !== undefined ? cameras[camIdx] : null
@@ -654,14 +656,12 @@ const ClipMaker = ({ mini } = {}) => {
 							)
 						})}
 					</div>
-					{multiFrameCount > 0 && (
-						<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-							<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-							<div className="absolute right-2 z-10 bg-background">
-								<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
-							</div>
+					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
+						<div className="absolute right-2 z-10 bg-background">
+							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
 						</div>
-					)}
+					</div>
 				</>
 			) : (
 				<>
@@ -676,14 +676,12 @@ const ClipMaker = ({ mini } = {}) => {
 							<ImageOff className="h-10 w-10 opacity-40 text-muted" />
 						)}
 					</div>
-					{frames.length > 0 && (
-						<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-							<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-							<div className="absolute right-2 z-10 bg-background">
-								<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
-							</div>
+					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
+						<div className="absolute right-2 z-10 bg-background">
+							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
 						</div>
-					)}
+					</div>
 				</>
 			)}
 
