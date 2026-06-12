@@ -5,29 +5,29 @@ module.exports = {
 	theme: {
 		extend: {
 			colors: {
-				bg: "#050505",
+				bg: "rgb(var(--color-bg) / <alpha-value>)",
 				surface: {
-					DEFAULT: "#0F0F12",
-					raised: "#17171C"
+					DEFAULT: "rgb(var(--color-surface) / <alpha-value>)",
+					raised: "rgb(var(--color-surface-raised) / <alpha-value>)"
 				},
 				accent: {
-					DEFAULT: "#8f0b0b",
-					foreground: "#FFFFFF"
+					DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
+					foreground: "rgb(var(--color-accent-fg) / <alpha-value>)"
 				},
 				secondary: {
-					DEFAULT: "#9651d2",
-					foreground: "#FFFFFF"
+					DEFAULT: "rgb(var(--color-secondary) / <alpha-value>)",
+					foreground: "rgb(var(--color-secondary-fg) / <alpha-value>)"
 				},
-				primary: "#F5F5F7",
-				muted: "#8a8a94",
-				border: "#27272A",
+				primary: "rgb(var(--color-primary) / <alpha-value>)",
+				muted: "rgb(var(--color-muted) / <alpha-value>)",
+				border: "rgb(var(--color-border) / <alpha-value>)",
 				info: {
-					DEFAULT: "#24B2F0",
-					foreground: "#081018"
+					DEFAULT: "rgb(var(--color-info) / <alpha-value>)",
+					foreground: "rgb(var(--color-info-fg) / <alpha-value>)"
 				},
 				danger: {
-					DEFAULT: "#912a2a",
-					foreground: "#FFFFFF"
+					DEFAULT: "rgb(var(--color-danger) / <alpha-value>)",
+					foreground: "rgb(var(--color-danger-fg) / <alpha-value>)"
 				}
 			},
 			fontFamily: {

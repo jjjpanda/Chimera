@@ -91,7 +91,7 @@ const Stats = () => {
 					{usage.max_gb > 0 && (
 						<div className="flex items-center gap-2">
 							<span className="text-[10px] text-muted w-14 shrink-0">vs max</span>
-							<div className="flex h-3 flex-1 overflow-hidden rounded-full bg-muted">
+							<div className="flex h-3 flex-1 overflow-hidden rounded-full bg-border">
 								<div
 									className="h-full rounded-full bg-primary transition-all"
 									style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}

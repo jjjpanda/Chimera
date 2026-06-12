@@ -1,15 +1,18 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users } from "lucide-react"
+import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, Sun, Moon } from "lucide-react"
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
+import { useTheme } from "./ThemeContext.jsx"
 import SignOutButton from "./SignOutButton.jsx"
+import { Switch } from "../components/ui/switch"
 import { cn } from "../lib/utils"
 
 const SideMenu = ({ index, mobile }) => {
 	const role = useRole()
 	const navigate = useNavigate()
+	const { dark, toggle } = useTheme()
 
 	const mobileTabs = [
 		{ key: "route-1", icon: Scissors, title: "Clip" },
@@ -86,7 +89,13 @@ const SideMenu = ({ index, mobile }) => {
 				})}
 			</nav>
 			<div className="px-2 py-3">
-				<SignOutButton className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors text-muted hover:bg-surface-raised hover:text-primary" />
+				<div className="flex items-center gap-2 rounded-md px-3 py-2 text-muted">
+					<Moon className="size-4 shrink-0" />
+					<Switch checked={!dark} onCheckedChange={toggle} />
+					<Sun className="size-4 shrink-0" />
+					<div className="mx-1 h-4 w-px bg-border" />
+					<SignOutButton className="flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary" iconOnly={false} />
+				</div>
 			</div>
 		</aside>
 	)

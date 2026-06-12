@@ -1,6 +1,9 @@
 import React from "react"
 import { Navigate } from "react-router-dom"
+import { Sun, Moon } from "lucide-react"
 import { useRole } from "./AuthContext"
+import { useTheme } from "./ThemeContext.jsx"
+import { Switch } from "../components/ui/switch"
 
 import LiveVideo from "./LiveVideo"
 import ClipMaker from "./ClipMaker"
@@ -14,6 +17,7 @@ import SignOutButton from "./SignOutButton.jsx"
 
 const MobileView = ({ index }) => {
 	const role = useRole()
+	const { dark, toggle } = useTheme()
 
 	if (index === "route-1") return <ClipMaker />
 
@@ -33,7 +37,15 @@ const MobileView = ({ index }) => {
 			<ClipMaker mini />
 			<Status withUsers={role === "admin"} />
 			{role === "admin" && <StorageWidget />}
-			<SignOutButton className="flex w-full items-center justify-center gap-2 rounded-md border border-border py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-raised hover:text-primary" />
+			<div className="flex items-center rounded-md border border-border text-muted">
+				<div className="flex flex-1 items-center justify-center gap-2 py-2">
+					<Moon className="size-4" />
+					<Switch checked={!dark} onCheckedChange={toggle} />
+					<Sun className="size-4" />
+				</div>
+				<div className="w-px self-stretch bg-border" />
+				<SignOutButton className="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors hover:bg-surface-raised hover:text-primary" iconOnly={false} />
+			</div>
 		</div>
 	)
 }

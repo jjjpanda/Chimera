@@ -12,9 +12,10 @@ import LoginPage from "./app/LoginPage.jsx"
 import SetupForm from "./app/SetupForm.jsx"
 import ChangePasswordForm from "./app/ChangePasswordForm.jsx"
 import AuthContext from "./app/AuthContext.jsx"
+import { ThemeProvider } from "./app/ThemeContext.jsx"
 import useAuth from "./hooks/useAuth.js"
 
-const App = () => {
+const AppInner = () => {
 	const [loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword] = useAuth()
 	const [key, setKey] = useState(0)
 
@@ -52,5 +53,11 @@ const App = () => {
 		</AuthContext.Provider>
 	)
 }
+
+const App = () => (
+	<ThemeProvider>
+		<AppInner />
+	</ThemeProvider>
+)
 
 export default App
