@@ -17,7 +17,9 @@ const AdminPanel = ({ withButton } = {}) => {
 	const [users, setUsers] = useState([])
 	const [loading, setLoading] = useState(false)
 	const [addOpen, setAddOpen] = useState(false)
-	const [addForm, setAddForm] = useState({ username: "", password: "", role: "user" })
+	const [addForm, setAddForm] = useState({ username: "", role: "user" })
+	const [tempPassword, setTempPassword] = useState(null)
+	const [copied, setCopied] = useState(false)
 	const [editTarget, setEditTarget] = useState(null)
 	const [editForm, setEditForm] = useState({ role: "", password: "" })
 	const [deleteTarget, setDeleteTarget] = useState(null)
@@ -45,9 +47,8 @@ const AdminPanel = ({ withButton } = {}) => {
 			if (res.error) {
 				toast("Failed to add user")
 			} else {
-				toast("User added")
-				setAddForm({ username: "", password: "", role: "user" })
-				setAddOpen(false)
+				setTempPassword(res.tempPassword)
+				setAddForm({ username: "", role: "user" })
 				fetchUsers()
 			}
 		})
@@ -148,55 +149,59 @@ const AdminPanel = ({ withButton } = {}) => {
 			<Card className="bg-surface border-border">
 				<CardHeader className="flex flex-row items-center justify-between pb-2">
 					<CardTitle className="text-primary text-lg">Users</CardTitle>
-					<Dialog open={addOpen} onOpenChange={setAddOpen}>
+					<Dialog open={addOpen} onOpenChange={open => { setAddOpen(open); if (!open) { setTempPassword(null); setCopied(false) } }}>
 						<DialogTrigger asChild>
 							<Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/80">Add User</Button>
 						</DialogTrigger>
 						<DialogContent className="bg-surface-raised border-border text-primary">
 							<DialogHeader>
 								<DialogTitle className="text-primary">Add User</DialogTitle>
-								<DialogDescription className="text-muted">Create a new user account.</DialogDescription>
+								<DialogDescription className="text-muted">A temporary password will be generated for the user to change on first login.</DialogDescription>
 							</DialogHeader>
-							<form onSubmit={addUser} className="flex flex-col gap-4 pt-2">
-								<div className="flex flex-col gap-1">
-									<Label className="text-primary">Username</Label>
-									<Input
-										required
-										value={addForm.username}
-										onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))}
-										className="bg-surface-raised border-border text-primary placeholder:text-muted"
-										placeholder="username"
-									/>
+							{tempPassword ? (
+								<div className="flex flex-col gap-4 pt-2">
+									<p className="text-sm text-muted">User created. Share this temporary password with them:</p>
+									<div className="flex items-center gap-2">
+										<code className="flex-1 rounded bg-surface border border-border px-3 py-2 text-sm text-primary font-mono break-all">{tempPassword}</code>
+										<Button size="sm" variant="outline" className="border-border text-primary hover:bg-surface-raised shrink-0" onClick={() => { navigator.clipboard.writeText(tempPassword); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>{copied ? "Copied!" : "Copy"}</Button>
+									</div>
+									<DialogFooter>
+										<DialogClose asChild>
+											<Button className="bg-accent text-accent-foreground hover:bg-accent/80" onClick={() => setTempPassword(null)}>Done</Button>
+										</DialogClose>
+									</DialogFooter>
 								</div>
-								<div className="flex flex-col gap-1">
-									<Label className="text-primary">Password</Label>
-									<Input
-										required
-										type="password"
-										value={addForm.password}
-										onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
-										className="bg-surface-raised border-border text-primary placeholder:text-muted"
-										placeholder="password"
-									/>
-								</div>
-								<div className="flex flex-col gap-1">
-									<Label className="text-primary">Role</Label>
-									<Select value={addForm.role} onValueChange={v => setAddForm(f => ({ ...f, role: v }))}>
-										<SelectTrigger className="bg-surface-raised border-border text-primary">
-											<SelectValue />
-										</SelectTrigger>
-										<SelectContent className="bg-surface-raised border-border text-primary">
-											{ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-										</SelectContent>
-									</Select>
-								</div>
-								<DialogFooter>
-									<DialogClose asChild>
-										<Button type="button" variant="ghost" className="text-muted hover:text-primary">Cancel</Button>
-									</DialogClose>
-									<Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/80">Add</Button>
-								</DialogFooter>
-							</form>
+							) : (
+								<form onSubmit={addUser} className="flex flex-col gap-4 pt-2">
+									<div className="flex flex-col gap-1">
+										<Label className="text-primary">Username</Label>
+										<Input
+											required
+											value={addForm.username}
+											onChange={e => setAddForm(f => ({ ...f, username: e.target.value }))}
+											className="bg-surface-raised border-border text-primary placeholder:text-muted"
+											placeholder="username"
+										/>
+									</div>
+									<div className="flex flex-col gap-1">
+										<Label className="text-primary">Role</Label>
+										<Select value={addForm.role} onValueChange={v => setAddForm(f => ({ ...f, role: v }))}>
+											<SelectTrigger className="bg-surface-raised border-border text-primary">
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent className="bg-surface-raised border-border text-primary">
+												{ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+											</SelectContent>
+										</Select>
+									</div>
+									<DialogFooter>
+										<DialogClose asChild>
+											<Button type="button" variant="ghost" className="text-muted hover:text-primary">Cancel</Button>
+										</DialogClose>
+										<Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/80">Add</Button>
+									</DialogFooter>
+								</form>
+							)}
 						</DialogContent>
 					</Dialog>
 				</CardHeader>

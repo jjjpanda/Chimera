@@ -17,12 +17,13 @@ module.exports = {
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
 
-		pool.query("SELECT hash, role FROM auth WHERE username = $1", [username], (err, values) => {
+		pool.query("SELECT hash, role, force_password_change FROM auth WHERE username = $1", [username], (err, values) => {
 			if (!err && values.rows.length > 0 && values.rows[0].hash) {
-				const { hash, role } = values.rows[0]
+				const { hash, role, force_password_change } = values.rows[0]
 				bcrypt.compare(password == undefined ? "" : password, hash, (err, success) => {
 					if (!err && success) {
 						req.userRole = role
+						req.forcePasswordChange = force_password_change
 						next()
 					} else {
 						res.status(400).json({ error: true, errors: "Password Incorrect" })
@@ -50,7 +51,7 @@ module.exports = {
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000
 				})
-				res.send({ error: false, role: req.userRole })
+				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange })
 			}
 		)
 	}

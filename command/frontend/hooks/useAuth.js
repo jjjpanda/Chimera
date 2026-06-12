@@ -27,6 +27,13 @@ const attemptLogin = (username, password) =>
 		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
 
+const attemptPasswordChange = (password) =>
+	request("/authorization/password", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+		body: JSON.stringify({ password })
+	}, authPromiseHandler)
+
 const attemptSetup = (username, password, token) =>
 	request("/authorization/setup", {
 		method: "POST",
@@ -34,9 +41,9 @@ const attemptSetup = (username, password, token) =>
 		body: JSON.stringify({ username, password, token })
 	}, authPromiseHandler)
 
-const handleLoginAttempt = (verified, role, timestamp, setState) => {
+const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false) => {
 	setTimeout(() => {
-		setState(s => ({ ...s, loggedIn: verified, role: role || null }))
+		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false }))
 		setTimeout(() => {
 			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
@@ -50,6 +57,7 @@ const useAuth = () => {
 		tokenRequired: false,
 		loggedIn: false,
 		role: null,
+		forcePasswordChange: false,
 		timestamp: new Date()
 	})
 
@@ -68,7 +76,7 @@ const useAuth = () => {
 			const bearerToken = Cookies.get("bearertoken")
 			if (bearerToken) {
 				attemptVerification().then(res => {
-					handleLoginAttempt(!res.error, res.role, state.timestamp, setState)
+					handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
 				})
 			} else {
 				handleLoginAttempt(false, null, state.timestamp, setState)
@@ -92,7 +100,7 @@ const useAuth = () => {
 	const tryLogin = (username, password, callback) => {
 		attemptLogin(username, password).then(res => {
 			callback(!res.error)
-			handleLoginAttempt(!res.error, res.role, state.timestamp, setState)
+			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
 		})
 	}
 
@@ -103,12 +111,19 @@ const useAuth = () => {
 		})
 	}
 
-	const signOut = () => {
-		Cookies.remove("bearertoken")
-		setState(s => ({ ...s, loggedIn: false, role: null }))
+	const changePassword = (password, callback) => {
+		attemptPasswordChange(password).then(res => {
+			if (!res.error) setState(s => ({ ...s, forcePasswordChange: false }))
+			callback(!res.error)
+		})
 	}
 
-	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, tryLogin, trySetup, signOut]
+	const signOut = () => {
+		Cookies.remove("bearertoken")
+		setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false }))
+	}
+
+	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword]
 }
 
 export default useAuth

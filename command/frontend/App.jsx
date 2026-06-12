@@ -10,11 +10,12 @@ import ResponsiveMain from "./app/ResponsiveMain.jsx"
 import LoadingIcon from "./app/LoadingIcon.jsx"
 import LoginPage from "./app/LoginPage.jsx"
 import SetupForm from "./app/SetupForm.jsx"
+import ChangePasswordForm from "./app/ChangePasswordForm.jsx"
 import AuthContext from "./app/AuthContext.jsx"
 import useAuth from "./hooks/useAuth.js"
 
 const App = () => {
-	const [loaded, setup, tokenRequired, loggedIn, role, tryLogin, trySetup, signOut] = useAuth()
+	const [loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword] = useAuth()
 	const [key, setKey] = useState(0)
 
 	useEffect(() => {
@@ -24,6 +25,8 @@ const App = () => {
 	if (!loaded) return <LoadingIcon />
 
 	if (setup === false) return <SetupForm trySetup={trySetup} tokenRequired={tokenRequired} />
+
+	if (loggedIn && forcePasswordChange) return <ChangePasswordForm changePassword={changePassword} />
 
 	return (
 		<AuthContext.Provider value={{ role, signOut }}>
