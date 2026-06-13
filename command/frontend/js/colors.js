@@ -1,10 +1,10 @@
-export const CHART_ACCENT = "#8f0b0b"
+export const CHART_ACCENT = "#7d45a9"
 export const TOOLTIP_BG = "rgb(var(--color-surface-raised))"
 export const TOOLTIP_BORDER = "rgb(var(--color-border))"
 export const TOOLTIP_TEXT = "rgb(var(--color-primary))"
 export const CHART_MUTED = "rgb(var(--color-muted))"
 
-const colors = ["#FF6633", "#4448bf", "#FF33FF", "#FFFF99", "#00B3E6",
+const colors = ["#FF6633", "#0e7dab", "#FF33FF", "#FFFF99", "#00B3E6",
 	"#E6B333", "#3366E6", "#999966", "#99FF99", "#B34D4D",
 	"#80B300", "#809900", "#E6B3B3", "#6680B3", "#66991A",
 	"#FF99E6", "#CCFF1A", "#FF1A66", "#E6331A", "#33FFCC",

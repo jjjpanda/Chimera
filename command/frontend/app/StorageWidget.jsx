@@ -54,7 +54,7 @@ const StorageWidget = () => {
 							<span>Total</span>
 							<span>{Math.round(Math.min(100, (usage.used_gb / usage.max_gb) * 100))}%</span>
 						</div>
-						<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+						<div className="h-2 w-full overflow-hidden rounded-full bg-border">
 							<div
 								className="h-full rounded-full bg-primary transition-all"
 								style={{ width: `${Math.min(100, (usage.used_gb / usage.max_gb) * 100)}%` }}
