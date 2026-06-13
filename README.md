@@ -12,6 +12,7 @@ List of microservices:
 4. [storage](storage)
 5. [gateway](gateway)
 6. [memory](memory)
+7. [object](object)
 
 Massive Dependencies:
 1. [motion](https://github.com/Motion-Project/motion) - should be running on same machine as [storage](storage) server for optimal performance. See [storage](storage) as for why.

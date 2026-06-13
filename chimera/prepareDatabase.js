@@ -25,6 +25,10 @@ const creationTasks = [
 		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMP NOT NULL DEFAULT NOW(), last_seen TIMESTAMP, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
 		description: "sessions table"
 	},
+	{
+		query: "CREATE TABLE objects_detected(ID SERIAL PRIMARY KEY, camera NUMERIC(10), timestamp TIMESTAMP DEFAULT NOW(), type VARCHAR(20), confidence NUMERIC(10, 6));",
+		description: "objects detected table"
+	},
 ]
 
 let issues = false

@@ -13,3 +13,4 @@ eslint
 log
 coverage
 objectTemp
+*.onnx
