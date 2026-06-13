@@ -13,4 +13,5 @@ eslint
 log
 coverage
 objectTemp
+objectCaptures
 *.onnx

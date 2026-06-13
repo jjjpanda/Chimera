@@ -8,7 +8,32 @@ const sendWebhook = require("./webhook.js")
 
 const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
+const CAPTURES_DIR = path.join(process.cwd(), "objectCaptures")
+const MAX_CAPTURES = parseInt(process.env.object_MAX_CAPTURES) || 500
 fs.mkdirSync(TEMP_DIR, { recursive: true })
+fs.mkdirSync(CAPTURES_DIR, { recursive: true })
+
+const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
+
+const pruneCaptures = async () => {
+	const files = fs.readdirSync(CAPTURES_DIR)
+		.map((f) => ({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }))
+	if (files.length <= MAX_CAPTURES) return
+
+	const { rows } = await pool.query(
+		"SELECT image, MAX(confidence) AS confidence FROM objects_detected WHERE image = ANY($1) GROUP BY image",
+		[files.map((f) => f.f)]
+	).catch(() => ({ rows: [] }))
+
+	const confMap = Object.fromEntries(rows.map((r) => [r.image, parseFloat(r.confidence)]))
+	files.sort((a, b) => {
+		const td = confTier(confMap[a.f]) - confTier(confMap[b.f])
+		return td !== 0 ? td : a.t - b.t
+	})
+	for (const { f } of files.slice(0, files.length - MAX_CAPTURES)) {
+		try { fs.unlinkSync(path.join(CAPTURES_DIR, f)) } catch (e) {}
+	}
+}
 
 const config = {
 	confidence: parseFloat(process.env.object_CONFIDENCE) || 0.5,
@@ -27,6 +52,14 @@ const cameraCount = () => {
 	}
 }
 
+const getCameraNames = () => {
+	try {
+		return JSON.parse(process.env.cameras || "[]")
+	} catch (e) {
+		return []
+	}
+}
+
 const feedPath = (camera) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(camera), "video.m3u8")
 
 let scanSeq = 0
@@ -35,12 +68,12 @@ const extractFrame = (camera) => new Promise((resolve, reject) => {
 	const id = `${camera}-${process.pid}-${scanSeq++}`
 	const jpeg = path.join(TEMP_DIR, `${id}.jpg`)
 	const raw = path.join(TEMP_DIR, `${id}.raw`)
+	const vf = `scale=${INPUT}:${INPUT}:force_original_aspect_ratio=decrease,pad=${INPUT}:${INPUT}:0:0:color=0x727272`
 	const args = [
 		"-y", "-loglevel", "error",
 		"-i", feedPath(camera),
-		"-frames:v", "1", "-q:v", "3", jpeg,
-		"-vf", `scale=${INPUT}:${INPUT}:force_original_aspect_ratio=decrease,pad=${INPUT}:${INPUT}:0:0:color=0x727272`,
-		"-pix_fmt", "bgr24", "-frames:v", "1", "-f", "rawvideo", raw,
+		"-vf", vf, "-frames:v", "1", "-q:v", "3", jpeg,
+		"-vf", vf, "-pix_fmt", "bgr24", "-frames:v", "1", "-f", "rawvideo", raw,
 	]
 	execFile(process.env.ffmpeg_FILEPATH || "ffmpeg", args, (err) => {
 		const cleanup = () => {
@@ -76,12 +109,16 @@ const toTensor = (raw) => {
 const roundTo = (val, sig) => Math.round(val * 10 ** sig) / 10 ** sig
 
 const handleDetections = async (camera, detections, jpeg) => {
+	const image = `${camera}-${Date.now()}.jpg`
+	try { fs.writeFileSync(path.join(CAPTURES_DIR, image), jpeg) } catch (e) {}
 	for (const d of detections) {
 		await pool.query(
-			"INSERT INTO objects_detected(camera, type, confidence) VALUES($1, $2, $3)",
-			[camera, d.class, roundTo(d.score, 6)]
+			"INSERT INTO objects_detected(camera, type, confidence, box, image) VALUES($1, $2, $3, $4, $5)",
+			[camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image]
 		).catch((e) => console.log("OBJECT INSERT ERROR", e.message))
 	}
+	await pruneCaptures().catch(() => {})
+	if (process.env.object_ALERT_ON === "false") return
 	const summary = detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(", ")
 	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
 }
@@ -124,6 +161,8 @@ module.exports = {
 	scan,
 	toTensor,
 	cameraCount,
+	getCameraNames,
+	CAPTURES_DIR,
 	getStatus: () => status,
 	getConfig: () => config,
 	setConfig: (updates) => {

@@ -12,6 +12,7 @@ import ProcessList from "./ProcessList"
 import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
 import ScheduleDashboard from "./ScheduleDashboard.jsx"
+import ObjectDetections from "./ObjectDetections.jsx"
 
 const DesktopView = ({ index }) => {
 	const role = useRole()
@@ -26,6 +27,8 @@ const DesktopView = ({ index }) => {
 
 	if (index === "route-5") return <ScheduleDashboard />
 
+	if (index === "route-7") return <ObjectDetections />
+
 	if (index === "route-6") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
 
 	return (
@@ -35,10 +38,11 @@ const DesktopView = ({ index }) => {
 				<StorageWidget />
 				<LiveVideo />
 			</div>
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "12rem" }}>
 				<TaskList withButton />
 				<ProcessList mini />
 				<ClipMaker mini />
+				<ObjectDetections mini />
 			</div>
 		</div>
 	)

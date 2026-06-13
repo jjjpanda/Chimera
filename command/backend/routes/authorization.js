@@ -14,6 +14,7 @@ app.get("/status", async (req, res) => {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
 		res.json({ setup: parseInt(result.rows[0].count) > 0, tokenRequired: !!process.env.setup_TOKEN })
 	} catch (e) {
+		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!process.env.setup_TOKEN })
 		res.status(500).json({ error: true })
 	}
 })

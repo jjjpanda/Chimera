@@ -1,6 +1,6 @@
 jest.mock("lib", () => ({ isPrimeInstance: true }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
-jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn() }))
+jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })) }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
 jest.mock("../backend/lib/webhook.js", () => jest.fn())
 jest.mock("../backend/lib/detector.js", () => ({ INPUT: 4, detect: jest.fn() }))
@@ -79,7 +79,7 @@ describe("scan", () => {
 		expect(pool.query).toHaveBeenCalledTimes(1)
 		expect(pool.query).toHaveBeenCalledWith(
 			expect.stringContaining("INSERT INTO objects_detected"),
-			[2, "person", 0.876543]
+			[2, "person", 0.876543, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
 		)
 		expect(sendWebhook).toHaveBeenCalledWith(
 			"http://hook.test",
@@ -97,6 +97,15 @@ describe("scan", () => {
 		expect(pool.query).not.toHaveBeenCalled()
 		expect(sendWebhook).not.toHaveBeenCalled()
 		expect(worker.getStatus()[3].error).toBeNull()
+	})
+
+	test("object_ALERT_ON=false suppresses the webhook but still inserts", async () => {
+		process.env.object_ALERT_ON = "false"
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.scan(5)
+		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(sendWebhook).not.toHaveBeenCalled()
+		delete process.env.object_ALERT_ON
 	})
 
 	test("records ffmpeg failure in status and returns []", async () => {

@@ -14,7 +14,7 @@ On start (prime pm2 instance only), one loop per camera runs every `object_INTER
 
 1. `ffmpeg` grabs the latest frame → a JPEG (for the alert) + a letterboxed (pad-114) `object_INPUT_SIZE` square raw `bgr24` buffer (for inference), written to `objectTemp/`
 2. The raw buffer is fed to YOLOX via `onnxruntime-node` (YOLOX expects raw 0-255 BGR, no normalization; its output is grid-decoded with strides 8/16/32 and scored as `objectness × class`)
-3. Detections matching the configured `classes` (default `["person"]`) above `object_CONFIDENCE` are inserted into the `objects_detected` table and sent to `alert_URL` with the captured frame attached
+3. Detections matching the configured `classes` (default `["person"]`) above `object_CONFIDENCE` are inserted into the `objects_detected` table (with the bounding `box` and the saved frame's `image` name) and, unless `object_ALERT_ON=false`, sent to `alert_URL` with the captured frame attached. The frame is saved letterboxed (`object_INPUT_SIZE` square) to `objectCaptures/` — pruned to the most recent 500 — so detection boxes overlay directly on it in the command **Objects** page
 
 The model is fetched to `backend/model/yolox_tiny.onnx` on first run (not committed). Override the source with `object_MODEL_URL` — if you point it at a different YOLOX size (e.g. `yolox_s`, a 640-input model), set `object_INPUT_SIZE` to match.
 
@@ -28,7 +28,8 @@ The model is fetched to `backend/model/yolox_tiny.onnx` on first run (not commit
 | GET | `/object/config` | Current detection config |
 | POST | `/object/config` | Update `{ confidence, intervalMs, classes }` (admin) |
 | POST | `/object/scan` | Force an immediate scan of `{ camera }` (admin) |
+| GET | `/object/captures/<file>` | Letterboxed detection frame, referenced by `image` in `/detections` (used by the command **Objects** page) |
 
 ## Env
 
-See [`env.example`](../env.example) — `object_ON`, `object_PORT`, `object_HOST`, `object_PROXY_ON`, `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, `object_INPUT_SIZE`. All keys must be present in `.env` (`prepare:env` exits 1 if any is missing), but `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, and `object_INPUT_SIZE` may be left blank to use defaults. Reuses `cameras`, `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, and the `database_*` vars.
+See [`env.example`](../env.example) — `object_ON`, `object_PORT`, `object_HOST`, `object_PROXY_ON`, `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, `object_INPUT_SIZE`, `object_ALERT_ON`. All keys must be present in `.env` (`prepare:env` exits 1 if any is missing), but `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, `object_INPUT_SIZE`, and `object_ALERT_ON` may be left blank to use defaults (`object_ALERT_ON` defaults to on; set it to `false` to silence Discord/webhook alerts). Reuses `cameras`, `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, and the `database_*` vars.

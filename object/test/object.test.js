@@ -12,6 +12,7 @@ jest.mock("pg", () => ({
 }))
 jest.mock("../backend/lib/worker.js", () => ({
 	startWorkers: jest.fn(),
+	CAPTURES_DIR: ".",
 	scan: jest.fn().mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }]),
 	getStatus: () => ({ 1: { running: true, lastRun: null, lastDetection: null, error: null } }),
 	getConfig: () => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"] }),

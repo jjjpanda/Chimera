@@ -148,6 +148,7 @@ env.object += writeVarLine("object_CONFIDENCE")
 env.object += writeVarLine("object_INTERVAL_MS")
 env.object += writeVarLine("object_MODEL_URL")
 env.object += writeVarLine("object_INPUT_SIZE")
+env.object += writeVarLine("object_ALERT_ON")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
