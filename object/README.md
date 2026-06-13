@@ -31,4 +31,4 @@ The model is fetched to `backend/model/yolox_tiny.onnx` on first run (not commit
 
 ## Env
 
-See [`env.example`](../env.example) — `object_ON`, `object_PORT`, `object_HOST`, `object_PROXY_ON`, and the optional `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`. Reuses `cameras`, `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, and the `database_*` vars.
+See [`env.example`](../env.example) — `object_ON`, `object_PORT`, `object_HOST`, `object_PROXY_ON`, `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, `object_INPUT_SIZE`. All keys must be present in `.env` (`prepare:env` exits 1 if any is missing), but `object_CONFIDENCE`, `object_INTERVAL_MS`, `object_MODEL_URL`, and `object_INPUT_SIZE` may be left blank to use defaults. Reuses `cameras`, `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, and the `database_*` vars.

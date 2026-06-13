@@ -8,6 +8,7 @@ const sendWebhook = require("./webhook.js")
 
 const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
+fs.mkdirSync(TEMP_DIR, { recursive: true })
 
 const config = {
 	confidence: parseFloat(process.env.object_CONFIDENCE) || 0.5,
@@ -28,9 +29,12 @@ const cameraCount = () => {
 
 const feedPath = (camera) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(camera), "video.m3u8")
 
+let scanSeq = 0
+
 const extractFrame = (camera) => new Promise((resolve, reject) => {
-	const jpeg = path.join(TEMP_DIR, `${camera}.jpg`)
-	const raw = path.join(TEMP_DIR, `${camera}.raw`)
+	const id = `${camera}-${process.pid}-${scanSeq++}`
+	const jpeg = path.join(TEMP_DIR, `${id}.jpg`)
+	const raw = path.join(TEMP_DIR, `${id}.raw`)
 	const args = [
 		"-y", "-loglevel", "error",
 		"-i", feedPath(camera),
@@ -39,10 +43,20 @@ const extractFrame = (camera) => new Promise((resolve, reject) => {
 		"-pix_fmt", "bgr24", "-frames:v", "1", "-f", "rawvideo", raw,
 	]
 	execFile(process.env.ffmpeg_FILEPATH || "ffmpeg", args, (err) => {
-		if (err) return reject(err)
+		const cleanup = () => {
+			try { fs.unlinkSync(jpeg) } catch (e) {}
+			try { fs.unlinkSync(raw) } catch (e) {}
+		}
+		if (err) {
+			cleanup()
+			return reject(err)
+		}
 		try {
-			resolve({ jpeg: fs.readFileSync(jpeg), raw: fs.readFileSync(raw) })
+			const out = { jpeg: fs.readFileSync(jpeg), raw: fs.readFileSync(raw) }
+			cleanup()
+			resolve(out)
 		} catch (e) {
+			cleanup()
 			reject(e)
 		}
 	})
@@ -93,7 +107,6 @@ const scan = async (camera) => {
 
 const startWorkers = () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
-	fs.mkdirSync(TEMP_DIR, { recursive: true })
 	const count = cameraCount()
 	for (let camera = 1; camera <= count; camera++) {
 		status[camera] = { running: true, lastRun: null, lastDetection: null, error: null }
