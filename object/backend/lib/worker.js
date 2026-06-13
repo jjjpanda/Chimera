@@ -122,6 +122,8 @@ const startWorkers = () => {
 module.exports = {
 	startWorkers,
 	scan,
+	toTensor,
+	cameraCount,
 	getStatus: () => status,
 	getConfig: () => config,
 	setConfig: (updates) => {
