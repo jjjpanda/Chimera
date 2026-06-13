@@ -5,11 +5,13 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import formatBytes from "../js/formatBytes.js"
 import colors, { CHART_ACCENT } from "../js/colors.js"
+import { useRole } from "./AuthContext"
 
 const segmentColor = (i) => i === 0 ? CHART_ACCENT : colors[i % colors.length]
 
 const StorageWidget = () => {
 	const navigate = useNavigate()
+	const role = useRole()
 	const [usage] = useStorageUsage()
 
 	const usedBytes = usage.used_gb * 1e9
@@ -68,7 +70,7 @@ const StorageWidget = () => {
 					}
 					{` • ${usage.total_frames.toLocaleString()} frames`}
 				</p>
-				<Button onClick={() => navigate("/stats")} className="mt-auto w-full">Manage Data</Button>
+				<Button onClick={() => navigate("/stats")} className="mt-auto w-full">{role === "admin" ? "Manage Data" : "View Stats"}</Button>
 			</CardContent>
 		</Card>
 	)

@@ -50,12 +50,15 @@ const cancelProcessGenerator = (setState) => (id) => {
 }
 
 const deleteProcessGenerator = (setState) => (id) => {
+	const remove = toast("Attempting Delete…", 0)
 	request("/convert/deleteProcess", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ id })
 	}, (prom) => {
-		jsonProcessing(prom, () => {
+		jsonProcessing(prom, (data) => {
+			remove()
+			toast(data?.deleted ? "Files Deleted" : "None Deleted")
 			setTimeout(() => listProcesses(setState), 1500)
 		})
 	})

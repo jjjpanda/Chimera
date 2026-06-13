@@ -225,7 +225,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [camera, setCamera] = useState(0)
 	const [startDate, setStartDate] = useState(moment().subtract(1, "hour"))
 	const [endDate, setEndDate] = useState(moment())
-	const [number, setNumber] = useState(100)
+	const [number, setNumber] = useState(10)
 	const [fps, setFps] = useState(20)
 	const [skip, setSkip] = useState(1)
 	const [frames, setFrames] = useState([])
@@ -254,6 +254,10 @@ const ClipMaker = ({ mini } = {}) => {
 	useEffect(() => {
 		if (!isDesktop && multiCam) toggleMultiCam()
 	}, [isDesktop])
+
+	useEffect(() => {
+		if (!multiCam && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
+	}, [cameras])
 
 	// single-cam effects
 	useEffect(() => {
