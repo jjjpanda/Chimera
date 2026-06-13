@@ -30,8 +30,12 @@ const pruneCaptures = async () => {
 		const td = confTier(confMap[a.f]) - confTier(confMap[b.f])
 		return td !== 0 ? td : a.t - b.t
 	})
-	for (const { f } of files.slice(0, files.length - MAX_CAPTURES)) {
+	const removed = files.slice(0, files.length - MAX_CAPTURES)
+	for (const { f } of removed) {
 		try { fs.unlinkSync(path.join(CAPTURES_DIR, f)) } catch (e) {}
+	}
+	if (removed.length) {
+		await pool.query("DELETE FROM objects_detected WHERE image = ANY($1)", [removed.map((x) => x.f)]).catch(() => {})
 	}
 }
 

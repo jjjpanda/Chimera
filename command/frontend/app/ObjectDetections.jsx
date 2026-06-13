@@ -10,33 +10,9 @@ import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
 import { cn } from "../lib/utils"
+import { detectGrayPad } from "../js/letterbox.js"
 
 const STROKE = "#34d399"
-const GRAY = 114  // ffmpeg letterbox color component value (0x727272)
-const GRAY_TOL = 20
-
-const detectGrayPad = (img) => {
-	const { naturalWidth: w, naturalHeight: h } = img
-	if (w !== h) return { top: 0, bot: 0 }
-	try {
-		const canvas = document.createElement("canvas")
-		canvas.width = w; canvas.height = h
-		const ctx = canvas.getContext("2d")
-		ctx.drawImage(img, 0, 0)
-		const isGrayRow = (y) => {
-			const d = ctx.getImageData(0, y, w, 1).data
-			for (let i = 0; i < d.length; i += 4)
-				if (Math.abs(d[i] - GRAY) > GRAY_TOL) return false
-			return true
-		}
-		let top = 0, bot = 0
-		while (top < h / 2 && isGrayRow(top)) top++
-		while (bot < h / 2 && isGrayRow(h - 1 - bot)) bot++
-		return { top, bot }
-	} catch {
-		return { top: 0, bot: 0 }
-	}
-}
 
 const groupDetections = (detections) => {
 	const byImage = new Map()

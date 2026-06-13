@@ -14,6 +14,7 @@ import { Input } from "../components/ui/input"
 import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
+import { detectGrayPad } from "../js/letterbox.js"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -258,6 +259,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [frameTimes, setFrameTimes] = useState([])
 	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
+	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
 	const [previewHeight, setPreviewHeight] = useState(200)
 
 	const canvasRef = useRef(null)
@@ -338,6 +340,18 @@ const ClipMaker = ({ mini } = {}) => {
 		return here.filter(d => d.image === best.image)
 	}, [multiCam, showBoxes, detections, detectionFrameIdx, scrubIdx, frameTimes])
 
+	// detector letterboxes each camera's feed into a 416 square (top-left anchored); the feed
+	// aspect ratio sets the content region, which differs from the recorded frame's aspect. Measure
+	// it from a capture's gray padding (constant per camera) so boxes map per-axis, not uniformly.
+	useEffect(() => {
+		if (multiCam || detections.length === 0) return
+		const d = detections.find(d => d.image && d.camera != null)
+		if (!d || contentPad[d.camera]) return
+		const im = new Image()
+		im.onload = () => setContentPad(p => ({ ...p, [d.camera]: detectGrayPad(im) }))
+		im.src = `/object/captures/${d.image}`
+	}, [multiCam, detections, contentPad])
+
 	useEffect(() => {
 		const canvas = canvasRef.current
 		if (!canvas || frames.length === 0) return
@@ -350,7 +364,12 @@ const ClipMaker = ({ mini } = {}) => {
 		const ctx = canvas.getContext("2d")
 		ctx.drawImage(img, 0, 0)
 		if (showBoxes && boxesForScrub.length) {
-			const scale = Math.max(canvas.width, canvas.height) / DETECT_INPUT
+			const pad = contentPad[boxesForScrub[0].camera]
+			const uniform = Math.max(canvas.width, canvas.height) / DETECT_INPUT
+			const sx = pad ? canvas.width / (DETECT_INPUT - pad.left - pad.right) : uniform
+			const sy = pad ? canvas.height / (DETECT_INPUT - pad.top - pad.bot) : uniform
+			const ox = pad ? pad.left : 0
+			const oy = pad ? pad.top : 0
 			const font = Math.max(12, Math.round(canvas.width / 50))
 			ctx.lineWidth = Math.max(2, canvas.width / 320)
 			ctx.strokeStyle = "#34d399"
@@ -358,7 +377,10 @@ const ClipMaker = ({ mini } = {}) => {
 			ctx.font = `600 ${font}px sans-serif`
 			ctx.textBaseline = "bottom"
 			for (const d of boxesForScrub) {
-				const [x, y, w, h] = d.box.map(n => n * scale)
+				const x = (d.box[0] - ox) * sx
+				const y = (d.box[1] - oy) * sy
+				const w = d.box[2] * sx
+				const h = d.box[3] * sy
 				ctx.strokeRect(x, y, w, h)
 				const label = `${d.type} ${Math.round(d.confidence * 100)}%`
 				const ly = Math.max(font + 2, y - 3)
@@ -370,7 +392,7 @@ const ClipMaker = ({ mini } = {}) => {
 				ctx.restore()
 			}
 		}
-	}, [scrubIdx, frames, imagesLoaded, showBoxes, boxesForScrub])
+	}, [scrubIdx, frames, imagesLoaded, showBoxes, boxesForScrub, contentPad])
 
 	// multi-cam: load images when frame lists change
 	const multiAllFrames = useMemo(() =>
@@ -521,8 +543,8 @@ const ClipMaker = ({ mini } = {}) => {
 		setDetections([])
 		const qs = new URLSearchParams({
 			camera: String(camId),
-			start: moment(start).format("YYYY-MM-DD HH:mm:ss"),
-			end: moment(end).format("YYYY-MM-DD HH:mm:ss"),
+			start: moment(start).utc().format("YYYY-MM-DD HH:mm:ss"),
+			end: moment(end).utc().format("YYYY-MM-DD HH:mm:ss"),
 			limit: "500",
 		})
 		request(`/object/detections?${qs}`, {}, prom =>

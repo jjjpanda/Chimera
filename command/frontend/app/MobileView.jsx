@@ -37,7 +37,7 @@ const MobileView = ({ index }) => {
 	return (
 		<div className="space-y-4">
 			<LiveVideo mobile />
-			<div className="grid grid-cols-2 gap-4" style={{ height: "12rem" }}>
+			<div className="grid grid-cols-1 gap-4 min-[467px]:grid-cols-2" style={{ gridAutoRows: "12rem" }}>
 				<ClipMaker mini />
 				<ObjectDetections mini />
 			</div>
