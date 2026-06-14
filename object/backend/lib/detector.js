@@ -19,7 +19,9 @@ let sessionPromise = null
 
 const load = () => {
 	if (!sessionPromise) {
-		sessionPromise = ensureModel().then((modelPath) => ort.InferenceSession.create(modelPath))
+		sessionPromise = ensureModel()
+			.then((modelPath) => ort.InferenceSession.create(modelPath))
+			.catch((e) => { sessionPromise = null; throw e })
 	}
 	return sessionPromise
 }

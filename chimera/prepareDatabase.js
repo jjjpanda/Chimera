@@ -26,7 +26,7 @@ const creationTasks = [
 		description: "sessions table"
 	},
 	{
-		query: "CREATE TABLE objects_detected(ID SERIAL PRIMARY KEY, camera NUMERIC(10), timestamp TIMESTAMP DEFAULT NOW(), type VARCHAR(20), confidence NUMERIC(10, 6), box JSONB, image VARCHAR);",
+		query: "CREATE TABLE objects_detected(ID SERIAL PRIMARY KEY, camera NUMERIC(10), timestamp TIMESTAMPTZ DEFAULT NOW(), type VARCHAR(20), confidence NUMERIC(10, 6), box JSONB, image VARCHAR);",
 		description: "objects detected table"
 	},
 ]
