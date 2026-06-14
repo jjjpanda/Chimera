@@ -7,7 +7,6 @@ import ClipMaker from "./ClipMaker"
 import RecordingsList from "./RecordingsList"
 import Stats from "./Stats.jsx"
 import StorageWidget from "./StorageWidget.jsx"
-import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
 import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
@@ -39,7 +38,7 @@ const DesktopView = ({ index }) => {
 				<LiveVideo />
 			</div>
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "12rem" }}>
-				<TaskList withButton />
+				<ScheduleDashboard mini withButton />
 				<ProcessList mini />
 				<ClipMaker mini />
 				<ObjectDetections mini />

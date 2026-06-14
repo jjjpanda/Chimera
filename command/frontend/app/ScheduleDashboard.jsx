@@ -2,7 +2,8 @@ import React, { useState } from "react"
 import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
-import { Trash2, Minus, Plus } from "lucide-react"
+import cronParser from "cron-parser"
+import { Trash2, Minus, Plus, ArrowRight } from "lucide-react"
 
 import useTasks from "../hooks/useTasks.js"
 import useScheduler from "../hooks/useScheduler.js"
@@ -20,6 +21,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog"
 
 import Scheduler from "./Scheduler"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { Input } from "../components/ui/input"
 
@@ -56,7 +58,76 @@ const taskSummary = (task, cameras = []) => {
 	return [label, cam, window].filter(Boolean).join(" · ")
 }
 
-const ScheduleDashboard = ({ mobile = false }) => {
+const nextRunSeconds = (cronString) => {
+	try {
+		return moment(cronParser.parseExpression(cronString).next().toString()).diff(moment(), "seconds")
+	} catch {
+		return Number.MAX_SAFE_INTEGER
+	}
+}
+
+const ScheduleDashboardMini = ({ withButton }) => {
+	const role = useRole()
+	const isAdmin = role === "admin"
+	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
+
+	const sortedUpcoming = [...processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
+	const sortedAll = [...processList].sort((a, b) => String(a.id).localeCompare(String(b.id)))
+
+	const renderMiniList = (items) => {
+		if (loading) return <p className="py-4 text-center text-sm text-muted">Loading…</p>
+		if (!items.length) return <p className="py-4 text-center text-sm text-muted">No tasks</p>
+		return (
+			<ul className="divide-y divide-border max-h-56 overflow-y-auto">
+				{items.map((item) => (
+					<li key={item.id} className="flex items-center gap-3 py-2">
+						<ArrowRight className="size-3.5 shrink-0 text-muted" />
+						<div className="min-w-0 flex-1">
+							<p className="truncate text-sm text-primary">{item.url}</p>
+							<p className="text-xs text-muted">{humanCron(item.cronString)}</p>
+						</div>
+						{isAdmin && (
+							<div className="flex shrink-0 items-center gap-2">
+								<Switch
+									checked={item.running}
+									onCheckedChange={() => item.running ? stopTask(item.id) : restartTask(item.id)}
+								/>
+								{item.id !== "task-auto-cleanup" && (
+									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" onClick={() => deleteTask(item.id)}>
+										<Trash2 className="size-3.5" />
+									</Button>
+								)}
+							</div>
+						)}
+					</li>
+				))}
+			</ul>
+		)
+	}
+
+	return (
+		<Card className="h-full">
+			<CardHeader className="pb-2">
+				<div className="flex items-center justify-between">
+					<CardTitle className="text-sm">Scheduled Tasks</CardTitle>
+					{withButton && <NavigateToRoute to="/schedule" />}
+				</div>
+			</CardHeader>
+			<CardContent>
+				<Tabs defaultValue="upcoming">
+					<TabsList className="mb-2 w-full">
+						<TabsTrigger value="upcoming" className="flex-1">Upcoming</TabsTrigger>
+						<TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+					</TabsList>
+					<TabsContent value="upcoming">{renderMiniList(sortedUpcoming)}</TabsContent>
+					<TabsContent value="all">{renderMiniList(sortedAll)}</TabsContent>
+				</Tabs>
+			</CardContent>
+		</Card>
+	)
+}
+
+const ScheduleDashboardFull = ({ mobile = false }) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
@@ -299,6 +370,11 @@ const ScheduleDashboard = ({ mobile = false }) => {
 			</Card>
 		</div>
 	)
+}
+
+const ScheduleDashboard = ({ mobile = false, mini = false, withButton = false }) => {
+	if (mini) return <ScheduleDashboardMini withButton={withButton} />
+	return <ScheduleDashboardFull mobile={mobile} />
 }
 
 export default ScheduleDashboard
