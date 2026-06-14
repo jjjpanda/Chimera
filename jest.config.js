@@ -10,6 +10,7 @@ module.exports = {
 		"<rootDir>/gateway/jest.config.js",
 		"<rootDir>/lib/jest.config.js",
 		"<rootDir>/livestream/jest.config.js",
+		"<rootDir>/object/jest.config.js",
 		"<rootDir>/schedule/jest.config.js",
 		"<rootDir>/storage/jest.config.js"
 	]

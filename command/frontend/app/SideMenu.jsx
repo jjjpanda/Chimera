@@ -1,6 +1,6 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, Sun, Moon } from "lucide-react"
+import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, Sun, Moon } from "lucide-react"
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
@@ -29,6 +29,7 @@ const SideMenu = ({ index, mobile }) => {
 		{ key: "route-3", icon: Rewind, title: "Recordings" },
 		{ key: "route-4", icon: Activity, title: "Stats" },
 		{ key: "route-5", icon: CalendarClock, title: "Schedule" },
+		{ key: "route-7", icon: ScanEye, title: "Objects" },
 		...(role === "admin" ? [
 			{ key: "route-6", icon: Users, title: "Admin" },
 		] : [])

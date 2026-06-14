@@ -13,6 +13,7 @@ import StorageWidget from "./StorageWidget.jsx"
 import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
 import ScheduleDashboard from "./ScheduleDashboard.jsx"
+import ObjectDetections from "./ObjectDetections.jsx"
 import SignOutButton from "./SignOutButton.jsx"
 
 const MobileView = ({ index }) => {
@@ -29,12 +30,17 @@ const MobileView = ({ index }) => {
 
 	if (index === "route-5") return <ScheduleDashboard mobile />
 
+	if (index === "route-7") return <ObjectDetections mobile />
+
 	if (index === "route-6") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
 
 	return (
 		<div className="space-y-4">
 			<LiveVideo mobile />
-			<ClipMaker mini />
+			<div className="grid grid-cols-1 gap-4 min-[467px]:grid-cols-2" style={{ gridAutoRows: "12rem" }}>
+				<ClipMaker mini />
+				<ObjectDetections mini />
+			</div>
 			<Status withUsers={role === "admin"} />
 			{role === "admin" && <StorageWidget />}
 			<div className="flex items-center rounded-md border border-border text-muted">

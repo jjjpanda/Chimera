@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
-import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, ArrowUpDown, Save, SkipBack } from "lucide-react"
+import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, ArrowUpDown, Save, SkipBack, ScanEye } from "lucide-react"
 import { useMediaQuery } from "react-responsive"
 import useCameras from "../hooks/useCameras"
 import { Card, CardHeader, CardTitle } from "../components/ui/card"
@@ -12,14 +12,19 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { Label } from "../components/ui/label"
 import { Input } from "../components/ui/input"
 import { Progress } from "../components/ui/progress"
+import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
+import { detectGrayPad } from "../js/letterbox.js"
 import toast from "../js/toast"
 import moment from "moment"
+
+const DETECT_INPUT = 416  // YOLOX letterbox square; detection boxes are in this pixel space
+const FUSE_PCT = 1.5  // detection ticks closer than this (% of track) fuse into a band
 
 const PRESETS = [
 	{ label: "30m", value: 30, unit: "minutes" },
 	{ label: "1h",  value: 1,  unit: "hours" },
-	{ label: "4h",  value: 3,  unit: "hours" },
+	{ label: "4h",  value: 4,  unit: "hours" },
 	{ label: "12h", value: 12, unit: "hours" },
 	{ label: "24h", value: 24, unit: "hours" },
 ]
@@ -37,7 +42,7 @@ const parseFrameTime = (url) => {
 	return null
 }
 
-const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrimChange, trimming, disabled }) => {
+const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrimChange, trimming, disabled, markers = [] }) => {
 	const trackRef = useRef(null)
 	const scrubIdxRef = useRef(scrubIdx)
 	const trimRangeRef = useRef(trimRange)
@@ -125,6 +130,20 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 			onPointerDown={disabled ? undefined : (e) => startDrag(e, "track")}
 		>
 			<div className="absolute inset-x-0 h-5 bg-secondary rounded-full" />
+
+			{markers.map((m, i) => m.end > m.start ? (
+				<div
+					key={i}
+					className="absolute h-5 bg-[#34d399]/70 rounded-sm pointer-events-none z-0"
+					style={{ left: `${m.start}%`, width: `${m.end - m.start}%` }}
+				/>
+			) : (
+				<div
+					key={i}
+					className="absolute h-5 w-0.5 bg-[#34d399] pointer-events-none z-0"
+					style={{ left: `${m.start}%`, transform: "translateX(-50%)" }}
+				/>
+			))}
 
 			{trimming && (
 				<>
@@ -223,7 +242,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	// single-cam state
 	const [camera, setCamera] = useState(0)
-	const [startDate, setStartDate] = useState(moment().subtract(1, "hour"))
+	const [startDate, setStartDate] = useState(moment().subtract(4, "hours"))
 	const [endDate, setEndDate] = useState(moment())
 	const [number, setNumber] = useState(10)
 	const [fps, setFps] = useState(20)
@@ -238,6 +257,9 @@ const ClipMaker = ({ mini } = {}) => {
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
 	const [frameTimes, setFrameTimes] = useState([])
+	const [detections, setDetections] = useState([])
+	const [showBoxes, setShowBoxes] = useState(false)
+	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
 	const [previewHeight, setPreviewHeight] = useState(200)
 
 	const canvasRef = useRef(null)
@@ -289,6 +311,47 @@ const ClipMaker = ({ mini } = {}) => {
 		})
 	}, [frames])
 
+	// nearest loaded frame index for each detection (so a detection "belongs" to one scrub position)
+	const detectionFrameIdx = useMemo(() => {
+		if (multiCam || detections.length === 0 || frames.length === 0) return []
+		const ftv = frameTimes.map(t => t ? t.valueOf() : null)
+		return detections.map(d => {
+			const v = moment(d.timestamp).valueOf()
+			let idx = -1, diff = Infinity
+			ftv.forEach((tv, i) => {
+				if (tv == null) return
+				const dd = Math.abs(tv - v)
+				if (dd < diff) { diff = dd; idx = i }
+			})
+			return idx
+		})
+	}, [multiCam, detections, frameTimes, frames.length])
+
+	const boxesForScrub = useMemo(() => {
+		if (multiCam || !showBoxes || detections.length === 0) return []
+		const here = detections.filter((_, i) => detectionFrameIdx[i] === scrubIdx)
+		if (here.length === 0) return []
+		const t = frameTimes[scrubIdx]?.valueOf()
+		let best = here[0], bd = Infinity
+		if (t != null) for (const d of here) {
+			const dd = Math.abs(moment(d.timestamp).valueOf() - t)
+			if (dd < bd) { bd = dd; best = d }
+		}
+		return here.filter(d => d.image === best.image)
+	}, [multiCam, showBoxes, detections, detectionFrameIdx, scrubIdx, frameTimes])
+
+	// detector letterboxes each camera's feed into a 416 square (top-left anchored); the feed
+	// aspect ratio sets the content region, which differs from the recorded frame's aspect. Measure
+	// it from a capture's gray padding (constant per camera) so boxes map per-axis, not uniformly.
+	useEffect(() => {
+		if (multiCam || detections.length === 0) return
+		const d = detections.find(d => d.image && d.camera != null)
+		if (!d || contentPad[d.camera]) return
+		const im = new Image()
+		im.onload = () => setContentPad(p => ({ ...p, [d.camera]: detectGrayPad(im) }))
+		im.src = `/object/captures/${d.image}`
+	}, [multiCam, detections, contentPad])
+
 	useEffect(() => {
 		const canvas = canvasRef.current
 		if (!canvas || frames.length === 0) return
@@ -298,8 +361,38 @@ const ClipMaker = ({ mini } = {}) => {
 			canvas.width = img.naturalWidth
 			canvas.height = img.naturalHeight
 		}
-		canvas.getContext("2d").drawImage(img, 0, 0)
-	}, [scrubIdx, frames, imagesLoaded])
+		const ctx = canvas.getContext("2d")
+		ctx.drawImage(img, 0, 0)
+		if (showBoxes && boxesForScrub.length) {
+			const pad = contentPad[boxesForScrub[0].camera]
+			const uniform = Math.max(canvas.width, canvas.height) / DETECT_INPUT
+			const sx = pad ? canvas.width / (DETECT_INPUT - pad.left - pad.right) : uniform
+			const sy = pad ? canvas.height / (DETECT_INPUT - pad.top - pad.bot) : uniform
+			const ox = pad ? pad.left : 0
+			const oy = pad ? pad.top : 0
+			const font = Math.max(12, Math.round(canvas.width / 50))
+			ctx.lineWidth = Math.max(2, canvas.width / 320)
+			ctx.strokeStyle = "#34d399"
+			ctx.fillStyle = "#34d399"
+			ctx.font = `600 ${font}px sans-serif`
+			ctx.textBaseline = "bottom"
+			for (const d of boxesForScrub) {
+				const x = (d.box[0] - ox) * sx
+				const y = (d.box[1] - oy) * sy
+				const w = d.box[2] * sx
+				const h = d.box[3] * sy
+				ctx.strokeRect(x, y, w, h)
+				const label = `${d.type} ${Math.round(d.confidence * 100)}%`
+				const ly = Math.max(font + 2, y - 3)
+				ctx.save()
+				ctx.lineWidth = 3
+				ctx.strokeStyle = "#000"
+				ctx.strokeText(label, x + 3, ly)
+				ctx.fillText(label, x + 3, ly)
+				ctx.restore()
+			}
+		}
+	}, [scrubIdx, frames, imagesLoaded, showBoxes, boxesForScrub, contentPad])
 
 	// multi-cam: load images when frame lists change
 	const multiAllFrames = useMemo(() =>
@@ -393,6 +486,27 @@ const ClipMaker = ({ mini } = {}) => {
 		[frameTimes, scrubIdx, startDate, endDate, frames.length]
 	)
 
+	const detectionMarkers = useMemo(() => {
+		if (multiCam || frames.length === 0 || detections.length === 0) return []
+		const valid = frameTimes.filter(Boolean).map(t => t.valueOf())
+		if (valid.length === 0) return []
+		const lo = Math.min(...valid)
+		const hi = Math.max(...valid)
+		if (hi <= lo) return []
+		const pcts = detections
+			.map(d => moment(d.timestamp).valueOf())
+			.filter(v => v >= lo && v <= hi)
+			.map(v => ((v - lo) / (hi - lo)) * 100)
+			.sort((a, b) => a - b)
+		const out = []
+		for (const p of pcts) {
+			const last = out[out.length - 1]
+			if (last && p - last.end <= FUSE_PCT) last.end = p
+			else out.push({ start: p, end: p })
+		}
+		return out
+	}, [multiCam, frames.length, frameTimes, detections])
+
 	const multiAnyFetching = multiCam && Object.values(camStates).some(s => s.fetching)
 	const multiAnyDownloading = multiCam && Object.values(camStates).some(s => s.frames.length > 0 && s.imagesLoaded < s.frames.length)
 	const multiAnyGenerating = Object.values(multiGenerating).some(Boolean)
@@ -419,9 +533,22 @@ const ClipMaker = ({ mini } = {}) => {
 		multiImageCache.current = {}
 		setFrames([])
 		setImagesLoaded(0)
+		setDetections([])
 		setTrimRange([0, 100])
 		setTrimming(false)
 		setScrubIdx(0)
+	}
+
+	const loadDetections = (camId, start, end) => {
+		setDetections([])
+		const qs = new URLSearchParams({
+			camera: String(camId),
+			start: moment(start).toISOString(),
+			end: moment(end).toISOString(),
+			limit: "500",
+		})
+		request(`/object/detections?${qs}`, {}, prom =>
+			jsonProcessing(prom, data => setDetections(Array.isArray(data) ? data : [])))
 	}
 
 	const loadPreview = (overrideStart, overrideEnd) => {
@@ -434,6 +561,7 @@ const ClipMaker = ({ mini } = {}) => {
 		setTrimRange([0, 100])
 		setTrimming(false)
 		const camId = cameras[camera]?.id ?? camera + 1
+		loadDetections(camId, start, end)
 		request("/convert/listFramesVideo", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -607,6 +735,7 @@ const ClipMaker = ({ mini } = {}) => {
 		} else {
 			setFrames([])
 			setImagesLoaded(0)
+			setDetections([])
 		}
 	}
 
@@ -709,6 +838,7 @@ const ClipMaker = ({ mini } = {}) => {
 						onTrimChange={setTrimRange}
 						trimming={trimming}
 						disabled={loading}
+						markers={detectionMarkers}
 					/>
 				) : null}
 
@@ -733,10 +863,22 @@ const ClipMaker = ({ mini } = {}) => {
 									</Button>
 								</div>
 							) : (
-								<Button variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setTrimming(true)}>
-									<ZoomIn className="size-3" />
-									Time Zoom
-								</Button>
+								<div className="flex items-center gap-2">
+									{!multiCam && detections.length > 0 && (
+										<div
+											onClick={() => setShowBoxes(v => !v)}
+											className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted"
+										>
+											<ScanEye className="size-3.5" />
+											boxes
+											<Switch checked={showBoxes} className="pointer-events-none" />
+										</div>
+									)}
+									<Button variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setTrimming(true)}>
+										<ZoomIn className="size-3" />
+										Time Zoom
+									</Button>
+								</div>
 							)
 						)}
 					</div>

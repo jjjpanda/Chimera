@@ -3,12 +3,13 @@ const fs = require("fs")
 const path = require("path")
 
 let env = {
-	command: "", 
-	gateway: "", 
-	lib: "", 
-	livestream: "", 
-	memory: "", 
-	schedule: "", 
+	command: "",
+	gateway: "",
+	lib: "",
+	livestream: "",
+	memory: "",
+	object: "",
+	schedule: "",
 	storage: ""
 }
 
@@ -63,11 +64,13 @@ writeVarLine("chimeraInstances")
 
 env.command += writeVarLine("cameras")
 env.storage += writeVarLine("cameras")
+env.object += writeVarLine("cameras")
 
 env.storage += writeVarLine("storage_MAX_GB")
 env.schedule += writeVarLine("storage_MAX_GB")
 
 env.lib += writeVarLine("alert_URL")
+env.object += writeVarLine("alert_URL")
 env.lib += writeVarLine("admin_alert_URL")
 
 env.lib += writeVarLine("PRINTPASSWORD")
@@ -79,6 +82,7 @@ env.gateway += writeVarLine("command_PROXY_ON")
 env.gateway += writeVarLine("schedule_PROXY_ON")
 env.gateway += writeVarLine("storage_PROXY_ON")
 env.gateway += writeVarLine("livestream_PROXY_ON")
+env.gateway += writeVarLine("object_PROXY_ON")
 env.gateway += writeVarLine("gateway_ON")
 env.gateway += writeVarLine("gateway_PORT")
 
@@ -107,6 +111,8 @@ env.schedule += writeVarLine("schedule_PORT")
 
 env.gateway += writeVarLine("schedule_HOST")
 
+env.gateway += writeVarLine("object_HOST")
+
 env.lib += writeVarLine("scheduler_AUTH")
 env.schedule += writeVarLine("scheduler_AUTH")
 
@@ -121,6 +127,7 @@ confirmPath("storage_FOLDERPATH", true)
 writeVarLine("storage_MOTION_CONF_FILEPATH")
 
 env.storage += writeVarLine("ffmpeg_FILEPATH")
+env.object += writeVarLine("ffmpeg_FILEPATH")
 confirmPath("ffmpeg_FILEPATH")
 
 env.storage += writeVarLine("ffprobe_FILEPATH")
@@ -132,7 +139,17 @@ env.livestream += writeVarLine("livestream_PORT")
 env.gateway += writeVarLine("livestream_HOST")
 
 env.livestream += writeVarLine("livestream_FOLDERPATH")
+env.object += writeVarLine("livestream_FOLDERPATH")
 confirmPath("livestream_FOLDERPATH", true)
+
+env.object += writeVarLine("object_ON")
+env.object += writeVarLine("object_PORT")
+env.object += writeVarLine("object_CONFIDENCE")
+env.object += writeVarLine("object_INTERVAL_MS")
+env.object += writeVarLine("object_MODEL_URL")
+env.object += writeVarLine("object_INPUT_SIZE")
+env.object += writeVarLine("object_ALERT_ON")
+env.object += writeVarLine("object_MAX_CAPTURES")
 
 env.memory += writeVarLine("memory_ON")
 env.memory += writeVarLine("memory_PORT")
@@ -142,22 +159,27 @@ env.memory += writeVarLine("memory_AUTH_TOKEN")
 env.storage += writeVarLine("database_NAME")
 env.command += writeVarLine("database_NAME")
 env.schedule += writeVarLine("database_NAME")
+env.object += writeVarLine("database_NAME")
 
 env.storage += writeVarLine("database_USER")
 env.command += writeVarLine("database_USER")
 env.schedule += writeVarLine("database_USER")
+env.object += writeVarLine("database_USER")
 
 env.storage += writeVarLine("database_PASSWORD")
 env.command += writeVarLine("database_PASSWORD")
 env.schedule += writeVarLine("database_PASSWORD")
+env.object += writeVarLine("database_PASSWORD")
 
 env.storage += writeVarLine("database_HOST")
 env.command += writeVarLine("database_HOST")
 env.schedule += writeVarLine("database_HOST")
+env.object += writeVarLine("database_HOST")
 
 env.storage += writeVarLine("database_PORT")
 env.command += writeVarLine("database_PORT")
 env.schedule += writeVarLine("database_PORT")
+env.object += writeVarLine("database_PORT")
 
 if(allEnvPresent){
 	Promise.all(Object.entries(env)
