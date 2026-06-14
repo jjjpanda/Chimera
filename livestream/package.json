@@ -9,15 +9,15 @@
   },
   "dependencies": {
     "cookie-parser": "^1.4.5",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
     "heartbeat": "jjjpanda/heartbeat#v1.3.0",
-    "helmet": "^4.6.0",
+    "helmet": "^8.0.0",
     "lib": "file:../lib",
     "memory": "file:../memory"
   },
   "peerDependencies": {
-    "jest": "^27.3.1",
+    "jest": "^29.0.0",
     "supertest": "^6.1.6"
   }
 }

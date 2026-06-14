@@ -8,15 +8,15 @@
     "prunewrap": "npm shrinkwrap"
   },
   "dependencies": {
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
-    "helmet": "^4.6.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "helmet": "^8.0.0",
     "http-proxy-middleware": "^1.0.6",
     "lib": "file:../lib"
   },
   "peerDependencies": {
     "command": "file:../command",
-    "jest": "^27.3.1",
+    "jest": "^29.0.0",
     "supertest": "^6.1.6"
   }
 }
