@@ -256,7 +256,6 @@ const ClipMaker = ({ mini } = {}) => {
 	const [generating, setGenerating] = useState(null)
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
-	const [frameTimes, setFrameTimes] = useState([])
 	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
 	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
@@ -281,11 +280,9 @@ const ClipMaker = ({ mini } = {}) => {
 		if (!multiCam && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
 	}, [cameras])
 
-	// single-cam effects
-	useEffect(() => {
-		setFrameTimes(frames.map(parseFrameTime))
-	}, [frames])
+	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
 
+	// single-cam effects
 	useEffect(() => {
 		const canvas = canvasRef.current
 		if (frames.length === 0) {
@@ -487,16 +484,10 @@ const ClipMaker = ({ mini } = {}) => {
 	)
 
 	const detectionMarkers = useMemo(() => {
-		if (multiCam || frames.length === 0 || detections.length === 0) return []
-		const valid = frameTimes.filter(Boolean).map(t => t.valueOf())
-		if (valid.length === 0) return []
-		const lo = Math.min(...valid)
-		const hi = Math.max(...valid)
-		if (hi <= lo) return []
-		const pcts = detections
-			.map(d => moment(d.timestamp).valueOf())
-			.filter(v => v >= lo && v <= hi)
-			.map(v => ((v - lo) / (hi - lo)) * 100)
+		if (multiCam || frames.length === 0 || detectionFrameIdx.length === 0) return []
+		const pcts = detectionFrameIdx
+			.filter(idx => idx >= 0)
+			.map(idx => (idx / Math.max(1, frames.length - 1)) * 100)
 			.sort((a, b) => a - b)
 		const out = []
 		for (const p of pcts) {
@@ -505,7 +496,7 @@ const ClipMaker = ({ mini } = {}) => {
 			else out.push({ start: p, end: p })
 		}
 		return out
-	}, [multiCam, frames.length, frameTimes, detections])
+	}, [multiCam, frames.length, detectionFrameIdx])
 
 	const multiAnyFetching = multiCam && Object.values(camStates).some(s => s.fetching)
 	const multiAnyDownloading = multiCam && Object.values(camStates).some(s => s.frames.length > 0 && s.imagesLoaded < s.frames.length)
