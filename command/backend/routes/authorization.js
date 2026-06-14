@@ -5,6 +5,7 @@ const { passwordCheck, login, pool } = require("./lib/auth.js")
 const authorize = auth.createAuthorize(pool)
 
 const bcrypt = require("bcryptjs")
+const { randomBytes } = require("crypto")
 
 const app = express.Router()
 
@@ -13,6 +14,7 @@ app.get("/status", async (req, res) => {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
 		res.json({ setup: parseInt(result.rows[0].count) > 0, tokenRequired: !!process.env.setup_TOKEN })
 	} catch (e) {
+		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!process.env.setup_TOKEN })
 		res.status(500).json({ error: true })
 	}
 })
@@ -45,13 +47,19 @@ app.post("/setup", validateBody, async (req, res) => {
 })
 
 app.post("/login", validateBody, passwordCheck, login)
-app.post("/verify", authorize, (req, res) => {
-	res.json({ error: false, role: req.decoded.role })
+app.post("/verify", authorize, async (req, res) => {
+	try {
+		const result = await pool.query("SELECT force_password_change FROM auth WHERE username = $1", [req.decoded.username])
+		const forcePasswordChange = result.rows[0]?.force_password_change ?? false
+		res.json({ error: false, role: req.decoded.role, forcePasswordChange })
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
 })
 
 app.get("/users", authorize, requireAdmin, async (req, res) => {
 	try {
-		const result = await pool.query("SELECT username, role FROM auth ORDER BY username")
+		const result = await pool.query("SELECT username, role, last_login FROM auth ORDER BY username")
 		res.json(result.rows)
 	} catch (e) {
 		res.status(500).json({ error: true })
@@ -59,15 +67,16 @@ app.get("/users", authorize, requireAdmin, async (req, res) => {
 })
 
 app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
-	const { username, password, role } = req.body
-	if (typeof username !== "string" || typeof password !== "string" || !username.trim() || !password.trim() || !role) return res.status(400).json({ error: true })
+	const { username, role } = req.body
+	if (typeof username !== "string" || !username.trim() || !role) return res.status(400).json({ error: true })
 	if (!/^[^/]+$/.test(username) || username.trim() !== username) return res.status(400).json({ error: true })
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
+		const tempPassword = randomBytes(4).toString("hex")
 		const salt = await bcrypt.genSalt(10)
-		const hash = await bcrypt.hash(password, salt)
-		await pool.query("INSERT INTO auth(username, hash, role) VALUES($1, $2, $3)", [username, hash, role])
-		res.json({ error: false })
+		const hash = await bcrypt.hash(tempPassword, salt)
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
+		res.json({ error: false, tempPassword })
 	} catch (e) {
 		res.status(e.code === "23505" ? 400 : 500).json({ error: true })
 	}
@@ -118,6 +127,31 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	}
 })
 
+app.get("/users/:username/sessions", authorize, requireAdmin, async (req, res) => {
+	const { username } = req.params
+	try {
+		const result = await pool.query(
+			"SELECT id, issued_at, last_seen, ip, user_agent, revoked FROM sessions WHERE username = $1 ORDER BY issued_at DESC",
+			[username]
+		)
+		res.json(result.rows)
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
+})
+
+app.delete("/sessions/:id", authorize, requireAdmin, async (req, res) => {
+	const id = parseInt(req.params.id)
+	if (isNaN(id)) return res.status(400).json({ error: true })
+	try {
+		const result = await pool.query("UPDATE sessions SET revoked = TRUE WHERE id = $1 RETURNING id", [id])
+		if (result.rowCount === 0) return res.status(404).json({ error: true })
+		res.json({ error: false })
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
+})
+
 app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	const { username } = req.params
 	if (username === req.decoded.username) return res.status(400).json({ error: true })
@@ -145,6 +179,20 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 		res.status(500).json({ error: true })
 	} finally {
 		if (client) client.release()
+	}
+})
+
+app.post("/password", authorize, validateBody, async (req, res) => {
+	const { password } = req.body
+	if (typeof password !== "string" || !password.trim()) return res.status(400).json({ error: true })
+	const username = req.decoded.username
+	try {
+		const salt = await bcrypt.genSalt(10)
+		const hash = await bcrypt.hash(password, salt)
+		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
+		res.json({ error: false })
+	} catch (e) {
+		res.status(500).json({ error: true })
 	}
 })
 

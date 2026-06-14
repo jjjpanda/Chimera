@@ -25,7 +25,7 @@ const app = express.Router()
 app.post("/createVideo", requireAdmin, validateBody, validateDays, validateRequest, createVideo)
 app.post("/listFramesVideo", validateBody, validateDays, validateRequest, listOfFrames)
 
-app.post("/createZip", requireAdmin, validateBody, validateRequest, createZip)
+app.post("/createZip", requireAdmin, validateBody, validateDays, validateRequest, createZip)
 
 app.post("/statusProcess", validateBody, validateID, statusProcess)
 app.post("/cancelProcess", requireAdmin, validateBody, validateID, cancelProcess)

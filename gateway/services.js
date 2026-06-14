@@ -3,14 +3,14 @@ module.exports = [{
 	log: "📂 Storage Proxied ◀",
 	baseURL: process.env.storage_HOST,
 	postPathRegex: /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/motion\/.*/,
-	getPathRegex: /\/convert\/listProcess|\/shared\/.*|\/file\/path.*|\/motion\/.*|\/database\/.*|\/storage\/health|\/events|\/frames\/.*|\/usage/,
+	getPathRegex: /\/convert\/listProcess|\/shared\/.*|\/file\/(path.*|dailyStats)|\/motion\/.*|\/database\/.*|\/storage\/health|\/events|\/frames\/.*|\/usage/,
 	deletePathRegex: /\/camera\/\d+/
 }, {
 	serviceOn: process.env.schedule_PROXY_ON === "true",
 	log: "⌚ Scheduler Proxied ◀",
 	baseURL: process.env.schedule_HOST,
 	postPathRegex: /\/task\/.*/,
-	getPathRegex: /\/schedule\/health|\/memory\/status|\/task\/list/
+	getPathRegex: /\/schedule\/health|\/memory\/status|\/task\/(list|runs.*)/
 }, {
 	serviceOn: process.env.livestream_PROXY_ON === "true",
 	log: "👀 Livestream Proxied ◀",
@@ -19,10 +19,10 @@ module.exports = [{
 	getPathRegex: /\/livestream\/.*/
 }, {
 	serviceOn: process.env.object_PROXY_ON === "true",
-	log: "🔭 Object Proxied ◀",
+	log: "🔍 Object Proxied ◀",
 	baseURL: process.env.object_HOST,
-	postPathRegex: /\/object.*/,
-	getPathRegex: /\/object.*/
+	postPathRegex: /\/object\/.*/,
+	getPathRegex: /\/object\/.*/
 }, {
 	serviceOn: process.env.command_PROXY_ON === "true",
 	log: "🎮 Command Proxied ◀",

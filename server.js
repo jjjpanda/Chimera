@@ -6,6 +6,7 @@ require("command").start()
 require("storage").start()
 require("livestream").start()
 require("schedule").start()
+require("object").start()
 
 console.log("--- Starting Socket ---")
 

@@ -50,7 +50,7 @@ app.get("/frames/:camera_id/:filename", (req, res) => {
 	})
 })
 
-app.get("/usage", requireAdmin, async (req, res) => {
+app.get("/usage", async (req, res) => {
 	try {
 		const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0

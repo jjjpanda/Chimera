@@ -1,18 +1,9 @@
 import React from "react"
 
-const LoadingIcon = (props) => {
-	return (
-		<div style={{
-			width: "25vh",
-			height: "25vh",
-			position: "fixed",
-			top: "50%",
-			left: "50%",
-			transform: "translate(-50%, -50%)"
-		}}>
-			<img alt="icon" src={"/res/logo.png"} className={"spin"} />
-		</div>
-	)
-}
+const LoadingIcon = () => (
+	<div className="fixed left-1/2 top-1/2 size-[25vh] -translate-x-1/2 -translate-y-1/2">
+		<img alt="loading" src="/res/logo.png" className="spin h-full w-full object-contain" />
+	</div>
+)
 
 export default LoadingIcon

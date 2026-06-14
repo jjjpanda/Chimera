@@ -1,19 +1,12 @@
-import React, {useEffect, useState} from "react"
+import React, { useEffect, useState } from "react"
 
-import { InputNumber, Modal } from "antd"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog"
+import { Button } from "../components/ui/button"
+import { Input } from "../components/ui/input"
+import { Label } from "../components/ui/label"
 
 import moment from "moment"
-import {request, jsonProcessing} from "../js/request.js"
-
-const DeleteDaysInput = (props) => {
-	return <InputNumber 
-		min={0}
-		addonBefore={"Delete files older than"}
-		addonAfter={"days"}
-		defaultValue={props.default}
-		onChange={(value) => props.onChange(value)}
-	/>
-}
+import { request, jsonProcessing } from "../js/request.js"
 
 const cameraUpdate = (setState) => {
 	setState((oldState) => ({
@@ -28,7 +21,7 @@ const cameraUpdate = (setState) => {
 		},
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			if(data && "count" in data && "size" in data){
+			if (data && "count" in data && "size" in data) {
 				setState((oldState) => ({
 					...oldState,
 					cameras: oldState.cameras.map((camera) => ({
@@ -39,8 +32,7 @@ const cameraUpdate = (setState) => {
 					lastUpdated: moment().format("h:mm:ss a"),
 					loading: undefined
 				}))
-			}
-			else{
+			} else {
 				setState((oldState) => ({
 					...oldState,
 					lastUpdated: moment().format("h:mm:ss a"),
@@ -51,12 +43,12 @@ const cameraUpdate = (setState) => {
 	})
 }
 
-const deleteFiles = (state, setState, camera=undefined) => {
+const deleteFiles = (state, setState, camera = undefined) => {
 	setState((oldState) => ({
 		...oldState,
 		loading: "deleting"
 	}))
-	if(camera != undefined){
+	if (camera != undefined) {
 		request("/file/pathClean", {
 			method: "POST",
 			headers: {
@@ -67,57 +59,94 @@ const deleteFiles = (state, setState, camera=undefined) => {
 				days: state.days
 			})
 		}, (prom) => {
-			jsonProcessing(prom, (data) => {
+			jsonProcessing(prom, () => {
 				cameraUpdate(setState)
 			})
 		})
-	}
-	else{
-		Promise.all(state.cameras.map((camera) => {
-			request("/file/pathClean", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					camera: camera.number,
-					days: state.days
+	} else {
+		Promise.all(state.cameras.map((cam) => {
+			return new Promise((resolve) => {
+				request("/file/pathClean", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						camera: cam.number,
+						days: state.days
+					})
+				}, (prom) => {
+					jsonProcessing(prom, () => {
+						resolve()
+					})
 				})
-			}, (prom) => {
-				jsonProcessing(prom, (data) => {
-					resolve()
-				})
-			}) 
+			})
 		})).then(() => cameraUpdate(setState))
 	}
 }
 
-const useFileMetrics = (initialState) => {
+const useFileMetrics = (initialState, cameras = []) => {
 	const [state, setState] = useState(initialState)
+	const [dialog, setDialog] = useState({ open: false, name: null, number: null })
 
 	useEffect(() => {
+		if (!cameras.length) return
+		setState((s) => ({
+			...s,
+			cameras: cameras.map((cam) => ({
+				path: `shared/captures/${cam.id}`,
+				number: cam.id,
+				name: cam.name,
+				size: 0,
+				count: 0
+			}))
+		}))
 		cameraUpdate(setState)
-	}, [])
+	}, [cameras])
 
-	const handleDelete = ({name, number, target}) => {
-		console.log(name, number, target, state)
-		Modal.confirm({
-			title: (name && number) ? `Delete Files from Camera: ${name}?` : "Delete Files from All Cameras?",
-			content: (<DeleteDaysInput 
-				default={state.days}
-				onChange={(value) => setState((oldState) => ({...oldState, days: value}))}
-			/>),
-			okText: "No",
-			onOk: () => Modal.destroyAll(),
-			cancelText: "Yes",
-			onCancel: () => {
-				console.log(name && number ? `DELETE ${name} ${state.days}` : `DELETE ALL ${state.days}`)
-				deleteFiles(state, setState, number ? number : undefined)
-			}
-		})
+	const handleDelete = ({ name, number }) => {
+		setDialog({ open: true, name: name || null, number: number || null })
 	}
 
-	return [state, setState, handleDelete]
+	const confirmDelete = () => {
+		setDialog((d) => ({ ...d, open: false }))
+		deleteFiles(state, setState, dialog.number || undefined)
+	}
+
+	const DeleteDialog = (
+		<Dialog open={dialog.open} onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>
+						{dialog.name && dialog.number
+							? `Delete Files from Camera: ${dialog.name}?`
+							: "Delete Files from All Cameras?"}
+					</DialogTitle>
+				</DialogHeader>
+				<div className="flex flex-col gap-2">
+					<Label htmlFor="delete-days" className="text-primary">Delete files older than N days</Label>
+					<Input
+						id="delete-days"
+						type="number"
+						min={0}
+						value={state.days}
+						onChange={(e) => setState((oldState) => ({ ...oldState, days: Number(e.target.value) }))}
+						className="w-32"
+					/>
+				</div>
+				<DialogFooter>
+					<Button variant="ghost" onClick={() => setDialog((d) => ({ ...d, open: false }))}>
+						Cancel
+					</Button>
+					<Button variant="destructive" onClick={confirmDelete}>
+						Delete
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+
+	return [state, setState, handleDelete, DeleteDialog, () => cameraUpdate(setState)]
 }
 
 export default useFileMetrics

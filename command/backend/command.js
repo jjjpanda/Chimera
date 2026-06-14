@@ -19,9 +19,9 @@ app.use("/command/health", require("heartbeat").heart)
 app.use("/authorization", require("./routes/authorization.js"))
 app.use("/cameras", auth.createAuthorize(pool), require("./routes/cameras.js"))
 app.use("/res", express.static(path.join(__dirname, "../frontend/res")))
-for(const webpath of ["/login", "/", "/live", "/process", "/scrub", "/stats", "/admin"]){
+for(const webpath of ["/login", "/", "/live", "/scrub", "/stats", "/schedule", "/admin", "/objects"]){
 	app.use(webpath, express.static(path.join(__dirname, "../dist/"), {
-		index: "app.html"
+		index: "index.html"
 	}))
 }
 

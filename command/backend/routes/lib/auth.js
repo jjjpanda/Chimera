@@ -1,6 +1,7 @@
 const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
+const { randomUUID } = require("crypto")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -16,12 +17,13 @@ module.exports = {
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
 
-		pool.query("SELECT hash, role FROM auth WHERE username = $1", [username], (err, values) => {
+		pool.query("SELECT hash, role, force_password_change FROM auth WHERE username = $1", [username], (err, values) => {
 			if (!err && values.rows.length > 0 && values.rows[0].hash) {
-				const { hash, role } = values.rows[0]
+				const { hash, role, force_password_change } = values.rows[0]
 				bcrypt.compare(password == undefined ? "" : password, hash, (err, success) => {
 					if (!err && success) {
 						req.userRole = role
+						req.forcePasswordChange = force_password_change
 						next()
 					} else {
 						res.status(400).json({ error: true, errors: "Password Incorrect" })
@@ -33,14 +35,23 @@ module.exports = {
 		})
 	},
 
-	login: (req, res) => {
+	login: async (req, res) => {
 		const { username } = req.body
-		jwt.sign({ username, role: req.userRole }, secretKey, { expiresIn: "30d" },
+		const jti = randomUUID()
+		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim() || null
+		const userAgent = req.headers["user-agent"] || null
+		pool.query("UPDATE auth SET last_login = NOW() WHERE username = $1", [username]).catch(() => {})
+		try {
+			await pool.query("INSERT INTO sessions(username, jti, ip, user_agent) VALUES($1, $2, $3, $4)", [username, jti, ip, userAgent])
+		} catch {
+			return res.status(500).json({ error: true })
+		}
+		jwt.sign({ username, role: req.userRole, jti }, secretKey, { expiresIn: "30d" },
 			(err, token) => {
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000
 				})
-				res.send({ error: false, role: req.userRole })
+				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange })
 			}
 		)
 	}

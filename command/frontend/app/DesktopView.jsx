@@ -2,84 +2,50 @@ import React from "react"
 import { Navigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
 
-import { Row, Col, Space, Card } from "antd"
 import LiveVideo from "./LiveVideo"
-import FileStatsPieChart from "./FileStatsPieChart.jsx"
-import FileStatsLineChart from "./FileStatsLineChart.jsx"
-import SummaryScrubber from "./SummaryScrubber"
+import ClipMaker from "./ClipMaker"
+import RecordingsList from "./RecordingsList"
+import Stats from "./Stats.jsx"
+import StorageWidget from "./StorageWidget.jsx"
 import TaskList from "./TaskList"
 import ProcessList from "./ProcessList"
-import StatusTree from "./StatusTree"
+import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
+import ScheduleDashboard from "./ScheduleDashboard.jsx"
+import ObjectDetections from "./ObjectDetections.jsx"
 
-const DesktopView = (props) => {
-	const {index} = props
+const DesktopView = ({ index }) => {
 	const role = useRole()
 
-	if(index == "route-1"){
-		return <LiveVideo grid />
-	}
-	else if(index == "route-2"){
-		return <Row>
-			<Col span={18}>
-				<ProcessList showFooter />
-			</Col>
-			<Col span={6}>
-				<TaskList />
-			</Col>
-		</Row>
-	}
-	else if(index == "route-3"){
-		return <Space direction="vertical" style={{width: "100%"}}>
-			<SummaryScrubber />
-		</Space> 
-	}
-	else if(index == "route-4"){
-		return <Space direction="vertical" style={{width: "100%"}}>
-			<Row>
-				<Col span={6} style={{height: "80vh"}}>
-					<FileStatsPieChart />
-				</Col>
-				<Col span={2}>
-				</Col>
-				<Col span={16}>
-					<FileStatsLineChart />
-				</Col>
-			</Row>
-		</Space>
-	}
-	else if(index == "route-5"){
-		return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
-	}
-	else{
-		return (
-			<Space direction="vertical">
-				<Row style={{minHeight: "50vh"}}>
-					<Col span={8} >
-						<StatusTree />
-					</Col>
-					<Col span={8} >
-						<FileStatsPieChart withButton/>
-					</Col>
-					<Col span={8}>
-						<LiveVideo />
-					</Col>
-				</Row>
-				<Row style={{minHeight: "50vh"}}>
-					<Col span={7}>
-						<TaskList withButton/>
-					</Col>
-					<Col span={7}>
-						<ProcessList withButton/>
-					</Col>
-					<Col span={10}>
-						<SummaryScrubber numberOfFrames={10} withButton />
-					</Col>
-				</Row>
-			</Space>
-		)
-	}
-    
+	if (index === "route-1") return <ClipMaker />
+
+	if (index === "route-2") return <LiveVideo grid />
+
+	if (index === "route-3") return <RecordingsList />
+
+	if (index === "route-4") return <Stats />
+
+	if (index === "route-5") return <ScheduleDashboard />
+
+	if (index === "route-7") return <ObjectDetections />
+
+	if (index === "route-6") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
+
+	return (
+		<div className="space-y-4">
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<Status withUsers={role === "admin"} />
+				<StorageWidget />
+				<LiveVideo />
+			</div>
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "12rem" }}>
+				<TaskList withButton />
+				<ProcessList mini />
+				<ClipMaker mini />
+				<ObjectDetections mini />
+			</div>
+		</div>
+	)
 }
 
 export default DesktopView

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--color-bg: 250 250 250;
+	--color-surface: 255 255 255;
+	--color-surface-raised: 244 244 245;
+	--color-accent: 125 69 169;
+	--color-accent-fg: 255 255 255;
+	--color-secondary: 150 81 210;
+	--color-secondary-fg: 255 255 255;
+	--color-primary: 9 9 11;
+	--color-muted: 113 113 122;
+	--color-border: 228 228 231;
+	--color-info: 14 125 171;
+	--color-info-fg: 240 249 255;
+	--color-danger: 145 42 42;
+	--color-danger-fg: 255 255 255;
+}
+
+.dark {
+	--color-bg: 5 5 5;
+	--color-surface: 15 15 18;
+	--color-surface-raised: 23 23 28;
+	--color-accent: 125 69 169;
+	--color-accent-fg: 255 255 255;
+	--color-secondary: 150 81 210;
+	--color-secondary-fg: 255 255 255;
+	--color-primary: 245 245 247;
+	--color-muted: 138 138 148;
+	--color-border: 39 39 42;
+	--color-info: 14 125 171;
+	--color-info-fg: 8 16 24;
+	--color-danger: 145 42 42;
+	--color-danger-fg: 255 255 255;
+}
+
+@layer base {
+	html,
+	body,
+	#root {
+		height: 100%;
+	}
+
+	body {
+		@apply bg-bg text-primary font-sans antialiased;
+	}
+
+	* {
+		@apply border-border;
+	}
+}
+
+.spin {
+	animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

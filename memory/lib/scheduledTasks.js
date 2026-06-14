@@ -26,7 +26,7 @@ module.exports = (io) => ({
 	},
 
 	destroyTask: (id, callback=()=>{}) => {
-		scheduledTask[id].stop()
+		if (scheduledTask[id]) scheduledTask[id].stop()
 		delete scheduledTask[id]
 		delete scheduledTaskConfigs[id]
 		callback(scheduledTaskConfigs)

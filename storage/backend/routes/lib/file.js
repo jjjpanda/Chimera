@@ -1,4 +1,6 @@
 const path = require("path")
+const fs = require("fs")
+const { execFile } = require("child_process")
 const rimraf = require("rimraf")
 const moment = require("moment")
 
@@ -77,19 +79,33 @@ module.exports = {
 	},
 
 	deleteFilesBeforeDateGlob: (req, res) => {
+		if(req.numberOfFilesDeletedInDatabase == 0){
+			return res.send({deleted: false})
+		}
 		const {days} = req.body
 		const now = moment()
 		const beforeDate = moment().subtract(days, "days")
 		const clobArr = generateBeforeDateGlobNotPatternsArray(now, beforeDate)
-		if(clobArr.length == 0 || req.numberOfFilesDeletedInDatabase == 0){
-			res.send({deleted: false})
-		}
-		else{
-			const glob = `./!(${clobArr.join("|")})*.jpg`
-			rimraf(path.join(req.body.appendedPath, glob), (err) => {
-				res.send({deleted: !err})
-			})
-		}
+		const glob = clobArr.length == 0
+			? "*.jpg"
+			: `./!(${clobArr.join("|")})*.jpg`
+		rimraf(path.join(req.body.appendedPath, glob), (err) => {
+			res.send({deleted: !err})
+		})
+	},
+
+	dailyStats: (req, res) => {
+		const cameras = JSON.parse(process.env.cameras)
+		queryForDailyStats(cameras).then(values => {
+			const stats = values.rows.map(row => ({
+				timestamp: moment(row.timestamp).valueOf(),
+				...cameras.reduce((obj, cam) => ({ ...obj, [cam]: parseInt(row[cam]) || 0 }), {})
+			}))
+			res.send(stats)
+		}).catch(err => {
+			console.log("err", err)
+			res.status(500).send({ error: true })
+		})
 	},
 
 	fileStats: (req, res) => {
@@ -106,6 +122,55 @@ module.exports = {
 		}).catch(err => {
 			console.log("err", err)
 		})
+	},
+
+	autoClean: async (req, res) => {
+		try {
+			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
+			if (!maxGb) return res.send({ skipped: true })
+
+			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
+
+			const usedBytes = await new Promise(resolve =>
+				execFile("du", ["-sb", capturesPath], (err, stdout) =>
+					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
+				)
+			)
+
+			const targetBytes = maxGb * 0.9 * 1e9
+			if (usedBytes <= targetBytes) return res.send({ cleaned: false })
+
+			const toFree = usedBytes - targetBytes
+			let freed = 0
+			let deleted = 0
+
+			while (freed < toFree) {
+				const { rows } = await pool.query(
+					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
+				)
+				if (rows.length === 0) break
+
+				const batch = []
+				for (const row of rows) {
+					if (freed >= toFree) break
+					batch.push(row)
+					freed += parseInt(row.size) || 0
+				}
+
+				await Promise.all(batch.map(row =>
+					fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
+				))
+				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
+				deleted += batch.length
+
+				if (batch.length < rows.length) break
+			}
+
+			if (deleted === 0) return res.send({ cleaned: false })
+			res.send({ cleaned: true, deleted })
+		} catch (err) {
+			res.status(500).send({ error: "cleanup failed" })
+		}
 	},
 
 	cameraMetrics: (req, res) => {
@@ -146,6 +211,11 @@ const queryToUpdateDatabaseForDeletion = (camera, deleting, before="") => {
 const queryToAddToDeletionsTable = (camera, size, count) => {
 	const now = moment().format("YYYY-MM-DD HH:mm:ss")
 	return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
+}
+
+const queryForDailyStats = (cameras) => {
+	const cols = cameras.map((cam, i) => `SUM(CASE WHEN camera=${i + 1} THEN size ELSE 0 END) as "${cam}"`)
+	return pool.query(`SELECT date_trunc('minute', timestamp) as timestamp,${cols.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const queryForGroupedStats = (cameras) => {

@@ -11,7 +11,7 @@ const config = {
 		log_date_format:"YYYY-MM-DD HH:mm:ss",
 		...(isDev ? {
 			watch: ["."],
-			ignore_watch: ["shared", "feed", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"],
+			ignore_watch: ["shared", "feed", "objectTemp", "objectCaptures", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"],
 		} : {}),
 		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
@@ -51,15 +51,6 @@ if(process.env.livestream_ON === "true"){
 		})
 		cameraIndex++
 	}
-}
-
-if(process.env.object_ON === "true"){
-	config.apps.push({
-		script: "npx object",
-		name: "object",
-		log: `./log/object.${isDev ? "dev" : "pm2"}.log`,
-		log_date_format:"YYYY-MM-DD HH:mm:ss",
-	})
 }
 
 module.exports = config

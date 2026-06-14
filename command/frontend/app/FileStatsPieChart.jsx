@@ -1,66 +1,68 @@
 import React from "react"
 import useFileMetrics from "../hooks/useFileMetrics.js"
-import useThemeSwitch from "../hooks/useThemeSwitch.js"
+import useCameras from "../hooks/useCameras.js"
 
-import { Card } from "antd"
+import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Pie, PieChart, ResponsiveContainer, Tooltip, Cell, Label } from "recharts"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
-import { formatBytes } from "lib"
-import cameraInfo from "../js/cameraInfo.js"
-import colors from "../js/colors.js"
+import formatBytes from "../js/formatBytes.js"
+import colors, { CHART_ACCENT, TOOLTIP_BG, TOOLTIP_BORDER, TOOLTIP_TEXT } from "../js/colors.js"
+
+const ACCENT = CHART_ACCENT
 
 const customTooltip = ({ active, payload }) => {
 	if (active && payload && payload.length) {
 		const name = payload[0].name == "Free Space" ? payload[0].name : `Camera ${payload[0].name}`
-		const value = payload[0].dataKey == "size" ? formatBytes( payload[0].value, 2 ) : `${payload[0].value} image${payload[0].value > 1 ? "s" : ""}`
+		const value = payload[0].dataKey == "size" ? formatBytes(payload[0].value, 2) : `${payload[0].value} image${payload[0].value > 1 ? "s" : ""}`
 		return (
-			<div style={{backgroundColor: "#000", color: "#fff"}}>
+			<div style={{ backgroundColor: TOOLTIP_BG, color: TOOLTIP_TEXT, border: `1px solid ${TOOLTIP_BORDER}`, padding: "6px 10px", borderRadius: 6, fontSize: 13 }}>
 				{`${name} : ${value}`}
 			</div>
 		)
 	}
-  
 	return null
 }
 
+const segmentColor = (index) => index === 0 ? ACCENT : colors[(index) % colors.length]
+
 const FileStatsPieChart = (props) => {
-	const [state, setState, handleDelete] = useFileMetrics({
+	const [rawCameras] = useCameras()
+
+	const [state, setState, handleDelete, DeleteDialog] = useFileMetrics({
 		loading: "refreshing",
-		cameras: JSON.parse(process.env.cameras || "[]").map(cameraInfo),
+		cameras: [],
 		days: 7
-	})
+	}, rawCameras)
 
-	const [isDarkTheme] = useThemeSwitch()
-
-	const sumSize = state.cameras.reduce((total, cam) => total+cam.size, 0)
+	const sumSize = state.cameras.reduce((total, cam) => total + cam.size, 0)
 
 	const pie = (
 		<ResponsiveContainer>
-			<PieChart>
+			<PieChart style={{ background: "transparent" }}>
 				{props.mobile ? null : <Tooltip content={customTooltip} />}
-				<Pie 
-					data={state.cameras} dataKey="count" nameKey="number" 
+				<Pie
+					data={state.cameras} dataKey="count" nameKey="number"
 					cx="50%" cy="50%" innerRadius={37} outerRadius={55}
 					onClick={handleDelete}
 				>
-					{
-						state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
-					}
+					{state.cameras.map((entry, index) => (
+						<Cell key={index} fill={segmentColor(index)} />
+					))}
 				</Pie>
-				<Pie 
-					data={state.cameras} dataKey="size" nameKey="number" 
+				<Pie
+					data={state.cameras} dataKey="size" nameKey="number"
 					cx="50%" cy="50%" innerRadius={60} outerRadius={80}
-					onClick={handleDelete} 
-					{...(props.mobile ? {label: ({size, name}) => (size != 0 ? name : null)} : {})}
+					onClick={handleDelete}
+					{...(props.mobile ? { label: ({ size, name }) => (size != 0 ? name : null) } : {})}
 				>
-					{
-						state.cameras.map((entry, index) => <Cell fill={colors[index % colors.length]}/>)
-					}
-					<Label 
+					{state.cameras.map((entry, index) => (
+						<Cell key={index} fill={segmentColor(index)} />
+					))}
+					<Label
 						value={formatBytes(sumSize, 1)}
-						position="center" 
-						style={{fill: isDarkTheme ? "white" : "black"}} 
+						position="center"
+						style={{ fill: TOOLTIP_TEXT }}
 						onClick={handleDelete}
 					/>
 				</Pie>
@@ -68,22 +70,27 @@ const FileStatsPieChart = (props) => {
 		</ResponsiveContainer>
 	)
 
-	if(props.withButton) {
+	if (props.withButton) {
 		return (
-			<Card 
-				title={"Storage Usage"}
-				size={"small"} 
-				style={{height: "100%"}}
-				extra={ (props.withButton ? <NavigateToRoute to={"/stats"} /> : null) }
-			>
-				<div style={{height: "50vh"}}>
+			<Card className="h-full">
+				<CardHeader className="flex flex-row items-center justify-between pb-2">
+					<CardTitle className="text-sm font-medium">Storage Usage</CardTitle>
+					<NavigateToRoute to={"/stats"} />
+				</CardHeader>
+				<CardContent className="h-[50vh]">
 					{pie}
-				</div>
+					{DeleteDialog}
+				</CardContent>
 			</Card>
 		)
 	}
 
-	return pie
+	return (
+		<>
+			{pie}
+			{DeleteDialog}
+		</>
+	)
 }
 
 export default FileStatsPieChart
