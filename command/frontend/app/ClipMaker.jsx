@@ -543,8 +543,8 @@ const ClipMaker = ({ mini } = {}) => {
 		setDetections([])
 		const qs = new URLSearchParams({
 			camera: String(camId),
-			start: moment(start).utc().format("YYYY-MM-DD HH:mm:ss"),
-			end: moment(end).utc().format("YYYY-MM-DD HH:mm:ss"),
+			start: moment(start).toISOString(),
+			end: moment(end).toISOString(),
 			limit: "500",
 		})
 		request(`/object/detections?${qs}`, {}, prom =>
