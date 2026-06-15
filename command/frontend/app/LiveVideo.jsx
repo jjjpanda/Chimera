@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import ReactHlsPlayer from "react-hls-player"
+import React, { useState, useEffect, useRef } from "react"
+import Hls from "hls.js"
 import useLiveVideo from "../hooks/useLiveVideo.js"
 import useCameras from "../hooks/useCameras.js"
 import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
@@ -11,15 +11,38 @@ import { Button } from "../components/ui/button"
 import { RefreshCw, Maximize2 } from "lucide-react"
 import { cn } from "../lib/utils"
 
-const HlsPlayer = ({ src, className }) => (
-	<ReactHlsPlayer
-		src={src}
-		autoPlay={false}
-		controls={true}
-		playsInline
-		className={className}
-	/>
-)
+const HlsPlayer = ({ src, className }) => {
+	const videoRef = useRef(null)
+	const [unsupported] = useState(
+		() => !Hls.isSupported() && !document.createElement("video").canPlayType("application/vnd.apple.mpegurl")
+	)
+
+	useEffect(() => {
+		const video = videoRef.current
+		if (!video || !src) return
+
+		if (video.canPlayType("application/vnd.apple.mpegurl")) {
+			video.src = src
+			return () => {
+				video.pause()
+				video.removeAttribute("src")
+				video.load()
+			}
+		}
+
+		if (Hls.isSupported()) {
+			const hls = new Hls()
+			hls.loadSource(src)
+			hls.attachMedia(video)
+			return () => hls.destroy()
+		}
+	}, [src])
+
+	if (unsupported)
+		return <div className={cn(className, "flex items-center justify-center text-sm text-muted-foreground")}>HLS not supported</div>
+
+	return <video ref={videoRef} controls playsInline className={className} />
+}
 
 const Feed = ({ video, onExpand, hideLabel }) => (
 	<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
