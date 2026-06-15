@@ -125,7 +125,7 @@ const LiveVideo = (props) => {
 					<Tabs defaultValue={tabDefault}>
 						<TabsList className="w-full rounded-none border-b border-border bg-surface-raised">
 							{state.videoList.map((video, i) => (
-								<TabsTrigger key={i} value={String(i)} className="flex-1 text-xs">
+								<TabsTrigger key={i} value={String(i)} className="flex-1 min-w-[3.5rem] shrink-0 text-sm h-10">
 									{video.camera}
 								</TabsTrigger>
 							))}

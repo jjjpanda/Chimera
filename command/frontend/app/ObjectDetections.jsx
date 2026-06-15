@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useMediaQuery } from "react-responsive"
 import moment from "moment"
 import { RefreshCw, ScanEye, AlertCircle, ImageOff, ArrowUpDown } from "lucide-react"
 
@@ -105,9 +106,12 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 
 const ObjectDetectionsMini = () => {
 	const navigate = useNavigate()
+	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const { detections, status } = useObjectDetections()
 	const cameraName = (n) => status?.cameraNames?.[n - 1] || `Camera ${n}`
 	const groups = useMemo(() => groupDetections(detections), [detections])
+	const [highlighted, setHighlighted] = useState(false)
+	const cardRef = useRef(null)
 
 	const lastPerCamera = useMemo(() => {
 		const seen = new Set()
@@ -120,8 +124,22 @@ const ObjectDetectionsMini = () => {
 
 	const slots = [0, 1, 2, 3].map(i => lastPerCamera[i] ?? null)
 
+	useEffect(() => {
+		if (!highlighted) return
+		const handler = (e) => {
+			if (!cardRef.current?.contains(e.target)) setHighlighted(false)
+		}
+		document.addEventListener("pointerdown", handler)
+		return () => document.removeEventListener("pointerdown", handler)
+	}, [highlighted])
+
+	const handleClick = () => {
+		if (isDesktop || highlighted) navigate("/objects")
+		else setHighlighted(true)
+	}
+
 	return (
-		<Card className="h-full overflow-hidden">
+		<Card ref={cardRef} className={cn("h-full overflow-hidden cursor-pointer select-none transition-shadow", highlighted && "ring-2 ring-accent")} onClick={handleClick}>
 			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 				{slots.map((g, i) => (
 					<div key={i} className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}>
@@ -141,12 +159,12 @@ const ObjectDetectionsMini = () => {
 						)}
 					</div>
 				))}
-				<Button
-					className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14"
-					onClick={() => navigate("/objects")}
-				>
+				<div className={cn(
+					"absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none transition-colors",
+					(highlighted || isDesktop) ? "bg-accent text-accent-foreground" : "bg-transparent text-white/70"
+				)}>
 					<ScanEye className="size-6" />
-				</Button>
+				</div>
 			</div>
 		</Card>
 	)

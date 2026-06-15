@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react"
+import { cn } from "../lib/utils"
 import { useNavigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
 import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, ArrowUpDown, Save, SkipBack, ScanEye } from "lucide-react"
@@ -129,28 +130,31 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 			style={{ cursor: disabled ? "default" : "pointer" }}
 			onPointerDown={disabled ? undefined : (e) => startDrag(e, "track")}
 		>
-			<div className="absolute inset-x-0 h-5 bg-secondary rounded-full" />
-
-			{markers.map((m, i) => m.end > m.start ? (
-				<div
-					key={i}
-					className="absolute h-5 bg-[#34d399]/70 rounded-sm pointer-events-none z-0"
-					style={{ left: `${m.start}%`, width: `${m.end - m.start}%` }}
-				/>
-			) : (
-				<div
-					key={i}
-					className="absolute h-5 w-0.5 bg-[#34d399] pointer-events-none z-0"
-					style={{ left: `${m.start}%`, transform: "translateX(-50%)" }}
-				/>
-			))}
-
-			{trimming && (
-				<>
+			<div className="absolute inset-x-0 h-5 rounded-full overflow-hidden">
+				<div className="absolute inset-0 bg-secondary" />
+				{markers.map((m, i) => m.end > m.start ? (
+					<div
+						key={i}
+						className="absolute h-full bg-[#34d399]/70 pointer-events-none"
+						style={{ left: `${m.start}%`, width: `${m.end - m.start}%` }}
+					/>
+				) : (
+					<div
+						key={i}
+						className="absolute h-full w-0.5 bg-[#34d399] pointer-events-none"
+						style={{ left: `${m.start}%`, transform: "translateX(-50%)" }}
+					/>
+				))}
+				{trimming && (
 					<div
 						className="absolute inset-y-0 bg-accent/15 pointer-events-none"
 						style={{ left: `${ts}%`, width: `${te - ts}%` }}
 					/>
+				)}
+			</div>
+
+			{trimming && (
+				<>
 					<div
 						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none"
 						style={{ left: `${ts}%`, transform: "translateX(-50%)" }}
@@ -177,8 +181,11 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 
 const ClipMakerMini = () => {
 	const navigate = useNavigate()
+	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const [cameras] = useCameras()
 	const [snapshots, setSnapshots] = useState({})
+	const [highlighted, setHighlighted] = useState(false)
+	const cardRef = useRef(null)
 
 	useEffect(() => {
 		if (!cameras.length) return
@@ -196,12 +203,26 @@ const ClipMakerMini = () => {
 		})
 	}, [cameras])
 
+	useEffect(() => {
+		if (!highlighted) return
+		const handler = (e) => {
+			if (!cardRef.current?.contains(e.target)) setHighlighted(false)
+		}
+		document.addEventListener("pointerdown", handler)
+		return () => document.removeEventListener("pointerdown", handler)
+	}, [highlighted])
+
+	const handleClick = () => {
+		if (isDesktop || highlighted) navigate("/clip")
+		else setHighlighted(true)
+	}
+
 	const camSlots = cameras.slice(0, 4)
 	const slots = [0, 1, 2, 3].map(i => camSlots[i] ?? null)
 
 	return (
-		<Card className="h-full overflow-hidden">
-			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0">
+		<Card ref={cardRef} className={cn("h-full overflow-hidden cursor-pointer select-none transition-shadow", highlighted && "ring-2 ring-accent")} onClick={handleClick}>
+			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 				{slots.map((cam, i) => (
 					<div key={i} className={`relative overflow-hidden ${cam ? "bg-black" : "bg-muted/20"}`}>
 						{cam && snapshots[cam.id] && (
@@ -221,12 +242,12 @@ const ClipMakerMini = () => {
 						)}
 					</div>
 				))}
-				<Button
-					className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14"
-					onClick={() => navigate("/clip")}
-				>
+				<div className={cn(
+					"absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none transition-colors",
+					(highlighted || isDesktop) ? "bg-accent text-accent-foreground" : "bg-transparent text-white/70"
+				)}>
 					<Rewind className="size-6" />
-				</Button>
+				</div>
 			</div>
 		</Card>
 	)
@@ -259,7 +280,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
 	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
-	const [previewHeight, setPreviewHeight] = useState(200)
+	const [previewHeight, setPreviewHeight] = useState(240)
 
 	const canvasRef = useRef(null)
 	const imageCache = useRef({})
@@ -861,7 +882,7 @@ const ClipMaker = ({ mini } = {}) => {
 											className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted"
 										>
 											<ScanEye className="size-3.5" />
-											boxes
+											Boxes
 											<Switch checked={showBoxes} className="pointer-events-none" />
 										</div>
 									)}
@@ -887,15 +908,16 @@ const ClipMaker = ({ mini } = {}) => {
 				<div className="flex flex-col gap-1.5">
 					<Label>Presets</Label>
 					<div className="flex flex-wrap gap-1">
-						<Button variant="ghost" size="sm" className="h-8 px-2" onClick={cancelPreset} disabled={!pendingPreset}>
-							<X className="size-3" />
+						<Button variant="ghost" size="sm" className="h-10 px-2" onClick={cancelPreset} disabled={!pendingPreset}>
+							<X className="size-4" />
 						</Button>
 						{PRESETS.map(p => {
 							const isPending = pendingPreset?.label === p.label
 							return (
-								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-8 px-3 text-sm"
+								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-10 px-3 text-base relative"
 									onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
-									{isPending ? <Check className="size-3" /> : p.label}
+									<span className={isPending ? "invisible" : ""}>{p.label}</span>
+									{isPending && <Check className="size-4 absolute" />}
 								</Button>
 							)
 						})}
