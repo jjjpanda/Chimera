@@ -9,9 +9,9 @@ const NavigateToRoute = ({ to }) => {
 		<button
 			type="button"
 			onClick={() => navigate(to, { replace: true })}
-			className="text-muted transition-colors hover:text-primary"
+			className="flex items-center justify-center size-9 rounded-md text-muted transition-colors hover:text-primary hover:bg-surface-raised"
 		>
-			<Maximize2 className="size-4" />
+			<Maximize2 className="size-5" />
 		</button>
 	)
 }

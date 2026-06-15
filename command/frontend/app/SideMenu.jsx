@@ -41,7 +41,7 @@ const SideMenu = ({ index, mobile }) => {
 
 	if (mobile) {
 		return (
-			<nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface px-1 py-1.5">
+			<nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface px-1 py-2">
 				{mobileTabs.map(({ key, icon: Icon, title }) => {
 					const active = index === key
 					return (
@@ -49,13 +49,13 @@ const SideMenu = ({ index, mobile }) => {
 							key={key}
 							onClick={() => go(key)}
 							className={cn(
-								"flex flex-1 flex-col items-center gap-0.5 rounded-md py-1 text-[11px] font-medium transition-colors",
+								"flex flex-1 flex-col items-center gap-1 rounded-md py-1.5 text-xs font-medium transition-colors",
 								active ? "text-accent" : "text-muted hover:text-primary"
 							)}
 						>
 							{key === "route-0"
-						? <img src="/res/logo.png" alt="Home" className="size-5 object-contain" />
-						: <Icon className="size-5" />
+						? <img src="/res/logo.png" alt="Home" className="size-6 object-contain" />
+						: <Icon className="size-6" />
 					}
 							<span className="leading-none">{title}</span>
 						</button>

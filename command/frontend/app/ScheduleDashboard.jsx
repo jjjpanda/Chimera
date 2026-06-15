@@ -193,20 +193,20 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 						<Table>
 							<TableHeader>
 								<TableRow className="border-border">
-									<TableHead className="text-muted">ID</TableHead>
-									<TableHead className="text-muted">Schedule</TableHead>
-									<TableHead className="text-muted">Task</TableHead>
-									{isAdmin && <TableHead className="text-muted text-right">Actions</TableHead>}
+									<TableHead className="text-muted text-sm">ID</TableHead>
+									<TableHead className="text-muted text-sm">Schedule</TableHead>
+									<TableHead className="text-muted text-sm">Task</TableHead>
+									{isAdmin && <TableHead className="text-muted text-sm text-right">Actions</TableHead>}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{processList.map((task) => (
 									<TableRow key={task.id} className="border-border">
-										<TableCell className="text-primary font-mono text-xs">{task.id}</TableCell>
-										<TableCell className="text-primary text-xs max-w-40 truncate" title={humanCron(task.cronString)}>
+										<TableCell className="text-primary font-mono text-sm">{task.id}</TableCell>
+										<TableCell className="text-primary text-sm max-w-40 truncate" title={humanCron(task.cronString)}>
 											{humanCron(task.cronString)}
 										</TableCell>
-										<TableCell className="text-muted text-xs max-w-48 truncate" title={taskSummary(task, cameras)}>
+										<TableCell className="text-muted text-sm max-w-48 truncate" title={taskSummary(task, cameras)}>
 											{taskSummary(task, cameras)}
 										</TableCell>
 										{isAdmin && (
@@ -339,27 +339,27 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 						<Table>
 							<TableHeader>
 								<TableRow className="border-border">
-									<TableHead className="text-muted">Task</TableHead>
-									<TableHead className="text-muted">URL</TableHead>
-									<TableHead className="text-muted">Status</TableHead>
-									<TableHead className="text-muted">HTTP</TableHead>
-									<TableHead className="text-muted">Error</TableHead>
-									<TableHead className="text-muted">When</TableHead>
+									<TableHead className="text-muted text-sm">Task</TableHead>
+									<TableHead className="text-muted text-sm">URL</TableHead>
+									<TableHead className="text-muted text-sm">Status</TableHead>
+									<TableHead className="text-muted text-sm">HTTP</TableHead>
+									<TableHead className="text-muted text-sm">Error</TableHead>
+									<TableHead className="text-muted text-sm">When</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{runs.map((run) => (
 									<TableRow key={run.id} className="border-border">
-										<TableCell className="text-primary font-mono text-xs">{run.task_id}</TableCell>
-										<TableCell className="text-muted text-xs max-w-40 truncate" title={run.url}>{run.url}</TableCell>
+										<TableCell className="text-primary font-mono text-sm">{run.task_id}</TableCell>
+										<TableCell className="text-muted text-sm max-w-40 truncate" title={run.url}>{run.url}</TableCell>
 										<TableCell>
 											<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white"}>
 												{run.status}
 											</Badge>
 										</TableCell>
-										<TableCell className="text-muted text-xs">{run.http_status ?? "—"}</TableCell>
-										<TableCell className="text-muted text-xs max-w-48 truncate" title={run.error ?? ""}>{run.error ?? "—"}</TableCell>
-										<TableCell className="text-muted text-xs" title={run.ran_at}>{moment(run.ran_at).fromNow()}</TableCell>
+										<TableCell className="text-muted text-sm">{run.http_status ?? "—"}</TableCell>
+										<TableCell className="text-muted text-sm max-w-48 truncate" title={run.error ?? ""}>{run.error ?? "—"}</TableCell>
+										<TableCell className="text-muted text-sm" title={run.ran_at}>{moment(run.ran_at).fromNow()}</TableCell>
 									</TableRow>
 								))}
 							</TableBody>
