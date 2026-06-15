@@ -130,28 +130,31 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 			style={{ cursor: disabled ? "default" : "pointer" }}
 			onPointerDown={disabled ? undefined : (e) => startDrag(e, "track")}
 		>
-			<div className="absolute inset-x-0 h-5 bg-secondary rounded-full" />
-
-			{markers.map((m, i) => m.end > m.start ? (
-				<div
-					key={i}
-					className="absolute h-5 bg-[#34d399]/70 rounded-sm pointer-events-none z-0"
-					style={{ left: `${m.start}%`, width: `${m.end - m.start}%` }}
-				/>
-			) : (
-				<div
-					key={i}
-					className="absolute h-5 w-0.5 bg-[#34d399] pointer-events-none z-0"
-					style={{ left: `${m.start}%`, transform: "translateX(-50%)" }}
-				/>
-			))}
-
-			{trimming && (
-				<>
+			<div className="absolute inset-x-0 h-5 rounded-full overflow-hidden">
+				<div className="absolute inset-0 bg-secondary" />
+				{markers.map((m, i) => m.end > m.start ? (
+					<div
+						key={i}
+						className="absolute h-full bg-[#34d399]/70 pointer-events-none"
+						style={{ left: `${m.start}%`, width: `${m.end - m.start}%` }}
+					/>
+				) : (
+					<div
+						key={i}
+						className="absolute h-full w-0.5 bg-[#34d399] pointer-events-none"
+						style={{ left: `${m.start}%`, transform: "translateX(-50%)" }}
+					/>
+				))}
+				{trimming && (
 					<div
 						className="absolute inset-y-0 bg-accent/15 pointer-events-none"
 						style={{ left: `${ts}%`, width: `${te - ts}%` }}
 					/>
+				)}
+			</div>
+
+			{trimming && (
+				<>
 					<div
 						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none"
 						style={{ left: `${ts}%`, transform: "translateX(-50%)" }}
@@ -879,7 +882,7 @@ const ClipMaker = ({ mini } = {}) => {
 											className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted"
 										>
 											<ScanEye className="size-3.5" />
-											boxes
+											Boxes
 											<Switch checked={showBoxes} className="pointer-events-none" />
 										</div>
 									)}
@@ -911,9 +914,10 @@ const ClipMaker = ({ mini } = {}) => {
 						{PRESETS.map(p => {
 							const isPending = pendingPreset?.label === p.label
 							return (
-								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-10 px-3 text-base"
+								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-10 px-3 text-base relative"
 									onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
-									{isPending ? <Check className="size-4" /> : p.label}
+									<span className={isPending ? "invisible" : ""}>{p.label}</span>
+									{isPending && <Check className="size-4 absolute" />}
 								</Button>
 							)
 						})}
