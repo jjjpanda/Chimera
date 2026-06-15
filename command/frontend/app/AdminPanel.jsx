@@ -115,6 +115,24 @@ const AdminPanel = ({ withButton } = {}) => {
 		})
 	}
 
+	const copyPassword = () => {
+		const markCopied = () => { setCopied(true); setTimeout(() => setCopied(false), 2000) }
+		const fallback = () => {
+			const el = document.createElement("textarea")
+			el.value = tempPassword
+			document.body.appendChild(el)
+			el.select()
+			document.execCommand("copy")
+			document.body.removeChild(el)
+			markCopied()
+		}
+		if (navigator.clipboard) {
+			navigator.clipboard.writeText(tempPassword).then(markCopied).catch(fallback)
+		} else {
+			fallback()
+		}
+	}
+
 	if (withButton) {
 		return (
 			<Card className="h-full">
@@ -163,7 +181,7 @@ const AdminPanel = ({ withButton } = {}) => {
 									<p className="text-sm text-muted">User created. Share this temporary password with them:</p>
 									<div className="flex items-center gap-2">
 										<code className="flex-1 rounded bg-surface border border-border px-3 py-2 text-sm text-primary font-mono break-all">{tempPassword}</code>
-										<Button size="sm" variant="outline" className="border-border text-primary hover:bg-surface-raised shrink-0" onClick={() => { navigator.clipboard.writeText(tempPassword); setCopied(true); setTimeout(() => setCopied(false), 2000) }}>{copied ? "Copied!" : "Copy"}</Button>
+										<Button size="sm" variant="outline" className="border-border text-primary hover:bg-surface-raised shrink-0" onClick={copyPassword}>{copied ? "Copied!" : "Copy"}</Button>
 									</div>
 									<DialogFooter>
 										<DialogClose asChild>
