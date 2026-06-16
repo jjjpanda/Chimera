@@ -27,6 +27,7 @@ const makeRaw = () => {
 
 beforeEach(() => {
 	process.env.alert_URL = "http://hook.test"
+	delete process.env.object_ALERT_ON
 	execFile.mockImplementation((file, args, cb) => cb(null))
 	fs.readFileSync.mockImplementation((p) => String(p).endsWith(".raw") ? makeRaw() : Buffer.from("jpeg"))
 	pool.query.mockResolvedValue({})

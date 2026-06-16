@@ -5,6 +5,12 @@ module.exports = {
 		"node_modules"
 	],
 	coverageProvider: "babel",
+	coverageReporters: [
+		"json",
+		"json-summary",
+		"lcov",
+		"text"
+	],
 	projects: [
 		"<rootDir>/command/jest.config.js", 
 		"<rootDir>/gateway/jest.config.js",

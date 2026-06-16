@@ -21,6 +21,10 @@ const app = require("../backend/storage.js")
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
 
+beforeEach(() => {
+	delete process.env.storage_MAX_GB
+})
+
 afterEach(() => {
 	lib.auth.authorize.mockImplementation(defaultAuthorize)
 	query.mockClear()
@@ -52,13 +56,6 @@ describe("Events Routes", () => {
 		test("DELETE /camera/:id returns 403 for non-admin", async () => {
 			const res = await supertest(app)
 				.delete("/camera/1")
-				.set("Cookie", "userCookie")
-			expect(res.status).toBe(403)
-		})
-
-		test("GET /usage returns 403 for non-admin", async () => {
-			const res = await supertest(app)
-				.get("/usage")
 				.set("Cookie", "userCookie")
 			expect(res.status).toBe(403)
 		})

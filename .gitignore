@@ -15,3 +15,5 @@ coverage
 objectTemp
 objectCaptures
 *.onnx
+command/test-results
+command/playwright-report
