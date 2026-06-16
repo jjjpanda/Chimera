@@ -71,3 +71,32 @@ jobs:
         with:
           name: command-dist
           path: command/dist
+
+  e2e:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 22
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install module dependencies
+        run: npm run install:modules:frontend
+
+      - name: Install Playwright browser
+        run: npm run e2e:install
+
+      - name: Run e2e tests
+        run: npm run e2e:command
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: playwright-report
+          path: command/playwright-report

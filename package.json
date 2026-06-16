@@ -71,6 +71,8 @@
     "audit:object": "cd object && npm audit fix",
     "audit-all": "npm-run-all -p --npm-path npm audit:*",
     "build:command": "cd command && npm run build",
+    "e2e:install": "cd command && npx playwright install chromium",
+    "e2e:command": "cd command && npm run e2e",
     "build-with-env": "npm run prepare:env && npm run build",
     "devprep": "npm run prerelease && npm run build-with-env",
     "prerelease": "npm install --development && npm-run-all -s --npm-path npm delete-locks delete-shrinkwraps \"install:* -- --development\" && npm install --development",
