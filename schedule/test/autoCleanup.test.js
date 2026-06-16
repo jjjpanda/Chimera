@@ -45,7 +45,7 @@ describe("autoRegisterCleanup", () => {
 			id: "task-auto-cleanup",
 			url: "/file/pathAutoClean",
 			body: {},
-			cronString: "*/10 * * * *",
+			cronString: "0 * * * *",
 			running: true,
 			protected: true
 		})
