@@ -44,34 +44,42 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 	}
 	else{
 		if(save){
-			var output = fs.createWriteStream(`${imgDir}/${fileName(camera, start, end, rand, "zip")}`)
-        
+			const zipPath = path.join(imgDir, fileName(camera, start, end, rand, "zip"))
+			const txtPath = path.join(imgDir, `zip_${rand}.txt`)
+			var output = fs.createWriteStream(zipPath)
+			let cancelled = false
+
 			console.log("SENDING START ALERT")
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
 
 			output.on("close", () => {
-				fs.unlink(path.join(imgDir, `zip_${rand}.txt`), () => {
-					console.log("SENDING END ALERT")
-					webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+				fs.unlink(txtPath, () => {
+					if(cancelled){
+						fs.unlink(zipPath, () => {})
+					}
+					else{
+						console.log("SENDING END ALERT")
+						webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+					}
 				})
 			})
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
-				fs.unlink(path.join(imgDir, `zip_${rand}.txt`), () => {
-					if(save){
+				fs.unlink(txtPath, () => {
+					if(!cancelled){
 						webhookAlert(`Your zip (${rand}) could not be completed.`)
 					}
-					fs.unlink(path.join(imgDir, fileName(camera, start, end, rand, "zip")))
+					fs.unlink(zipPath, () => {})
 				})
 			})
-            
-			fs.writeFile(path.join(imgDir, `zip_${rand}.txt`), "progress", () => {})
+
+			fs.writeFile(txtPath, "progress", () => {})
 
 			archive.pipe(output)
 
 			client.emit("saveProcessEnder", rand, () => {
-				output.on("close", () => {})
+				cancelled = true
 				archive.abort()
 			})
 

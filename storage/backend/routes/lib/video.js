@@ -78,6 +78,10 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			noTTYOutput: true,
 		}, cliProgress.Presets.shades_classic)
 
+		const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
+		const mp4Path = path.join(imgDir, fileName(camera, start, end, rand, "mp4"))
+		let cancelled = false
+
 		let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
 			.inputFormat("concat") //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
 			.outputFPS(fps)
@@ -89,7 +93,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 			.on("end", () => {
 				bar.stop()
-				fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
+				fs.unlink(txtPath, () => {
 					if(save){
 						webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
 					}
@@ -98,16 +102,16 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
-			fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
-				if(save){
+			fs.unlink(txtPath, () => {
+				if(save && !cancelled){
 					webhookAlert(`Your video (${rand}) could not be completed.`)
 				}
-				fs.unlink(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+				fs.unlink(mp4Path, () => {})
 			})
 		})
 
 		client.emit("saveProcessEnder", rand, () => {
-			videoCreator.on("end", () => {})
+			cancelled = true
 			videoCreator.kill()
 		})
 
