@@ -23,7 +23,7 @@ describe("Gateway Tests", () => {
 	test("Gateway works when proxied server is up", (done) => {
 		const server = handleServerStart(command, process.env.command_PORT, () => {
 			supertest(gateway)
-				.get("/")
+				.get("/command/health")
 				.expect(200, (err) => {
 					server.close()
 					done(err)

@@ -95,7 +95,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user" })
+			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false })
 		})
 
 		test("returns 401 for valid JWT of deleted user", async () => {
@@ -189,7 +189,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ username: "bob", password: "pass", role: "user" })
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false })
+			expect(res.body).toEqual({ error: false, tempPassword: expect.any(String) })
 		})
 
 		test("returns 400 for duplicate username", async () => {
