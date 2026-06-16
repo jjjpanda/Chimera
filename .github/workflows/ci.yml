@@ -12,7 +12,7 @@ permissions:
 
 defaults:
   run:
-    shell: bash
+    shell: powershell
 
 jobs:
   test:
@@ -25,77 +25,13 @@ jobs:
           node-version: 22
 
       - name: Generate test .env
-        run: |
-          cat > .env <<'EOF'
-          NODE_ENV = test
-          chimeraInstances = 1
-          cameras = '["indoor", "outdoor"]'
-          alert_URL = http://example.com/hook
-          admin_alert_URL = http://example.com/hook
-          PRINTPASSWORD = false
-          SECRETKEY = ci-test-secret
-          command_PROXY_ON = true
-          schedule_PROXY_ON = true
-          storage_PROXY_ON = true
-          livestream_PROXY_ON = true
-          object_PROXY_ON = true
-          gateway_ON = true
-          gateway_PORT = 7922
-          gateway_HOST = http://127.0.0.1:7922
-          gateway_PORT_SECURE = 7944
-          privateKey_FILEPATH =
-          certificate_FILEPATH =
-          gateway_HTTPS_Redirect = false
-          command_ON = true
-          command_PORT = 7822
-          command_HOST = http://127.0.0.1:7822
-          schedule_ON = true
-          schedule_PORT = 7821
-          schedule_HOST = http://127.0.0.1:7821
-          scheduler_AUTH = ci-scheduler-auth
-          storage_ON = true
-          storage_PORT = 7820
-          storage_HOST = http://127.0.0.1:7820
-          storage_FOLDERPATH = /tmp/chimera-storage
-          storage_MOTION_CONF_FILEPATH = /tmp/motion.conf
-          storage_MAX_GB = 10
-          ffmpeg_FILEPATH = /usr/bin/ffmpeg
-          ffprobe_FILEPATH = /usr/bin/ffprobe
-          livestream_ON = true
-          livestream_PORT = 7819
-          livestream_HOST = http://127.0.0.1:7819
-          livestream_FOLDERPATH = /tmp/chimera-storage
-          object_ON = true
-          object_PORT = 7817
-          object_HOST = http://127.0.0.1:7817
-          object_CONFIDENCE = 0.5
-          object_INTERVAL_MS = 5000
-          object_MODEL_URL =
-          object_INPUT_SIZE =
-          object_ALERT_ON = false
-          object_MAX_CAPTURES = 500
-          memory_ON = true
-          memory_PORT = 7818
-          memory_HOST = http://127.0.0.1:7818
-          memory_AUTH_TOKEN = ci-memory-token
-          database_NAME = chimera
-          database_USER = postgres
-          database_PASSWORD = postgres
-          database_HOST = 127.0.0.1
-          database_PORT = 5432
-          EOF
+        run: Copy-Item .github/ci.env .env -Force
 
-      - name: Install dependencies
-        run: |
-          npm install
-          npm run install:lib
-          npm run install:memory
-          npm run install:command
-          npm run install:gateway
-          npm run install:livestream
-          npm run install:object
-          npm run install:schedule
-          npm run install:storage
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install module dependencies
+        run: npm run install:modules
 
       - name: Run tests
         run: npm test
@@ -121,12 +57,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: |
-          npm install
-          npm run install:lib
-          npm run install:memory
-          npm run install:command
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install module dependencies
+        run: npm run install:modules:frontend
 
       - name: Build frontend
         run: npm run build:command

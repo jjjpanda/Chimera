@@ -39,6 +39,8 @@
     "install:gateway": "cd gateway && npm install",
     "install:memory": "cd memory && npm install",
     "install:object": "cd object && npm install",
+    "install:modules": "npm-run-all -s --npm-path npm install:lib install:memory install:command install:gateway install:livestream install:object install:schedule install:storage",
+    "install:modules:frontend": "npm-run-all -s --npm-path npm install:lib install:memory install:command",
     "delete-logs": "rimraf **/log",
     "delete-feed": "rimraf **/feed",
     "delete-shared": "rimraf **/shared",
