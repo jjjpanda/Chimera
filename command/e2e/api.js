@@ -35,4 +35,10 @@ const mockApi = (page, overrides = {}) => {
 	})
 }
 
-module.exports = { json, mockApi }
+const login = async (page, { username = "admin", password = "password123" } = {}) => {
+	await page.getByPlaceholder("username").fill(username)
+	await page.getByPlaceholder("password").fill(password)
+	await page.getByRole("button", { name: "Sign In" }).click()
+}
+
+module.exports = { json, mockApi, login }
