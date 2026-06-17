@@ -44,6 +44,7 @@ for(const apiService of services){
 		}, {
 			target: baseURL,
 			logLevel: "silent",
+			xfwd: true,
 		}))
 	}
 }

@@ -6,6 +6,8 @@ const helmet = require("helmet")
 
 var app = express()
 
+app.set("trust proxy", 1)
+
 app.use(tracker)
 
 app.use(helmet(helmetOptions))

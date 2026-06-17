@@ -82,6 +82,7 @@ const useProcesses = (settings = {}) => {
 	const onChange = (patch) => setState((s) => ({ ...s, ...patch }))
 
 	const createProcessFn = (type) => {
+		if (cameras[state.camera]?.id == null) return toast("Cameras still loading")
 		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
 		const body = processBody(state, cameras, false)
 		if (state.download) {
@@ -108,6 +109,7 @@ const useProcesses = (settings = {}) => {
 	}
 
 	const scheduleProcessFn = (type, cronString) => {
+		if (cameras[state.camera]?.id == null) return toast("Cameras still loading")
 		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
 		const body = processBody(state, cameras, true)
 		scheduleTask(url, body, cronString, () => {

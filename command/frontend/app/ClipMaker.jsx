@@ -337,8 +337,6 @@ const ClipMaker = ({ mini } = {}) => {
 		}
 	}, [frames])
 
-	// nearest loaded frame index for each detection (so a detection "belongs" to one scrub position),
-	// bounded by ~one sampled-frame interval so a detection isn't drawn on a frame captured far from it (#181)
 	const detectionFrameIdx = useMemo(() => {
 		if (multiCam || detections.length === 0 || frames.length === 0) return []
 		const ftv = frameTimes.map(t => t ? t.valueOf() : null)

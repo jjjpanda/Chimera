@@ -22,10 +22,6 @@ const creationTasks = [
 		description: "authorization table"
 	},
 	{
-		query: "ALTER TABLE auth ADD COLUMN IF NOT EXISTS temp_password_expires TIMESTAMP;",
-		description: "auth temp password expiry column"
-	},
-	{
 		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMP NOT NULL DEFAULT NOW(), last_seen TIMESTAMP, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
 		description: "sessions table"
 	},
