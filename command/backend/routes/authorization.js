@@ -14,7 +14,7 @@ const isValidPassword = (p) => typeof p === "string" && p.length >= 8
 const rateLimit = ({ windowMs, max }) => {
 	const hits = new Map()
 	return (req, res, next) => {
-		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim()
+		const ip = req.ip || ""
 		const key = `${ip}:${req.path}`
 		const now = Date.now()
 		if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k)
