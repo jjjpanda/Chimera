@@ -126,7 +126,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 with valid bearertoken", async () => {
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -136,7 +136,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 401 for valid JWT of deleted user", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
-			const token = jwt.sign({ username: "deleted", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "deleted", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -153,7 +153,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 403 for non-admin token", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -163,7 +163,7 @@ describe("Authorization Routes", () => {
 		test("returns 200 with user list for admin", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin", role: "admin" }] })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -179,7 +179,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -189,7 +189,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for missing fields", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -199,7 +199,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for invalid role", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -209,7 +209,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for username containing slash", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -219,7 +219,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 on successful user creation", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -231,7 +231,7 @@ describe("Authorization Routes", () => {
 		test("returns 400 for duplicate username", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockRejectedValueOnce({ code: "23505" })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -243,7 +243,7 @@ describe("Authorization Routes", () => {
 		test("returns 500 for non-duplicate db error", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockRejectedValueOnce({ code: "08006" })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -260,7 +260,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -270,7 +270,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 when no role or password provided", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -280,7 +280,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for invalid role", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -292,7 +292,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/nobody")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -303,7 +303,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when updating role", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -314,7 +314,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when updating password", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -325,7 +325,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -339,7 +339,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/other")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -356,7 +356,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -365,7 +365,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 when deleting own account", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/admin")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -374,7 +374,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 on successful deletion", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -386,7 +386,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/nobody")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -399,7 +399,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }, { username: "other" }], rowCount: 2 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/other")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -412,7 +412,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/other")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -429,7 +429,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 403 for non-admin token", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users/bob/sessions")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -440,7 +440,7 @@ describe("Authorization Routes", () => {
 			const sessions = [{ id: 1, issued_at: "t", last_seen: null, ip: "1.2.3.4", user_agent: "ua", revoked: false }]
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: sessions })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users/bob/sessions")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -456,7 +456,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			const token = jwt.sign({ username: "test", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/1")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -465,7 +465,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 400 for non-numeric id", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/abc")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -476,7 +476,7 @@ describe("Authorization Routes", () => {
 		test("returns 404 when session does not exist", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/999")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -487,7 +487,7 @@ describe("Authorization Routes", () => {
 		test("returns 200 on successful revoke", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }], rowCount: 1 })
-			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/5")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -503,7 +503,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
-			const token = jwt.sign({ username: "bob", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
@@ -513,7 +513,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {
-			const token = jwt.sign({ username: "bob", role: "user" }, "test-secret")
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
