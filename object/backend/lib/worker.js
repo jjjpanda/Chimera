@@ -16,9 +16,9 @@ fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
 
 const pruneCaptures = async () => {
-	const files = fs.readdirSync(CAPTURES_DIR)
-		.map((f) => ({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }))
-	if (files.length <= MAX_CAPTURES) return
+	const names = fs.readdirSync(CAPTURES_DIR)
+	if (names.length <= MAX_CAPTURES) return
+	const files = names.map((f) => ({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }))
 
 	const { rows } = await pool.query(
 		"SELECT image, MAX(confidence) AS confidence FROM objects_detected WHERE image = ANY($1) GROUP BY image",

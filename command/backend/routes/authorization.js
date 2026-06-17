@@ -11,6 +11,26 @@ const app = express.Router()
 
 const isValidPassword = (p) => typeof p === "string" && p.length >= 8
 
+const rateLimit = ({ windowMs, max }) => {
+	const hits = new Map()
+	return (req, res, next) => {
+		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim()
+		const key = `${ip}:${req.path}`
+		const now = Date.now()
+		if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k)
+		const entry = hits.get(key)
+		if (!entry || now > entry.reset) {
+			hits.set(key, { count: 1, reset: now + windowMs })
+			return next()
+		}
+		if (entry.count >= max) return res.status(429).json({ error: true, errors: "Too many attempts" })
+		entry.count++
+		next()
+	}
+}
+
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+
 app.get("/status", async (req, res) => {
 	try {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
@@ -21,7 +41,7 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", validateBody, async (req, res) => {
+app.post("/setup", loginLimiter, validateBody, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
 	if (!username || !isValidPassword(password)) return res.status(400).json({ error: true })
@@ -48,7 +68,7 @@ app.post("/setup", validateBody, async (req, res) => {
 	}
 })
 
-app.post("/login", validateBody, passwordCheck, login)
+app.post("/login", loginLimiter, validateBody, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change FROM auth WHERE username = $1", [req.decoded.username])
@@ -210,4 +230,5 @@ app.post("/logout", authorize, async (req, res) => {
 	}
 })
 
+app.rateLimit = rateLimit
 module.exports = app

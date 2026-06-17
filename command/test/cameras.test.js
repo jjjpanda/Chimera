@@ -37,7 +37,7 @@ describe("Cameras Route", () => {
 		})
 
 		test("returns 200 with id+name+rtsp_url list and strips embedded credentials", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/cameras/")

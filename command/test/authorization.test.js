@@ -152,7 +152,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users")
@@ -161,7 +161,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 with user list for admin", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin", role: "admin" }] })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -188,7 +188,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for missing fields", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
@@ -198,7 +198,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for invalid role", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
@@ -208,7 +208,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for username containing slash", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
@@ -218,7 +218,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 on successful user creation", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users")
@@ -229,7 +229,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for duplicate username", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockRejectedValueOnce({ code: "23505" })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -241,7 +241,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 500 for non-duplicate db error", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockRejectedValueOnce({ code: "08006" })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -269,7 +269,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when no role or password provided", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
@@ -279,7 +279,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for invalid role", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
@@ -289,7 +289,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 404 when user does not exist", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
@@ -302,7 +302,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 when updating role", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
@@ -313,7 +313,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 when updating password", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
@@ -324,7 +324,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
@@ -335,9 +335,9 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when demoting last admin", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -364,7 +364,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when deleting own account", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/admin")
@@ -373,7 +373,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 on successful deletion", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/bob")
@@ -383,7 +383,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 404 when user does not exist", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
@@ -395,9 +395,9 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 when deleting admin with multiple admins", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }, { username: "other" }], rowCount: 2 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -408,9 +408,9 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when deleting last admin", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({})
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ username: "admin" }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -428,7 +428,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 403 for non-admin token", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.get("/authorization/users/bob/sessions")
@@ -438,7 +438,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 with session list for admin", async () => {
 			const sessions = [{ id: 1, issued_at: "t", last_seen: null, ip: "1.2.3.4", user_agent: "ua", revoked: false }]
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: sessions })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -464,7 +464,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 for non-numeric id", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/abc")
@@ -474,7 +474,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 404 when session does not exist", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -485,7 +485,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 on successful revoke", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -542,6 +542,35 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE jti = $1", ["sess-1"])
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=;/)
+		})
+	})
+
+	describe("rateLimit", () => {
+		const { rateLimit } = require("../backend/routes/authorization.js")
+
+		const run = (mw, ip) => {
+			const req = { headers: {}, ip, path: "/login" }
+			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
+			const next = jest.fn()
+			mw(req, res, next)
+			return { res, next }
+		}
+
+		test("allows up to max then returns 429", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 3 })
+			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
+			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
+			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
+			const { res, next } = run(mw, "1.1.1.1")
+			expect(next).not.toHaveBeenCalled()
+			expect(res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("tracks separate ips independently", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1 })
+			expect(run(mw, "2.2.2.2").next).toHaveBeenCalled()
+			expect(run(mw, "3.3.3.3").next).toHaveBeenCalled()
+			expect(run(mw, "2.2.2.2").res.status).toHaveBeenCalledWith(429)
 		})
 	})
 })
