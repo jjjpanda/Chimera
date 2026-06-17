@@ -170,8 +170,14 @@ module.exports = {
 	getStatus: () => status,
 	getConfig: () => config,
 	setConfig: (updates) => {
-		if (updates.confidence != null) config.confidence = parseFloat(updates.confidence)
-		if (updates.intervalMs != null) config.intervalMs = parseInt(updates.intervalMs)
+		if (updates.confidence != null) {
+			const c = parseFloat(updates.confidence)
+			if (Number.isFinite(c) && c >= 0 && c <= 1) config.confidence = c
+		}
+		if (updates.intervalMs != null) {
+			const ms = parseInt(updates.intervalMs)
+			if (Number.isFinite(ms)) config.intervalMs = Math.max(1000, ms)
+		}
 		if (Array.isArray(updates.classes)) config.classes = updates.classes
 		return config
 	},

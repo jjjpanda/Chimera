@@ -311,6 +311,8 @@ const ClipMaker = ({ mini } = {}) => {
 			if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height)
 			return
 		}
+		const timers = []
+		const imgs = []
 		frames.forEach(url => {
 			if (imageCache.current[url]) return
 			const img = new Image()
@@ -324,15 +326,26 @@ const ClipMaker = ({ mini } = {}) => {
 			}
 			img.onload = img.onerror = settle
 			timer = setTimeout(settle, 10000)
+			timers.push(timer)
+			imgs.push(img)
 			img.src = url
 			imageCache.current[url] = img
 		})
+		return () => {
+			timers.forEach(clearTimeout)
+			imgs.forEach(img => { img.onload = img.onerror = null })
+		}
 	}, [frames])
 
-	// nearest loaded frame index for each detection (so a detection "belongs" to one scrub position)
+	// nearest loaded frame index for each detection (so a detection "belongs" to one scrub position),
+	// bounded by ~one sampled-frame interval so a detection isn't drawn on a frame captured far from it (#181)
 	const detectionFrameIdx = useMemo(() => {
 		if (multiCam || detections.length === 0 || frames.length === 0) return []
 		const ftv = frameTimes.map(t => t ? t.valueOf() : null)
+		const valid = ftv.filter(v => v != null)
+		if (valid.length === 0) return detections.map(() => -1)
+		const span = Math.max(...valid) - Math.min(...valid)
+		const tol = valid.length > 1 ? span / (valid.length - 1) : Infinity
 		return detections.map(d => {
 			const v = moment(d.timestamp).valueOf()
 			let idx = -1, diff = Infinity
@@ -341,7 +354,7 @@ const ClipMaker = ({ mini } = {}) => {
 				const dd = Math.abs(tv - v)
 				if (dd < diff) { diff = dd; idx = i }
 			})
-			return idx
+			return diff <= tol ? idx : -1
 		})
 	}, [multiCam, detections, frameTimes, frames.length])
 
@@ -420,6 +433,8 @@ const ClipMaker = ({ mini } = {}) => {
 
 	useEffect(() => {
 		if (!multiCam) return
+		const timers = []
+		const imgs = []
 		Object.entries(multiAllFrames).forEach(([camId, camFrames]) => {
 			if (!multiImageCache.current[camId]) multiImageCache.current[camId] = {}
 			camFrames.forEach(url => {
@@ -438,10 +453,16 @@ const ClipMaker = ({ mini } = {}) => {
 				}
 				img.onload = img.onerror = settle
 				timer = setTimeout(settle, 10000)
+				timers.push(timer)
+				imgs.push(img)
 				img.src = url
 				multiImageCache.current[camId][url] = img
 			})
 		})
+		return () => {
+			timers.forEach(clearTimeout)
+			imgs.forEach(img => { img.onload = img.onerror = null })
+		}
 	}, [multiCam, multiAllFrames])
 
 	const multiFrameTimes = useMemo(() =>

@@ -14,7 +14,8 @@
     "heartbeat": "jjjpanda/heartbeat#v1.3.0",
     "helmet": "^8.0.0",
     "lib": "file:../lib",
-    "memory": "file:../memory"
+    "memory": "file:../memory",
+    "pg": "^8.11.0"
   },
   "peerDependencies": {
     "jest": "^29.0.0",

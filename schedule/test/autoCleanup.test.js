@@ -56,9 +56,9 @@ describe("autoRegisterCleanup", () => {
 		mockClient.connected = false
 		autoRegisterCleanup()
 		expect(mockClient.emit).not.toHaveBeenCalled()
-		expect(mockClient.once).toHaveBeenCalledWith("connect", expect.any(Function))
+		expect(mockClient.on).toHaveBeenCalledWith("connect", expect.any(Function))
 
-		const onConnect = mockClient.once.mock.calls.find(([event]) => event == "connect")[1]
+		const onConnect = mockClient.on.mock.calls.find(([event]) => event == "connect")[1]
 		onConnect()
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-auto-cleanup" }))
 		expect(mockClient.on).toHaveBeenCalledWith("task-auto-cleanup", expect.any(Function))

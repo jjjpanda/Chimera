@@ -26,7 +26,7 @@ const listProcesses = (setState) => {
 }
 
 const processBody = (state, cameras, useDays = false) => {
-	const id = cameras[state.camera]?.id ?? state.camera + 1
+	const id = cameras[state.camera]?.id
 	return JSON.stringify({
 		camera: String(id),
 		...(useDays ? { days: state.days } : {}),

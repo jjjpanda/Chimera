@@ -9,6 +9,8 @@ const { randomBytes } = require("crypto")
 
 const app = express.Router()
 
+const isValidPassword = (p) => typeof p === "string" && p.length >= 8
+
 app.get("/status", async (req, res) => {
 	try {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
@@ -22,7 +24,7 @@ app.get("/status", async (req, res) => {
 app.post("/setup", validateBody, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
-	if (!username || !password) return res.status(400).json({ error: true })
+	if (!username || !isValidPassword(password)) return res.status(400).json({ error: true })
 	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -72,10 +74,10 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	if (!/^[^/]+$/.test(username) || username.trim() !== username) return res.status(400).json({ error: true })
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
-		const tempPassword = randomBytes(4).toString("hex")
+		const tempPassword = randomBytes(16).toString("hex")
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(tempPassword, salt)
-		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
 		res.status(e.code === "23505" ? 400 : 500).json({ error: true })
@@ -86,7 +88,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && (typeof password !== "string" || !password.trim())) return res.status(400).json({ error: true })
+	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -184,12 +186,24 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
-	if (typeof password !== "string" || !password.trim()) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true })
 	const username = req.decoded.username
 	try {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
+		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+		res.json({ error: false })
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
+})
+
+app.post("/logout", authorize, async (req, res) => {
+	try {
+		if (req.decoded?.jti) {
+			await pool.query("UPDATE sessions SET revoked = TRUE WHERE jti = $1", [req.decoded.jti])
+		}
+		res.clearCookie("bearertoken", { httpOnly: true, secure: process.env.NODE_ENV !== "development", sameSite: "lax" })
 		res.json({ error: false })
 	} catch (e) {
 		res.status(500).json({ error: true })

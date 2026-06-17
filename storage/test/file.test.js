@@ -134,23 +134,23 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ skipped: true })
-				expect(execFile).not.toHaveBeenCalled()
+				expect(query).not.toHaveBeenCalled()
 			})
 
-			test("reports cleaned:false when usage is under target", async () => {
+			test("reports cleaned:false when frame usage is under target", async () => {
 				process.env.storage_MAX_GB = "10"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "1000000\t/path\n"))
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ used: "1000000" }] }))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: false })
-				expect(query).not.toHaveBeenCalled()
+				expect(query).toHaveBeenCalledTimes(1)
 			})
 
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ used: "2000000000" }] }))
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [
 					{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
 					{ id: 2, camera: "1", name: "b.jpg", size: "600000000" },
@@ -162,13 +162,12 @@ describe("File Routes", () => {
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
-				expect(query).toHaveBeenCalledTimes(2)
-				expect(query.mock.calls[1][1]).toEqual([[1, 2]])
+				expect(query).toHaveBeenCalledTimes(3)
+				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
 			})
 
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
 				query.mockRejectedValueOnce(new Error("db error"))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")

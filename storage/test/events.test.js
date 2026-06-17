@@ -99,6 +99,14 @@ describe("Events Routes", () => {
 			expect(res.status).toBe(400)
 		})
 
+		test("returns 400 for a filename containing ..", async () => {
+			const res = await supertest(app)
+				.get("/frames/1/a..b.jpg")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: "invalid filename" })
+		})
+
 		test("returns 404 when file not found", async () => {
 			const express = require("express")
 			const origSendFile = express.response.sendFile

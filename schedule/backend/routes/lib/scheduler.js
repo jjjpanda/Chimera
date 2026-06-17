@@ -147,8 +147,8 @@ module.exports = {
 				})
 			})
 		}
+		client.on("connect", register)
 		if (client.connected) register()
-		else client.once("connect", register)
 	}
 }
 

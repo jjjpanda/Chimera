@@ -1,6 +1,5 @@
 const path = require("path")
 const fs = require("fs")
-const { execFile } = require("child_process")
 const rimraf = require("rimraf")
 const moment = require("moment")
 
@@ -131,11 +130,10 @@ module.exports = {
 
 			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
-			const usedBytes = await new Promise(resolve =>
-				execFile("du", ["-sb", capturesPath], (err, stdout) =>
-					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
-				)
+			const { rows: [agg] } = await pool.query(
+				"SELECT COALESCE(SUM(size), 0) AS used FROM frame_files WHERE size IS NOT NULL AND size > 0"
 			)
+			const usedBytes = parseInt(agg.used) || 0
 
 			const targetBytes = maxGb * 0.9 * 1e9
 			if (usedBytes <= targetBytes) return res.send({ cleaned: false })

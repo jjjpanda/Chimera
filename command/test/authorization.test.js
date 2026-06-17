@@ -7,6 +7,7 @@ jest.mock("memory")
 
 const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
+const bcrypt = require("bcryptjs")
 const app = require("../backend/command.js")
 
 const { mockedPool } = require("pg")
@@ -62,6 +63,14 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("returns 400 for a password shorter than 8 characters", async () => {
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "admin", password: "short" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
 	})
 
 	describe("POST /authorization/login", () => {
@@ -80,6 +89,33 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false, role: "user" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
+		})
+
+		test("rejects login when a forced temp password has expired", async () => {
+			const hash = bcrypt.hashSync("temppass123", 10)
+			mockedPool.query.mockImplementationOnce((str, params, cb) => {
+				const result = { rows: [{ hash, role: "user", force_password_change: true, temp_password_expires: new Date(Date.now() - 60000) }], rowCount: 1 }
+				cb(null, result)
+				return Promise.resolve(result)
+			})
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: "bob", password: "temppass123" })
+			expect(res.status).toBe(400)
+		})
+
+		test("allows login when a forced temp password has not expired", async () => {
+			const hash = bcrypt.hashSync("temppass123", 10)
+			mockedPool.query.mockImplementationOnce((str, params, cb) => {
+				const result = { rows: [{ hash, role: "user", force_password_change: true, temp_password_expires: new Date(Date.now() + 3600000) }], rowCount: 1 }
+				cb(null, result)
+				return Promise.resolve(result)
+			})
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: "bob", password: "temppass123" })
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
 		})
 	})
 
@@ -282,9 +318,20 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/users/update/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpass" })
+				.send({ password: "newpassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+		})
+
+		test("returns 400 for a password shorter than 8 characters", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }], rowCount: 1 })
+			const token = jwt.sign({ username: "admin", role: "admin" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/users/update/bob")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "short" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -446,6 +493,55 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+		})
+	})
+
+	describe("POST /authorization/password", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).post("/authorization/password").send({ password: "newpassword" })
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 400 for a password shorter than 8 characters", async () => {
+			const token = jwt.sign({ username: "bob", role: "user" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "short" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test("returns 200 and clears the temp-password expiry on success", async () => {
+			const token = jwt.sign({ username: "bob", role: "user" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith(
+				"UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2",
+				expect.arrayContaining(["bob"])
+			)
+		})
+	})
+
+	describe("POST /authorization/logout", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).post("/authorization/logout")
+			expect(res.status).toBe(401)
+		})
+
+		test("revokes the session jti and clears the cookie", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "sess-1" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/logout")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE jti = $1", ["sess-1"])
+			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=;/)
 		})
 	})
 })

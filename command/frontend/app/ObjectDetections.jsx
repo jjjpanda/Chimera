@@ -206,7 +206,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 		[groups, selectedCam]
 	)
 
-	useEffect(() => { setScrubIdx(Math.max(0, camGroups.length - 1)) }, [selectedCam])
+	useEffect(() => { setScrubIdx(Math.max(0, camGroups.length - 1)) }, [selectedCam, camGroups.length])
 
 	const currentGroup = camGroups[scrubIdx] ?? null
 	const scrubPct = camGroups.length > 1 ? (scrubIdx / (camGroups.length - 1)) * 100 : 0

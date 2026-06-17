@@ -79,7 +79,7 @@ const RecordingsList = ({ mini } = {}) => {
 					<div key={process.id} className="rounded-xl border border-border bg-surface p-4 flex flex-col gap-3">
 						<div className="flex flex-col sm:flex-row gap-3">
 							{!process.running && process.type === "mp4"
-								? <video src={new URL(process.link).pathname} controls playsInline className="w-full sm:w-48 md:w-64 aspect-video rounded-lg shrink-0" />
+								? <video src={process.link ? new URL(process.link, window.location.origin).pathname : undefined} controls playsInline className="w-full sm:w-48 md:w-64 aspect-video rounded-lg shrink-0" />
 								: <div className="size-14 rounded-lg bg-surface-raised shrink-0" />
 							}
 							<div className="flex-1 min-w-0">
