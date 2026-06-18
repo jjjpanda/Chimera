@@ -134,7 +134,7 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ skipped: true })
-				expect(execFile).not.toHaveBeenCalled()
+				expect(query).not.toHaveBeenCalled()
 			})
 
 			test("reports cleaned:false when usage is under target", async () => {

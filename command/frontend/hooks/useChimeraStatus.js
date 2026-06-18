@@ -9,6 +9,7 @@ const baseStatusUrls = [
 	{ statusType: "motion", url: "/motion/status" },
 	{ statusType: "database", url: "/database/status" },
 	{ statusType: "livestream", url: "/livestream/health" },
+	{ statusType: "object", url: "/object/health" },
 	{ statusType: "memory", url: "/memory/status" }
 ]
 

@@ -3,7 +3,7 @@ WORKDIR /app
 COPY . .
 ARG cameras
 ENV cameras=$cameras
-RUN npm install && npm run build:command && npm prune --omit=dev
+RUN npm install && npm run install:modules:frontend && npm run build:command && npm prune --omit=dev
 
 FROM ubuntu:22.04
 WORKDIR /app

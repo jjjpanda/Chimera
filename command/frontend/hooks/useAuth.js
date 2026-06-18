@@ -1,6 +1,5 @@
 import {useEffect, useState} from "react"
 
-import Cookies from "js-cookie"
 import { request } from "../js/request.js"
 
 const timeout = 750
@@ -41,6 +40,12 @@ const attemptSetup = (username, password, token) =>
 		body: JSON.stringify({ username, password, token })
 	}, authPromiseHandler)
 
+const attemptLogout = () =>
+	request("/authorization/logout", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+	}, authPromiseHandler)
+
 const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false) => {
 	setTimeout(() => {
 		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false }))
@@ -73,25 +78,17 @@ const useAuth = () => {
 				handleLoginAttempt(false, null, state.timestamp, setState)
 				return
 			}
-			const bearerToken = Cookies.get("bearertoken")
-			if (bearerToken) {
-				attemptVerification().then(res => {
-					handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
-				})
-			} else {
-				handleLoginAttempt(false, null, state.timestamp, setState)
-			}
+			attemptVerification().then(res => {
+				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
+			})
 		})
 
 		const refreshRole = () => {
 			if (document.hidden) return
-			const bearerToken = Cookies.get("bearertoken")
-			if (bearerToken) {
-				attemptVerification().then(res => {
-					if (res.error) handleLoginAttempt(false, null, state.timestamp, setState)
-					else setState(s => ({ ...s, role: res.role }))
-				})
-			}
+			attemptVerification().then(res => {
+				if (res.error) handleLoginAttempt(false, null, state.timestamp, setState)
+				else setState(s => ({ ...s, role: res.role }))
+			})
 		}
 		document.addEventListener("visibilitychange", refreshRole)
 		return () => document.removeEventListener("visibilitychange", refreshRole)
@@ -119,8 +116,9 @@ const useAuth = () => {
 	}
 
 	const signOut = () => {
-		Cookies.remove("bearertoken")
-		setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false }))
+		attemptLogout().finally(() => {
+			setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false }))
+		})
 	}
 
 	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword]

@@ -117,3 +117,49 @@ describe("scan", () => {
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
 	})
 })
+
+describe("setConfig validation", () => {
+	test("floors intervalMs at 1000ms", () => {
+		worker.setConfig({ intervalMs: 0 })
+		expect(worker.getConfig().intervalMs).toBe(1000)
+		worker.setConfig({ intervalMs: 250 })
+		expect(worker.getConfig().intervalMs).toBe(1000)
+		worker.setConfig({ intervalMs: 4000 })
+		expect(worker.getConfig().intervalMs).toBe(4000)
+	})
+
+	test("ignores non-finite intervalMs", () => {
+		worker.setConfig({ intervalMs: 5000 })
+		worker.setConfig({ intervalMs: "not-a-number" })
+		expect(worker.getConfig().intervalMs).toBe(5000)
+	})
+
+	test("ignores out-of-range and non-finite confidence", () => {
+		worker.setConfig({ confidence: 0.5 })
+		worker.setConfig({ confidence: 2 })
+		expect(worker.getConfig().confidence).toBe(0.5)
+		worker.setConfig({ confidence: -1 })
+		expect(worker.getConfig().confidence).toBe(0.5)
+		worker.setConfig({ confidence: "" })
+		expect(worker.getConfig().confidence).toBe(0.5)
+	})
+
+	test("accepts in-range confidence", () => {
+		worker.setConfig({ confidence: 0.7 })
+		expect(worker.getConfig().confidence).toBe(0.7)
+	})
+
+	test("accepts the inclusive confidence bounds 0 and 1", () => {
+		worker.setConfig({ confidence: 0 })
+		expect(worker.getConfig().confidence).toBe(0)
+		worker.setConfig({ confidence: 1 })
+		expect(worker.getConfig().confidence).toBe(1)
+	})
+
+	test("clamps intervalMs to the inclusive 1000ms floor and 24h ceiling", () => {
+		worker.setConfig({ intervalMs: 1000 })
+		expect(worker.getConfig().intervalMs).toBe(1000)
+		worker.setConfig({ intervalMs: "999999999999" })
+		expect(worker.getConfig().intervalMs).toBe(86400000)
+	})
+})

@@ -18,7 +18,7 @@ const creationTasks = [
 		description: "frame deletions table"
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMP, force_password_change BOOLEAN NOT NULL DEFAULT FALSE);",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMP, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMP);",
 		description: "authorization table"
 	},
 	{
@@ -29,21 +29,32 @@ const creationTasks = [
 		query: "CREATE TABLE objects_detected(ID SERIAL PRIMARY KEY, camera NUMERIC(10), timestamp TIMESTAMPTZ DEFAULT NOW(), type VARCHAR(20), confidence NUMERIC(10, 6), box JSONB, image VARCHAR);",
 		description: "objects detected table"
 	},
+	{
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
+		description: "frame files (camera, timestamp) index"
+	},
+	{
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
+		description: "objects detected (camera, timestamp) index"
+	},
 ]
 
-let issues = false
+module.exports = { creationTasks }
 
-;(async () => {
-	for (const { query, description } of creationTasks) {
-		let tableExists
-		try {
-			await pool.query(query)
-			tableExists = true
-		} catch (e) {
-			tableExists = e && e.code == "42P07"
+if (require.main === module) {
+	let issues = false
+	;(async () => {
+		for (const { query, description } of creationTasks) {
+			let tableExists
+			try {
+				await pool.query(query)
+				tableExists = true
+			} catch (e) {
+				tableExists = e && e.code == "42P07"
+			}
+			if (!tableExists) issues = true
+			console.log(`${description} ${tableExists ? "✔️" : "❌"}`)
 		}
-		if (!tableExists) issues = true
-		console.log(`${description} ${tableExists ? "✔️" : "❌"}`)
-	}
-	process.exit(issues ? 1 : 0)
-})()
+		process.exit(issues ? 1 : 0)
+	})()
+}

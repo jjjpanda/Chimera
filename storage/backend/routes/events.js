@@ -20,11 +20,11 @@ app.get("/events", async (req, res) => {
 		const offset = (page - 1) * per_page
 		const [dataResult, countResult] = await Promise.all([
 			pool.query(
-				"SELECT id, timestamp, name, size FROM frame_files WHERE camera = $1 AND DATE(timestamp) = $2 ORDER BY timestamp DESC LIMIT $3 OFFSET $4",
+				"SELECT id, timestamp, name, size FROM frame_files WHERE camera = $1 AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 day') ORDER BY timestamp DESC LIMIT $3 OFFSET $4",
 				[camera_id, date, per_page, offset]
 			),
 			pool.query(
-				"SELECT COUNT(*) FROM frame_files WHERE camera = $1 AND DATE(timestamp) = $2",
+				"SELECT COUNT(*) FROM frame_files WHERE camera = $1 AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 day')",
 				[camera_id, date]
 			)
 		])
@@ -42,7 +42,7 @@ app.get("/events", async (req, res) => {
 app.get("/frames/:camera_id/:filename", (req, res) => {
 	const { camera_id, filename } = req.params
 	if (!/^\d+$/.test(camera_id)) return res.status(400).json({ error: "camera_id must be numeric" })
-	if (!/^[A-Za-z0-9._-]+$/.test(filename)) return res.status(400).json({ error: "invalid filename" })
+	if (!/^[A-Za-z0-9._-]+$/.test(filename) || filename.includes("..")) return res.status(400).json({ error: "invalid filename" })
 	const capturesBase = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 	const filePath = path.join(capturesBase, camera_id, filename)
 	res.sendFile(filePath, (err) => {

@@ -50,6 +50,17 @@ describe("Events Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ events: [], total: 0, page: 1, per_page: 100 })
 		})
+
+		test("queries a sargable half-open date range, not DATE(timestamp)", async () => {
+			await supertest(app)
+				.get("/events?camera_id=7&date=2026-05-16")
+				.set("Cookie", "validCookie")
+			const [dataSql, dataParams] = query.mock.calls[0]
+			expect(dataSql).toMatch(/timestamp >= \$2::date/)
+			expect(dataSql).toMatch(/< \(\$2::date \+ INTERVAL '1 day'\)/)
+			expect(dataSql).not.toMatch(/DATE\(/)
+			expect(dataParams).toEqual(["7", "2026-05-16", 100, 0])
+		})
 	})
 
 	describe("requireAdmin gating", () => {
@@ -97,6 +108,14 @@ describe("Events Routes", () => {
 				.get("/frames/%2e%2e/evil")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(400)
+		})
+
+		test("returns 400 for a filename containing ..", async () => {
+			const res = await supertest(app)
+				.get("/frames/1/a..b.jpg")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: "invalid filename" })
 		})
 
 		test("returns 404 when file not found", async () => {

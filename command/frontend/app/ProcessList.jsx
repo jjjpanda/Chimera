@@ -84,7 +84,7 @@ const ProcessList = (props) => {
 								<span>End: {endTime}</span>
 							</div>
 							{!props.mini && !props.mobile && !process.running && process.type === "mp4" && (
-								<video src={new URL(process.link).pathname} type="video/mp4" controls className="w-32 rounded" />
+								<video src={process.link ? new URL(process.link, window.location.origin).pathname : undefined} type="video/mp4" controls className="w-32 rounded" />
 							)}
 							<div className="flex gap-2">
 								<Button

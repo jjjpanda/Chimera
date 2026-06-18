@@ -4,7 +4,7 @@ const hashedMockedPassword = bcrypt.hashSync("mockedPassword", bcrypt.genSaltSyn
 const queryFn = jest.fn((str, paramsOrCallback, callback) => {
 	const rows = str.includes("COUNT")
 		? [{ count: "0" }]
-		: [{ hash: hashedMockedPassword, role: "user" }]
+		: [{ hash: hashedMockedPassword, role: "user", revoked: false }]
 	const result = { rows, rowCount: rows.length }
 	const cb = typeof paramsOrCallback === "function" ? paramsOrCallback : (typeof callback === "function" ? callback : null)
 	if (cb) cb(null, result)

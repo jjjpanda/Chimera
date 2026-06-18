@@ -12,33 +12,31 @@ const pool = new Pool({
 	port: process.env.database_PORT,
 })
 
+const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
+
 module.exports = {
 	pool,
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
+		const deny = () => res.status(400).json({ error: true, errors: "Invalid username or password" })
 
-		pool.query("SELECT hash, role, force_password_change FROM auth WHERE username = $1", [username], (err, values) => {
-			if (!err && values.rows.length > 0 && values.rows[0].hash) {
-				const { hash, role, force_password_change } = values.rows[0]
-				bcrypt.compare(password == undefined ? "" : password, hash, (err, success) => {
-					if (!err && success) {
-						req.userRole = role
-						req.forcePasswordChange = force_password_change
-						next()
-					} else {
-						res.status(400).json({ error: true, errors: "Password Incorrect" })
-					}
-				})
-			} else {
-				res.status(400).json({ error: true, errors: "Password Unable to Be Verified" })
-			}
+		pool.query("SELECT hash, role, force_password_change, temp_password_expires FROM auth WHERE username = $1", [username], (err, values) => {
+			if (err) return deny()
+			const row = values.rows[0]
+			bcrypt.compare(password == undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
+				if (err || !success || !row || !row.hash) return deny()
+				if (row.force_password_change && row.temp_password_expires && new Date(row.temp_password_expires) < new Date()) return deny()
+				req.userRole = row.role
+				req.forcePasswordChange = row.force_password_change
+				next()
+			})
 		})
 	},
 
 	login: async (req, res) => {
 		const { username } = req.body
 		const jti = randomUUID()
-		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim() || null
+		const ip = req.ip || null
 		const userAgent = req.headers["user-agent"] || null
 		pool.query("UPDATE auth SET last_login = NOW() WHERE username = $1", [username]).catch(() => {})
 		try {
@@ -49,7 +47,10 @@ module.exports = {
 		jwt.sign({ username, role: req.userRole, jti }, secretKey, { expiresIn: "30d" },
 			(err, token) => {
 				res.cookie("bearertoken", `Bearer ${token}`, {
-					maxAge: 2592000000
+					maxAge: 2592000000,
+					httpOnly: true,
+					secure: process.env.NODE_ENV !== "development",
+					sameSite: "lax"
 				})
 				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange })
 			}

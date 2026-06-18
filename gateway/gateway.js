@@ -31,15 +31,20 @@ for(const apiService of services){
 
 	if(serviceOn){
 		console.log(log)
-		const sources = [postPathRegex.source, getPathRegex.source]
-		if (deletePathRegex) sources.push(deletePathRegex.source)
+		const anchor = (re) => new RegExp(`^(?:${re.source})`)
+		const postRe = anchor(postPathRegex)
+		const getRe = anchor(getPathRegex)
+		const deleteRe = deletePathRegex && anchor(deletePathRegex)
+		const sources = [postRe.source, getRe.source]
+		if (deleteRe) sources.push(deleteRe.source)
 		app.use(new RegExp(sources.join("|")), createProxyMiddleware((pathname, req) => {
-			return (pathname.match(postPathRegex) && req.method === "POST")
-				|| (pathname.match(getPathRegex) && req.method === "GET")
-				|| (deletePathRegex && pathname.match(deletePathRegex) && req.method === "DELETE")
+			return (postRe.test(pathname) && req.method === "POST")
+				|| (getRe.test(pathname) && req.method === "GET")
+				|| (deleteRe && deleteRe.test(pathname) && req.method === "DELETE")
 		}, {
 			target: baseURL,
 			logLevel: "silent",
+			xfwd: true,
 		}))
 	}
 }

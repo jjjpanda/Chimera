@@ -9,6 +9,28 @@ const { randomBytes } = require("crypto")
 
 const app = express.Router()
 
+const isValidPassword = (p) => typeof p === "string" && p.length >= 8
+
+const rateLimit = ({ windowMs, max }) => {
+	const hits = new Map()
+	return (req, res, next) => {
+		const ip = req.ip || ""
+		const key = `${ip}:${req.path}`
+		const now = Date.now()
+		if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k)
+		const entry = hits.get(key)
+		if (!entry || now > entry.reset) {
+			hits.set(key, { count: 1, reset: now + windowMs })
+			return next()
+		}
+		if (entry.count >= max) return res.status(429).json({ error: true, errors: "Too many attempts" })
+		entry.count++
+		next()
+	}
+}
+
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+
 app.get("/status", async (req, res) => {
 	try {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
@@ -19,10 +41,10 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", validateBody, async (req, res) => {
+app.post("/setup", loginLimiter, validateBody, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
-	if (!username || !password) return res.status(400).json({ error: true })
+	if (!username || !isValidPassword(password)) return res.status(400).json({ error: true })
 	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -46,7 +68,7 @@ app.post("/setup", validateBody, async (req, res) => {
 	}
 })
 
-app.post("/login", validateBody, passwordCheck, login)
+app.post("/login", loginLimiter, validateBody, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change FROM auth WHERE username = $1", [req.decoded.username])
@@ -72,10 +94,10 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	if (!/^[^/]+$/.test(username) || username.trim() !== username) return res.status(400).json({ error: true })
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
-		const tempPassword = randomBytes(4).toString("hex")
+		const tempPassword = randomBytes(16).toString("hex")
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(tempPassword, salt)
-		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
 		res.status(e.code === "23505" ? 400 : 500).json({ error: true })
@@ -86,7 +108,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && (typeof password !== "string" || !password.trim())) return res.status(400).json({ error: true })
+	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -114,6 +136,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 			const salt = await bcrypt.genSalt(10)
 			values.push(await bcrypt.hash(password, salt))
 			updates.push(`hash = $${values.length}`)
+			updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
 		}
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
@@ -184,16 +207,29 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
-	if (typeof password !== "string" || !password.trim()) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true })
 	const username = req.decoded.username
 	try {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
+		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
 		res.json({ error: false })
 	} catch (e) {
 		res.status(500).json({ error: true })
 	}
 })
 
+app.post("/logout", authorize, async (req, res) => {
+	try {
+		if (req.decoded?.jti) {
+			await pool.query("UPDATE sessions SET revoked = TRUE WHERE jti = $1", [req.decoded.jti])
+		}
+		res.clearCookie("bearertoken", { httpOnly: true, secure: process.env.NODE_ENV !== "development", sameSite: "lax" })
+		res.json({ error: false })
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
+})
+
+app.rateLimit = rateLimit
 module.exports = app
