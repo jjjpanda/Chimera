@@ -69,7 +69,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
 		})
 	})
 
@@ -331,7 +331,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -509,7 +509,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {

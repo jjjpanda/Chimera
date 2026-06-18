@@ -11,6 +11,7 @@ const memory = require("memory")
 const app = express.Router()
 
 const isValidPassword = (p) => typeof p === "string" && p.length >= 8
+const PASSWORD_REQUIREMENT = "Password must be at least 8 characters"
 
 const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
@@ -46,7 +47,8 @@ app.get("/status", async (req, res) => {
 app.post("/setup", loginLimiter, validateBody, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
-	if (!username || !isValidPassword(password)) return res.status(400).json({ error: true })
+	if (!username) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -110,7 +112,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true })
+	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -209,7 +211,7 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
-	if (!isValidPassword(password)) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
 		const salt = await bcrypt.genSalt(10)

@@ -9,6 +9,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
+import { validatePassword } from "../js/password.js"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 
 const ROLES = ["user", "admin"]
@@ -56,6 +57,10 @@ const AdminPanel = ({ withButton } = {}) => {
 
 	const updateUser = (e) => {
 		e.preventDefault()
+		if (editForm.password) {
+			const invalid = validatePassword(editForm.password)
+			if (invalid) return toast(invalid)
+		}
 		const body = {}
 		if (editForm.role) body.role = editForm.role
 		if (editForm.password) body.password = editForm.password
@@ -65,7 +70,7 @@ const AdminPanel = ({ withButton } = {}) => {
 			body: JSON.stringify(body)
 		}, p => p.then(r => r.json()).catch(() => ({ error: true }))).then(res => {
 			if (res.error) {
-				toast("Failed to update user")
+				toast(res.errors || "Failed to update user")
 			} else {
 				toast("User updated")
 				setEditTarget(null)
