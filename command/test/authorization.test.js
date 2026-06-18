@@ -599,6 +599,49 @@ describe("Authorization Routes", () => {
 		})
 	})
 
+	describe("rateLimit (shared memory instance)", () => {
+		let rateLimit
+		beforeAll(() => {
+			process.env.memory_ON = "true"
+			jest.isolateModules(() => {
+				rateLimit = require("../backend/routes/authorization.js").rateLimit
+			})
+		})
+		afterAll(() => {
+			delete process.env.memory_ON
+		})
+
+		const run = (mw, ip, statusCode = 400) => {
+			const req = { headers: {}, ip, path: "/login" }
+			let onFinish
+			const res = {
+				statusCode,
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				on: (event, fn) => { if (event === "finish") onFinish = fn }
+			}
+			const next = jest.fn(() => onFinish && onFinish())
+			mw(req, res, next)
+			return { res, next }
+		}
+
+		test("blocks after max failures via the shared store", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 2 })
+			expect(run(mw, "9.9.9.9").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.9").next).toHaveBeenCalled()
+			const { res, next } = run(mw, "9.9.9.9")
+			expect(next).not.toHaveBeenCalled()
+			expect(res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("shares failures across separate limiter instances", () => {
+			const a = rateLimit({ windowMs: 60000, max: 1 })
+			const b = rateLimit({ windowMs: 60000, max: 1 })
+			run(a, "8.8.8.8")
+			expect(run(b, "8.8.8.8").res.status).toHaveBeenCalledWith(429)
+		})
+	})
+
 	describe("forced password change (wired via Express routing)", () => {
 		const token = jwt.sign({ username: "bob", role: "user", jti: "fpc-1" }, "test-secret")
 
