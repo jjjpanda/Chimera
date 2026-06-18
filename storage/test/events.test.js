@@ -166,6 +166,30 @@ describe("Events Routes", () => {
 			})
 		})
 
+		test("categorizes top-level mp4/zip/other files and subtracts them from frames", async () => {
+			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue([
+				{ name: "clip.mp4", isFile: () => true },
+				{ name: "bundle.zip", isFile: () => true },
+				{ name: "notes.txt", isFile: () => true },
+				{ name: "1", isFile: () => false }
+			])
+			const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) => Promise.resolve({
+				size: p.endsWith("clip.mp4") ? 100 : p.endsWith("bundle.zip") ? 50 : 25
+			}))
+			try {
+				const res = await supertest(app)
+					.get("/usage")
+					.set("Cookie", "validCookie")
+				expect(res.status).toBe(200)
+				expect(res.body.breakdown).toEqual({
+					frames: 500000000 - 175, videos: 100, zips: 50, objects: 500000000, other: 25
+				})
+			} finally {
+				readdir.mockRestore()
+				stat.mockRestore()
+			}
+		})
+
 		test("aggregates per-camera stats when cameras are configured", async () => {
 			lib.loadCameras.mockReturnValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
 			const res = await supertest(app)
