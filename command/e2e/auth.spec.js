@@ -33,6 +33,36 @@ test.describe("authentication", () => {
 		await expect(page.getByText("Invalid username or password.")).toBeVisible()
 	})
 
+	test("rate-limited login shows the server message", async ({ page }) => {
+		await mockApi(page, { "POST /authorization/login": json({ error: true, errors: "Too many attempts" }, 429) })
+		await page.goto("/")
+		await page.getByPlaceholder("username").fill("admin")
+		await page.getByPlaceholder("password").fill("password123")
+		await page.getByRole("button", { name: "Sign In" }).click()
+		await expect(page.getByText("Too many attempts")).toBeVisible()
+	})
+
+	test("setup rejects a password shorter than 8 characters", async ({ page }) => {
+		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: false }) })
+		await page.goto("/")
+		await page.getByPlaceholder("username").fill("admin")
+		await page.getByPlaceholder("password").fill("short")
+		await page.getByRole("button", { name: "Create Account" }).click()
+		await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible()
+	})
+
+	test("forced password change rejects a password shorter than 8 characters", async ({ page, context }) => {
+		await context.addCookies([{ name: "bearertoken", value: "Bearer%20token", url: "http://localhost:4173" }])
+		await mockApi(page, {
+			"POST /authorization/verify": json({ error: false, role: "user", forcePasswordChange: true })
+		})
+		await page.goto("/")
+		await page.getByPlaceholder("new password").fill("short")
+		await page.getByPlaceholder("confirm password").fill("short")
+		await page.getByRole("button", { name: "Set Password" }).click()
+		await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible()
+	})
+
 	test("successful login lands on the dashboard", async ({ page }) => {
 		await mockApi(page)
 		await page.goto("/")
