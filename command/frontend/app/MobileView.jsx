@@ -15,6 +15,7 @@ import AdminPanel from "./AdminPanel"
 import ScheduleDashboard from "./ScheduleDashboard.jsx"
 import ObjectDetections from "./ObjectDetections.jsx"
 import SignOutButton from "./SignOutButton.jsx"
+import ProcessList from "./ProcessList.jsx"
 
 const MobileView = ({ index }) => {
 	const role = useRole()
@@ -41,9 +42,10 @@ const MobileView = ({ index }) => {
 				<ClipMaker mini />
 				<ObjectDetections mini />
 			</div>
-			<ScheduleDashboard mini withButton />
+			<ProcessList mini />
 			<Status withUsers={role === "admin"} />
 			{role === "admin" && <StorageWidget />}
+			<ScheduleDashboard mini withButton />
 			<div className="flex items-center rounded-md border border-border text-muted">
 				<div className="flex flex-1 items-center justify-center gap-2 py-2">
 					<Moon className="size-4" />

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { request, jsonProcessing } from "../js/request.js"
 
 const useStorageUsage = () => {
-	const [data, setData] = useState({ used_gb: 0, max_gb: 0, cameras: [], total_frames: 0, loading: true })
+	const [data, setData] = useState({ used_gb: 0, max_gb: 0, cameras: [], total_frames: 0, breakdown: null, loading: true })
 
 	const refresh = () => {
 		setData(d => ({ ...d, loading: true }))

@@ -5,6 +5,7 @@ import useFileStats from "../hooks/useFileStats"
 import useStorageUsage from "../hooks/useStorageUsage"
 import useClearFootage from "../hooks/useClearFootage"
 import useDailyStats from "../hooks/useDailyStats"
+import StorageBreakdown from "./StorageBreakdown.jsx"
 import { useRole } from "./AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -106,6 +107,7 @@ const Stats = () => {
 						}
 						{` • ${usage.total_frames.toLocaleString()} frames`}
 					</p>
+					<StorageBreakdown breakdown={usage.breakdown} />
 				</CardContent>
 			</Card>
 

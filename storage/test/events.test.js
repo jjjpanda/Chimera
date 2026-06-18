@@ -156,6 +156,16 @@ describe("Events Routes", () => {
 			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
 		})
 
+		test("includes a per-category byte breakdown", async () => {
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body.breakdown).toEqual({
+				frames: 500000000, videos: 0, zips: 0, objects: 500000000, other: 0
+			})
+		})
+
 		test("aggregates per-camera stats when cameras are configured", async () => {
 			lib.loadCameras.mockReturnValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
 			const res = await supertest(app)

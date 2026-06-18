@@ -34,14 +34,14 @@ const DesktopView = ({ index }) => {
 		<div className="space-y-4">
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 				<Status withUsers={role === "admin"} />
-				<StorageWidget />
 				<LiveVideo />
+				<StorageWidget />
 			</div>
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "12rem" }}>
-				<ScheduleDashboard mini withButton />
-				<ProcessList mini />
-				<ClipMaker mini />
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "16rem" }}>
 				<ObjectDetections mini />
+				<ProcessList mini />	
+				<ClipMaker mini />	
+				<ScheduleDashboard mini withButton />
 			</div>
 		</div>
 	)
