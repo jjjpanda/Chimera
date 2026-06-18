@@ -33,7 +33,7 @@ fs.readdir = jest.fn().mockImplementation((filePath, callback) => {
 })
 fs.stat = jest.fn().mockImplementation((filePath, callback) => {
 	if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
-		callback(false)
+		callback(false, { size: 1024 })
 	}
 	else{
 		callback(true)

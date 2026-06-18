@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Download, XCircle, Trash2 } from "lucide-react"
 import { cn } from "../lib/utils"
 import NavigateToRoute from "./NavigateToRoute"
+import formatBytes from "../js/formatBytes.js"
 import moment from "moment"
 
 const RecordingsList = ({ mini } = {}) => {
@@ -43,7 +44,7 @@ const RecordingsList = ({ mini } = {}) => {
 								<li key={process.id} className="flex items-center justify-between py-2 gap-2">
 									<div className="min-w-0 flex-1">
 										<p className="text-sm text-primary truncate">Cam {process.camera} · {startTime.format("MMM D")}</p>
-										<p className="text-xs text-muted uppercase">{process.type}</p>
+										<p className="text-xs text-muted uppercase">{process.type}{process.size != null && ` · ${formatBytes(process.size, 1)}`}</p>
 									</div>
 									{process.running
 										? <Badge className="text-xs bg-amber-500/15 text-amber-400 border-none shrink-0">Generating</Badge>
@@ -87,6 +88,9 @@ const RecordingsList = ({ mini } = {}) => {
 									<div className="flex items-center gap-2">
 										<p className="font-medium text-sm text-primary">Camera {process.camera}</p>
 										<Badge className="text-xs bg-surface-raised text-muted border-none uppercase">{process.type}</Badge>
+										{process.size != null && (
+											<span className="text-xs text-muted">{formatBytes(process.size, 1)}</span>
+										)}
 									</div>
 									{process.running
 										? <Badge className="text-xs bg-amber-500/15 text-amber-400 border-none">Generating</Badge>

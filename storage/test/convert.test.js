@@ -26,7 +26,8 @@ const listOfProcesses = fileList.filter(file => file.includes(".mp4") || file.in
 	const obj = parseFileName(file)
 	return {
 		...obj,
-		running: obj.id.includes("video3")
+		running: obj.id.includes("video3"),
+		size: 1024
 	}
 })
 
