@@ -548,15 +548,21 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
-		const run = (mw, ip) => {
+		const run = (mw, ip, statusCode = 400) => {
 			const req = { headers: {}, ip, path: "/login" }
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
-			const next = jest.fn()
+			let onFinish
+			const res = {
+				statusCode,
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				on: (event, fn) => { if (event === "finish") onFinish = fn }
+			}
+			const next = jest.fn(() => onFinish && onFinish())
 			mw(req, res, next)
 			return { res, next }
 		}
 
-		test("allows up to max then returns 429", () => {
+		test("allows up to max failures then returns 429", () => {
 			const mw = rateLimit({ windowMs: 60000, max: 3 })
 			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
 			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
@@ -571,6 +577,13 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "2.2.2.2").next).toHaveBeenCalled()
 			expect(run(mw, "3.3.3.3").next).toHaveBeenCalled()
 			expect(run(mw, "2.2.2.2").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("does not count successful logins toward the limit", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1 })
+			run(mw, "4.4.4.4", 200)
+			run(mw, "4.4.4.4", 200)
+			expect(run(mw, "4.4.4.4", 200).next).toHaveBeenCalled()
 		})
 
 		test("is wired onto POST /login and returns 429 once exhausted", async () => {

@@ -6,26 +6,28 @@ const authorize = auth.createAuthorize(pool)
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
+const memory = require("memory")
 
 const app = express.Router()
 
 const isValidPassword = (p) => typeof p === "string" && p.length >= 8
 
+const sharedAttempts = process.env.memory_ON == "true"
+const memoryClient = sharedAttempts ? memory.client("AUTH") : null
+
 const rateLimit = ({ windowMs, max }) => {
-	const hits = new Map()
+	const store = sharedAttempts ? null : memory.loginAttempts()
+	const check = (key, cb) => sharedAttempts ? memoryClient.emit("loginCheck", key, max, cb) : store.loginCheck(key, max, cb)
+	const fail = (key) => sharedAttempts ? memoryClient.emit("loginFailure", key, windowMs) : store.loginFailure(key, windowMs)
 	return (req, res, next) => {
-		const ip = req.ip || ""
-		const key = `${ip}:${req.path}`
-		const now = Date.now()
-		if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k)
-		const entry = hits.get(key)
-		if (!entry || now > entry.reset) {
-			hits.set(key, { count: 1, reset: now + windowMs })
-			return next()
-		}
-		if (entry.count >= max) return res.status(429).json({ error: true, errors: "Too many attempts" })
-		entry.count++
-		next()
+		const key = `${req.ip || ""}:${req.path}`
+		check(key, (blocked) => {
+			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
+			res.on("finish", () => {
+				if (res.statusCode >= 400 && res.statusCode !== 429) fail(key)
+			})
+			next()
+		})
 	}
 }
 
