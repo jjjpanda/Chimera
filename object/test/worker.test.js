@@ -148,4 +148,18 @@ describe("setConfig validation", () => {
 		worker.setConfig({ confidence: 0.7 })
 		expect(worker.getConfig().confidence).toBe(0.7)
 	})
+
+	test("accepts the inclusive confidence bounds 0 and 1", () => {
+		worker.setConfig({ confidence: 0 })
+		expect(worker.getConfig().confidence).toBe(0)
+		worker.setConfig({ confidence: 1 })
+		expect(worker.getConfig().confidence).toBe(1)
+	})
+
+	test("clamps intervalMs to the inclusive 1000ms floor and 24h ceiling", () => {
+		worker.setConfig({ intervalMs: 1000 })
+		expect(worker.getConfig().intervalMs).toBe(1000)
+		worker.setConfig({ intervalMs: "999999999999" })
+		expect(worker.getConfig().intervalMs).toBe(86400000)
+	})
 })

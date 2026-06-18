@@ -21,7 +21,7 @@ afterAll(() => {
 })
 
 describe("Web App Routes", () => {
-	const webAppRoutes = ["/", "/live/", "/schedule/", "/stats/", "/login/"]
+	const webAppRoutes = ["/", "/live/", "/schedule/", "/stats/", "/login/", "/clip/", "/recordings/", "/objects/", "/admin/"]
 
 	test("Web app routes respond with 200", () =>
 		Promise.all(webAppRoutes.map(route => new Promise((resolve, reject) => {

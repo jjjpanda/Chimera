@@ -30,28 +30,31 @@ const creationTasks = [
 		description: "objects detected table"
 	},
 	{
-		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
 		description: "frame files (camera, timestamp) index"
 	},
 	{
-		query: "CREATE INDEX IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
 		description: "objects detected (camera, timestamp) index"
 	},
 ]
 
-let issues = false
+module.exports = { creationTasks }
 
-;(async () => {
-	for (const { query, description } of creationTasks) {
-		let tableExists
-		try {
-			await pool.query(query)
-			tableExists = true
-		} catch (e) {
-			tableExists = e && e.code == "42P07"
+if (require.main === module) {
+	let issues = false
+	;(async () => {
+		for (const { query, description } of creationTasks) {
+			let tableExists
+			try {
+				await pool.query(query)
+				tableExists = true
+			} catch (e) {
+				tableExists = e && e.code == "42P07"
+			}
+			if (!tableExists) issues = true
+			console.log(`${description} ${tableExists ? "✔️" : "❌"}`)
 		}
-		if (!tableExists) issues = true
-		console.log(`${description} ${tableExists ? "✔️" : "❌"}`)
-	}
-	process.exit(issues ? 1 : 0)
-})()
+		process.exit(issues ? 1 : 0)
+	})()
+}

@@ -36,7 +36,7 @@ module.exports = {
 	login: async (req, res) => {
 		const { username } = req.body
 		const jti = randomUUID()
-		const ip = (req.headers["x-forwarded-for"] || req.ip || "").split(",")[0].trim() || null
+		const ip = req.ip || null
 		const userAgent = req.headers["user-agent"] || null
 		pool.query("UPDATE auth SET last_login = NOW() WHERE username = $1", [username]).catch(() => {})
 		try {

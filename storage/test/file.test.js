@@ -17,7 +17,6 @@ jest.mock("pg", () => {
 
 const app = require("../backend/storage.js")
 const fs = require("fs")
-const { execFile } = require("child_process")
 const { __query: query } = require("pg")
 
 describe("File Routes", () => {
@@ -123,7 +122,6 @@ describe("File Routes", () => {
 			})
 			afterEach(() => {
 				unlinkSpy.mockRestore()
-				execFile.mockReset()
 				delete process.env.storage_MAX_GB
 			})
 
@@ -148,6 +146,17 @@ describe("File Routes", () => {
 				expect(query).toHaveBeenCalledTimes(1)
 			})
 
+			test("treats NULL usage as zero and reports cleaned:false", async () => {
+				process.env.storage_MAX_GB = "10"
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ used: null }] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query).toHaveBeenCalledTimes(1)
+			})
+
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ used: "2000000000" }] }))
@@ -163,6 +172,7 @@ describe("File Routes", () => {
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
 				expect(query).toHaveBeenCalledTimes(3)
+				expect(query.mock.calls[1][0]).toMatch(/ORDER BY timestamp ASC/)
 				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
 			})
 

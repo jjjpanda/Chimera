@@ -12,7 +12,8 @@ module.exports = {
 		"text"
 	],
 	projects: [
-		"<rootDir>/command/jest.config.js", 
+		"<rootDir>/chimera/jest.config.js",
+		"<rootDir>/command/jest.config.js",
 		"<rootDir>/gateway/jest.config.js",
 		"<rootDir>/lib/jest.config.js",
 		"<rootDir>/livestream/jest.config.js",

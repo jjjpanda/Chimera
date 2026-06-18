@@ -572,5 +572,39 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "3.3.3.3").next).toHaveBeenCalled()
 			expect(run(mw, "2.2.2.2").res.status).toHaveBeenCalledWith(429)
 		})
+
+		test("is wired onto POST /login and returns 429 once exhausted", async () => {
+			let res
+			for (let i = 0; i < 11; i++) {
+				res = await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", "198.51.100.23")
+					.send({ username: "admin", password: "wrongpassword" })
+			}
+			expect(res.status).toBe(429)
+			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+		})
+	})
+
+	describe("forced password change (wired via Express routing)", () => {
+		const token = jwt.sign({ username: "bob", role: "user", jti: "fpc-1" }, "test-secret")
+
+		test("blocks a non-allowlisted route with 401", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 })
+			const res = await supertest(app)
+				.post("/authorization/users")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ username: "x", role: "user" })
+			expect(res.status).toBe(401)
+		})
+
+		test("allows the password-change route through", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 })
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword" })
+			expect(res.status).toBe(200)
+		})
 	})
 })

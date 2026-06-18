@@ -176,7 +176,7 @@ module.exports = {
 		}
 		if (updates.intervalMs != null) {
 			const ms = parseInt(updates.intervalMs)
-			if (Number.isFinite(ms)) config.intervalMs = Math.max(1000, ms)
+			if (Number.isFinite(ms)) config.intervalMs = Math.min(Math.max(1000, ms), 86400000)
 		}
 		if (Array.isArray(updates.classes)) config.classes = updates.classes
 		return config
