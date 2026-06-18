@@ -136,6 +136,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 			const salt = await bcrypt.genSalt(10)
 			values.push(await bcrypt.hash(password, salt))
 			updates.push(`hash = $${values.length}`)
+			updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
 		}
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
