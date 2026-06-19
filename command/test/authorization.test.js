@@ -640,6 +640,27 @@ describe("Authorization Routes", () => {
 			run(a, "8.8.8.8")
 			expect(run(b, "8.8.8.8").res.status).toHaveBeenCalledWith(429)
 		})
+
+		test("fails open (calls next) when the shared store ack errors or times out", () => {
+			let limiter
+			jest.isolateModules(() => {
+				jest.doMock("memory", () => ({
+					client: () => ({
+						timeout() { return this },
+						emit: (event, ...args) => {
+							const ack = args[args.length - 1]
+							if (typeof ack === "function") ack(new Error("operation has timed out"))
+						},
+						on: () => {}
+					})
+				}))
+				limiter = require("../backend/routes/authorization.js").rateLimit
+			})
+			const mw = limiter({ windowMs: 60000, max: 1 })
+			const { res, next } = run(mw, "7.7.7.7")
+			expect(next).toHaveBeenCalled()
+			expect(res.status).not.toHaveBeenCalledWith(429)
+		})
 	})
 
 	describe("forced password change (wired via Express routing)", () => {

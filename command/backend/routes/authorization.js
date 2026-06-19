@@ -18,7 +18,7 @@ const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
 	const store = sharedAttempts ? null : memory.loginAttempts()
-	const check = (key, cb) => sharedAttempts ? memoryClient.emit("loginCheck", key, max, cb) : store.loginCheck(key, max, cb)
+	const check = (key, cb) => sharedAttempts ? memoryClient.timeout(5000).emit("loginCheck", key, max, (err, blocked) => cb(!err && blocked)) : store.loginCheck(key, max, cb)
 	const fail = (key) => sharedAttempts ? memoryClient.emit("loginFailure", key, windowMs) : store.loginFailure(key, windowMs)
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
