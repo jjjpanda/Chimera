@@ -14,15 +14,15 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [token, setToken] = useState("")
 
 	const onSubmit = () => {
-		if (password !== confirmPassword) {
-			setStatus("failed")
-			setMessage("Passwords do not match.")
-			return
-		}
 		const invalid = validatePassword(password)
 		if (invalid) {
 			setStatus("failed")
 			setMessage(invalid)
+			return
+		}
+		if (password !== confirmPassword) {
+			setStatus("failed")
+			setMessage("Passwords do not match.")
 			return
 		}
 		trySetup(username, password, tokenRequired ? token : undefined, (success, errors) => {
