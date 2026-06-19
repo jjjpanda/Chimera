@@ -98,7 +98,7 @@ app.get("/usage", async (req, res) => {
 		const breakdown = await captureBreakdown(capturesPath, duBytes)
 
 		res.json({
-			used_gb: parseFloat((duBytes / 1e9).toFixed(3)),
+			used_gb: parseFloat(((duBytes + breakdown.objects) / 1e9).toFixed(3)),
 			max_gb: maxGb,
 			cameras: cameraStats,
 			total_frames: parseInt(totalFrames.rows[0].count) || 0,

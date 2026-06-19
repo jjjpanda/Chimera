@@ -20,6 +20,7 @@ module.exports = {
 				}
 			},
 			on: () => {},
+			connected: true,
 			timeout: () => sock
 		}
 		return sock

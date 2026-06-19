@@ -153,7 +153,7 @@ describe("Events Routes", () => {
 				.get("/usage")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
-			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
+			expect(res.body).toMatchObject({ used_gb: 1, max_gb: 0, cameras: [], total_frames: 0 })
 		})
 
 		test("includes a per-category byte breakdown", async () => {

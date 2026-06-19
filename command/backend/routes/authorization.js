@@ -11,14 +11,18 @@ const memory = require("memory")
 const app = express.Router()
 
 const isValidPassword = (p) => typeof p === "string" && p.length >= 8
-const PASSWORD_REQUIREMENT = "Password must be at least 8 characters"
+const PASSWORD_REQUIREMENT = "Password must be at least 8 characters."
 
 const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
 	const store = sharedAttempts ? null : memory.loginAttempts()
-	const check = (key, cb) => sharedAttempts ? memoryClient.timeout(5000).emit("loginCheck", key, max, (err, blocked) => cb(!err && blocked)) : store.loginCheck(key, max, cb)
+	const check = (key, cb) => {
+		if (!sharedAttempts) return store.loginCheck(key, max, cb)
+		if (!memoryClient.connected) return cb(false)
+		memoryClient.timeout(1000).emit("loginCheck", key, max, (err, blocked) => cb(!err && blocked))
+	}
 	const fail = (key) => sharedAttempts ? memoryClient.emit("loginFailure", key, windowMs) : store.loginFailure(key, windowMs)
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`

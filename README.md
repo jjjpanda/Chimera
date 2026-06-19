@@ -2,7 +2,7 @@
 
 <img src="command/frontend/res/logo.png" alt="logo" width="100"/>
 
-Chimera is a microservices based security camera system for RTSP/IP cameras *(which kinda sorta only runs on linux)*
+Chimera is a microservices-based security camera system for RTSP/IP cameras (Linux only).
 
 List of microservices: 
 
@@ -27,18 +27,15 @@ Massive Dependencies:
 sudo apt-get install motion ffmpeg postgresql
 ```
 
-*Or however you need to download it on your machine*
-
-Then, set up a conf for **motion** with all of your cameras. Then, set up **postgres** with a database, port, user, and password of your choosing. **Motion** will also need postgres details in it's conf as well. [*See storage for details.*](storage) 
+Set up a **motion** conf with your cameras and a **postgres** database (name, port, user, password). Motion needs the postgres details in its conf too — [see storage](storage).
 
 ### 2. Create Environment Variables File
 
-Copy the example env into an .env dotfile:
 ```
 cp env.example .env
 ```
 
-Fill in the .env with all the info listed ( for optional fields, leave blank after the "=" ). 
+Fill in `.env` (leave optional fields blank after the `=`).
 
 ### 3. Run Setup
 

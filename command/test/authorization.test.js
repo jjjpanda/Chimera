@@ -69,7 +69,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 	})
 
@@ -331,7 +331,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -509,7 +509,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters" })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {
@@ -641,11 +641,31 @@ describe("Authorization Routes", () => {
 			expect(run(b, "8.8.8.8").res.status).toHaveBeenCalledWith(429)
 		})
 
+		test("fails open (calls next) when the shared client is disconnected", () => {
+			let limiter
+			jest.isolateModules(() => {
+				jest.doMock("memory", () => ({
+					client: () => ({
+						connected: false,
+						timeout() { return this },
+						emit: jest.fn(),
+						on: () => {}
+					})
+				}))
+				limiter = require("../backend/routes/authorization.js").rateLimit
+			})
+			const mw = limiter({ windowMs: 60000, max: 1 })
+			const { res, next } = run(mw, "6.6.6.6")
+			expect(next).toHaveBeenCalled()
+			expect(res.status).not.toHaveBeenCalledWith(429)
+		})
+
 		test("fails open (calls next) when the shared store ack errors or times out", () => {
 			let limiter
 			jest.isolateModules(() => {
 				jest.doMock("memory", () => ({
 					client: () => ({
+						connected: true,
 						timeout() { return this },
 						emit: (event, ...args) => {
 							const ack = args[args.length - 1]
