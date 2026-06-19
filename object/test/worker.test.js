@@ -5,6 +5,7 @@ jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
 jest.mock("../backend/lib/webhook.js", () => jest.fn())
 jest.mock("../backend/lib/detector.js", () => ({ INPUT: 4, detect: jest.fn() }))
 
+const path = require("path")
 const { execFile } = require("child_process")
 const fs = require("fs")
 const pool = require("../backend/lib/pool.js")
@@ -69,18 +70,21 @@ describe("scan", () => {
 		expect(tensor[2 * SIZE]).toBe(30)
 	})
 
-	test("keeps only configured classes, inserts + webhooks them", async () => {
+	test("inserts + webhooks all detections", async () => {
 		detector.detect.mockResolvedValue([
 			{ class: "person", score: 0.8765432, box: [0, 0, 1, 1] },
 			{ class: "car", score: 0.99, box: [0, 0, 1, 1] }
 		])
 		const detections = await worker.scan(2)
-		expect(detections).toHaveLength(1)
-		expect(detections[0].class).toBe("person")
-		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(detections).toHaveLength(2)
+		expect(pool.query).toHaveBeenCalledTimes(2)
 		expect(pool.query).toHaveBeenCalledWith(
 			expect.stringContaining("INSERT INTO objects_detected"),
 			[2, "person", 0.876543, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
+		)
+		expect(pool.query).toHaveBeenCalledWith(
+			expect.stringContaining("INSERT INTO objects_detected"),
+			[2, "car", 0.99, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
 		)
 		expect(sendWebhook).toHaveBeenCalledWith(
 			"http://hook.test",
@@ -88,15 +92,15 @@ describe("scan", () => {
 			expect.any(Buffer)
 		)
 		expect(worker.getStatus()[2].error).toBeNull()
-		expect(worker.getStatus()[2].lastDetection.detections).toHaveLength(1)
+		expect(worker.getStatus()[2].lastDetection.detections).toHaveLength(2)
 	})
 
-	test("no matching detections -> no insert, no webhook", async () => {
+	test("single detection inserts + webhooks", async () => {
 		detector.detect.mockResolvedValue([{ class: "car", score: 0.9, box: [0, 0, 1, 1] }])
 		const detections = await worker.scan(3)
-		expect(detections).toHaveLength(0)
-		expect(pool.query).not.toHaveBeenCalled()
-		expect(sendWebhook).not.toHaveBeenCalled()
+		expect(detections).toHaveLength(1)
+		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(sendWebhook).toHaveBeenCalledTimes(1)
 		expect(worker.getStatus()[3].error).toBeNull()
 	})
 
@@ -161,5 +165,29 @@ describe("setConfig validation", () => {
 		expect(worker.getConfig().intervalMs).toBe(1000)
 		worker.setConfig({ intervalMs: "999999999999" })
 		expect(worker.getConfig().intervalMs).toBe(86400000)
+	})
+})
+
+describe("CAPTURES_DIR", () => {
+	const saved = process.env.storage_FOLDERPATH
+
+	afterEach(() => {
+		if (saved === undefined) delete process.env.storage_FOLDERPATH
+		else process.env.storage_FOLDERPATH = saved
+		jest.resetModules()
+	})
+
+	test("defaults to cwd/objectCaptures when storage_FOLDERPATH unset", () => {
+		delete process.env.storage_FOLDERPATH
+		jest.resetModules()
+		const w = require("../backend/lib/worker.js")
+		expect(w.CAPTURES_DIR).toBe(path.join(process.cwd(), "objectCaptures"))
+	})
+
+	test("uses storage_FOLDERPATH when set", () => {
+		process.env.storage_FOLDERPATH = "/mnt/storage"
+		jest.resetModules()
+		const w = require("../backend/lib/worker.js")
+		expect(w.CAPTURES_DIR).toBe(path.join("/mnt/storage", "objectCaptures"))
 	})
 })

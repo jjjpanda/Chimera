@@ -292,6 +292,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [multiGenerating, setMultiGenerating] = useState({})
 	const multiCanvasRefs = useRef({})
 	const multiImageCache = useRef({})
+	const multiLoadGenRef = useRef({})
 
 	useEffect(() => {
 		if (!isDesktop && multiCam) toggleMultiCam()
@@ -342,8 +343,9 @@ const ClipMaker = ({ mini } = {}) => {
 		const ftv = frameTimes.map(t => t ? t.valueOf() : null)
 		const valid = ftv.filter(v => v != null)
 		if (valid.length === 0) return detections.map(() => -1)
-		const span = Math.max(...valid) - Math.min(...valid)
-		const tol = valid.length > 1 ? span / (valid.length - 1) : Infinity
+		const uniqueValid = [...new Set(valid)]
+		const span = Math.max(...uniqueValid) - Math.min(...uniqueValid)
+		const tol = uniqueValid.length > 1 ? span / (uniqueValid.length - 1) : Infinity
 		return detections.map(d => {
 			const v = moment(d.timestamp).valueOf()
 			let idx = -1, diff = Infinity
@@ -437,16 +439,18 @@ const ClipMaker = ({ mini } = {}) => {
 	useEffect(() => {
 		if (!multiCam) return
 		const timers = []
-		const imgs = []
 		Object.entries(multiAllFrames).forEach(([camId, camFrames]) => {
 			if (!multiImageCache.current[camId]) multiImageCache.current[camId] = {}
-			camFrames.forEach(url => {
-				if (multiImageCache.current[camId][url]) return
+			const newUrls = camFrames.filter(url => !multiImageCache.current[camId][url])
+			if (!newUrls.length) return
+			const gen = (multiLoadGenRef.current[camId] = (multiLoadGenRef.current[camId] || 0) + 1)
+			newUrls.forEach(url => {
 				const img = new Image()
 				let settled = false
 				let timer
 				const settle = () => {
 					if (settled) return
+					if (multiLoadGenRef.current[camId] !== gen) return
 					settled = true
 					clearTimeout(timer)
 					setCamStates(s => s[camId] ? ({
@@ -457,15 +461,11 @@ const ClipMaker = ({ mini } = {}) => {
 				img.onload = img.onerror = settle
 				timer = setTimeout(settle, 10000)
 				timers.push(timer)
-				imgs.push(img)
 				img.src = url
 				multiImageCache.current[camId][url] = img
 			})
 		})
-		return () => {
-			timers.forEach(clearTimeout)
-			imgs.forEach(img => { img.onload = img.onerror = null })
-		}
+		return () => { timers.forEach(clearTimeout) }
 	}, [multiCam, multiFramesKey])
 
 	const multiFrameTimes = useMemo(() =>
@@ -576,14 +576,13 @@ const ClipMaker = ({ mini } = {}) => {
 	}
 
 	const loadDetections = (camId, start, end) => {
-		setDetections([])
 		const qs = new URLSearchParams({
 			camera: String(camId),
 			start: moment(start).toISOString(),
 			end: moment(end).toISOString(),
 			limit: "500",
 		})
-		request(`/object/detections?${qs}`, {}, prom =>
+		request(`/object/detections?${qs}`, { cache: "no-store" }, prom =>
 			jsonProcessing(prom, data => setDetections(Array.isArray(data) ? data : [])))
 	}
 

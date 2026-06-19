@@ -14,6 +14,7 @@ const StorageBreakdown = ({ breakdown }) => {
 	const total = TYPES.reduce((sum, t) => sum + (breakdown[t.key] || 0), 0) || 1
 	return (
 		<div className="flex flex-col gap-1.5">
+			<span className="text-xs font-medium text-muted">Storage Breakdown</span>
 			<div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
 				{TYPES.map(t => {
 					const v = breakdown[t.key] || 0

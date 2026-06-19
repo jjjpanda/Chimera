@@ -10,9 +10,15 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [message, setMessage] = useState(null)
 	const [username, setUsername] = useState("")
 	const [password, setPassword] = useState("")
+	const [confirmPassword, setConfirmPassword] = useState("")
 	const [token, setToken] = useState("")
 
 	const onSubmit = () => {
+		if (password !== confirmPassword) {
+			setStatus("failed")
+			setMessage("Passwords do not match.")
+			return
+		}
 		const invalid = validatePassword(password)
 		if (invalid) {
 			setStatus("failed")
@@ -57,6 +63,18 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 							placeholder="password"
 							value={password}
 							onChange={e => setPassword(e.target.value)}
+							onKeyDown={handleKeyDown}
+							autoComplete="new-password"
+						/>
+					</div>
+					<div className="flex flex-col gap-1">
+						<Label className="text-muted">Confirm Password</Label>
+						<Input
+							className="bg-surface-raised border-border text-primary placeholder:text-muted"
+							type="password"
+							placeholder="confirm password"
+							value={confirmPassword}
+							onChange={e => setConfirmPassword(e.target.value)}
 							onKeyDown={handleKeyDown}
 							autoComplete="new-password"
 						/>

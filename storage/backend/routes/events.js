@@ -25,7 +25,7 @@ const captureBreakdown = async (capturesPath, totalBytes) => {
 		else if (entry.name.endsWith(".zip")) zips += size
 		else other += size
 	}))
-	const objects = await du(path.join(process.cwd(), "objectCaptures"))
+	const objects = await du(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
 	return { frames: Math.max(0, totalBytes - videos - zips - other), videos, zips, objects, other }
 }
 

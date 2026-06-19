@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { request, jsonProcessing } from "../js/request.js"
+import { request } from "../js/request.js"
 import toast from "../js/toast.js"
 
 const useClearFootage = (cameras, onDone) => {
@@ -13,12 +13,14 @@ const useClearFootage = (cameras, onDone) => {
 		setPending(null)
 		const remove = toast("Attempting Delete…", 0)
 
-		const deleteCamera = (camId) => new Promise(resolve =>
-			request("/file/pathClean", {
+		const deleteCamera = (camId) => request("/file/pathClean", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ camera: camId, days })
-			}, prom => jsonProcessing(prom, resolve))
+			}, prom => prom
+				.then(res => res.text())
+				.then(text => { try { return JSON.parse(text) } catch { return text } })
+				.catch(() => undefined)
 		)
 
 		const targets = pending.type === "all" ? cameras : [{ id: pending.cameraId }]
