@@ -52,14 +52,14 @@ const MobileView = ({ index }) => {
 			{role === "admin" && <StorageWidget />}
 			<ScheduleDashboard mini withButton />
 			<div className="flex items-center rounded-md border border-border text-muted">
-				<div className="flex flex-1 items-center justify-center gap-1 py-2">
+				<div className="flex flex-1">
 					{themeOptions.map(({ value, icon: Icon }) => (
 						<button
 							key={value}
 							aria-label={value}
 							onClick={() => applyTheme(value)}
 							className={cn(
-								"flex items-center justify-center px-2 py-1 rounded-md transition-colors",
+								"flex flex-1 items-center justify-center py-2 rounded-md transition-colors",
 								theme === value ? "bg-accent/15 text-accent" : "hover:text-primary"
 							)}
 						>

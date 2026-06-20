@@ -70,7 +70,7 @@ const SideMenu = ({ index, mobile }) => {
 	}
 
 	return (
-		<aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r border-border bg-surface">
+		<aside className="sticky top-0 flex h-screen w-48 shrink-0 flex-col border-r border-border bg-surface">
 			<div className="flex items-center gap-2 px-4 py-4">
 				<img src="/res/logo.png" alt="Chimera" className="h-8 w-8 object-contain" />
 				<span className="text-lg font-semibold tracking-tight">Chimera</span>
@@ -93,25 +93,22 @@ const SideMenu = ({ index, mobile }) => {
 					)
 				})}
 			</nav>
-			<div className="px-2 py-3">
-				<div className="flex items-center gap-2 rounded-md px-3 py-2 text-muted">
-					<div className="flex rounded-md border border-border">
-						{themeOptions.map(({ value, icon: Icon }) => (
-							<button
-								key={value}
-								aria-label={value}
-								onClick={() => applyTheme(value)}
-								className={cn(
-									"flex items-center justify-center px-2 py-1 transition-colors first:rounded-l-md last:rounded-r-md",
-									theme === value ? "bg-accent/15 text-accent" : "hover:text-primary"
-								)}
-							>
-								<Icon className="size-4" />
-							</button>
-						))}
-					</div>
-					<div className="mx-1 h-4 w-px bg-border" />
-					<SignOutButton className="flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary" iconOnly={false} />
+			<div className="space-y-1 px-2 py-2">
+				<SignOutButton className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-raised hover:text-primary" iconOnly={false} />
+				<div className="flex w-full rounded-md border border-border">
+					{themeOptions.map(({ value, icon: Icon }) => (
+						<button
+							key={value}
+							aria-label={value}
+							onClick={() => applyTheme(value)}
+							className={cn(
+								"flex flex-1 items-center justify-center px-2 py-2 transition-colors first:rounded-l-md last:rounded-r-md",
+								theme === value ? "bg-accent/15 text-accent" : "hover:text-primary text-muted"
+							)}
+						>
+							<Icon className="size-5" />
+						</button>
+					))}
 				</div>
 			</div>
 		</aside>
