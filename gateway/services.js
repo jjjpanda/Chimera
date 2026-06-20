@@ -29,5 +29,6 @@ module.exports = [{
 	baseURL: process.env.command_HOST,
 	postPathRegex: /\/.*/,
 	getPathRegex: /\/.*/,
-	deletePathRegex: /\/.*/
+	deletePathRegex: /\/.*/,
+	putPathRegex: /\/.*/
 }]

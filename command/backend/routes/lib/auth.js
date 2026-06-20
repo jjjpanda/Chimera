@@ -28,7 +28,7 @@ module.exports = {
 				if (row.force_password_change && row.temp_password_expires && new Date(row.temp_password_expires) < new Date()) return deny()
 				req.userRole = row.role
 				req.forcePasswordChange = row.force_password_change
-				req.userTheme = row.theme ?? "dark"
+				req.userTheme = row.theme ?? "system"
 				next()
 			})
 		})

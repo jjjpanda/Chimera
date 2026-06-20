@@ -84,7 +84,7 @@ app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
 		const row = result.rows[0] ?? {}
-		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "dark" })
+		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system" })
 	} catch (e) {
 		res.status(500).json({ error: true })
 	}
@@ -92,7 +92,7 @@ app.post("/verify", authorize, async (req, res) => {
 
 app.put("/theme", authorize, validateBody, async (req, res) => {
 	const { theme } = req.body
-	if (!["light", "dark"].includes(theme)) return res.status(400).json({ error: true })
+	if (!["light", "dark", "system"].includes(theme)) return res.status(400).json({ error: true })
 	try {
 		await pool.query("UPDATE auth SET theme = $1 WHERE username = $2", [theme, req.decoded.username])
 		res.json({ error: false })

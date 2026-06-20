@@ -12,19 +12,19 @@ const SignOutButton = ({ className, iconOnly }) => {
 		<>
 			<button onClick={() => setOpen(true)} className={className}>
 				<LogOut className="size-5 shrink-0" />
-				{!iconOnly && <span>Sign Out</span>}
+				{!iconOnly && <span>Log Out</span>}
 			</button>
 			<Dialog open={open} onOpenChange={setOpen}>
 				<DialogContent className="bg-surface-raised border-border text-primary">
 					<DialogHeader>
-						<DialogTitle className="text-primary">Sign Out</DialogTitle>
-						<DialogDescription className="text-muted">Are you sure you want to sign out?</DialogDescription>
+						<DialogTitle className="text-primary">Log Out</DialogTitle>
+						<DialogDescription className="text-muted">Are you sure you want to log out?</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
 						<DialogClose asChild>
 							<Button variant="ghost" className="text-muted hover:text-primary">Cancel</Button>
 						</DialogClose>
-						<Button onClick={signOut} className="bg-danger text-danger-foreground hover:bg-danger/80">Sign Out</Button>
+						<Button onClick={signOut} className="bg-danger text-danger-foreground hover:bg-danger/80">Log Out</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

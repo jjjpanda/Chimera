@@ -86,7 +86,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.send({ username: "admin", password: "mockedPassword" })
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", theme: "dark" })
+			expect(res.body).toEqual({ error: false, role: "user", theme: "system" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
 		})
@@ -131,7 +131,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "dark" })
+			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "system" })
 		})
 
 		test("returns 401 for valid JWT of deleted user", async () => {
@@ -161,12 +161,12 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: true })
 		})
 
-		test("returns 200 on successful theme update", async () => {
+		test.each(["light", "dark", "system"])("returns 200 on successful theme update (%s)", async (theme) => {
 			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.put("/authorization/theme")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ theme: "light" })
+				.send({ theme })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})

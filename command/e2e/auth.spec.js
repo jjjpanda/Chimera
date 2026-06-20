@@ -90,14 +90,14 @@ test.describe("authentication", () => {
 		await expect(page.getByRole("button", { name: "Live" })).toBeVisible()
 	})
 
-	test("sign out returns to the login page", async ({ page }) => {
+	test("log out returns to the login page", async ({ page }) => {
 		await mockApi(page)
 		await page.goto("/")
 		await page.getByPlaceholder("username").fill("admin")
 		await page.getByPlaceholder("password").fill("password123")
 		await page.getByRole("button", { name: "Sign In" }).click()
-		await page.getByRole("button", { name: "Sign Out" }).click()
-		await page.getByRole("dialog").getByRole("button", { name: "Sign Out" }).click()
+		await page.getByRole("button", { name: "Log Out" }).click()
+		await page.getByRole("dialog").getByRole("button", { name: "Log Out" }).click()
 		await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible()
 	})
 })

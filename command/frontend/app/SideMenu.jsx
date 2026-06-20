@@ -1,18 +1,22 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, Sun, Moon } from "lucide-react"
+import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, Sun, Moon, Monitor } from "lucide-react"
 
 import { indexToRoute } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
 import { useTheme } from "./ThemeContext.jsx"
 import SignOutButton from "./SignOutButton.jsx"
-import { Switch } from "../components/ui/switch"
 import { cn } from "../lib/utils"
 
 const SideMenu = ({ index, mobile }) => {
 	const role = useRole()
 	const navigate = useNavigate()
-	const { dark, toggle } = useTheme()
+	const { theme, applyTheme } = useTheme()
+	const themeOptions = [
+		{ value: "light", icon: Sun },
+		{ value: "dark", icon: Moon },
+		{ value: "system", icon: Monitor },
+	]
 
 	const mobileTabs = [
 		{ key: "route-1", icon: Scissors, title: "Clip" },
@@ -91,9 +95,21 @@ const SideMenu = ({ index, mobile }) => {
 			</nav>
 			<div className="px-2 py-3">
 				<div className="flex items-center gap-2 rounded-md px-3 py-2 text-muted">
-					<Moon className="size-4 shrink-0" />
-					<Switch checked={!dark} onCheckedChange={toggle} />
-					<Sun className="size-4 shrink-0" />
+					<div className="flex rounded-md border border-border">
+						{themeOptions.map(({ value, icon: Icon }) => (
+							<button
+								key={value}
+								aria-label={value}
+								onClick={() => applyTheme(value)}
+								className={cn(
+									"flex items-center justify-center px-2 py-1 transition-colors first:rounded-l-md last:rounded-r-md",
+									theme === value ? "bg-accent/15 text-accent" : "hover:text-primary"
+								)}
+							>
+								<Icon className="size-4" />
+							</button>
+						))}
+					</div>
 					<div className="mx-1 h-4 w-px bg-border" />
 					<SignOutButton className="flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary" iconOnly={false} />
 				</div>
