@@ -12,10 +12,11 @@ const updateValueGenerator = (type, setValue) => (e) => {
 	}))
 }
 
-const onLoginEnterGenerator = (props, inputs, setLoginStatus) => () => {
+const onLoginEnterGenerator = (props, inputs, setLoginStatus, setLoginError) => () => {
 	const {username, password} = inputs
-	props.tryLogin(username, password, (correct) => {
+	props.tryLogin(username, password, (correct, errors) => {
 		setLoginStatus(correct ? "right" : "wrong")
+		setLoginError(correct ? null : errors)
 	})
 }
 
@@ -26,6 +27,7 @@ const useLoginSchema = (props) => {
 		password: ""
 	})
 	const [loginStatus, setLoginStatus] = useState(null)
+	const [loginError, setLoginError] = useState(null)
 
 
 	useEffect(() => {
@@ -37,9 +39,10 @@ const useLoginSchema = (props) => {
 		modalVisible,
 		toggleModalGenerator(toggleModalVisible),
 		inputValues,
-		onLoginEnterGenerator(props, inputValues, setLoginStatus),
+		onLoginEnterGenerator(props, inputValues, setLoginStatus, setLoginError),
 		updateValueGenerator("username", setInputValue),
-		updateValueGenerator("password", setInputValue)
+		updateValueGenerator("password", setInputValue),
+		loginError
 	]
 }
 

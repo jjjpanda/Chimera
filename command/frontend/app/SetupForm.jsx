@@ -3,16 +3,31 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
+import { validatePassword } from "../js/password.js"
 
 const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [status, setStatus] = useState(null)
+	const [message, setMessage] = useState(null)
 	const [username, setUsername] = useState("")
 	const [password, setPassword] = useState("")
+	const [confirmPassword, setConfirmPassword] = useState("")
 	const [token, setToken] = useState("")
 
 	const onSubmit = () => {
-		trySetup(username, password, tokenRequired ? token : undefined, (success) => {
+		const invalid = validatePassword(password)
+		if (invalid) {
+			setStatus("failed")
+			setMessage(invalid)
+			return
+		}
+		if (password !== confirmPassword) {
+			setStatus("failed")
+			setMessage("Passwords do not match.")
+			return
+		}
+		trySetup(username, password, tokenRequired ? token : undefined, (success, errors) => {
 			setStatus(success ? "done" : "failed")
+			setMessage(success ? null : errors)
 		})
 	}
 
@@ -52,6 +67,18 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 							autoComplete="new-password"
 						/>
 					</div>
+					<div className="flex flex-col gap-1">
+						<Label className="text-muted">Confirm Password</Label>
+						<Input
+							className="bg-surface-raised border-border text-primary placeholder:text-muted"
+							type="password"
+							placeholder="confirm password"
+							value={confirmPassword}
+							onChange={e => setConfirmPassword(e.target.value)}
+							onKeyDown={handleKeyDown}
+							autoComplete="new-password"
+						/>
+					</div>
 					{tokenRequired && (
 						<div className="flex flex-col gap-1">
 							<Label className="text-muted">Setup Token</Label>
@@ -66,7 +93,7 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 						</div>
 					)}
 					{status === "failed" && (
-						<p className="text-danger text-sm">Setup failed. Check your credentials.</p>
+						<p className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
 					)}
 					<Button
 						className="bg-accent text-accent-foreground hover:opacity-90 w-full"

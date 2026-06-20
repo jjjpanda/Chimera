@@ -13,13 +13,15 @@ const statusProcessing = (prom, code, callback) => {
 
 const jsonProcessing = (prom, callback) => {
 	prom
-		.then(res => res.text())
-		.then((text) => {
-			try {
-				return JSON.parse(text)
-			} catch (e) {
-				return text
-			}
+		.then((res) => {
+			if (res.status === 304) return undefined
+			return res.text().then((text) => {
+				try {
+					return JSON.parse(text)
+				} catch (e) {
+					return text
+				}
+			})
 		})
 		.then((data) => callback(data))
 		.catch(() => callback(undefined))

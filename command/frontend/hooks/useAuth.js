@@ -96,7 +96,7 @@ const useAuth = () => {
 
 	const tryLogin = (username, password, callback) => {
 		attemptLogin(username, password).then(res => {
-			callback(!res.error)
+			callback(!res.error, res.errors)
 			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
 		})
 	}
@@ -104,14 +104,14 @@ const useAuth = () => {
 	const trySetup = (username, password, token, callback) => {
 		attemptSetup(username, password, token).then(res => {
 			if (!res.error) setState(s => ({ ...s, setup: true }))
-			callback(!res.error)
+			callback(!res.error, res.errors)
 		})
 	}
 
 	const changePassword = (password, callback) => {
 		attemptPasswordChange(password).then(res => {
 			if (!res.error) setState(s => ({ ...s, forcePasswordChange: false }))
-			callback(!res.error)
+			callback(!res.error, res.errors)
 		})
 	}
 

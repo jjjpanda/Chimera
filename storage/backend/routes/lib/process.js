@@ -65,9 +65,12 @@ module.exports = {
 			Promise.all(list.map(file => {
 				const { id, type } = parseFileName(file)
 				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
-					resolve({
-						...parseFileName(file),
-						running: !err
+					fs.stat(path.join(imgDir, file), (statErr, stats) => {
+						resolve({
+							...parseFileName(file),
+							running: !err,
+							size: statErr ? null : stats.size
+						})
 					})
 				}))
 			})).then((asyncCompiledList) => {

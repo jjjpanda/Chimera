@@ -69,7 +69,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 	})
 
@@ -331,7 +331,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -509,7 +509,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {
@@ -548,15 +548,21 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
-		const run = (mw, ip) => {
+		const run = (mw, ip, statusCode = 400) => {
 			const req = { headers: {}, ip, path: "/login" }
-			const res = { status: jest.fn().mockReturnThis(), json: jest.fn() }
-			const next = jest.fn()
+			let onFinish
+			const res = {
+				statusCode,
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				on: (event, fn) => { if (event === "finish") onFinish = fn }
+			}
+			const next = jest.fn(() => onFinish && onFinish())
 			mw(req, res, next)
 			return { res, next }
 		}
 
-		test("allows up to max then returns 429", () => {
+		test("allows up to max failures then returns 429", () => {
 			const mw = rateLimit({ windowMs: 60000, max: 3 })
 			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
 			expect(run(mw, "1.1.1.1").next).toHaveBeenCalled()
@@ -573,6 +579,13 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "2.2.2.2").res.status).toHaveBeenCalledWith(429)
 		})
 
+		test("does not count successful logins toward the limit", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1 })
+			run(mw, "4.4.4.4", 200)
+			run(mw, "4.4.4.4", 200)
+			expect(run(mw, "4.4.4.4", 200).next).toHaveBeenCalled()
+		})
+
 		test("is wired onto POST /login and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {
@@ -583,6 +596,90 @@ describe("Authorization Routes", () => {
 			}
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+		})
+	})
+
+	describe("rateLimit (shared memory instance)", () => {
+		let rateLimit
+		beforeAll(() => {
+			process.env.memory_ON = "true"
+			jest.isolateModules(() => {
+				rateLimit = require("../backend/routes/authorization.js").rateLimit
+			})
+		})
+		afterAll(() => {
+			delete process.env.memory_ON
+		})
+
+		const run = (mw, ip, statusCode = 400) => {
+			const req = { headers: {}, ip, path: "/login" }
+			let onFinish
+			const res = {
+				statusCode,
+				status: jest.fn().mockReturnThis(),
+				json: jest.fn(),
+				on: (event, fn) => { if (event === "finish") onFinish = fn }
+			}
+			const next = jest.fn(() => onFinish && onFinish())
+			mw(req, res, next)
+			return { res, next }
+		}
+
+		test("blocks after max failures via the shared store", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 2 })
+			expect(run(mw, "9.9.9.9").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.9").next).toHaveBeenCalled()
+			const { res, next } = run(mw, "9.9.9.9")
+			expect(next).not.toHaveBeenCalled()
+			expect(res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("shares failures across separate limiter instances", () => {
+			const a = rateLimit({ windowMs: 60000, max: 1 })
+			const b = rateLimit({ windowMs: 60000, max: 1 })
+			run(a, "8.8.8.8")
+			expect(run(b, "8.8.8.8").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("fails open (calls next) when the shared client is disconnected", () => {
+			let limiter
+			jest.isolateModules(() => {
+				jest.doMock("memory", () => ({
+					client: () => ({
+						connected: false,
+						timeout() { return this },
+						emit: jest.fn(),
+						on: () => {}
+					})
+				}))
+				limiter = require("../backend/routes/authorization.js").rateLimit
+			})
+			const mw = limiter({ windowMs: 60000, max: 1 })
+			const { res, next } = run(mw, "6.6.6.6")
+			expect(next).toHaveBeenCalled()
+			expect(res.status).not.toHaveBeenCalledWith(429)
+		})
+
+		test("fails open (calls next) when the shared store ack errors or times out", () => {
+			let limiter
+			jest.isolateModules(() => {
+				jest.doMock("memory", () => ({
+					client: () => ({
+						connected: true,
+						timeout() { return this },
+						emit: (event, ...args) => {
+							const ack = args[args.length - 1]
+							if (typeof ack === "function") ack(new Error("operation has timed out"))
+						},
+						on: () => {}
+					})
+				}))
+				limiter = require("../backend/routes/authorization.js").rateLimit
+			})
+			const mw = limiter({ windowMs: 60000, max: 1 })
+			const { res, next } = run(mw, "7.7.7.7")
+			expect(next).toHaveBeenCalled()
+			expect(res.status).not.toHaveBeenCalledWith(429)
 		})
 	})
 

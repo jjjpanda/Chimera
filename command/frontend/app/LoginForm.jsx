@@ -6,7 +6,7 @@ import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 
 const LoginForm = (props) => {
-	const [loginStatus, , , inputValues, onLoginEnter, updateUsername, updatePassword] = useLoginSchema(props)
+	const [loginStatus, , , inputValues, onLoginEnter, updateUsername, updatePassword, loginError] = useLoginSchema(props)
 
 	const handleKeyDown = (e) => {
 		if (e.key === "Enter") onLoginEnter()
@@ -43,7 +43,7 @@ const LoginForm = (props) => {
 					/>
 				</div>
 				{loginStatus === "wrong" && (
-					<p className="text-danger text-sm">Invalid username or password.</p>
+					<p className="text-danger text-sm">{loginError || "Invalid username or password."}</p>
 				)}
 				{loginStatus === "right" && (
 					<p className="text-accent text-sm">Signed in.</p>

@@ -1,6 +1,7 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
 import useStorageUsage from "../hooks/useStorageUsage.js"
+import StorageBreakdown from "./StorageBreakdown.jsx"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import formatBytes from "../js/formatBytes.js"
@@ -47,6 +48,8 @@ const StorageWidget = () => {
 				) : (
 					<div className="h-2 w-full rounded-full bg-muted" />
 				)}
+
+				<StorageBreakdown breakdown={usage.breakdown} />
 
 				{usage.max_gb > 0 && (
 					<div className="flex flex-col gap-1">

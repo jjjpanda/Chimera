@@ -6,26 +6,36 @@ const authorize = auth.createAuthorize(pool)
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
+const memory = require("memory")
 
 const app = express.Router()
 
 const isValidPassword = (p) => typeof p === "string" && p.length >= 8
+const PASSWORD_REQUIREMENT = "Password must be at least 8 characters."
+
+const sharedAttempts = process.env.memory_ON == "true"
+const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
-	const hits = new Map()
+	const store = sharedAttempts ? null : memory.loginAttempts()
+	const reserve = (key, cb) => {
+		if (!sharedAttempts) return store.loginReserve(key, max, windowMs, cb)
+		if (!memoryClient.connected) return cb(false)
+		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => cb(!err && blocked))
+	}
+	const release = (key) => {
+		if (!sharedAttempts) return store.loginRelease(key)
+		if (memoryClient.connected) memoryClient.emit("loginRelease", key)
+	}
 	return (req, res, next) => {
-		const ip = req.ip || ""
-		const key = `${ip}:${req.path}`
-		const now = Date.now()
-		if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k)
-		const entry = hits.get(key)
-		if (!entry || now > entry.reset) {
-			hits.set(key, { count: 1, reset: now + windowMs })
-			return next()
-		}
-		if (entry.count >= max) return res.status(429).json({ error: true, errors: "Too many attempts" })
-		entry.count++
-		next()
+		const key = `${req.ip || ""}:${req.path}`
+		reserve(key, (blocked) => {
+			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
+			res.on("finish", () => {
+				if (res.statusCode < 400) release(key)
+			})
+			next()
+		})
 	}
 }
 
@@ -44,7 +54,8 @@ app.get("/status", async (req, res) => {
 app.post("/setup", loginLimiter, validateBody, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
-	if (!username || !isValidPassword(password)) return res.status(400).json({ error: true })
+	if (!username) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[^/]+$/.test(username)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -108,7 +119,7 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true })
+	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let client
 	try {
@@ -207,7 +218,7 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
-	if (!isValidPassword(password)) return res.status(400).json({ error: true })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
 		const salt = await bcrypt.genSalt(10)

@@ -3,19 +3,28 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
+import { validatePassword } from "../js/password.js"
 
 const ChangePasswordForm = ({ changePassword }) => {
 	const [password, setPassword] = useState("")
 	const [confirm, setConfirm] = useState("")
 	const [status, setStatus] = useState(null)
+	const [message, setMessage] = useState(null)
 
 	const onSubmit = () => {
 		if (!password || password !== confirm) {
 			setStatus("mismatch")
 			return
 		}
-		changePassword(password, (success) => {
+		const invalid = validatePassword(password)
+		if (invalid) {
+			setStatus("failed")
+			setMessage(invalid)
+			return
+		}
+		changePassword(password, (success, errors) => {
 			setStatus(success ? "done" : "failed")
+			setMessage(success ? null : errors)
 		})
 	}
 
@@ -60,7 +69,7 @@ const ChangePasswordForm = ({ changePassword }) => {
 						<p className="text-danger text-sm">Passwords do not match.</p>
 					)}
 					{status === "failed" && (
-						<p className="text-danger text-sm">Failed to change password.</p>
+						<p className="text-danger text-sm">{message || "Failed to change password."}</p>
 					)}
 					<Button
 						className="bg-accent text-accent-foreground hover:opacity-90 w-full"

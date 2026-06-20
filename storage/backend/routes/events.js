@@ -9,6 +9,26 @@ const pool = require("../lib/pool")
 
 const app = express.Router()
 
+const du = (target) => new Promise((resolve) => {
+	execFile("du", ["-sb", target], (err, stdout) => {
+		resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
+	})
+})
+
+const captureBreakdown = async (capturesPath, totalBytes) => {
+	let videos = 0, zips = 0, other = 0
+	const entries = await fs.promises.readdir(capturesPath, { withFileTypes: true }).catch(() => [])
+	await Promise.all(entries.map(async (entry) => {
+		if (!entry.isFile()) return
+		const { size } = await fs.promises.stat(path.join(capturesPath, entry.name)).catch(() => ({ size: 0 }))
+		if (entry.name.endsWith(".mp4")) videos += size
+		else if (entry.name.endsWith(".zip")) zips += size
+		else other += size
+	}))
+	const objects = await du(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
+	return { frames: Math.max(0, totalBytes - videos - zips - other), videos, zips, objects, other }
+}
+
 app.get("/events", async (req, res) => {
 	const { camera_id, date } = req.query
 	const per_page = Math.max(1, Math.min(parseInt(req.query.per_page) || 100, 1000))
@@ -56,21 +76,14 @@ app.get("/usage", async (req, res) => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		const cameras = loadCameras()
 
-		const duBytes = await new Promise((resolve) => {
-			execFile('du', ['-sb', capturesPath], (err, stdout) => {
-				if (err) return resolve(0)
-				resolve(parseInt(stdout.split("\t")[0]) || 0)
-			})
-		})
+		const duBytes = await du(capturesPath)
 
 		const cameraStats = await Promise.all(
 			cameras.map(async ({ id, name }) => {
 				const camPath = path.join(capturesPath, id.toString())
 				const [countResult, duResult] = await Promise.all([
 					pool.query("SELECT COUNT(*) FROM frame_files WHERE camera = $1", [id]),
-					new Promise(resolve => execFile('du', ['-sb', camPath], (err, stdout) => {
-						resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
-					}))
+					du(camPath)
 				])
 				return {
 					id,
@@ -82,12 +95,14 @@ app.get("/usage", async (req, res) => {
 		)
 
 		const totalFrames = await pool.query("SELECT COUNT(*) FROM frame_files")
+		const breakdown = await captureBreakdown(capturesPath, duBytes)
 
 		res.json({
-			used_gb: parseFloat((duBytes / 1e9).toFixed(3)),
+			used_gb: parseFloat(((duBytes + breakdown.objects) / 1e9).toFixed(3)),
 			max_gb: maxGb,
 			cameras: cameraStats,
-			total_frames: parseInt(totalFrames.rows[0].count) || 0
+			total_frames: parseInt(totalFrames.rows[0].count) || 0,
+			breakdown
 		})
 	} catch (e) {
 		res.status(500).json({ error: true })

@@ -10,5 +10,6 @@ module.exports = {
 		},
 		on: () => {}
 	}),
-	server: () => {}
+	server: () => {},
+	loginAttempts: require("../../memory/lib/loginAttempts.js")
 }
