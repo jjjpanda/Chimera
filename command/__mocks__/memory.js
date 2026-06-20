@@ -11,12 +11,12 @@ module.exports = {
 				else if(event == "verifyPassword"){
 					args[1](false)
 				}
-				else if(event == "loginCheck"){
+				else if(event == "loginReserve"){
 					const ack = args.pop()
-					loginStore.loginCheck(...args, (blocked) => ack(null, blocked))
+					loginStore.loginReserve(...args, (blocked) => ack(null, blocked))
 				}
-				else if(event == "loginFailure"){
-					loginStore.loginFailure(...args)
+				else if(event == "loginRelease"){
+					loginStore.loginRelease(...args)
 				}
 			},
 			on: () => {},

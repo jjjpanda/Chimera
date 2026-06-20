@@ -18,18 +18,21 @@ const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
 	const store = sharedAttempts ? null : memory.loginAttempts()
-	const check = (key, cb) => {
-		if (!sharedAttempts) return store.loginCheck(key, max, cb)
+	const reserve = (key, cb) => {
+		if (!sharedAttempts) return store.loginReserve(key, max, windowMs, cb)
 		if (!memoryClient.connected) return cb(false)
-		memoryClient.timeout(1000).emit("loginCheck", key, max, (err, blocked) => cb(!err && blocked))
+		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => cb(!err && blocked))
 	}
-	const fail = (key) => sharedAttempts ? memoryClient.emit("loginFailure", key, windowMs) : store.loginFailure(key, windowMs)
+	const release = (key) => {
+		if (!sharedAttempts) return store.loginRelease(key)
+		if (memoryClient.connected) memoryClient.emit("loginRelease", key)
+	}
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
-		check(key, (blocked) => {
+		reserve(key, (blocked) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
-				if (res.statusCode >= 400 && res.statusCode !== 429) fail(key)
+				if (res.statusCode < 400) release(key)
 			})
 			next()
 		})
