@@ -86,7 +86,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.send({ username: "admin", password: "mockedPassword" })
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user" })
+			expect(res.body).toEqual({ error: false, role: "user", theme: "dark" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
 		})
@@ -131,7 +131,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false })
+			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "dark" })
 		})
 
 		test("returns 401 for valid JWT of deleted user", async () => {
@@ -142,6 +142,33 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(401)
 			expect(res.body).toEqual({ error: "unauthorized" })
+		})
+	})
+
+	describe("PUT /authorization/theme", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).put("/authorization/theme").send({ theme: "light" })
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 400 for an invalid theme value", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/theme")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ theme: "blue" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test("returns 200 on successful theme update", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/theme")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ theme: "light" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
 		})
 	})
 
