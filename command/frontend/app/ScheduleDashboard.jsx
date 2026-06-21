@@ -193,9 +193,35 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							<p className="text-muted text-sm">Loading…</p>
 						) : processList.length === 0 ? (
 							<p className="text-muted text-sm">No scheduled tasks.</p>
+						) : mobile ? (
+							<ul className="divide-y divide-border max-h-72 overflow-y-auto">
+								{processList.map((task) => (
+									<li key={task.id} className="flex items-center gap-3 py-2.5">
+										<div className="min-w-0 flex-1">
+											<p className="truncate font-mono text-sm text-primary">{task.id}</p>
+											<p className="truncate text-xs text-muted">{humanCron(task.cronString)}</p>
+											<p className="truncate text-xs text-muted">{taskSummary(task, cameras)}</p>
+										</div>
+										{isAdmin && (
+											<div className="flex shrink-0 items-center gap-2">
+												<Switch
+													checked={task.running}
+													disabled={busyId === task.id}
+													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
+												/>
+												{!task.protected && (
+													<Button variant="ghost" size="icon" className="size-7" onClick={() => setDeleteTarget(task)} title="Destroy">
+														<Trash2 className="size-3.5 text-danger" />
+													</Button>
+												)}
+											</div>
+										)}
+									</li>
+								))}
+							</ul>
 						) : (
 							<div className="max-h-72 overflow-y-auto">
-								<Table className={cn(mobile && "min-w-[34rem]")}>
+								<Table>
 									<TableHeader>
 										<TableRow className="border-border">
 											<TableHead className="text-muted text-sm">ID</TableHead>
@@ -341,9 +367,27 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 						<p className="text-muted text-sm">Loading…</p>
 					) : runs.length === 0 ? (
 						<p className="text-muted text-sm">No runs recorded yet.</p>
+					) : mobile ? (
+						<ul className="divide-y divide-border max-h-80 overflow-y-auto">
+							{runs.map((run) => (
+								<li key={run.id} className="flex items-start gap-3 py-2.5">
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-2">
+											<p className="truncate font-mono text-sm text-primary">{run.task_id}</p>
+											<Badge className={cn("shrink-0 text-xs", run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white")}>
+												{run.status}
+											</Badge>
+										</div>
+										<p className="truncate text-xs text-muted" title={run.url}>{run.url}</p>
+										{run.error && <p className="truncate text-xs text-danger" title={run.error}>{run.error}</p>}
+									</div>
+									<p className="shrink-0 text-xs text-muted" title={run.ran_at}>{moment(run.ran_at).fromNow()}</p>
+								</li>
+							))}
+						</ul>
 					) : (
 						<div className="max-h-80 overflow-y-auto">
-							<Table className={cn(mobile && "min-w-[44rem]")}>
+							<Table>
 								<TableHeader>
 									<TableRow className="border-border">
 										<TableHead className="text-muted text-sm">Task</TableHead>

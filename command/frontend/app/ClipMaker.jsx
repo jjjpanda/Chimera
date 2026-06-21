@@ -548,7 +548,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const canGenerate = !submitting && (multiCam
 		? (!multiAnyFetching && !multiAnyDownloading && !multiAnyGenerating && startDate.isBefore(endDate) && selectedCams.length > 0)
-		: (generating === null && !loading && startDate.isBefore(endDate)))
+		: (generating === null && !loading && startDate.isBefore(endDate) && camera != null))
 
 	const multiScrubTime = useMemo(() => {
 		if (!multiCam || multiFrameCount === 0) return null
@@ -1107,7 +1107,7 @@ const ClipMaker = ({ mini } = {}) => {
 						variant="outline"
 						className="flex-1"
 						onClick={multiCam ? loadMultiPreview : confirmPreset}
-						disabled={loading || (multiCam && !selectedCams.length)}
+						disabled={loading || (multiCam ? !selectedCams.length : camera == null)}
 					>
 						<SkipBack className="size-4" />
 						{(fetching || multiAnyFetching) ? "Fetching…" : (downloadingImages || multiAnyDownloading) ? "Loading…" : "Load Images"}

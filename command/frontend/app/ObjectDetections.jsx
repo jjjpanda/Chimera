@@ -184,7 +184,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 		if (selectedCam != null || cameras.length === 0) return
 		const camParam = searchParams.get("camera")
 		const match = camParam != null && cameras.find(([c]) => String(c) === String(camParam))
-		setSelectedCam(match ? match[0] : cameras[0][0])
+		setSelectedCam(match ? match[0] : null)
 	}, [cameras])
 
 	const camGroups = useMemo(() =>
