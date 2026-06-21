@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react"
-import { cn } from "../lib/utils"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useRole } from "./AuthContext"
 import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, ArrowUpDown, Save, SkipBack, ScanEye } from "lucide-react"
 import { useMediaQuery } from "react-responsive"
@@ -181,11 +180,8 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 
 const ClipMakerMini = () => {
 	const navigate = useNavigate()
-	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const [cameras] = useCameras()
 	const [snapshots, setSnapshots] = useState({})
-	const [highlighted, setHighlighted] = useState(false)
-	const cardRef = useRef(null)
 
 	useEffect(() => {
 		if (!cameras.length) return
@@ -203,28 +199,18 @@ const ClipMakerMini = () => {
 		})
 	}, [cameras])
 
-	useEffect(() => {
-		if (!highlighted) return
-		const handler = (e) => {
-			if (!cardRef.current?.contains(e.target)) setHighlighted(false)
-		}
-		document.addEventListener("pointerdown", handler)
-		return () => document.removeEventListener("pointerdown", handler)
-	}, [highlighted])
-
-	const handleClick = () => {
-		if (isDesktop || highlighted) navigate("/clip")
-		else setHighlighted(true)
-	}
-
 	const camSlots = cameras.slice(0, 4)
 	const slots = [0, 1, 2, 3].map(i => camSlots[i] ?? null)
 
 	return (
-		<Card ref={cardRef} className={cn("h-full overflow-hidden cursor-pointer select-none transition-shadow", highlighted && "ring-2 ring-accent")} onClick={handleClick}>
+		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={() => navigate("/clip")}>
 			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 				{slots.map((cam, i) => (
-					<div key={i} className={`relative overflow-hidden ${cam ? "bg-black" : "bg-muted/20"}`}>
+					<div
+						key={i}
+						onClick={cam ? (e) => { e.stopPropagation(); navigate(`/clip?camera=${cam.id}`) } : undefined}
+						className={`relative overflow-hidden ${cam ? "bg-black" : "bg-muted/20"}`}
+					>
 						{cam && snapshots[cam.id] && (
 							<img src={snapshots[cam.id]} className="w-full h-full object-cover" alt={cam.name} />
 						)}
@@ -234,7 +220,7 @@ const ClipMakerMini = () => {
 							</div>
 						)}
 						{cam && (
-							<div className="absolute bottom-1.5 inset-x-0 flex justify-center">
+							<div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
 								<span className="bg-accent/85 text-accent-foreground text-xs font-medium px-3 py-0.5 rounded-full">
 									{cam.name}
 								</span>
@@ -242,10 +228,7 @@ const ClipMakerMini = () => {
 						)}
 					</div>
 				))}
-				<div className={cn(
-					"absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none transition-colors",
-					(highlighted || isDesktop) ? "bg-accent text-accent-foreground" : "bg-transparent text-white/70"
-				)}>
+				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none bg-accent text-accent-foreground">
 					<Rewind className="size-6" />
 				</div>
 			</div>
@@ -259,10 +242,11 @@ const ClipMaker = ({ mini } = {}) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const navigate = useNavigate()
+	const [searchParams] = useSearchParams()
 	const [cameras] = useCameras()
 
 	// single-cam state
-	const [camera, setCamera] = useState(0)
+	const [camera, setCamera] = useState(null)
 	const [startDate, setStartDate] = useState(moment().subtract(4, "hours"))
 	const [endDate, setEndDate] = useState(moment())
 	const [number, setNumber] = useState(10)
@@ -275,6 +259,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [imagesLoaded, setImagesLoaded] = useState(0)
 	const [fetching, setFetching] = useState(false)
 	const [generating, setGenerating] = useState(null)
+	const [submitting, setSubmitting] = useState(false)
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
 	const [detections, setDetections] = useState([])
@@ -299,7 +284,17 @@ const ClipMaker = ({ mini } = {}) => {
 	}, [isDesktop])
 
 	useEffect(() => {
-		if (!multiCam && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
+		if (!multiCam && camera != null && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
+	}, [cameras])
+
+	useEffect(() => {
+		if (multiCam || cameras.length === 0 || camera != null) return
+		const camParam = searchParams.get("camera")
+		if (camParam == null) return
+		const idx = cameras.findIndex(c => String(c.id) === String(camParam))
+		if (idx < 0) return
+		setCamera(idx)
+		loadPreview(undefined, undefined, idx)
 	}, [cameras])
 
 	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
@@ -428,12 +423,12 @@ const ClipMaker = ({ mini } = {}) => {
 	// multi-cam: load images when frame lists change
 	const multiAllFrames = useMemo(() =>
 		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames])) : {},
-		[multiCam, camStates]
+	[multiCam, camStates]
 	)
 
 	const multiFramesKey = useMemo(() =>
 		Object.entries(multiAllFrames).map(([id, f]) => `${id}:${f.join(",")}`).join("|"),
-		[multiAllFrames]
+	[multiAllFrames]
 	)
 
 	useEffect(() => {
@@ -470,7 +465,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const multiFrameTimes = useMemo(() =>
 		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames.map(parseFrameTime)])) : {},
-		[multiCam, camStates]
+	[multiCam, camStates]
 	)
 
 	const multiFrameCount = useMemo(() => {
@@ -551,9 +546,9 @@ const ClipMaker = ({ mini } = {}) => {
 	const loading   = multiCam ? (multiAnyFetching || multiAnyDownloading) : (fetching || downloadingImages)
 	const stoppable = multiCam ? multiAnyDownloading : downloadingImages
 
-	const canGenerate = multiCam
+	const canGenerate = !submitting && (multiCam
 		? (!multiAnyFetching && !multiAnyDownloading && !multiAnyGenerating && startDate.isBefore(endDate) && selectedCams.length > 0)
-		: (generating === null && !loading && startDate.isBefore(endDate))
+		: (generating === null && !loading && startDate.isBefore(endDate)))
 
 	const multiScrubTime = useMemo(() => {
 		if (!multiCam || multiFrameCount === 0) return null
@@ -586,9 +581,9 @@ const ClipMaker = ({ mini } = {}) => {
 			jsonProcessing(prom, data => setDetections(Array.isArray(data) ? data : [])))
 	}
 
-	const loadPreview = (overrideStart, overrideEnd) => {
+	const loadPreview = (overrideStart, overrideEnd, camIdx = camera) => {
 		if (loading) return
-		if (cameras[camera]?.id == null) return toast("Cameras still loading")
+		if (cameras[camIdx]?.id == null) return toast("Cameras still loading")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
 		setFetching(true)
@@ -596,7 +591,7 @@ const ClipMaker = ({ mini } = {}) => {
 		setImagesLoaded(0)
 		setTrimRange([0, 100])
 		setTrimming(false)
-		const camId = cameras[camera].id
+		const camId = cameras[camIdx].id
 		loadDetections(camId, start, end)
 		request("/convert/listFramesVideo", {
 			method: "POST",
@@ -680,6 +675,7 @@ const ClipMaker = ({ mini } = {}) => {
 		if (!canGenerate) return
 		if (multiCam) { generateMulti(type); return }
 		if (cameras[camera]?.id == null) return toast("Cameras still loading")
+		setSubmitting(true)
 		setGenerating(type)
 		const camId = cameras[camera].id
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
@@ -696,8 +692,10 @@ const ClipMaker = ({ mini } = {}) => {
 		}, prom => jsonProcessing(prom, data => {
 			setGenerating(null)
 			if (!data || data.error) {
+				setSubmitting(false)
 				toast("Generation failed")
 			} else if (!data.url) {
+				setSubmitting(false)
 				toast("No frames found")
 			} else {
 				toast(`${type === "video" ? "Video" : "Archive"} queued`)
@@ -708,6 +706,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const generateMulti = (type) => {
 		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("Cameras still loading")
+		setSubmitting(true)
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
 		selectedCams.forEach(idx => {
 			const camId = cameras[idx].id
@@ -980,7 +979,7 @@ const ClipMaker = ({ mini } = {}) => {
 							</div>
 						) : (
 							<div className="flex gap-1">
-								<Select value={String(camera)} onValueChange={v => setCamera(parseInt(v))}>
+								<Select value={camera == null ? "" : String(camera)} onValueChange={v => setCamera(parseInt(v))}>
 									<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
 									<SelectContent>
 										{cameras.map((cam, i) => (
@@ -1035,72 +1034,74 @@ const ClipMaker = ({ mini } = {}) => {
 
 				<div className="flex gap-2">
 					{isAdmin && (
-					<Dialog>
-						<DialogTrigger asChild>
-							<Button variant="outline" className="flex-1" disabled={!canGenerate}>
-								<Save className="size-4" /> Generate
-							</Button>
-						</DialogTrigger>
-						<DialogContent className="max-w-xs p-8">
-							<DialogHeader>
-								<DialogTitle>Generate</DialogTitle>
-							</DialogHeader>
-							<div className="flex flex-col gap-4">
-								<div className="flex flex-col gap-3">
-									<div className="flex flex-col gap-1.5">
-										<Label>FPS</Label>
-										<div className="flex items-center gap-2">
-											<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
-												<Minus className="size-4" />
-											</Button>
-											<Input
-												type="number"
-												min="1"
-												value={fps}
-												onChange={e => setFps(Math.max(1, parseInt(e.target.value) || 1))}
-												className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-											/>
-											<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => f + 5)}>
-												<Plus className="size-4" />
-											</Button>
+						<Dialog>
+							<DialogTrigger asChild>
+								<Button variant="outline" className="flex-1" disabled={!canGenerate}>
+									<Save className="size-4" /> Generate
+								</Button>
+							</DialogTrigger>
+							<DialogContent className="max-w-xs p-8">
+								<DialogHeader>
+									<DialogTitle>Generate</DialogTitle>
+								</DialogHeader>
+								<div className="flex flex-col gap-4">
+									<div className="flex flex-col gap-3">
+										<div className="flex flex-col gap-1.5">
+											<Label>FPS</Label>
+											<div className="flex items-center gap-2">
+												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
+													<Minus className="size-4" />
+												</Button>
+												<Input
+													type="number"
+													min="1"
+													value={fps}
+													onChange={e => setFps(Math.max(1, parseInt(e.target.value) || 1))}
+													className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+												/>
+												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => f + 5)}>
+													<Plus className="size-4" />
+												</Button>
+											</div>
+										</div>
+										<div className="flex flex-col gap-1.5">
+											<Label>Skip</Label>
+											<div className="flex items-center gap-2">
+												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
+													<Minus className="size-4" />
+												</Button>
+												<Input
+													type="number"
+													min="1"
+													value={skip}
+													onChange={e => setSkip(Math.max(1, parseInt(e.target.value) || 1))}
+													className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+												/>
+												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => s + 1)}>
+													<Plus className="size-4" />
+												</Button>
+											</div>
 										</div>
 									</div>
-									<div className="flex flex-col gap-1.5">
-										<Label>Skip</Label>
-										<div className="flex items-center gap-2">
-											<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
-												<Minus className="size-4" />
-											</Button>
-											<Input
-												type="number"
-												min="1"
-												value={skip}
-												onChange={e => setSkip(Math.max(1, parseInt(e.target.value) || 1))}
-												className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-											/>
-											<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => s + 1)}>
-												<Plus className="size-4" />
-											</Button>
-										</div>
+									<div className="grid grid-cols-2 gap-2">
+										<Button
+											className="bg-accent text-accent-foreground hover:opacity-90"
+											disabled={!canGenerate}
+											onClick={() => generate("video")}
+										>
+											{generating === "video" ? "Generating…" : multiCam ? `Video ×${selectedCams.length}` : "Video"}
+										</Button>
+										<Button
+											variant="outline"
+											disabled={!canGenerate}
+											onClick={() => generate("zip")}
+										>
+											{generating === "zip" ? "Generating…" : multiCam ? `Archive ×${selectedCams.length}` : "Archive"}
+										</Button>
 									</div>
 								</div>
-								<div className="grid grid-cols-2 gap-2">
-									<Button
-										className="bg-accent text-accent-foreground hover:opacity-90"
-										onClick={() => generate("video")}
-									>
-										{generating === "video" ? "Generating…" : multiCam ? `Video ×${selectedCams.length}` : "Video"}
-									</Button>
-									<Button
-										variant="outline"
-										onClick={() => generate("zip")}
-									>
-										{generating === "zip" ? "Generating…" : multiCam ? `Archive ×${selectedCams.length}` : "Archive"}
-									</Button>
-								</div>
-							</div>
-						</DialogContent>
-					</Dialog>
+							</DialogContent>
+						</Dialog>
 					)}
 					<Button
 						variant="outline"

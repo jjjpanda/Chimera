@@ -100,6 +100,7 @@ const SideMenu = ({ index, mobile }) => {
 						<button
 							key={value}
 							aria-label={value}
+							title={value}
 							onClick={() => applyTheme(value)}
 							className={cn(
 								"flex flex-1 items-center justify-center px-2 py-2 transition-colors first:rounded-l-md last:rounded-r-md",

@@ -2,7 +2,7 @@ import React from "react"
 import formatBytes from "../js/formatBytes.js"
 
 const TYPES = [
-	{ key: "frames", label: "Frames", color: "#0e7dab" },
+	{ key: "frames", label: "Frames", color: "#06b6d4" },
 	{ key: "videos", label: "Videos", color: "#FF6633" },
 	{ key: "zips", label: "Zips", color: "#E6B333" },
 	{ key: "objects", label: "Objects", color: "#33991A" },

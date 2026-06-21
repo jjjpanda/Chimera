@@ -125,13 +125,25 @@ const AdminPanel = ({ withButton } = {}) => {
 		const fallback = () => {
 			const el = document.createElement("textarea")
 			el.value = tempPassword
+			el.readOnly = false
+			el.contentEditable = "true"
+			el.style.position = "fixed"
+			el.style.top = "0"
+			el.style.left = "0"
+			el.style.opacity = "0"
+			el.style.fontSize = "16px"
 			document.body.appendChild(el)
-			el.select()
-			document.execCommand("copy")
+			const range = document.createRange()
+			range.selectNodeContents(el)
+			const sel = window.getSelection()
+			sel.removeAllRanges()
+			sel.addRange(range)
+			el.setSelectionRange(0, tempPassword.length)
+			try { document.execCommand("copy") } catch { /* ignore */ }
 			document.body.removeChild(el)
 			markCopied()
 		}
-		if (navigator.clipboard) {
+		if (navigator.clipboard?.writeText) {
 			navigator.clipboard.writeText(tempPassword).then(markCopied).catch(fallback)
 		} else {
 			fallback()

@@ -6,9 +6,8 @@ import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
-import { Dialog, DialogContent } from "../components/ui/dialog"
 import { Button } from "../components/ui/button"
-import { RefreshCw, Maximize2 } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 
 const HlsPlayer = ({ src, className }) => {
@@ -50,24 +49,14 @@ const HlsPlayer = ({ src, className }) => {
 	return <video ref={videoRef} controls playsInline className={className} />
 }
 
-const Feed = ({ video, onExpand, hideLabel }) => (
+const Feed = ({ video, hideLabel }) => (
 	<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
 		<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
 		{!hideLabel && (
-			<div className="pointer-events-none absolute left-3 top-2 flex items-center gap-2">
+			<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-sm">
 				<span className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger")} />
-				<span className="text-sm font-medium text-primary drop-shadow">{video.camera}</span>
+				<span className="text-sm font-medium text-white">{video.camera}</span>
 			</div>
-		)}
-		{onExpand && (
-			<Button
-				variant="ghost"
-				size="icon"
-				className="absolute right-2 top-2 size-7 bg-black/40 text-white hover:bg-black/60"
-				onClick={onExpand}
-			>
-				<Maximize2 className="size-3.5" />
-			</Button>
 		)}
 	</div>
 )
@@ -76,28 +65,12 @@ const LiveVideo = (props) => {
 	const [cameras, camsLoading] = useCameras()
 	const [state, refresh, restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
-	const [activeDialog, setActiveDialog] = useState(null)
+	const [activeTab, setActiveTab] = useState("0")
 	const squarify = useSquarifyVideos()
 
 	useEffect(() => {
 		setVideos(props.grid ? squarify(state.videoList) : state.videoList)
 	}, [state.videoList, props.grid])
-
-	const expandDialog = (
-		<Dialog open={!!activeDialog} onOpenChange={() => setActiveDialog(null)}>
-			<DialogContent className="max-w-3xl bg-surface border-border p-0 overflow-hidden">
-				{activeDialog && (
-					<div>
-						<HlsPlayer src={activeDialog.url} className="w-full" />
-						<div className="flex items-center gap-2 px-4 py-2">
-							<span className={cn("size-2 rounded-full shrink-0", activeDialog.online ? "bg-emerald-500" : "bg-danger")} />
-							<span className="text-sm text-primary">{activeDialog.camera}</span>
-						</div>
-					</div>
-				)}
-			</DialogContent>
-		</Dialog>
-	)
 
 	if (props.list) {
 		return (
@@ -126,17 +99,14 @@ const LiveVideo = (props) => {
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
 						{row.map((video) =>
 							video ? (
-								<Feed key={video.url} video={video} onExpand={() => setActiveDialog(video)} />
+								<Feed key={video.url} video={video} />
 							) : null
 						)}
 					</div>
 				))}
-				{expandDialog}
 			</div>
 		)
 	}
-
-	const tabDefault = state.videoList.length > 0 ? "0" : undefined
 
 	return (
 		<Card className="h-full">
@@ -151,7 +121,7 @@ const LiveVideo = (props) => {
 			</CardHeader>
 			<CardContent className="p-0">
 				{state.videoList.length > 0 && (
-					<Tabs defaultValue={tabDefault}>
+					<Tabs value={activeTab} onValueChange={setActiveTab}>
 						<TabsList className="w-full rounded-none border-b border-border bg-surface-raised">
 							{state.videoList.map((video, i) => (
 								<TabsTrigger key={video.url} value={String(i)} className="flex-1 min-w-[3.5rem] shrink-0 text-sm h-10">
@@ -161,13 +131,12 @@ const LiveVideo = (props) => {
 						</TabsList>
 						{state.videoList.map((video, i) => (
 							<TabsContent key={video.url} value={String(i)} className="mt-0">
-								<Feed video={video} onExpand={() => setActiveDialog(video)} hideLabel />
+								<Feed video={video} hideLabel />
 							</TabsContent>
 						))}
 					</Tabs>
 				)}
 			</CardContent>
-			{expandDialog}
 		</Card>
 	)
 }

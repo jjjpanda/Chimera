@@ -4,6 +4,7 @@ import cronstrue from "cronstrue"
 
 import { Input } from "../components/ui/input"
 import { Button } from "../components/ui/button"
+import { Label } from "../components/ui/label"
 
 const humanReadableCron = (cronString) => {
 	try {
@@ -22,18 +23,19 @@ const cronIsInvalid = (cronString) => {
 	}
 }
 
-const Scheduler = ({ cronString: initial = "", url, onEnter }) => {
+const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false }) => {
 	const [cronString, setCronString] = useState(initial)
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="flex flex-col gap-1.5">
+			<Label className="text-xs text-muted">CRON expression</Label>
 			<div className="flex items-center gap-2">
 				<Input
 					value={cronString}
 					onChange={(e) => setCronString(e.target.value)}
 					placeholder="* * * * *"
 				/>
-				<Button disabled={cronIsInvalid(cronString)} onClick={() => onEnter(url, cronString)}>
+				<Button disabled={disabled || cronIsInvalid(cronString)} onClick={() => onEnter(url, cronString)}>
 					Schedule
 				</Button>
 			</div>
