@@ -583,7 +583,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const loadPreview = (overrideStart, overrideEnd, camIdx = camera) => {
 		if (loading) return
-		if (cameras[camIdx]?.id == null) return toast("Cameras still loading")
+		if (cameras[camIdx]?.id == null) return toast("No camera selected")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
 		setFetching(true)
@@ -611,7 +611,7 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const loadMultiPreview = (overrideStart, overrideEnd) => {
 		if (loading || !selectedCams.length) return
-		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("Cameras still loading")
+		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
 		multiImageCache.current = {}
@@ -674,7 +674,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const generate = (type) => {
 		if (!canGenerate) return
 		if (multiCam) { generateMulti(type); return }
-		if (cameras[camera]?.id == null) return toast("Cameras still loading")
+		if (cameras[camera]?.id == null) return toast("No camera selected")
 		setSubmitting(true)
 		setGenerating(type)
 		const camId = cameras[camera].id
@@ -705,7 +705,7 @@ const ClipMaker = ({ mini } = {}) => {
 	}
 
 	const generateMulti = (type) => {
-		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("Cameras still loading")
+		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
 		setSubmitting(true)
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
 		selectedCams.forEach(idx => {
@@ -829,6 +829,9 @@ const ClipMaker = ({ mini } = {}) => {
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
 						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						</div>
 						<div className="absolute right-2 z-10 bg-background">
 							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
 						</div>
@@ -846,9 +849,17 @@ const ClipMaker = ({ mini } = {}) => {
 						{frames.length === 0 && (
 							<ImageOff className="h-10 w-10 opacity-40 text-muted" />
 						)}
+						{camera != null && cameras[camera] && frames.length > 0 && (
+							<div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 border border-white/[.08] text-[10px] tracking-wide text-muted-foreground px-2.5 py-0.5 rounded pointer-events-none">
+								{cameras[camera].name}
+							</div>
+						)}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
 						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						</div>
 						<div className="absolute right-2 z-10 bg-background">
 							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
 						</div>
@@ -931,25 +942,6 @@ const ClipMaker = ({ mini } = {}) => {
 			</div>
 
 			<div className="flex flex-col gap-4 px-2 pt-1 pb-3">
-				<div className="flex flex-col gap-1.5">
-					<Label>Presets</Label>
-					<div className="flex flex-wrap gap-1">
-						<Button variant="ghost" size="sm" className="h-10 px-2" onClick={cancelPreset} disabled={!pendingPreset}>
-							<X className="size-4" />
-						</Button>
-						{PRESETS.map(p => {
-							const isPending = pendingPreset?.label === p.label
-							return (
-								<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-10 px-3 text-base relative"
-									onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
-									<span className={isPending ? "invisible" : ""}>{p.label}</span>
-									{isPending && <Check className="size-4 absolute" />}
-								</Button>
-							)
-						})}
-					</div>
-				</div>
-
 				<div className="grid grid-cols-2 gap-3">
 					<div className="flex flex-col gap-1.5">
 						<Label>Camera{multiCam ? "s" : ""}</Label>
@@ -1015,12 +1007,29 @@ const ClipMaker = ({ mini } = {}) => {
 					</div>
 				</div>
 
-				<div className="flex flex-col gap-1.5">
-					<div className="grid grid-cols-2 gap-x-3">
-						<Label>Start</Label>
-						<Label>End</Label>
+				<div className="flex flex-col gap-3 p-3 bg-muted/5 border border-border/50 rounded-lg">
+					<div className="flex items-center gap-2 flex-wrap">
+						<Label className="mr-auto">Time Range</Label>
+						<span className="text-xs text-muted-foreground/50">quick set</span>
+						<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
+							<X className="size-3" />
+						</Button>
+						<div className="flex flex-wrap gap-1">
+							{PRESETS.map(p => {
+								const isPending = pendingPreset?.label === p.label
+								return (
+									<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-7 px-2.5 relative"
+										onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
+										<span className={isPending ? "invisible" : ""}>{p.label}</span>
+										{isPending && <Check className="size-3 absolute" />}
+									</Button>
+								)
+							})}
+						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-x-3 gap-y-2">
+						<Label className="text-xs">Start</Label>
+						<Label className="text-xs">End</Label>
 						<Input type="date" value={startDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setStartDate, "date", e.target.value)} />
 						<Input type="date" value={endDate.format("YYYY-MM-DD")}
@@ -1046,10 +1055,10 @@ const ClipMaker = ({ mini } = {}) => {
 								</DialogHeader>
 								<div className="flex flex-col gap-4">
 									<div className="flex flex-col gap-3">
-										<div className="flex flex-col gap-1.5">
+										<div className="flex items-center justify-between gap-4">
 											<Label>FPS</Label>
 											<div className="flex items-center gap-2">
-												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
+												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
@@ -1057,17 +1066,17 @@ const ClipMaker = ({ mini } = {}) => {
 													min="1"
 													value={fps}
 													onChange={e => setFps(Math.max(1, parseInt(e.target.value) || 1))}
-													className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+													className="w-16 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 												/>
-												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setFps(f => f + 5)}>
+												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setFps(f => f + 5)}>
 													<Plus className="size-4" />
 												</Button>
 											</div>
 										</div>
-										<div className="flex flex-col gap-1.5">
+										<div className="flex items-center justify-between gap-4">
 											<Label>Skip</Label>
 											<div className="flex items-center gap-2">
-												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
+												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
@@ -1075,9 +1084,9 @@ const ClipMaker = ({ mini } = {}) => {
 													min="1"
 													value={skip}
 													onChange={e => setSkip(Math.max(1, parseInt(e.target.value) || 1))}
-													className="flex-1 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+													className="w-16 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 												/>
-												<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setSkip(s => s + 1)}>
+												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setSkip(s => s + 1)}>
 													<Plus className="size-4" />
 												</Button>
 											</div>
@@ -1110,7 +1119,7 @@ const ClipMaker = ({ mini } = {}) => {
 						disabled={loading || (multiCam ? !selectedCams.length : camera == null)}
 					>
 						<SkipBack className="size-4" />
-						{(fetching || multiAnyFetching) ? "Fetching…" : (downloadingImages || multiAnyDownloading) ? "Loading…" : "Load Images"}
+						{(fetching || multiAnyFetching) ? "Fetching…" : (downloadingImages || multiAnyDownloading) ? "Loading…" : (frames.length > 0 || Object.values(camStates).some(s => s.frames.length > 0)) ? "Reload Images" : "Load Images"}
 					</Button>
 				</div>
 			</div>
