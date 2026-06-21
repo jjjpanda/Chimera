@@ -18,7 +18,7 @@ const creationTasks = [
 		description: "frame deletions table"
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMP, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMP);",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMP, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMP, theme VARCHAR(10) DEFAULT 'system');",
 		description: "authorization table"
 	},
 	{

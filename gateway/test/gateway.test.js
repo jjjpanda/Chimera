@@ -30,4 +30,16 @@ describe("Gateway Tests", () => {
 				})
 		})
 	})
+
+	test("Gateway forwards PUT requests", (done) => {
+		const server = handleServerStart(command, process.env.command_PORT, () => {
+			supertest(gateway)
+				.put("/authorization/theme")
+				.send({ theme: "dark" })
+				.expect(401, (err) => {
+					server.close()
+					done(err)
+				})
+		})
+	})
 })

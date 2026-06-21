@@ -46,9 +46,9 @@ const attemptLogout = () =>
 		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 	}, authPromiseHandler)
 
-const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false) => {
+const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false, theme = null) => {
 	setTimeout(() => {
-		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false }))
+		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false, theme: verified ? theme : null }))
 		setTimeout(() => {
 			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
@@ -63,6 +63,7 @@ const useAuth = () => {
 		loggedIn: false,
 		role: null,
 		forcePasswordChange: false,
+		theme: null,
 		timestamp: new Date()
 	})
 
@@ -79,7 +80,7 @@ const useAuth = () => {
 				return
 			}
 			attemptVerification().then(res => {
-				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
+				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
 			})
 		})
 
@@ -97,7 +98,7 @@ const useAuth = () => {
 	const tryLogin = (username, password, callback) => {
 		attemptLogin(username, password).then(res => {
 			callback(!res.error, res.errors)
-			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange)
+			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
 		})
 	}
 
@@ -117,11 +118,11 @@ const useAuth = () => {
 
 	const signOut = () => {
 		attemptLogout().finally(() => {
-			setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false }))
+			setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null }))
 		})
 	}
 
-	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword]
+	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, state.theme]
 }
 
 export default useAuth

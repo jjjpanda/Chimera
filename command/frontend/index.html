@@ -7,7 +7,7 @@
 		<title>Chimera</title>
 	</head>
 	<body>
-		<script>(function(){var s=localStorage.getItem("theme"),p=window.matchMedia("(prefers-color-scheme: dark)").matches;if(s==="dark"||(s===null&&p))document.documentElement.classList.add("dark")}())</script>
+		<script>(function(){var s=localStorage.getItem("theme"),p=window.matchMedia("(prefers-color-scheme: dark)").matches;if(s==="dark"||((s===null||s==="system")&&p))document.documentElement.classList.add("dark")}())</script>
 		<div id="root"></div>
 		<script type="module" src="/main.jsx"></script>
 	</body>
