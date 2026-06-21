@@ -32,16 +32,18 @@ const DesktopView = ({ index }) => {
 
 	return (
 		<div className="space-y-4">
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-4 lg:[grid-template-columns:1fr_2fr_2fr]">
 				<Status />
 				<LiveVideo />
 				<StorageWidget />
 			</div>
-			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "16rem" }}>
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2" style={{ gridAutoRows: "20rem" }}>
 				<ObjectDetections mini />
-				<ProcessList mini />
 				<ClipMaker mini />
+			</div>
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "16rem" }}>
 				<ScheduleDashboard mini withButton />
+				<ProcessList mini />
 				{role === "admin" && <AdminPanel withButton />}
 			</div>
 		</div>

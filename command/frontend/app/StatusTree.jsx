@@ -25,7 +25,7 @@ const Status = () => {
 				<CardTitle className="text-sm">Status</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
-				<div className="grid grid-cols-3 gap-x-2 gap-y-1.5">
+				<div className="grid gap-x-2 gap-y-1.5" style={{gridTemplateColumns: "repeat(auto-fill, minmax(4.5rem, 1fr))"}}>
 					{services.map(svc => (
 						<div key={svc} className="flex items-center gap-1.5 min-w-0">
 							<StatusDot status={status[svc]} />

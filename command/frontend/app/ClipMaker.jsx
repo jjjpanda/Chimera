@@ -228,7 +228,7 @@ const ClipMakerMini = () => {
 						)}
 					</div>
 				))}
-				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none bg-accent text-accent-foreground">
+				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground" onClick={(e) => { e.stopPropagation(); navigate("/clip") }}>
 					<Rewind className="size-6" />
 				</div>
 			</div>
