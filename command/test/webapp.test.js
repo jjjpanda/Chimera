@@ -4,6 +4,7 @@ const path = require("path")
 const app = require("../backend/command.js")
 
 jest.mock("memory")
+jest.mock("fs", () => jest.requireActual("fs"))
 
 const distDir = path.join(__dirname, "../dist")
 const indexFile = path.join(distDir, "index.html")
