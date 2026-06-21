@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
@@ -70,6 +70,8 @@ const ScheduleDashboardMini = ({ withButton }) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
+	const [busyId, setBusyId] = useState(null)
+	useEffect(() => { setBusyId(null) }, [processList])
 
 	const sortedUpcoming = [...processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
 	const sortedAll = [...processList].sort((a, b) => String(a.id).localeCompare(String(b.id)))
@@ -90,7 +92,8 @@ const ScheduleDashboardMini = ({ withButton }) => {
 							<div className="flex shrink-0 items-center gap-2">
 								<Switch
 									checked={item.running}
-									onCheckedChange={() => item.running ? stopTask(item.id) : restartTask(item.id)}
+									disabled={busyId === item.id}
+									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
 								{item.id !== "task-auto-cleanup" && (
 									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" onClick={() => deleteTask(item.id)}>
@@ -134,12 +137,14 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
 	const [{ runs, loading: runsLoading }, refreshRuns] = useTaskRuns()
+	const [busyId, setBusyId] = useState(null)
+	useEffect(() => { setBusyId(null) }, [processList])
 
 	const [deleteTarget, setDeleteTarget] = useState(null)
 
 	const [outputType, setOutputType] = useState("video")
 	const [fps, setFps] = useState(20)
-	const [schedCamera, setSchedCamera] = useState(0)
+	const [schedCamera, setSchedCamera] = useState(null)
 	const [schedPreset, setSchedPreset] = useState(SCHEDULE_PRESETS[1])
 	const [schedSkip, setSchedSkip] = useState(1)
 	const [schedulerKey, setSchedulerKey] = useState(0)
@@ -164,165 +169,193 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 
 	return (
 		<div className="flex flex-col gap-6">
-		<Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-			<DialogContent className="max-w-sm">
-				<DialogHeader>
-					<DialogTitle>Delete task?</DialogTitle>
-					<DialogDescription>
-						{deleteTarget ? taskSummary(deleteTarget, cameras) : ""}
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-					<Button variant="destructive" onClick={() => { deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+			<Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>Delete task?</DialogTitle>
+						<DialogDescription>
+							{deleteTarget ? taskSummary(deleteTarget, cameras) : ""}
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+						<Button variant="destructive" onClick={() => { deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 			<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
-			<Card className="flex-1 bg-surface border-border">
-				<CardHeader>
-					<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
-				</CardHeader>
-				<CardContent>
-					{loading ? (
-						<p className="text-muted text-sm">Loading…</p>
-					) : processList.length === 0 ? (
-						<p className="text-muted text-sm">No scheduled tasks.</p>
-					) : (
-						<div className="max-h-72 overflow-y-auto">
-						<Table>
-							<TableHeader>
-								<TableRow className="border-border">
-									<TableHead className="text-muted text-sm">ID</TableHead>
-									<TableHead className="text-muted text-sm">Schedule</TableHead>
-									<TableHead className="text-muted text-sm">Task</TableHead>
-									{isAdmin && <TableHead className="text-muted text-sm text-right">Actions</TableHead>}
-								</TableRow>
-							</TableHeader>
-							<TableBody>
+				<Card className="flex-1 bg-surface border-border">
+					<CardHeader>
+						<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
+					</CardHeader>
+					<CardContent>
+						{loading ? (
+							<p className="text-muted text-sm">Loading…</p>
+						) : processList.length === 0 ? (
+							<p className="text-muted text-sm">No scheduled tasks.</p>
+						) : mobile ? (
+							<ul className="divide-y divide-border max-h-72 overflow-y-auto">
 								{processList.map((task) => (
-									<TableRow key={task.id} className="border-border">
-										<TableCell className="text-primary font-mono text-sm">{task.id}</TableCell>
-										<TableCell className="text-primary text-sm max-w-40 truncate" title={humanCron(task.cronString)}>
-											{humanCron(task.cronString)}
-										</TableCell>
-										<TableCell className="text-muted text-sm max-w-48 truncate" title={taskSummary(task, cameras)}>
-											{taskSummary(task, cameras)}
-										</TableCell>
+									<li key={task.id} className="flex items-center gap-3 py-2.5">
+										<div className="min-w-0 flex-1">
+											<p className="truncate font-mono text-sm text-primary">{task.id}</p>
+											<p className="truncate text-xs text-muted">{humanCron(task.cronString)}</p>
+											<p className="truncate text-xs text-muted">{taskSummary(task, cameras)}</p>
+										</div>
 										{isAdmin && (
-										<TableCell className="text-right">
-											<div className="flex justify-end items-center gap-2">
+											<div className="flex shrink-0 items-center gap-2">
 												<Switch
 													checked={task.running}
-													onCheckedChange={() => task.running ? stopTask(task.id) : restartTask(task.id)}
+													disabled={busyId === task.id}
+													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
-													<Button variant="ghost" size="icon" onClick={() => setDeleteTarget(task)} title="Destroy">
-														<Trash2 className="h-4 w-4 text-danger" />
+													<Button variant="ghost" size="icon" className="size-7" onClick={() => setDeleteTarget(task)} title="Destroy">
+														<Trash2 className="size-3.5 text-danger" />
 													</Button>
 												)}
 											</div>
-										</TableCell>
-									)}
-									</TableRow>
+										)}
+									</li>
 								))}
-							</TableBody>
-						</Table>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+							</ul>
+						) : (
+							<div className="max-h-72 overflow-y-auto">
+								<Table>
+									<TableHeader>
+										<TableRow className="border-border">
+											<TableHead className="text-muted text-sm">ID</TableHead>
+											<TableHead className="text-muted text-sm">Schedule</TableHead>
+											<TableHead className="text-muted text-sm">Task</TableHead>
+											{isAdmin && <TableHead className="text-muted text-sm text-right">Actions</TableHead>}
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{processList.map((task) => (
+											<TableRow key={task.id} className="border-border">
+												<TableCell className="text-primary font-mono text-sm">{task.id}</TableCell>
+												<TableCell className="text-primary text-sm max-w-40 truncate" title={humanCron(task.cronString)}>
+													{humanCron(task.cronString)}
+												</TableCell>
+												<TableCell className="text-muted text-sm max-w-48 truncate" title={taskSummary(task, cameras)}>
+													{taskSummary(task, cameras)}
+												</TableCell>
+												{isAdmin && (
+													<TableCell className="text-right">
+														<div className="flex justify-end items-center gap-2">
+															<Switch
+																checked={task.running}
+																disabled={busyId === task.id}
+																onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
+															/>
+															{!task.protected && (
+																<Button variant="ghost" size="icon" onClick={() => setDeleteTarget(task)} title="Destroy">
+																	<Trash2 className="h-4 w-4 text-danger" />
+																</Button>
+															)}
+														</div>
+													</TableCell>
+												)}
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						)}
+					</CardContent>
+				</Card>
 
-			{isAdmin && (
-				<Card className={cn("bg-surface border-border", mobile ? "w-full" : "w-full xl:w-96 xl:shrink-0")}>
-					<CardHeader>
-						<CardTitle className="text-primary">Schedule a Task</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-4">
-						<div className="flex flex-col gap-1.5">
-							<Label className="text-xs text-muted">Camera</Label>
-							<Select value={String(schedCamera)} onValueChange={v => setSchedCamera(parseInt(v))}>
-								<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
-								<SelectContent>
-									{cameras.map((cam, i) => (
-										<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
+				{isAdmin && (
+					<Card className={cn("bg-surface border-border", mobile ? "w-full" : "w-full xl:w-96 xl:shrink-0")}>
+						<CardHeader>
+							<CardTitle className="text-primary">Schedule a Task</CardTitle>
+						</CardHeader>
+						<CardContent className="flex flex-col gap-4">
+							<div className="flex flex-col gap-1.5">
+								<Label className="text-xs text-muted">Camera</Label>
+								<Select value={schedCamera == null ? "" : String(schedCamera)} onValueChange={v => setSchedCamera(parseInt(v))}>
+									<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
+									<SelectContent>
+										{cameras.map((cam, i) => (
+											<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="flex flex-col gap-1.5">
+								<Label className="text-xs text-muted">Window</Label>
+								<div className="flex gap-1">
+									{SCHEDULE_PRESETS.map(p => (
+										<Button
+											key={p.label}
+											variant={schedPreset?.label === p.label ? "default" : "outline"}
+											size="sm"
+											className="flex-1 px-0"
+											onClick={() => setSchedPreset(p)}
+										>
+											{p.label}
+										</Button>
 									))}
-								</SelectContent>
-							</Select>
-						</div>
-
-						<div className="flex flex-col gap-1.5">
-							<Label className="text-xs text-muted">Window</Label>
-							<div className="flex gap-1">
-								{SCHEDULE_PRESETS.map(p => (
-									<Button
-										key={p.label}
-										variant={schedPreset?.label === p.label ? "default" : "outline"}
-										size="sm"
-										className="flex-1 px-0"
-										onClick={() => setSchedPreset(p)}
-									>
-										{p.label}
-									</Button>
-								))}
+								</div>
 							</div>
-						</div>
 
-						<div className="flex items-center justify-between">
-							<Label className="text-xs text-muted">Skip</Label>
-							<div className="flex items-center gap-1">
-								<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
-									<Minus className="size-3" />
-								</Button>
-								<Input
-									type="number"
-									min={1}
-									value={schedSkip}
-									onChange={e => setSchedSkip(Math.max(1, parseInt(e.target.value) || 1))}
-									className="w-12 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-								/>
-								<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => s + 1)}>
-									<Plus className="size-3" />
-								</Button>
-							</div>
-						</div>
-
-						<Separator className="bg-border" />
-
-						<Tabs value={outputType} onValueChange={setOutputType}>
-							<TabsList className="bg-surface-raised">
-								<TabsTrigger value="video" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-									Video
-								</TabsTrigger>
-								<TabsTrigger value="zip" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-									Zip
-								</TabsTrigger>
-							</TabsList>
-						</Tabs>
-
-						{outputType === "video" && (
 							<div className="flex items-center justify-between">
-								<Label className="text-xs text-muted">FPS</Label>
+								<Label className="text-xs text-muted">Skip</Label>
 								<div className="flex items-center gap-1">
-									<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => Math.max(1, f - 5))}>
+									<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
 										<Minus className="size-3" />
 									</Button>
-									<span className="w-8 text-center text-sm">{fps}</span>
-									<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => f + 5)}>
+									<Input
+										type="number"
+										min={1}
+										value={schedSkip}
+										onChange={e => setSchedSkip(Math.max(1, parseInt(e.target.value) || 1))}
+										className="w-12 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+									/>
+									<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => s + 1)}>
 										<Plus className="size-3" />
 									</Button>
 								</div>
 							</div>
-						)}
 
-						<Scheduler
-							key={schedulerKey}
-							url={url}
-							onEnter={handleSchedule}
-						/>
-					</CardContent>
-				</Card>
-			)}
+							<Separator className="bg-border" />
+
+							<Tabs value={outputType} onValueChange={setOutputType}>
+								<TabsList className="bg-surface-raised">
+									<TabsTrigger value="video" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+									Video
+									</TabsTrigger>
+									<TabsTrigger value="zip" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+									Zip
+									</TabsTrigger>
+								</TabsList>
+							</Tabs>
+
+							{outputType === "video" && (
+								<div className="flex items-center justify-between">
+									<Label className="text-xs text-muted">FPS</Label>
+									<div className="flex items-center gap-1">
+										<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => Math.max(1, f - 5))}>
+											<Minus className="size-3" />
+										</Button>
+										<span className="w-8 text-center text-sm">{fps}</span>
+										<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => f + 5)}>
+											<Plus className="size-3" />
+										</Button>
+									</div>
+								</div>
+							)}
+
+							<Scheduler
+								key={schedulerKey}
+								url={url}
+								onEnter={handleSchedule}
+								disabled={schedCamera == null || !cameras[schedCamera]}
+							/>
+						</CardContent>
+					</Card>
+				)}
 			</div>
 
 			<Card className="bg-surface border-border">
@@ -334,36 +367,54 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 						<p className="text-muted text-sm">Loading…</p>
 					) : runs.length === 0 ? (
 						<p className="text-muted text-sm">No runs recorded yet.</p>
-					) : (
-						<div className="max-h-80 overflow-y-auto">
-						<Table>
-							<TableHeader>
-								<TableRow className="border-border">
-									<TableHead className="text-muted text-sm">Task</TableHead>
-									<TableHead className="text-muted text-sm">URL</TableHead>
-									<TableHead className="text-muted text-sm">Status</TableHead>
-									<TableHead className="text-muted text-sm">HTTP</TableHead>
-									<TableHead className="text-muted text-sm">Error</TableHead>
-									<TableHead className="text-muted text-sm">When</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{runs.map((run) => (
-									<TableRow key={run.id} className="border-border">
-										<TableCell className="text-primary font-mono text-sm">{run.task_id}</TableCell>
-										<TableCell className="text-muted text-sm max-w-40 truncate" title={run.url}>{run.url}</TableCell>
-										<TableCell>
-											<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white"}>
+					) : mobile ? (
+						<ul className="divide-y divide-border max-h-80 overflow-y-auto">
+							{runs.map((run) => (
+								<li key={run.id} className="flex items-start gap-3 py-2.5">
+									<div className="min-w-0 flex-1">
+										<div className="flex items-center gap-2">
+											<p className="truncate font-mono text-sm text-primary">{run.task_id}</p>
+											<Badge className={cn("shrink-0 text-xs", run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white")}>
 												{run.status}
 											</Badge>
-										</TableCell>
-										<TableCell className="text-muted text-sm">{run.http_status ?? "—"}</TableCell>
-										<TableCell className="text-muted text-sm max-w-48 truncate" title={run.error ?? ""}>{run.error ?? "—"}</TableCell>
-										<TableCell className="text-muted text-sm" title={run.ran_at}>{moment(run.ran_at).fromNow()}</TableCell>
+										</div>
+										<p className="truncate text-xs text-muted" title={run.url}>{run.url}</p>
+										{run.error && <p className="truncate text-xs text-danger" title={run.error}>{run.error}</p>}
+									</div>
+									<p className="shrink-0 text-xs text-muted" title={run.ran_at}>{moment(run.ran_at).fromNow()}</p>
+								</li>
+							))}
+						</ul>
+					) : (
+						<div className="max-h-80 overflow-y-auto">
+							<Table>
+								<TableHeader>
+									<TableRow className="border-border">
+										<TableHead className="text-muted text-sm">Task</TableHead>
+										<TableHead className="text-muted text-sm">URL</TableHead>
+										<TableHead className="text-muted text-sm">Status</TableHead>
+										<TableHead className="text-muted text-sm">HTTP</TableHead>
+										<TableHead className="text-muted text-sm">Error</TableHead>
+										<TableHead className="text-muted text-sm">When</TableHead>
 									</TableRow>
-								))}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{runs.map((run) => (
+										<TableRow key={run.id} className="border-border">
+											<TableCell className="text-primary font-mono text-sm">{run.task_id}</TableCell>
+											<TableCell className="text-muted text-sm max-w-40 truncate" title={run.url}>{run.url}</TableCell>
+											<TableCell>
+												<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white"}>
+													{run.status}
+												</Badge>
+											</TableCell>
+											<TableCell className="text-muted text-sm">{run.http_status ?? "—"}</TableCell>
+											<TableCell className="text-muted text-sm max-w-48 truncate" title={run.error ?? ""}>{run.error ?? "—"}</TableCell>
+											<TableCell className="text-muted text-sm" title={run.ran_at}>{moment(run.ran_at).fromNow()}</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
 						</div>
 					)}
 				</CardContent>

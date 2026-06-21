@@ -1,9 +1,6 @@
 import React from "react"
 import { Navigate } from "react-router-dom"
-import { Sun, Moon, Monitor } from "lucide-react"
 import { useRole } from "./AuthContext"
-import { useTheme } from "./ThemeContext.jsx"
-import { cn } from "../lib/utils"
 
 import LiveVideo from "./LiveVideo"
 import ClipMaker from "./ClipMaker"
@@ -14,17 +11,10 @@ import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
 import ScheduleDashboard from "./ScheduleDashboard.jsx"
 import ObjectDetections from "./ObjectDetections.jsx"
-import SignOutButton from "./SignOutButton.jsx"
 import ProcessList from "./ProcessList.jsx"
 
 const MobileView = ({ index }) => {
 	const role = useRole()
-	const { theme, applyTheme } = useTheme()
-	const themeOptions = [
-		{ value: "light", icon: Sun },
-		{ value: "dark", icon: Moon },
-		{ value: "system", icon: Monitor },
-	]
 
 	if (index === "route-1") return <ClipMaker />
 
@@ -48,28 +38,10 @@ const MobileView = ({ index }) => {
 				<ObjectDetections mini />
 			</div>
 			<ProcessList mini />
-			<Status withUsers={role === "admin"} />
+			<Status />
+			{role === "admin" && <AdminPanel withButton />}
 			{role === "admin" && <StorageWidget />}
 			<ScheduleDashboard mini withButton />
-			<div className="flex items-center rounded-md border border-border text-muted">
-				<div className="flex flex-1">
-					{themeOptions.map(({ value, icon: Icon }) => (
-						<button
-							key={value}
-							aria-label={value}
-							onClick={() => applyTheme(value)}
-							className={cn(
-								"flex flex-1 items-center justify-center py-2 rounded-md transition-colors",
-								theme === value ? "bg-accent/15 text-accent" : "hover:text-primary"
-							)}
-						>
-							<Icon className="size-4" />
-						</button>
-					))}
-				</div>
-				<div className="w-px self-stretch bg-border" />
-				<SignOutButton className="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors hover:bg-surface-raised hover:text-primary" iconOnly={false} />
-			</div>
 		</div>
 	)
 }

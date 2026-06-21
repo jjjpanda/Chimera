@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { useMediaQuery } from "react-responsive"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import moment from "moment"
 import { RefreshCw, ScanEye, AlertCircle, ImageOff, ArrowUpDown } from "lucide-react"
 
@@ -10,7 +9,6 @@ import { Card } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
-import { cn } from "../lib/utils"
 import { detectGrayPad } from "../js/letterbox.js"
 
 const STROKE = "#34d399"
@@ -106,12 +104,9 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 
 const ObjectDetectionsMini = () => {
 	const navigate = useNavigate()
-	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const { detections, status } = useObjectDetections()
 	const cameraName = (n) => status?.cameraNames?.[n - 1] || `Camera ${n}`
 	const groups = useMemo(() => groupDetections(detections), [detections])
-	const [highlighted, setHighlighted] = useState(false)
-	const cardRef = useRef(null)
 
 	const lastPerCamera = useMemo(() => {
 		const seen = new Set()
@@ -124,25 +119,15 @@ const ObjectDetectionsMini = () => {
 
 	const slots = [0, 1, 2, 3].map(i => lastPerCamera[i] ?? null)
 
-	useEffect(() => {
-		if (!highlighted) return
-		const handler = (e) => {
-			if (!cardRef.current?.contains(e.target)) setHighlighted(false)
-		}
-		document.addEventListener("pointerdown", handler)
-		return () => document.removeEventListener("pointerdown", handler)
-	}, [highlighted])
-
-	const handleClick = () => {
-		if (isDesktop || highlighted) navigate("/objects")
-		else setHighlighted(true)
-	}
-
 	return (
-		<Card ref={cardRef} className={cn("h-full overflow-hidden cursor-pointer select-none transition-shadow", highlighted && "ring-2 ring-accent")} onClick={handleClick}>
+		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={() => navigate("/objects")}>
 			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 				{slots.map((g, i) => (
-					<div key={i} className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}>
+					<div
+						key={i}
+						onClick={g ? (e) => { e.stopPropagation(); navigate(`/objects?camera=${g.camera}`) } : undefined}
+						className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}
+					>
 						{g ? (
 							<DetectionImage image={g.image} boxes={g.boxes} cover />
 						) : (
@@ -159,10 +144,7 @@ const ObjectDetectionsMini = () => {
 						)}
 					</div>
 				))}
-				<div className={cn(
-					"absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center pointer-events-none transition-colors",
-					(highlighted || isDesktop) ? "bg-accent text-accent-foreground" : "bg-transparent text-white/70"
-				)}>
+				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground" onClick={(e) => { e.stopPropagation(); navigate("/objects") }}>
 					<ScanEye className="size-6" />
 				</div>
 			</div>
@@ -177,6 +159,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 	const { status, detections, loadStatus, loadDetections, scan } = useObjectDetections()
 	const groups = useMemo(() => groupDetections(detections), [detections])
 
+	const [searchParams] = useSearchParams()
 	const cameras = status?.cameras ? Object.entries(status.cameras) : []
 	const cameraName = (n) => status?.cameraNames?.[Number(n) - 1] || `Camera ${n}`
 	const [selectedCam, setSelectedCam] = useState(null)
@@ -198,12 +181,15 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 	}
 
 	useEffect(() => {
-		if (selectedCam == null && cameras.length > 0) setSelectedCam(cameras[0][0])
+		if (selectedCam != null || cameras.length === 0) return
+		const camParam = searchParams.get("camera")
+		const match = camParam != null && cameras.find(([c]) => String(c) === String(camParam))
+		setSelectedCam(match ? match[0] : null)
 	}, [cameras])
 
 	const camGroups = useMemo(() =>
 		groups.filter(g => String(g.camera) === String(selectedCam)).reverse(),
-		[groups, selectedCam]
+	[groups, selectedCam]
 	)
 
 	useEffect(() => { setScrubIdx(Math.max(0, camGroups.length - 1)) }, [selectedCam, camGroups.length])

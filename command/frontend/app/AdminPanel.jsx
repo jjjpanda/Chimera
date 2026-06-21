@@ -125,13 +125,25 @@ const AdminPanel = ({ withButton } = {}) => {
 		const fallback = () => {
 			const el = document.createElement("textarea")
 			el.value = tempPassword
+			el.readOnly = false
+			el.contentEditable = "true"
+			el.style.position = "fixed"
+			el.style.top = "0"
+			el.style.left = "0"
+			el.style.opacity = "0"
+			el.style.fontSize = "16px"
 			document.body.appendChild(el)
-			el.select()
-			document.execCommand("copy")
+			const range = document.createRange()
+			range.selectNodeContents(el)
+			const sel = window.getSelection()
+			sel.removeAllRanges()
+			sel.addRange(range)
+			el.setSelectionRange(0, tempPassword.length)
+			try { document.execCommand("copy") } catch { /* ignore */ }
 			document.body.removeChild(el)
 			markCopied()
 		}
-		if (navigator.clipboard) {
+		if (navigator.clipboard?.writeText) {
 			navigator.clipboard.writeText(tempPassword).then(markCopied).catch(fallback)
 		} else {
 			fallback()
@@ -151,11 +163,14 @@ const AdminPanel = ({ withButton } = {}) => {
 					{loading ? (
 						<p className="py-4 text-center text-sm text-muted">Loading…</p>
 					) : (
-						<ul className="divide-y divide-border">
+						<ul className="divide-y divide-border overflow-y-auto max-h-44">
 							{users.map(user => (
-								<li key={user.username} className="flex items-center justify-between py-2">
-									<span className="text-sm text-primary">{user.username}</span>
-									<Badge className={user.role === "admin" ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted border border-border"}>
+								<li key={user.username} className="flex items-center justify-between gap-2 py-2 min-w-0">
+									<div className="flex flex-col min-w-0">
+										<span className="text-sm text-primary truncate">{user.username}</span>
+										<span className="text-[11px] text-muted">{user.last_login ? moment(user.last_login).fromNow() : "never"}</span>
+									</div>
+									<Badge className={`shrink-0 ${user.role === "admin" ? "bg-accent text-accent-foreground" : "bg-surface-raised text-muted border border-border"}`}>
 										{user.role}
 									</Badge>
 								</li>
