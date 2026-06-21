@@ -15,7 +15,7 @@ const StorageBreakdown = ({ breakdown }) => {
 	return (
 		<div className="flex flex-col gap-1.5">
 			<span className="text-xs font-medium text-muted">Storage Breakdown</span>
-			<div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+			<div className="flex h-2 w-full overflow-hidden rounded-full bg-border">
 				{TYPES.map(t => {
 					const v = breakdown[t.key] || 0
 					return v > 0

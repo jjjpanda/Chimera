@@ -86,7 +86,7 @@ const Stats = () => {
 									? usage.cameras.map((cam, i) => (
 										<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
 									))
-									: <div className="flex-1 rounded-full bg-muted" />
+									: <div className="flex-1 rounded-full bg-border" />
 								}
 							</div>
 						</div>
@@ -236,7 +236,7 @@ const Stats = () => {
 											<ChevronRight className="size-4 text-muted shrink-0 ml-1" />
 										)}
 									</div>
-									<div className="ml-[22px] h-1.5 overflow-hidden rounded-full bg-muted">
+									<div className="ml-[22px] h-1.5 overflow-hidden rounded-full bg-border">
 										<div
 											className="h-full rounded-full transition-all"
 											style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: segmentColor(i) }}

@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-	--color-bg: 250 250 250;
-	--color-surface: 255 255 255;
-	--color-surface-raised: 244 244 245;
-	--color-accent: 125 69 169;
+	--color-bg: 218 218 222;
+	--color-surface: 228 228 232;
+	--color-surface-raised: 210 210 215;
+	--color-accent: 125 54 146;
 	--color-accent-fg: 255 255 255;
-	--color-secondary: 150 81 210;
+	--color-secondary: 175 110 220;
 	--color-secondary-fg: 255 255 255;
 	--color-primary: 9 9 11;
-	--color-muted: 113 113 122;
-	--color-border: 228 228 231;
+	--color-muted: 70 70 80;
+	--color-border: 180 180 185;
 	--color-info: 14 125 171;
 	--color-info-fg: 240 249 255;
 	--color-danger: 145 42 42;
@@ -23,7 +23,7 @@
 	--color-bg: 5 5 5;
 	--color-surface: 15 15 18;
 	--color-surface-raised: 23 23 28;
-	--color-accent: 125 69 169;
+	--color-accent: 110 45 133;
 	--color-accent-fg: 255 255 255;
 	--color-secondary: 150 81 210;
 	--color-secondary-fg: 255 255 255;

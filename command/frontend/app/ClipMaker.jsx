@@ -849,11 +849,6 @@ const ClipMaker = ({ mini } = {}) => {
 						{frames.length === 0 && (
 							<ImageOff className="h-10 w-10 opacity-40 text-muted" />
 						)}
-						{camera != null && cameras[camera] && frames.length > 0 && (
-							<div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 border border-white/[.08] text-[10px] tracking-wide text-muted-foreground px-2.5 py-0.5 rounded pointer-events-none">
-								{cameras[camera].name}
-							</div>
-						)}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
 						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
@@ -1007,24 +1002,26 @@ const ClipMaker = ({ mini } = {}) => {
 					</div>
 				</div>
 
-				<div className="flex flex-col gap-3 p-3 bg-muted/5 border border-border/50 rounded-lg">
-					<div className="flex items-center gap-2 flex-wrap">
-						<Label className="mr-auto">Time Range</Label>
-						<span className="text-xs text-muted-foreground/50">quick set</span>
-						<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
-							<X className="size-3" />
-						</Button>
-						<div className="flex flex-wrap gap-1">
-							{PRESETS.map(p => {
-								const isPending = pendingPreset?.label === p.label
-								return (
-									<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-7 px-2.5 relative"
-										onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
-										<span className={isPending ? "invisible" : ""}>{p.label}</span>
-										{isPending && <Check className="size-3 absolute" />}
-									</Button>
-								)
-							})}
+				<div className="flex flex-col gap-3 p-2 bg-muted/5 border border-border/50 rounded-lg">
+					<div className="flex flex-col gap-1">
+						<Label>Time Range</Label>
+						<div className="flex items-center gap-2 justify-end flex-wrap">
+							<span className="text-xs text-muted-foreground/50">preset</span>
+							<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
+								<X className="size-3" />
+							</Button>
+							<div className="flex flex-wrap gap-1">
+								{PRESETS.map(p => {
+									const isPending = pendingPreset?.label === p.label
+									return (
+										<Button key={p.label} variant={isPending ? "default" : "outline"} size="sm" className="h-7 px-2.5 relative"
+											onClick={() => isPending ? confirmPreset() : clickPreset(p)}>
+											<span className={isPending ? "invisible" : ""}>{p.label}</span>
+											{isPending && <Check className="size-3 absolute" />}
+										</Button>
+									)
+								})}
+							</div>
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-x-3 gap-y-2">

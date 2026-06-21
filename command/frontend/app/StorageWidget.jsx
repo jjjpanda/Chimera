@@ -36,7 +36,7 @@ const StorageWidget = () => {
 									</span>
 									<span className="text-muted">{formatBytes(cam.used_gb * 1e9, 1)}</span>
 								</div>
-								<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+								<div className="h-2 w-full overflow-hidden rounded-full bg-border">
 									<div
 										className="h-full rounded-full transition-all"
 										style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: segmentColor(i) }}
@@ -46,7 +46,7 @@ const StorageWidget = () => {
 						))}
 					</div>
 				) : (
-					<div className="h-2 w-full rounded-full bg-muted" />
+					<div className="h-2 w-full rounded-full bg-border" />
 				)}
 
 				<StorageBreakdown breakdown={usage.breakdown} />
