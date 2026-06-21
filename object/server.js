@@ -11,6 +11,7 @@ module.exports = {
 		}
 		const failureCallback = () => {
 			console.log("🔍 Object Off ❌")
+			worker.stopWorkers()
 		}
 		if (process.env.object_ON === "true") {
 			return handleServerStart(app, process.env.object_PORT, successCallback, failureCallback)

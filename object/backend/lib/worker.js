@@ -47,6 +47,7 @@ const config = {
 
 const status = {}
 const timers = {}
+let workersRunning = false
 
 const cameraCount = () => {
 	try {
@@ -79,7 +80,7 @@ const extractFrame = (camera) => new Promise((resolve, reject) => {
 		"-vf", vf, "-frames:v", "1", "-q:v", "3", jpeg,
 		"-vf", vf, "-pix_fmt", "bgr24", "-frames:v", "1", "-f", "rawvideo", raw,
 	]
-	execFile(process.env.ffmpeg_FILEPATH || "ffmpeg", args, (err) => {
+	execFile(process.env.ffmpeg_FILEPATH || "ffmpeg", args, { timeout: 30000, killSignal: "SIGKILL" }, (err) => {
 		const cleanup = () => {
 			try { fs.unlinkSync(jpeg) } catch (e) {}
 			try { fs.unlinkSync(raw) } catch (e) {}
@@ -148,20 +149,30 @@ const scan = async (camera) => {
 
 const startWorkers = () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
+	workersRunning = true
 	const count = cameraCount()
 	for (let camera = 1; camera <= count; camera++) {
 		status[camera] = { running: true, lastRun: null, lastDetection: null, error: null }
 		const loop = async () => {
 			await scan(camera)
-			timers[camera] = setTimeout(loop, config.intervalMs)
+			if (workersRunning) timers[camera] = setTimeout(loop, config.intervalMs)
 		}
 		loop()
 	}
 	console.log(`🔍 Object detection workers started for ${count} camera(s)`)
 }
 
+const stopWorkers = () => {
+	workersRunning = false
+	for (const camera of Object.keys(timers)) {
+		clearTimeout(timers[camera])
+		delete timers[camera]
+	}
+}
+
 module.exports = {
 	startWorkers,
+	stopWorkers,
 	scan,
 	toTensor,
 	cameraCount,

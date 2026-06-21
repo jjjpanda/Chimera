@@ -29,7 +29,7 @@ const makeRaw = () => {
 beforeEach(() => {
 	process.env.alert_URL = "http://hook.test"
 	delete process.env.object_ALERT_ON
-	execFile.mockImplementation((file, args, cb) => cb(null))
+	execFile.mockImplementation((file, args, opts, cb) => cb(null))
 	fs.readFileSync.mockImplementation((p) => String(p).endsWith(".raw") ? makeRaw() : Buffer.from("jpeg"))
 	pool.query.mockResolvedValue({})
 	sendWebhook.mockResolvedValue()
@@ -114,11 +114,64 @@ describe("scan", () => {
 	})
 
 	test("records ffmpeg failure in status and returns []", async () => {
-		execFile.mockImplementation((file, args, cb) => cb(new Error("ffmpeg boom")))
+		execFile.mockImplementation((file, args, opts, cb) => cb(new Error("ffmpeg boom")))
 		const detections = await worker.scan(4)
 		expect(detections).toEqual([])
 		expect(detector.detect).not.toHaveBeenCalled()
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
+	})
+
+	test("passes a timeout and SIGKILL to execFile", async () => {
+		detector.detect.mockResolvedValue([])
+		await worker.scan(1)
+		expect(execFile).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.any(Array),
+			expect.objectContaining({ timeout: 30000, killSignal: "SIGKILL" }),
+			expect.any(Function)
+		)
+	})
+})
+
+describe("startWorkers / stopWorkers", () => {
+	const tick = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
+
+	beforeEach(() => {
+		jest.useFakeTimers()
+		execFile.mockClear()
+		process.env.object_ON = "true"
+		process.env.cameras = JSON.stringify(["a", "b"])
+		detector.detect.mockResolvedValue([])
+	})
+
+	afterEach(() => {
+		worker.stopWorkers()
+		jest.useRealTimers()
+		delete process.env.object_ON
+	})
+
+	test("runs one scan per camera and arms a re-arm timer for each", async () => {
+		worker.startWorkers()
+		await tick()
+		expect(execFile).toHaveBeenCalledTimes(2)
+		expect(jest.getTimerCount()).toBe(2)
+		worker.stopWorkers()
+		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("does nothing when object_ON is not 'true'", () => {
+		process.env.object_ON = "false"
+		worker.startWorkers()
+		expect(execFile).not.toHaveBeenCalled()
+		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("stopWorkers before scans resolve blocks the re-arm", async () => {
+		worker.startWorkers()
+		worker.stopWorkers()
+		await tick()
+		expect(execFile).toHaveBeenCalledTimes(2)
+		expect(jest.getTimerCount()).toBe(0)
 	})
 })
 

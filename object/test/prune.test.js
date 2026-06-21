@@ -21,7 +21,7 @@ const MTIME = { "a.jpg": 100, "b.jpg": 50, "c.jpg": 10, "d.jpg": 90 }
 beforeEach(() => {
 	jest.clearAllMocks()
 	process.env.object_ALERT_ON = "false"
-	execFile.mockImplementation((file, args, cb) => cb(null))
+	execFile.mockImplementation((file, args, opts, cb) => cb(null))
 	fs.readFileSync.mockReturnValue(Buffer.alloc(SIZE * 3))
 	fs.readdirSync.mockReturnValue(["a.jpg", "b.jpg", "c.jpg", "d.jpg"])
 	fs.statSync.mockImplementation((p) => ({ mtimeMs: MTIME[path.basename(p)] }))

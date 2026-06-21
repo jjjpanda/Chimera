@@ -32,6 +32,12 @@ const HlsPlayer = ({ src, className }) => {
 
 		if (Hls.isSupported()) {
 			const hls = new Hls()
+			hls.on(Hls.Events.ERROR, (_, data) => {
+				if (!data.fatal) return
+				if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
+				else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError()
+				else hls.destroy()
+			})
 			hls.loadSource(src)
 			hls.attachMedia(video)
 			return () => hls.destroy()
@@ -101,8 +107,8 @@ const LiveVideo = (props) => {
 						<RefreshCw className="size-3.5" />
 					</Button>
 				</div>
-				{state.videoList.map((video, i) => (
-					<Feed key={i} video={video} />
+				{state.videoList.map((video) => (
+					<Feed key={video.url} video={video} />
 				))}
 			</div>
 		)
@@ -118,9 +124,9 @@ const LiveVideo = (props) => {
 				</div>
 				{videos.map((row, ri) => (
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
-						{row.map((video, ci) =>
+						{row.map((video) =>
 							video ? (
-								<Feed key={ci} video={video} onExpand={() => setActiveDialog(video)} />
+								<Feed key={video.url} video={video} onExpand={() => setActiveDialog(video)} />
 							) : null
 						)}
 					</div>
@@ -148,13 +154,13 @@ const LiveVideo = (props) => {
 					<Tabs defaultValue={tabDefault}>
 						<TabsList className="w-full rounded-none border-b border-border bg-surface-raised">
 							{state.videoList.map((video, i) => (
-								<TabsTrigger key={i} value={String(i)} className="flex-1 min-w-[3.5rem] shrink-0 text-sm h-10">
+								<TabsTrigger key={video.url} value={String(i)} className="flex-1 min-w-[3.5rem] shrink-0 text-sm h-10">
 									{video.camera}
 								</TabsTrigger>
 							))}
 						</TabsList>
 						{state.videoList.map((video, i) => (
-							<TabsContent key={i} value={String(i)} className="mt-0">
+							<TabsContent key={video.url} value={String(i)} className="mt-0">
 								<Feed video={video} onExpand={() => setActiveDialog(video)} hideLabel />
 							</TabsContent>
 						))}

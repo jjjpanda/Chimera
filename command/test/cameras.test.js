@@ -9,10 +9,12 @@ jest.mock("fs", () => {
 			if (p === "/etc/motion/motion.conf") return "camera_dir /etc/motion/cameraconf\n"
 			if (p.endsWith("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.endsWith("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://user:secret@2.2.2.2/cam\n"
+			if (p.endsWith("cam3.conf")) return "camera_id 3\ncamera_name gate\nnetcam_url rtsp://user:p@ss@3.3.3.3/cam\n"
+			if (p.endsWith("cam4.conf")) return "camera_id 4\ncamera_name yard\nnetcam_url rtsp://4.4.4.4/cam?user=admin&p=secret\n"
 			return actual.readFileSync(p, enc)
 		}),
 		readdirSync: jest.fn((p) => {
-			if (p === "/etc/motion/cameraconf") return ["cam1.conf", "cam2.conf"]
+			if (p === "/etc/motion/cameraconf") return ["cam1.conf", "cam2.conf", "cam3.conf", "cam4.conf"]
 			return actual.readdirSync(p)
 		})
 	}
@@ -45,7 +47,9 @@ describe("Cameras Route", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual([
 				{ id: 1, name: "indoor", rtsp_url: "rtsp://1.1.1.1/cam" },
-				{ id: 2, name: "outdoor", rtsp_url: "rtsp://2.2.2.2/cam" }
+				{ id: 2, name: "outdoor", rtsp_url: "rtsp://2.2.2.2/cam" },
+				{ id: 3, name: "gate", rtsp_url: "rtsp://3.3.3.3/cam" },
+				{ id: 4, name: "yard", rtsp_url: "rtsp://4.4.4.4/cam?user=***&p=***" }
 			])
 		})
 	})
