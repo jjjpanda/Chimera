@@ -262,6 +262,7 @@ const ClipMaker = ({ mini } = {}) => {
 	const [submitting, setSubmitting] = useState(false)
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
+	const [loadedParams, setLoadedParams] = useState(null) // {start,end,number,cams} of the last load; current inputs diverging = stale
 	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
 	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
@@ -546,7 +547,18 @@ const ClipMaker = ({ mini } = {}) => {
 	const loading   = multiCam ? (multiAnyFetching || multiAnyDownloading) : (fetching || downloadingImages)
 	const stoppable = multiCam ? multiAnyDownloading : downloadingImages
 
-	const canGenerate = !submitting && (multiCam
+	const hasLoadedFrames = multiCam ? Object.values(camStates).some(s => s.frames.length > 0) : frames.length > 0
+	const currentCamIds = multiCam
+		? selectedCams.map(i => cameras[i]?.id).filter(id => id != null).sort()
+		: (camera != null && cameras[camera] ? [cameras[camera].id] : [])
+	const paramsStale = !!loadedParams && hasLoadedFrames && (
+		!startDate.isSame(loadedParams.start) ||
+		!endDate.isSame(loadedParams.end) ||
+		number !== loadedParams.number ||
+		currentCamIds.join(",") !== loadedParams.cams.join(",")
+	)
+
+	const canGenerate = !submitting && !paramsStale && (multiCam
 		? (!multiAnyFetching && !multiAnyDownloading && !multiAnyGenerating && startDate.isBefore(endDate) && selectedCams.length > 0)
 		: (generating === null && !loading && startDate.isBefore(endDate) && camera != null))
 
@@ -565,6 +577,7 @@ const ClipMaker = ({ mini } = {}) => {
 		setFrames([])
 		setImagesLoaded(0)
 		setDetections([])
+		setLoadedParams(null)
 		setTrimRange([0, 100])
 		setTrimming(false)
 		setScrubIdx(0)
@@ -586,6 +599,7 @@ const ClipMaker = ({ mini } = {}) => {
 		if (cameras[camIdx]?.id == null) return toast("No camera selected")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
+		setLoadedParams({ start, end, number, cams: [cameras[camIdx].id] })
 		setFetching(true)
 		setFrames([])
 		setImagesLoaded(0)
@@ -614,6 +628,7 @@ const ClipMaker = ({ mini } = {}) => {
 		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
+		setLoadedParams({ start, end, number, cams: selectedCams.map(idx => cameras[idx].id).sort() })
 		multiImageCache.current = {}
 		setScrubIdx(0)
 		setTrimRange([0, 100])
@@ -1042,7 +1057,12 @@ const ClipMaker = ({ mini } = {}) => {
 					{isAdmin && (
 						<Dialog>
 							<DialogTrigger asChild>
-								<Button variant="outline" className="flex-1" disabled={!canGenerate}>
+								<Button
+									variant="outline"
+									className="flex-1"
+									disabled={!canGenerate}
+									title={paramsStale ? "Reload images to apply the changed camera/range/frames" : undefined}
+								>
 									<Save className="size-4" /> Generate
 								</Button>
 							</DialogTrigger>
@@ -1111,14 +1131,17 @@ const ClipMaker = ({ mini } = {}) => {
 					)}
 					<Button
 						variant="outline"
-						className="flex-1"
-						onClick={multiCam ? loadMultiPreview : confirmPreset}
+						className={`flex-1 ${paramsStale ? "ring-1 ring-accent text-accent" : ""}`}
+						onClick={multiCam ? () => loadMultiPreview() : confirmPreset}
 						disabled={loading || (multiCam ? !selectedCams.length : camera == null)}
 					>
 						<SkipBack className="size-4" />
 						{(fetching || multiAnyFetching) ? "Fetching…" : (downloadingImages || multiAnyDownloading) ? "Loading…" : (frames.length > 0 || Object.values(camStates).some(s => s.frames.length > 0)) ? "Reload Images" : "Load Images"}
 					</Button>
 				</div>
+				{paramsStale && (
+					<p className="-mt-2 text-xs text-amber-500/90">camera, range, or frame count changed — reload images to apply.</p>
+				)}
 			</div>
 		</div>
 	)

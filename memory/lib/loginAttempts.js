@@ -1,6 +1,10 @@
 module.exports = () => {
 	const hits = new Map()
-	const prune = (now) => { if(hits.size > 5000) for(const [k, v] of hits) if(now > v.reset) hits.delete(k) }
+	const MAX_KEYS = 20000
+	const prune = (now) => {
+		if(hits.size > 5000) for(const [k, v] of hits) if(now > v.reset) hits.delete(k)
+		if(hits.size > MAX_KEYS) for(const k of hits.keys()) { if(hits.size <= MAX_KEYS) break; hits.delete(k) }
+	}
 	return {
 		loginReserve: (key, max, windowMs, callback=()=>{}) => {
 			const now = Date.now()

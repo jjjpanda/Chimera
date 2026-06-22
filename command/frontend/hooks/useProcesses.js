@@ -30,8 +30,8 @@ const processBody = (state, cameras, useDays = false) => {
 	return JSON.stringify({
 		camera: String(id),
 		...(useDays ? { days: state.days } : {}),
-		start: moment(state.startDate).second(0).format("YYYYMMDD-HHmmss"),
-		end: moment(state.endDate).second(0).format("YYYYMMDD-HHmmss"),
+		start: moment(state.startDate).utc().second(0).format("YYYYMMDD-HHmmss"),
+		end: moment(state.endDate).utc().second(0).format("YYYYMMDD-HHmmss"),
 		skip: state.number,
 		save: !state.download
 	})

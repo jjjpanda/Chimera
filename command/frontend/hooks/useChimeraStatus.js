@@ -24,9 +24,9 @@ const useChimeraStatus = () => {
 	}
 
 	useEffect(() => {
-		const cameraStatusUrls = cameras.map((cam) => ({
+		const cameraStatusUrls = cameras.map((cam, index) => ({
 			statusType: `cam ${cam.name}`,
-			url: `/livestream/status?camera=${cam.id}`
+			url: `/livestream/status?camera=${index + 1}`
 		}))
 		const allUrls = [...baseStatusUrls, ...cameraStatusUrls]
 

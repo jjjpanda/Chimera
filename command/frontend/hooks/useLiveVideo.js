@@ -11,7 +11,7 @@ const listVideos = (cameras, setState) => {
 		mode: "cors"
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			const nums = data
+			const nums = (Array.isArray(data) ? data : [])
 				.map((cam) => parseInt(cam.name.split("_")[3]))
 				.sort((a, b) => a - b)
 			setState((old) => ({
