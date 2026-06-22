@@ -8,7 +8,13 @@ describe("prepareDatabase migration tasks", () => {
 	test("creates the auth table with temp_password_expires", () => {
 		const t = find(/CREATE TABLE auth\b/)
 		expect(t).toBeDefined()
-		expect(t.query).toMatch(/temp_password_expires TIMESTAMP/)
+		expect(t.query).toMatch(/temp_password_expires TIMESTAMPTZ/)
+	})
+
+	test("all CREATE TABLE timestamp columns are timestamptz, not naive", () => {
+		for (const t of creationTasks.filter(t => /CREATE TABLE/.test(t.query))) {
+			expect(t.query).not.toMatch(/TIMESTAMP(?!TZ)/)
+		}
 	})
 
 	test("builds the camera/timestamp indexes concurrently and idempotently", () => {

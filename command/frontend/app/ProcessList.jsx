@@ -63,7 +63,7 @@ const ProcessList = (props) => {
 					<p className="py-4 text-center text-sm text-muted">No processes</p>
 				)}
 				{state.processList.map((process) => {
-					const requestedTime = moment(process.requested, "YYYYMMDD-HHmmss").format("LLL")
+					const requestedTime = moment.utc(process.requested, "YYYYMMDD-HHmmss").local().format("LLL")
 					const startTime = moment.utc(process.start, "YYYYMMDD-HHmmss").local().format("LLL")
 					const endTime = moment.utc(process.end, "YYYYMMDD-HHmmss").local().format("LLL")
 					return (

@@ -14,42 +14,28 @@ List of microservices:
 6. [memory](memory)
 7. [object](object)
 
-Massive Dependencies:
-1. [motion](https://github.com/Motion-Project/motion) - should be running on same machine as [storage](storage) server for optimal performance. See [storage](storage) as for why.
-2. [ffmpeg](https://ffmpeg.org) - should be installed on same machine as [livestream](livestream) and [storage](storage). 
-3. [heartbeat](https://github.com/jjjpanda/heartbeat) - used to confirm server is still up.
-4. [postgres](https://www.postgresql.org) - the database
+Massive Dependencies (all bundled in the Docker image):
+1. [motion](https://github.com/Motion-Project/motion) - saves RTSP frames; co-located with [storage](storage), see why there.
+2. [ffmpeg](https://ffmpeg.org) - used by [livestream](livestream) and [storage](storage).
+3. [heartbeat](https://github.com/jjjpanda/heartbeat) - confirms the server is still up.
+4. [postgres](https://www.postgresql.org) - the database (runs as its own container).
 
-## Quick Start
+## Quick Start (Docker)
 
-### 1. Install motion, ffmpeg, and postgres
-```
-sudo apt-get install motion ffmpeg postgresql
-```
+Docker is the supported way to run Chimera. The image bundles motion, ffmpeg, Node, and pm2, pins `TZ=UTC` (required — frame timestamps and the UI both assume UTC), and runs Postgres as a side container whose schema is created automatically on boot.
 
-Set up a **motion** conf with your cameras and a **postgres** database (name, port, user, password). Motion needs the postgres details in its conf too — [see storage](storage).
+### 1. Configure
+```
+cp env.example .env          # fill in values; leave optional fields blank after =
+cp motion.conf.example motion.conf
+```
+Add a `cameraconf/camN.conf` per camera (see [`motion.conf.example`](motion.conf.example)).
 
-### 2. Create Environment Variables File
+### 2. Build & run
+```
+npm run docker:build
+npm run docker:up
+```
+`docker:logs` tails output · `docker:down` stops · `docker:rebuild` redeploys · `docker:delete` wipes volumes.
 
-```
-cp env.example .env
-```
-
-Fill in `.env` (leave optional fields blank after the `=`).
-
-### 3. Run Setup
-
-```
-npm run setup
-```
-
-### 4. Start Chimera
-
-If running all or more than one service(s)
-```
-npm start
-```
-If splitting services
-```
-npm run start:<service>
-```
+> **Bare-metal is unsupported.** Without Docker you must install motion/ffmpeg/postgres yourself and export `TZ=UTC` for every process (node + motion + postgres) — otherwise clips, zips, and frame lists silently misalign. Then `npm run setup && npm start`.

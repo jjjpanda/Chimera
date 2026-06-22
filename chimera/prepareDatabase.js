@@ -10,19 +10,19 @@ const pool = new Pool({
 
 const creationTasks = [
 	{
-		query: "CREATE TABLE frame_files(ID SERIAL PRIMARY KEY, timestamp TIMESTAMP, camera NUMERIC(10), name VARCHAR, size NUMERIC);",
+		query: "CREATE TABLE frame_files(ID SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, camera NUMERIC(10), name VARCHAR, size NUMERIC);",
 		description: "frame files table"
 	},
 	{
-		query: "CREATE TABLE frame_deletes(ID SERIAL PRIMARY KEY, timestamp TIMESTAMP, camera NUMERIC(10), size NUMERIC, count NUMERIC);",
+		query: "CREATE TABLE frame_deletes(ID SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, camera NUMERIC(10), size NUMERIC, count NUMERIC);",
 		description: "frame deletions table"
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMP, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMP, theme VARCHAR(10) DEFAULT 'system');",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMPTZ, theme VARCHAR(10) DEFAULT 'system');",
 		description: "authorization table"
 	},
 	{
-		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMP NOT NULL DEFAULT NOW(), last_seen TIMESTAMP, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
+		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen TIMESTAMPTZ, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
 		description: "sessions table"
 	},
 	{
