@@ -8,7 +8,7 @@ const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 module.exports = {   
 	generateID: () => {
-		return randomID.generate() + "-" + moment().format(dateFormat)
+		return randomID.generate() + "-" + moment.utc().format(dateFormat)
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {
@@ -72,11 +72,11 @@ module.exports = {
 	validateDays: (req, res, next) => {
 		const { days, hours } = req.body
 		if (hours != undefined) {
-			req.body.start = moment().subtract(hours, "hours").format(dateFormat)
-			req.body.end = moment().format(dateFormat)
+			req.body.start = moment.utc().subtract(hours, "hours").format(dateFormat)
+			req.body.end = moment.utc().format(dateFormat)
 		} else if (days != undefined) {
-			req.body.start = moment().subtract(days, "days").format(dateFormat)
-			req.body.end = moment().format(dateFormat)
+			req.body.start = moment.utc().subtract(days, "days").format(dateFormat)
+			req.body.end = moment.utc().format(dateFormat)
 		}
 		next()
 	},
@@ -84,9 +84,9 @@ module.exports = {
 	validateRequest: (req, res, next) => {
 		let { camera, start, end } = req.body
 
-		start = (start == undefined ? moment().subtract(1, "week") : moment(start, dateFormat)).format(dateFormat)
+		start = (start == undefined ? moment.utc().subtract(1, "week") : moment.utc(start, dateFormat)).format(dateFormat)
 
-		end = (end == undefined ? moment() : moment(end, dateFormat)).format(dateFormat)
+		end = (end == undefined ? moment.utc() : moment.utc(end, dateFormat)).format(dateFormat)
         
 		if(camera == undefined){
 			res.status(400).send({

@@ -16,7 +16,7 @@ const listProcesses = (setState) => {
 			setState((s) => ({
 				...s,
 				processList: [...(data?.list ?? []).sort((a, b) =>
-					moment(b.requested, "YYYYMMDD-HHmmss").diff(moment(a.requested, "YYYYMMDD-HHmmss"), "seconds")
+					moment.utc(b.requested, "YYYYMMDD-HHmmss").diff(moment.utc(a.requested, "YYYYMMDD-HHmmss"), "seconds")
 				)],
 				lastUpdated: moment().format("h:mm:ss a"),
 				loading: false
@@ -30,8 +30,8 @@ const processBody = (state, cameras, useDays = false) => {
 	return JSON.stringify({
 		camera: String(id),
 		...(useDays ? { days: state.days } : {}),
-		start: moment(state.startDate).utc().second(0).format("YYYYMMDD-HHmmss"),
-		end: moment(state.endDate).utc().second(0).format("YYYYMMDD-HHmmss"),
+		start: moment(state.startDate).utc().format("YYYYMMDD-HHmmss"),
+		end: moment(state.endDate).utc().format("YYYYMMDD-HHmmss"),
 		skip: state.number,
 		save: !state.download
 	})

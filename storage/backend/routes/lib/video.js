@@ -2,7 +2,6 @@ var ffmpeg     = require("fluent-ffmpeg")
 const slash    = require("./slash.js")
 var fs         = require("fs")
 var path       = require("path")
-var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 const cliProgress = require("cli-progress")
 const {
@@ -10,7 +9,7 @@ const {
 	filterList,
 	fileName,
 }              = require("./converter.js")
-const {webhookAlert} = require("lib")
+const {webhookAlert, alertTime} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
@@ -67,7 +66,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 	else {
 		if(save){
 			console.log("SENDING START ALERT")
-			webhookAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+			webhookAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 		}
 		else{
 			res.attachment(fileName(camera, start, end, rand, "mp4"))

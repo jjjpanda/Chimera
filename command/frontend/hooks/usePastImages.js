@@ -8,8 +8,8 @@ import { request, jsonProcessing } from "./../js/request.js"
 const processBody = (state) => {
 	const body = JSON.stringify({
 		camera: (state.camera+1).toString(),
-		start: moment(state.startDate).utc().second(0).format("YYYYMMDD-HHmmss"),
-		end: moment(state.endDate).utc().second(0).format("YYYYMMDD-HHmmss"),
+		start: moment(state.startDate).utc().format("YYYYMMDD-HHmmss"),
+		end: moment(state.endDate).utc().format("YYYYMMDD-HHmmss"),
 		frames: state.number
 	})
 	return body
