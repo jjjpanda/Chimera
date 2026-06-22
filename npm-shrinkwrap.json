@@ -52,7 +52,6 @@
         "heartbeat": "jjjpanda/heartbeat#v1.3.0",
         "helmet": "^8.0.0",
         "hls.js": "^1.5.18",
-        "js-cookie": "^3.0.1",
         "jsonwebtoken": "^9.0.0",
         "lib": "file:../lib",
         "lucide-react": "^0.460.0",
@@ -362,13 +361,6 @@
       "peer": true,
       "engines": {
         "node": ">= 0.6"
-      }
-    },
-    "command/node_modules/moment": {
-      "version": "2.29.1",
-      "license": "MIT",
-      "engines": {
-        "node": "*"
       }
     },
     "command/node_modules/ms": {
@@ -924,6 +916,7 @@
         "bcryptjs": "^2.4.3",
         "dotenv": "^16.4.0",
         "jsonwebtoken": "^9.0.0",
+        "moment-timezone": "^0.6.2",
         "nanoid": "^3.1.30",
         "pm2": "^5.4.3",
         "request-ip": "^2.1.3"
@@ -951,6 +944,18 @@
     "lib/node_modules/is_js": {
       "version": "0.9.0",
       "license": "MIT"
+    },
+    "lib/node_modules/moment-timezone": {
+      "version": "0.6.2",
+      "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+      "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+      "license": "MIT",
+      "dependencies": {
+        "moment": "^2.29.4"
+      },
+      "engines": {
+        "node": "*"
+      }
     },
     "lib/node_modules/proxy-from-env": {
       "version": "2.1.0",
@@ -1213,13 +1218,6 @@
     "memory/node_modules/lib": {
       "resolved": "lib",
       "link": true
-    },
-    "memory/node_modules/moment": {
-      "version": "2.29.1",
-      "license": "MIT",
-      "engines": {
-        "node": "*"
-      }
     },
     "memory/node_modules/moment-timezone": {
       "version": "0.5.34",
@@ -9559,12 +9557,6 @@
         "jiti": "bin/jiti.js"
       }
     },
-    "node_modules/js-cookie": {
-      "version": "3.0.8",
-      "resolved": "https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.8.tgz",
-      "integrity": "sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw==",
-      "license": "MIT"
-    },
     "node_modules/js-git": {
       "version": "0.7.8",
       "license": "MIT",
@@ -10091,7 +10083,9 @@
       "license": "MIT"
     },
     "node_modules/moment": {
-      "version": "2.29.1",
+      "version": "2.30.1",
+      "resolved": "https://registry.npmjs.org/moment/-/moment-2.30.1.tgz",
+      "integrity": "sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==",
       "license": "MIT",
       "engines": {
         "node": "*"
@@ -13773,7 +13767,6 @@
         "helmet": "^8.0.0",
         "lib": "file:../lib",
         "memory": "file:../memory",
-        "moment": "^2.29.1",
         "node-cron": "^3.0.0",
         "pg": "^8.21.0"
       },
@@ -13886,13 +13879,6 @@
       "peer": true,
       "engines": {
         "node": ">= 0.6"
-      }
-    },
-    "schedule/node_modules/moment": {
-      "version": "2.29.1",
-      "license": "MIT",
-      "engines": {
-        "node": "*"
       }
     },
     "schedule/node_modules/moment-timezone": {
@@ -14431,13 +14417,6 @@
       },
       "engines": {
         "node": ">=10"
-      }
-    },
-    "storage/node_modules/moment": {
-      "version": "2.29.1",
-      "license": "MIT",
-      "engines": {
-        "node": "*"
       }
     },
     "storage/node_modules/normalize-path": {
@@ -17876,7 +17855,6 @@
         "heartbeat": "jjjpanda/heartbeat#v1.3.0",
         "helmet": "^8.0.0",
         "hls.js": "^1.5.18",
-        "js-cookie": "^3.0.1",
         "jsonwebtoken": "^9.0.0",
         "lib": "file:../lib",
         "lucide-react": "^0.460.0",
@@ -18039,6 +18017,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -18060,6 +18039,14 @@
             },
             "is_js": {
               "version": "0.9.0"
+            },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
             },
             "proxy-from-env": {
               "version": "2.1.0",
@@ -18121,6 +18108,7 @@
                 "bcryptjs": "^2.4.3",
                 "dotenv": "^16.4.0",
                 "jsonwebtoken": "^9.0.0",
+                "moment-timezone": "^0.6.2",
                 "nanoid": "^3.1.30",
                 "pm2": "^5.4.3",
                 "request-ip": "^2.1.3"
@@ -18143,6 +18131,14 @@
                 "is_js": {
                   "version": "0.9.0"
                 },
+                "moment-timezone": {
+                  "version": "0.6.2",
+                  "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                  "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                  "requires": {
+                    "moment": "^2.29.4"
+                  }
+                },
                 "proxy-from-env": {
                   "version": "2.1.0",
                   "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -18155,9 +18151,6 @@
                   }
                 }
               }
-            },
-            "moment": {
-              "version": "2.29.1"
             },
             "moment-timezone": {
               "version": "0.5.34",
@@ -18176,9 +18169,6 @@
         "methods": {
           "version": "1.1.2",
           "peer": true
-        },
-        "moment": {
-          "version": "2.29.1"
         },
         "ms": {
           "version": "2.1.2",
@@ -19484,7 +19474,6 @@
             "heartbeat": "jjjpanda/heartbeat#v1.3.0",
             "helmet": "^8.0.0",
             "hls.js": "^1.5.18",
-            "js-cookie": "^3.0.1",
             "jsonwebtoken": "^9.0.0",
             "lib": "file:../lib",
             "lucide-react": "^0.460.0",
@@ -19647,6 +19636,7 @@
                 "bcryptjs": "^2.4.3",
                 "dotenv": "^16.4.0",
                 "jsonwebtoken": "^9.0.0",
+                "moment-timezone": "^0.6.2",
                 "nanoid": "^3.1.30",
                 "pm2": "^5.4.3",
                 "request-ip": "^2.1.3"
@@ -19668,6 +19658,14 @@
                 },
                 "is_js": {
                   "version": "0.9.0"
+                },
+                "moment-timezone": {
+                  "version": "0.6.2",
+                  "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                  "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                  "requires": {
+                    "moment": "^2.29.4"
+                  }
                 },
                 "proxy-from-env": {
                   "version": "2.1.0",
@@ -19729,6 +19727,7 @@
                     "bcryptjs": "^2.4.3",
                     "dotenv": "^16.4.0",
                     "jsonwebtoken": "^9.0.0",
+                    "moment-timezone": "^0.6.2",
                     "nanoid": "^3.1.30",
                     "pm2": "^5.4.3",
                     "request-ip": "^2.1.3"
@@ -19751,6 +19750,14 @@
                     "is_js": {
                       "version": "0.9.0"
                     },
+                    "moment-timezone": {
+                      "version": "0.6.2",
+                      "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                      "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                      "requires": {
+                        "moment": "^2.29.4"
+                      }
+                    },
                     "proxy-from-env": {
                       "version": "2.1.0",
                       "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -19763,9 +19770,6 @@
                       }
                     }
                   }
-                },
-                "moment": {
-                  "version": "2.29.1"
                 },
                 "moment-timezone": {
                   "version": "0.5.34",
@@ -19784,9 +19788,6 @@
             "methods": {
               "version": "1.1.2",
               "peer": true
-            },
-            "moment": {
-              "version": "2.29.1"
             },
             "ms": {
               "version": "2.1.2",
@@ -20044,6 +20045,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -20065,6 +20067,14 @@
             },
             "is_js": {
               "version": "0.9.0"
+            },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
             },
             "proxy-from-env": {
               "version": "2.1.0",
@@ -21087,11 +21097,6 @@
       "integrity": "sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==",
       "dev": true
     },
-    "js-cookie": {
-      "version": "3.0.8",
-      "resolved": "https://registry.npmjs.org/js-cookie/-/js-cookie-3.0.8.tgz",
-      "integrity": "sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw=="
-    },
     "js-git": {
       "version": "0.7.8",
       "requires": {
@@ -21225,6 +21230,7 @@
         "bcryptjs": "^2.4.3",
         "dotenv": "^16.4.0",
         "jsonwebtoken": "^9.0.0",
+        "moment-timezone": "^0.6.2",
         "nanoid": "^3.1.30",
         "pm2": "^5.4.3",
         "request-ip": "^2.1.3"
@@ -21246,6 +21252,14 @@
         },
         "is_js": {
           "version": "0.9.0"
+        },
+        "moment-timezone": {
+          "version": "0.6.2",
+          "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+          "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+          "requires": {
+            "moment": "^2.29.4"
+          }
         },
         "proxy-from-env": {
           "version": "2.1.0",
@@ -21337,6 +21351,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -21358,6 +21373,14 @@
             },
             "is_js": {
               "version": "0.9.0"
+            },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
             },
             "proxy-from-env": {
               "version": "2.1.0",
@@ -21396,6 +21419,7 @@
                 "bcryptjs": "^2.4.3",
                 "dotenv": "^16.4.0",
                 "jsonwebtoken": "^9.0.0",
+                "moment-timezone": "^0.6.2",
                 "nanoid": "^3.1.30",
                 "pm2": "^5.4.3",
                 "request-ip": "^2.1.3"
@@ -21418,6 +21442,14 @@
                 "is_js": {
                   "version": "0.9.0"
                 },
+                "moment-timezone": {
+                  "version": "0.6.2",
+                  "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                  "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                  "requires": {
+                    "moment": "^2.29.4"
+                  }
+                },
                 "proxy-from-env": {
                   "version": "2.1.0",
                   "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -21430,9 +21462,6 @@
                   }
                 }
               }
-            },
-            "moment": {
-              "version": "2.29.1"
             },
             "moment-timezone": {
               "version": "0.5.34",
@@ -21692,6 +21721,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -21714,6 +21744,14 @@
             "is_js": {
               "version": "0.9.0"
             },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
+            },
             "proxy-from-env": {
               "version": "2.1.0",
               "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -21726,9 +21764,6 @@
               }
             }
           }
-        },
-        "moment": {
-          "version": "2.29.1"
         },
         "moment-timezone": {
           "version": "0.5.34",
@@ -21813,7 +21848,9 @@
       "integrity": "sha512-EGWKgxALGMgzvxYF1UyGTy0HXX/2vHLkw6+NvDKW2jypWbHpjQuj4UMcqQWXHERJhVGKikolT06G3bcKe4fi7w=="
     },
     "moment": {
-      "version": "2.29.1"
+      "version": "2.30.1",
+      "resolved": "https://registry.npmjs.org/moment/-/moment-2.30.1.tgz",
+      "integrity": "sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how=="
     },
     "moment-timezone": {
       "version": "0.5.34",
@@ -23080,7 +23117,6 @@
         "helmet": "^8.0.0",
         "lib": "file:../lib",
         "memory": "file:../memory",
-        "moment": "^2.29.1",
         "node-cron": "^3.0.0",
         "pg": "^8.21.0"
       },
@@ -23151,6 +23187,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -23172,6 +23209,14 @@
             },
             "is_js": {
               "version": "0.9.0"
+            },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
             },
             "proxy-from-env": {
               "version": "2.1.0",
@@ -23210,6 +23255,7 @@
                 "bcryptjs": "^2.4.3",
                 "dotenv": "^16.4.0",
                 "jsonwebtoken": "^9.0.0",
+                "moment-timezone": "^0.6.2",
                 "nanoid": "^3.1.30",
                 "pm2": "^5.4.3",
                 "request-ip": "^2.1.3"
@@ -23232,6 +23278,14 @@
                 "is_js": {
                   "version": "0.9.0"
                 },
+                "moment-timezone": {
+                  "version": "0.6.2",
+                  "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                  "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                  "requires": {
+                    "moment": "^2.29.4"
+                  }
+                },
                 "proxy-from-env": {
                   "version": "2.1.0",
                   "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -23244,9 +23298,6 @@
                   }
                 }
               }
-            },
-            "moment": {
-              "version": "2.29.1"
             },
             "moment-timezone": {
               "version": "0.5.34",
@@ -23265,9 +23316,6 @@
         "methods": {
           "version": "1.1.2",
           "peer": true
-        },
-        "moment": {
-          "version": "2.29.1"
         },
         "moment-timezone": {
           "version": "0.5.34",
@@ -23978,6 +24026,7 @@
             "bcryptjs": "^2.4.3",
             "dotenv": "^16.4.0",
             "jsonwebtoken": "^9.0.0",
+            "moment-timezone": "^0.6.2",
             "nanoid": "^3.1.30",
             "pm2": "^5.4.3",
             "request-ip": "^2.1.3"
@@ -23999,6 +24048,14 @@
             },
             "is_js": {
               "version": "0.9.0"
+            },
+            "moment-timezone": {
+              "version": "0.6.2",
+              "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+              "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+              "requires": {
+                "moment": "^2.29.4"
+              }
             },
             "proxy-from-env": {
               "version": "2.1.0",
@@ -24049,6 +24106,7 @@
                 "bcryptjs": "^2.4.3",
                 "dotenv": "^16.4.0",
                 "jsonwebtoken": "^9.0.0",
+                "moment-timezone": "^0.6.2",
                 "nanoid": "^3.1.30",
                 "pm2": "^5.4.3",
                 "request-ip": "^2.1.3"
@@ -24071,6 +24129,14 @@
                 "is_js": {
                   "version": "0.9.0"
                 },
+                "moment-timezone": {
+                  "version": "0.6.2",
+                  "resolved": "https://registry.npmjs.org/moment-timezone/-/moment-timezone-0.6.2.tgz",
+                  "integrity": "sha512-lDsQv8FoGdBUdf0+TjGsq2orxKuXdwFlQ6Zw6TX3xIcTwTfEpCLyKqvEauvCHJ8iu3KBV8+uPhlv70YsNGdUBQ==",
+                  "requires": {
+                    "moment": "^2.29.4"
+                  }
+                },
                 "proxy-from-env": {
                   "version": "2.1.0",
                   "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-2.1.0.tgz",
@@ -24083,9 +24149,6 @@
                   }
                 }
               }
-            },
-            "moment": {
-              "version": "2.29.1"
             },
             "moment-timezone": {
               "version": "0.5.34",
@@ -24113,9 +24176,6 @@
         },
         "mkdirp": {
           "version": "1.0.4"
-        },
-        "moment": {
-          "version": "2.29.1"
         },
         "normalize-path": {
           "version": "3.0.0"

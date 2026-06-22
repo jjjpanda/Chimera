@@ -16,7 +16,6 @@
     "helmet": "^8.0.0",
     "lib": "file:../lib",
     "memory": "file:../memory",
-    "moment": "^2.29.1",
     "node-cron": "^3.0.0",
     "pg": "^8.21.0"
   },

@@ -5,6 +5,8 @@ services:
       args:
         cameras: ${cameras}
     env_file: .env
+    environment:
+      TZ: UTC
     ports:
       - "${gateway_PORT}:${gateway_PORT}"
       - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
@@ -21,6 +23,8 @@ services:
   postgres:
     image: postgres:15
     environment:
+      TZ: UTC
+      PGTZ: UTC
       POSTGRES_DB: ${database_NAME}
       POSTGRES_USER: ${database_USER}
       POSTGRES_PASSWORD: ${database_PASSWORD}

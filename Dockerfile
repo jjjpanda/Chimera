@@ -8,6 +8,8 @@ RUN npm install && npm run install:modules:frontend && npm run build:command && 
 FROM ubuntu:22.04
 WORKDIR /app
 
+ENV TZ=UTC
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl software-properties-common \
     && add-apt-repository universe \

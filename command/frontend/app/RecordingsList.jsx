@@ -39,7 +39,7 @@ const RecordingsList = ({ mini } = {}) => {
 					)}
 					<ul className="divide-y divide-border">
 						{state.processList.map(process => {
-							const startTime = moment(process.start, "YYYYMMDD-HHmmss")
+							const startTime = moment.utc(process.start, "YYYYMMDD-HHmmss").local()
 							return (
 								<li key={process.id} className="flex items-center justify-between py-2 gap-2">
 									<div className="min-w-0 flex-1">
@@ -72,8 +72,8 @@ const RecordingsList = ({ mini } = {}) => {
 			)}
 
 			{state.processList.map((process) => {
-				const startTime = moment(process.start, "YYYYMMDD-HHmmss")
-				const endTime = moment(process.end, "YYYYMMDD-HHmmss")
+				const startTime = moment.utc(process.start, "YYYYMMDD-HHmmss").local()
+				const endTime = moment.utc(process.end, "YYYYMMDD-HHmmss").local()
 				const dateLabel = startTime.format("MMM D, YYYY")
 				const timeRange = `${startTime.format("h:mm A")} – ${endTime.format("h:mm A")}`
 				return (

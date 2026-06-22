@@ -56,7 +56,7 @@ module.exports = {
 		let beforeDate = ""
 		if(filesOrDirectory == "files"){
 			let {days} = req.body
-			beforeDate = moment().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
+			beforeDate = moment.utc().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
 		}
 		queryToUpdateDatabaseForDeletion(camera, filesOrDirectory, beforeDate).then(deletedValues => {
 			const sumSize = deletedValues.rows.reduce((sum, row) => {
@@ -83,8 +83,8 @@ module.exports = {
 			return res.send({deleted: false})
 		}
 		const {days} = req.body
-		const now = moment()
-		const beforeDate = moment().subtract(days, "days")
+		const now = moment.utc()
+		const beforeDate = moment.utc().subtract(days, "days")
 		const clobArr = generateBeforeDateGlobNotPatternsArray(now, beforeDate)
 		const glob = clobArr.length == 0
 			? "*.jpg"
@@ -209,7 +209,7 @@ const queryToUpdateDatabaseForDeletion = (camera, deleting, before="") => {
 }
 
 const queryToAddToDeletionsTable = (camera, size, count) => {
-	const now = moment().format("YYYY-MM-DD HH:mm:ss")
+	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
 	return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
 }
 

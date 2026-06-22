@@ -2,9 +2,7 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const moment   = require("moment")
-
-const { webhookAlert, randomID, jsonFileHanding, auth } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, auth } = require("lib")
 const pool = require("../../lib/pool")
 
 const {schedulableUrls} = auth
@@ -161,14 +159,14 @@ const generateTask = (url, id, body) => () => {
 	axios.post(`${process.env.gateway_HOST}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
-		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
 		console.log(data)
 		pool.query(
 			`INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, 'success', 200)`,
 			[id, url]
 		).catch(err => console.log("RUN INSERT ERROR", err))
 	}).catch(({response, message}) => {
-		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${moment().format("LLL")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
 		console.log(`code ${response?.status} | error ${message}`)
 		pool.query(
 			`INSERT INTO task_runs (task_id, url, status, http_status, error) VALUES ($1, $2, 'failure', $3, $4)`,

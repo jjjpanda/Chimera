@@ -15,6 +15,7 @@ const humanReadableCron = (cronString) => {
 }
 
 const cronIsInvalid = (cronString) => {
+	if (/(^| )\/\d/.test(cronString)) return true
 	try {
 		cronstrue.toString(cronString)
 		return false
@@ -39,7 +40,7 @@ const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false })
 					Schedule
 				</Button>
 			</div>
-			<p className="min-h-5 text-sm text-muted">{humanReadableCron(cronString)}</p>
+			<p className="min-h-5 text-sm text-muted">{cronIsInvalid(cronString) ? "" : humanReadableCron(cronString)}</p>
 		</div>
 	)
 }

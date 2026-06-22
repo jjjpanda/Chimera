@@ -2,13 +2,12 @@ var archiver   = require("archiver")
 var dateFormat = require("./dateFormat.js")
 var fs         = require("fs")
 var path       = require("path")
-var moment     = require("moment")
 const {
 	generateID,
 	filterList,
 	fileName,
 }              = require("./converter.js")
-const {webhookAlert} = require("lib")
+const {webhookAlert, alertTime} = require("lib")
 
 const client = require("memory").client("ZIP PROCESS")
 
@@ -50,7 +49,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			let cancelled = false
 
 			console.log("SENDING START ALERT")
-			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 
 			output.on("close", () => {
 				fs.unlink(txtPath, () => {

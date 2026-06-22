@@ -96,7 +96,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
 								{item.id !== "task-auto-cleanup" && (
-									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" onClick={() => deleteTask(item.id)}>
+									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => { setBusyId(item.id); deleteTask(item.id) }}>
 										<Trash2 className="size-3.5" />
 									</Button>
 								)}
@@ -179,7 +179,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 					</DialogHeader>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-						<Button variant="destructive" onClick={() => { deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
+						<Button variant="destructive" onClick={() => { setBusyId(deleteTarget.id); deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
@@ -210,7 +210,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
-													<Button variant="ghost" size="icon" className="size-7" onClick={() => setDeleteTarget(task)} title="Destroy">
+													<Button variant="ghost" size="icon" className="size-7" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
 														<Trash2 className="size-3.5 text-danger" />
 													</Button>
 												)}
@@ -249,7 +249,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 																onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 															/>
 															{!task.protected && (
-																<Button variant="ghost" size="icon" onClick={() => setDeleteTarget(task)} title="Destroy">
+																<Button variant="ghost" size="icon" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
 																	<Trash2 className="h-4 w-4 text-danger" />
 																</Button>
 															)}

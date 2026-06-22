@@ -44,6 +44,7 @@ timelapse_interval 0
 
 # Filename patterns — %t is the camera_id, so the same
 # pattern produces a per-camera subdirectory automatically.
+# Timestamps are wall-clock, so the container must run TZ=UTC (Docker enforces).
 picture_filename %t/%Y%m%d-%H%M%S-%q
 snapshot_filename %t/%Y%m%d-%H%M%S
 movie_filename video/%t/%Y%m%d-%H%M%S
