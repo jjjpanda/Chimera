@@ -32,7 +32,7 @@ const rateLimit = ({ windowMs, max }) => {
 		reserve(key, (blocked) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
-				if (res.statusCode < 400) release(key)
+				if (res.statusCode < 400 || res.statusCode >= 500) release(key)
 			})
 			next()
 		})
@@ -51,7 +51,7 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", loginLimiter, validateBody, async (req, res) => {
+app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
 	if (!username) return res.status(400).json({ error: true })
@@ -79,7 +79,7 @@ app.post("/setup", loginLimiter, validateBody, async (req, res) => {
 	}
 })
 
-app.post("/login", loginLimiter, validateBody, passwordCheck, login)
+app.post("/login", validateBody, loginLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])

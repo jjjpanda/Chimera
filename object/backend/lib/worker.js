@@ -9,7 +9,7 @@ const sendWebhook = require("./webhook.js")
 const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
 const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
-const MAX_CAPTURES = parseInt(process.env.object_MAX_CAPTURES) || 500
+const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
@@ -40,7 +40,7 @@ const pruneCaptures = async () => {
 }
 
 const config = {
-	confidence: parseFloat(process.env.object_CONFIDENCE) || 0.5,
+	confidence: Number.isFinite(parseFloat(process.env.object_CONFIDENCE)) ? parseFloat(process.env.object_CONFIDENCE) : 0.5,
 	intervalMs: parseInt(process.env.object_INTERVAL_MS) || 5000,
 	classes: ["person", "car", "bird", "dog", "cat", "truck", "bus", "motorcycle", "umbrella", "bicycle"],
 }
@@ -178,6 +178,7 @@ module.exports = {
 	cameraCount,
 	getCameraNames,
 	CAPTURES_DIR,
+	MAX_CAPTURES,
 	getStatus: () => status,
 	getConfig: () => config,
 	setConfig: (updates) => {

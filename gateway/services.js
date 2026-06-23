@@ -27,7 +27,8 @@ module.exports = [{
 	serviceOn: process.env.command_PROXY_ON === "true",
 	log: "🎮 Command Proxied ◀",
 	baseURL: process.env.command_HOST,
-	postPathRegex: /\/.*/,
+	// /authorization/setup is intentionally not proxied: first-admin creation must hit the command service directly, never through the public gateway
+	postPathRegex: /\/(?!authorization\/setup).*/,
 	getPathRegex: /\/.*/,
 	deletePathRegex: /\/.*/,
 	putPathRegex: /\/.*/

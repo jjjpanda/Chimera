@@ -72,11 +72,13 @@ env.schedule += writeVarLine("storage_MAX_GB")
 env.lib += writeVarLine("alert_URL")
 env.object += writeVarLine("alert_URL")
 env.lib += writeVarLine("admin_alert_URL")
+env.storage += writeVarLine("admin_alert_URL")
 
 env.lib += writeVarLine("PRINTPASSWORD")
 
 env.command += writeVarLine("SECRETKEY")
 env.lib += writeVarLine("SECRETKEY")
+env.object += writeVarLine("SECRETKEY")
 
 env.gateway += writeVarLine("command_PROXY_ON")
 env.gateway += writeVarLine("schedule_PROXY_ON")
@@ -124,7 +126,8 @@ env.gateway += writeVarLine("storage_HOST")
 env.storage += writeVarLine("storage_FOLDERPATH")
 confirmPath("storage_FOLDERPATH", true)
 
-writeVarLine("storage_MOTION_CONF_FILEPATH")
+env.storage += writeVarLine("storage_MOTION_CONF_FILEPATH")
+env.command += writeVarLine("storage_MOTION_CONF_FILEPATH")
 
 env.storage += writeVarLine("ffmpeg_FILEPATH")
 env.object += writeVarLine("ffmpeg_FILEPATH")

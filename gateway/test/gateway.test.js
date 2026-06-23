@@ -31,6 +31,13 @@ describe("Gateway Tests", () => {
 		})
 	})
 
+	test("Gateway does not proxy POST /authorization/setup", (done) => {
+		supertest(gateway)
+			.post("/authorization/setup")
+			.send({ username: "x", password: "y" })
+			.expect(404, done)
+	})
+
 	test("Gateway forwards PUT requests", (done) => {
 		const server = handleServerStart(command, process.env.command_PORT, () => {
 			supertest(gateway)

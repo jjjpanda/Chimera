@@ -624,6 +624,17 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
 		})
+
+		test("empty-body 400s do not count toward the login lockout", async () => {
+			let res
+			for (let i = 0; i < 15; i++) {
+				res = await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", "203.0.113.7")
+					.send({})
+			}
+			expect(res.status).toBe(400)
+		})
 	})
 
 	describe("rateLimit (shared memory instance)", () => {
