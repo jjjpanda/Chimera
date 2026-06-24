@@ -244,3 +244,40 @@ describe("CAPTURES_DIR", () => {
 		expect(w.CAPTURES_DIR).toBe(path.join("/mnt/storage", "objectCaptures"))
 	})
 })
+
+describe("env-derived numeric config", () => {
+	const savedConf = process.env.object_CONFIDENCE
+	const savedMax = process.env.object_MAX_CAPTURES
+
+	afterEach(() => {
+		if (savedConf === undefined) delete process.env.object_CONFIDENCE
+		else process.env.object_CONFIDENCE = savedConf
+		if (savedMax === undefined) delete process.env.object_MAX_CAPTURES
+		else process.env.object_MAX_CAPTURES = savedMax
+		jest.resetModules()
+	})
+
+	test("object_CONFIDENCE=0 is honored, not coerced to default", () => {
+		process.env.object_CONFIDENCE = "0"
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").getConfig().confidence).toBe(0)
+	})
+
+	test("confidence defaults to 0.5 when unset or non-numeric", () => {
+		delete process.env.object_CONFIDENCE
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").getConfig().confidence).toBe(0.5)
+	})
+
+	test("object_MAX_CAPTURES=0 is honored, not coerced to default", () => {
+		process.env.object_MAX_CAPTURES = "0"
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(0)
+	})
+
+	test("MAX_CAPTURES defaults to 500 when unset or non-numeric", () => {
+		delete process.env.object_MAX_CAPTURES
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(500)
+	})
+})

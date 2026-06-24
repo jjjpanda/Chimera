@@ -3,6 +3,7 @@ const fs = require("fs")
 const { execFile } = require("child_process")
 const rimraf = require("rimraf")
 const moment = require("moment")
+const { loadCameras, webhookAlert } = require("lib")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -31,7 +32,7 @@ module.exports = {
 
 	validateDays: (req, res, next) => {
 		const {days} = req.body
-		if(days != null){
+		if(days != null && days >= 0){
 			next()
 		}
 		else{
@@ -95,11 +96,12 @@ module.exports = {
 	},
 
 	dailyStats: (req, res) => {
-		const cameras = JSON.parse(process.env.cameras)
+		const cameras = loadCameras()
+		if(cameras.length == 0) return res.send([])
 		queryForDailyStats(cameras).then(values => {
 			const stats = values.rows.map(row => ({
 				timestamp: moment(row.timestamp).valueOf(),
-				...cameras.reduce((obj, cam) => ({ ...obj, [cam]: parseInt(row[cam]) || 0 }), {})
+				...cameras.reduce((obj, { name }) => ({ ...obj, [name]: parseInt(row[name]) || 0 }), {})
 			}))
 			res.send(stats)
 		}).catch(err => {
@@ -109,13 +111,14 @@ module.exports = {
 	},
 
 	fileStats: (req, res) => {
-		const cameras = JSON.parse(process.env.cameras)
+		const cameras = loadCameras()
+		if(cameras.length == 0) return res.send([])
 		queryForGroupedStats(cameras).then(values => {
 			let fileStats = values.rows.map(row => ({
 				timestamp: moment(row.timestamp).valueOf(),
-				...cameras.reduce((obj, item) => ({
+				...cameras.reduce((obj, { name }) => ({
 					...obj,
-					[item]: parseInt(row[item])
+					[name]: parseInt(row[name])
 				}), {})
 			}))
 			res.send(fileStats)
@@ -141,6 +144,16 @@ module.exports = {
 			if (usedBytes <= targetBytes) return res.send({ cleaned: false })
 
 			const toFree = usedBytes - targetBytes
+
+			const { rows: frameTotalRows } = await pool.query(
+				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
+			)
+			const frameTotal = parseInt(frameTotalRows[0].total) || 0
+			if (toFree >= frameTotal) {
+				webhookAlert(`⚠️ Storage over ${maxGb}GB cap but non-frame artifacts (videos/zips) dominate — deleting all frames would not reach target, so auto-clean was skipped.`, "admin")
+				return res.send({ cleaned: false })
+			}
+
 			let freed = 0
 			let deleted = 0
 
@@ -174,23 +187,23 @@ module.exports = {
 	},
 
 	cameraMetrics: (req, res) => {
-		const cameras = JSON.parse(process.env.cameras)
+		const cameras = loadCameras()
 
-		const sizePromises = Promise.all(cameras.map((camera, index) => {
-			return queryForMetric(index+1, "size").then(extractValueForMetric("size"))
+		const sizePromises = Promise.all(cameras.map(({ id }) => {
+			return queryForMetric(id, "size").then(extractValueForMetric("size"))
 		}))
 
-		const countPromises = Promise.all(cameras.map((camera, index) => {
-			return queryForMetric(index+1, "count").then(extractValueForMetric("count"))
+		const countPromises = Promise.all(cameras.map(({ id }) => {
+			return queryForMetric(id, "count").then(extractValueForMetric("count"))
 		}))
 
 		Promise.all([sizePromises, countPromises]).then(values => {
 			let sizes = values[0]
 			let counts = values[1]
 			let metrics = { size: {}, count: {} }
-			cameras.forEach((camera, index) => {
-				metrics.size[camera] = sizes[index] ? sizes[index] : 0
-				metrics.count[camera] = counts[index] ? counts[index] : 0
+			cameras.forEach(({ name }, index) => {
+				metrics.size[name] = sizes[index] ? sizes[index] : 0
+				metrics.count[name] = counts[index] ? counts[index] : 0
 			})
 			res.send(metrics)
 		}).catch(err => {
@@ -214,12 +227,12 @@ const queryToAddToDeletionsTable = (camera, size, count) => {
 }
 
 const queryForDailyStats = (cameras) => {
-	const cols = cameras.map((cam, i) => `SUM(CASE WHEN camera=${i + 1} THEN size ELSE 0 END) as "${cam}"`)
+	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name}"`)
 	return pool.query(`SELECT date_trunc('minute', timestamp) as timestamp,${cols.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const queryForGroupedStats = (cameras) => {
-	const arrayOfColumns = cameras.map((cam, index) => `SUM(CASE WHEN camera=${index+1} THEN size ELSE 0 END) as "${cam}"`)
+	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name}"`)
 	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 

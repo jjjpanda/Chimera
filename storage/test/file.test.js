@@ -40,10 +40,11 @@ describe("File Routes", () => {
 	})
 
 	describe("/file/dailyStats", () => {
-		afterEach(() => { delete process.env.cameras })
+		const { loadCameras } = require("lib")
+		afterEach(() => { loadCameras.mockReturnValue([]) })
 
 		test("maps rows to per-camera byte totals", async () => {
-			process.env.cameras = JSON.stringify(["cam1", "cam2"])
+			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }, { id: 2, name: "cam2" }])
 			const ts = new Date("2026-06-11T10:00:00Z")
 			query.mockImplementationOnce(() => Promise.resolve({ rows: [
 				{ timestamp: ts, cam1: "100", cam2: "200" }
@@ -56,7 +57,7 @@ describe("File Routes", () => {
 		})
 
 		test("returns 500 on db error", async () => {
-			process.env.cameras = JSON.stringify(["cam1"])
+			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
 			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.get("/file/dailyStats")
@@ -151,19 +152,34 @@ describe("File Routes", () => {
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
 				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [
-					{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
-					{ id: 2, camera: "1", name: "b.jpg", size: "600000000" },
-					{ id: 3, camera: "1", name: "c.jpg", size: "600000000" }
-				] }))
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "b.jpg", size: "600000000" },
+						{ id: 3, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
-				expect(query).toHaveBeenCalledTimes(2)
-				expect(query.mock.calls[1][1]).toEqual([[1, 2]])
+				expect(query).toHaveBeenCalledTimes(3)
+				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
+			})
+
+			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
+				process.env.storage_MAX_GB = "1"
+				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query).toHaveBeenCalledTimes(1)
+				expect(unlinkSpy).not.toHaveBeenCalled()
 			})
 
 			test("returns 500 on db error", async () => {

@@ -30,11 +30,12 @@ const updateImages = (state, setState) => {
 		body: processBody(state)
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			const list = data && Array.isArray(data.list) ? data.list : []
 			setState((oldState) => ({
 				...oldState,
-				list: data.list,
-				loading: data.list.length > 0,
-				sliderIndex: data.list.length-1
+				list,
+				loading: list.length > 0,
+				sliderIndex: list.length-1
 			}))
 		})
 	})
