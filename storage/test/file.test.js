@@ -17,6 +17,7 @@ jest.mock("pg", () => {
 
 const app = require("../backend/storage.js")
 const fs = require("fs")
+const path = require("path")
 const { execFile } = require("child_process")
 const { __query: query } = require("pg")
 
@@ -65,6 +66,15 @@ describe("File Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("escapes double quotes in camera names (SQL identifier injection)", async () => {
+			loadCameras.mockReturnValue([{ id: 1, name: 'ev"il' }])
+			const res = await supertest(app)
+				.get("/file/dailyStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(query).toHaveBeenCalledWith(expect.stringContaining('as "ev""il"'))
+		})
 	})
 
 	describe("/file/pathDelete", () => {
@@ -98,6 +108,41 @@ describe("File Routes", () => {
 				.send({})
 				.set("Cookie", "userCookie")
 				.expect(403, done)
+		})
+
+		describe("as admin", () => {
+			let unlinkSpy
+			beforeEach(() => {
+				unlinkSpy = jest.spyOn(fs.promises, "unlink").mockResolvedValue(undefined)
+			})
+			afterEach(() => { unlinkSpy.mockRestore() })
+
+			test("deletes the exact filenames returned from the database", async () => {
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: true })
+				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "b.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledTimes(2)
+			})
+
+			test("rejects days=0 (wipe-everything) before any deletion", async () => {
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 0 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ error: "number of days not provided" })
+				expect(query).not.toHaveBeenCalled()
+				expect(unlinkSpy).not.toHaveBeenCalled()
+			})
 		})
 	})
 

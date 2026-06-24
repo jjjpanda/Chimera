@@ -119,4 +119,16 @@ describe("Object Routes (shared state via a connected memory client)", () => {
 			})
 			.end(done)
 	})
+
+	test("config read comes from the memory client", (done) => {
+		supertest(app)
+			.get("/object/config")
+			.set("Cookie", authorized)
+			.expect(200)
+			.expect((res) => {
+				expect(res.body.confidence).toBe(0.42)
+				expect(mockEmit).toHaveBeenCalledWith("objectGetState", expect.any(Function))
+			})
+			.end(done)
+	})
 })
