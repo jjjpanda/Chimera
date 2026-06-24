@@ -17,15 +17,15 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
-	const store = sharedAttempts ? null : memory.loginAttempts()
+	const local = memory.loginAttempts()
 	const reserve = (key, cb) => {
-		if (!sharedAttempts) return store.loginReserve(key, max, windowMs, cb)
-		if (!memoryClient.connected) return cb(false)
-		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => cb(!err && blocked))
+		if (!sharedAttempts || !memoryClient.connected) return local.loginReserve(key, max, windowMs, cb)
+		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) =>
+			err ? local.loginReserve(key, max, windowMs, cb) : cb(blocked))
 	}
 	const release = (key) => {
-		if (!sharedAttempts) return store.loginRelease(key)
-		if (memoryClient.connected) memoryClient.emit("loginRelease", key)
+		if (!sharedAttempts || !memoryClient.connected) return local.loginRelease(key)
+		memoryClient.emit("loginRelease", key)
 	}
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
@@ -162,6 +162,9 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 		}
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
+		if (password !== undefined) {
+			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1", [username])
+		}
 		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
@@ -235,6 +238,7 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
 		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+		await pool.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		res.json({ error: false })
 	} catch (e) {
 		res.status(500).json({ error: true })

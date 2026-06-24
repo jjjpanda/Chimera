@@ -14,14 +14,18 @@ module.exports = (io) => ({
 	},
 
 	startTask: (id, callback=()=>{}) => {
-		scheduledTask[id].start()
-		scheduledTaskConfigs[id].running = true
+		if (scheduledTask[id]) {
+			scheduledTask[id].start()
+			scheduledTaskConfigs[id].running = true
+		}
 		callback(scheduledTaskConfigs)
-	}, 
-    
+	},
+
 	stopTask: (id, callback=()=>{}) => {
-		scheduledTask[id].stop()
-		scheduledTaskConfigs[id].running = false
+		if (scheduledTask[id]) {
+			scheduledTask[id].stop()
+			scheduledTaskConfigs[id].running = false
+		}
 		callback(scheduledTaskConfigs)
 	},
 

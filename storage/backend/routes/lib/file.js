@@ -32,7 +32,7 @@ module.exports = {
 
 	validateDays: (req, res, next) => {
 		const {days} = req.body
-		if(days != null && days >= 0){
+		if(days != null && days >= 1){
 			next()
 		}
 		else{
@@ -66,6 +66,7 @@ module.exports = {
 			return queryToAddToDeletionsTable(camera, sumSize, deletedValues.rows.length)
 				.then(insertedValues => {
 					req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
+					req.deletedFileNames = deletedValues.rows.map(row => row.name)
 					next()
 				})
 		}).catch(err => {
@@ -83,16 +84,10 @@ module.exports = {
 		if(req.numberOfFilesDeletedInDatabase == 0){
 			return res.send({deleted: false})
 		}
-		const {days} = req.body
-		const now = moment.utc()
-		const beforeDate = moment.utc().subtract(days, "days")
-		const clobArr = generateBeforeDateGlobNotPatternsArray(now, beforeDate)
-		const glob = clobArr.length == 0
-			? "*.jpg"
-			: `./!(${clobArr.join("|")})*.jpg`
-		rimraf(path.join(req.body.appendedPath, glob), (err) => {
-			res.send({deleted: !err})
-		})
+		const names = req.deletedFileNames || []
+		Promise.all(names.map(name =>
+			fs.promises.unlink(path.join(req.body.appendedPath, name)).catch(() => {})
+		)).then(() => res.send({deleted: true}))
 	},
 
 	dailyStats: (req, res) => {
@@ -124,6 +119,7 @@ module.exports = {
 			res.send(fileStats)
 		}).catch(err => {
 			console.log("err", err)
+			res.status(500).send({ error: true })
 		})
 	},
 
@@ -227,12 +223,12 @@ const queryToAddToDeletionsTable = (camera, size, count) => {
 }
 
 const queryForDailyStats = (cameras) => {
-	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name}"`)
+	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name.replace(/"/g, '""')}"`)
 	return pool.query(`SELECT date_trunc('minute', timestamp) as timestamp,${cols.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const queryForGroupedStats = (cameras) => {
-	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name}"`)
+	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name.replace(/"/g, '""')}"`)
 	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
@@ -249,25 +245,7 @@ const extractValueForMetric = (metric) => (values) => {
 	if(values.rows && values.rows.length > 0){
 		return values.rows[0][metricName] ? values.rows[0][metricName] : 0
 	}
-	else{ 
+	else{
 		throw new Error()
 	}
-} 
-
-const generateBeforeDateGlobNotPatternsArray = (now, beforeDate, arr=[]) => {
-	const units = [
-		{unit: "y", format: "YYYY"}, 
-		{unit: "M", format: "YYYYMM"}, 
-		{unit: "d", format: "YYYYMMDD"}, 
-		{unit: "h", format: "YYYYMMDD-HH"}, 
-		{unit: "m", format: "YYYYMMDD-HHmm"}, 
-		{unit: "s", format: "YYYYMMDD-HHmmss"}
-	]
-	for(const {unit, format} of units){
-		if(now.diff(beforeDate, unit) > 0){
-			const str = now.format(format)
-			return [...arr, str, ...generateBeforeDateGlobNotPatternsArray(moment(now).subtract(1, unit), beforeDate)]
-		}
-	}
-	return arr
 }

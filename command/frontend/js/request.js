@@ -51,6 +51,9 @@ const downloadProcessing = (prom, callback) => {
 			}
 		}
 		fr.readAsText(blob)
+	}).catch(() => {
+		toast("Download Failed")
+		if (callback) callback()
 	})
 }
 

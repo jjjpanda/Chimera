@@ -1,7 +1,17 @@
 const supertest = require("supertest")
 
+process.env.memory_ON = "true"
+
+let mockConnected = false
+const mockEmit = jest.fn((event, arg, cb2) => {
+	const cb = typeof cb2 === "function" ? cb2 : arg
+	if (event === "objectGetState") cb({ config: { confidence: 0.42, intervalMs: 5000, classes: [] }, status: { 9: { running: true } } })
+	else if (event === "objectSetConfig") cb({ confidence: 0.8, intervalMs: 5000, classes: [] })
+})
+
 jest.mock("lib")
 jest.mock("axios")
+jest.mock("memory", () => ({ client: () => ({ get connected() { return mockConnected }, emit: mockEmit, on: () => {} }) }))
 jest.mock("pg", () => ({
 	Pool: jest.fn().mockImplementation(() => ({
 		on: jest.fn(),
@@ -75,6 +85,37 @@ describe("Object Routes", () => {
 			.expect((res) => {
 				expect(res.body.camera).toBe(1)
 				expect(res.body.detections[0].class).toBe("person")
+			})
+			.end(done)
+	})
+})
+
+describe("Object Routes (shared state via a connected memory client)", () => {
+	beforeAll(() => { mockConnected = true })
+	afterAll(() => { mockConnected = false })
+
+	test("status reads state from the memory client", (done) => {
+		supertest(app)
+			.get("/object/status")
+			.set("Cookie", authorized)
+			.expect(200)
+			.expect((res) => {
+				expect(res.body.config.confidence).toBe(0.42)
+				expect(res.body.cameras["9"].running).toBe(true)
+				expect(mockEmit).toHaveBeenCalledWith("objectGetState", expect.any(Function))
+			})
+			.end(done)
+	})
+
+	test("config update writes through the memory client", (done) => {
+		supertest(app)
+			.post("/object/config")
+			.set("Cookie", authorized)
+			.send({ confidence: 0.8 })
+			.expect(200)
+			.expect((res) => {
+				expect(res.body.confidence).toBe(0.8)
+				expect(mockEmit).toHaveBeenCalledWith("objectSetConfig", { confidence: 0.8 }, expect.any(Function))
 			})
 			.end(done)
 	})

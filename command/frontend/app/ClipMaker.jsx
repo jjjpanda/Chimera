@@ -606,7 +606,7 @@ const ClipMaker = ({ mini } = {}) => {
 		setTrimRange([0, 100])
 		setTrimming(false)
 		const camId = cameras[camIdx].id
-		loadDetections(camId, start, end)
+		loadDetections(camIdx + 1, start, end)
 		request("/convert/listFramesVideo", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

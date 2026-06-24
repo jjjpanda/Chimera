@@ -94,6 +94,12 @@ module.exports = {
 				msg: "no camera"
 			})
 		}
+		else if(!/^\d+$/.test(camera.toString())){
+			res.status(400).send({
+				error: true,
+				msg: "invalid camera"
+			})
+		}
 		else{
 			req.body.camera = camera.toString()
 			next()

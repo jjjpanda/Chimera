@@ -67,6 +67,14 @@ describe("Convert Routes", () => {
 				.expect(400, { error: true, msg: "no camera" }, done)
 		})
 
+		test("rejects a non-numeric camera (path traversal)", (done) => {
+			supertest(app)
+				.post("/convert/listFramesVideo")
+				.send({ start: "20210101-000000", end: "20210102-000000", camera: "../../../etc" })
+				.set("Cookie", cookieWithBearerToken)
+				.expect(400, { error: true, msg: "invalid camera" }, done)
+		})
+
 		test("get list of frames between dates", (done) => {
 			supertest(app)
 				.post("/convert/listFramesVideo")

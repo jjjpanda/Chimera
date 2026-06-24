@@ -48,6 +48,12 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			var output = fs.createWriteStream(zipPath)
 			let cancelled = false
 
+			output.on("error", (err) => {
+				console.log("ZIP OUTPUT ERROR: " + err.message)
+				fs.unlink(txtPath, () => {})
+				fs.unlink(zipPath, () => {})
+			})
+
 			console.log("SENDING START ALERT")
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 

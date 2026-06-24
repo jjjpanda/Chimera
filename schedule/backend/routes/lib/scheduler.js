@@ -52,7 +52,7 @@ module.exports = {
 	validateId: (req, res, next) => {
 		const { id } = req.body
 		client.emit("listTask", (tasks) => {
-			if(isValidId(id, tasks)){
+			if(isValidId(id, tasks) && !(tasks[id] && tasks[id].protected)){
 				next()
 			}
 			else{
@@ -82,7 +82,7 @@ module.exports = {
 		const { id } = req.body
 		client.emit("stopTask", id, tasks=>{
 			res.send({
-				stopped: !tasks[id].running
+				stopped: !(tasks[id] && tasks[id].running)
 			})
 		})
 	},

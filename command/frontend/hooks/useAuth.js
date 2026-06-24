@@ -87,8 +87,7 @@ const useAuth = () => {
 		const refreshRole = () => {
 			if (document.hidden) return
 			attemptVerification().then(res => {
-				if (res.error) handleLoginAttempt(false, null, state.timestamp, setState)
-				else setState(s => ({ ...s, role: res.role }))
+				if (!res.error) setState(s => ({ ...s, role: res.role }))
 			})
 		}
 		document.addEventListener("visibilitychange", refreshRole)

@@ -31,11 +31,11 @@ describe("Gateway Tests", () => {
 		})
 	})
 
-	test("Gateway does not proxy POST /authorization/setup", (done) => {
+	test("Gateway proxies POST /authorization/setup", (done) => {
 		supertest(gateway)
 			.post("/authorization/setup")
 			.send({ username: "x", password: "y" })
-			.expect(404, done)
+			.expect(504, done)
 	})
 
 	test("Gateway forwards PUT requests", (done) => {

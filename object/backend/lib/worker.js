@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance } = require("lib")
+const { isPrimeInstance, objectState } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -194,3 +194,9 @@ module.exports = {
 		return config
 	},
 }
+
+objectState.register({
+	getConfig: () => config,
+	getStatus: () => status,
+	setConfig: module.exports.setConfig
+})

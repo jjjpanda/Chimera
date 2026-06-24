@@ -6,18 +6,28 @@ const worker = require("../lib/worker.js")
 
 const app = express.Router()
 
+const sharedState = process.env.memory_ON === "true"
+const stateClient = sharedState ? require("memory").client("OBJECT") : null
+
 app.use("/captures", express.static(worker.CAPTURES_DIR))
 
 app.get("/status", (req, res) => {
-	res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
+	if (stateClient && stateClient.connected) {
+		stateClient.emit("objectGetState", ({ config, status }) =>
+			res.send({ config, cameras: status, cameraNames: worker.getCameraNames() }))
+	} else {
+		res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
+	}
 })
 
 app.get("/config", (req, res) => {
-	res.send(worker.getConfig())
+	if (stateClient && stateClient.connected) stateClient.emit("objectGetState", ({ config }) => res.send(config))
+	else res.send(worker.getConfig())
 })
 
 app.post("/config", requireAdmin, (req, res) => {
-	res.send(worker.setConfig(req.body || {}))
+	if (stateClient && stateClient.connected) stateClient.emit("objectSetConfig", req.body || {}, (config) => res.send(config))
+	else res.send(worker.setConfig(req.body || {}))
 })
 
 app.post("/scan", requireAdmin, async (req, res) => {
