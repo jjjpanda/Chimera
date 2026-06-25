@@ -1,5 +1,5 @@
 const express = require("express")
-const { auth } = require("lib")
+const { auth, isPrimeInstance } = require("lib")
 const { requireAdmin } = auth
 const pool = require("../lib/pool.js")
 const worker = require("../lib/worker.js")
@@ -9,31 +9,44 @@ const app = express.Router()
 const sharedState = process.env.memory_ON === "true"
 const stateClient = sharedState ? require("memory").client("OBJECT") : null
 
+const fallback = (res, local) =>
+	isPrimeInstance ? local() : res.status(503).send({ error: "state unavailable" })
+
 app.use("/captures", express.static(worker.CAPTURES_DIR))
 
 app.get("/status", (req, res) => {
+	const local = () => res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
 	if (stateClient && stateClient.connected) {
-		stateClient.emit("objectGetState", ({ config, status }) =>
-			res.send({ config, cameras: status, cameraNames: worker.getCameraNames() }))
-	} else {
-		res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
-	}
+		stateClient.timeout(1000).emit("objectGetState", (err, state) =>
+			err ? fallback(res, local) : res.send({ config: state.config, cameras: state.status, cameraNames: worker.getCameraNames() }))
+	} else fallback(res, local)
 })
 
 app.get("/config", (req, res) => {
-	if (stateClient && stateClient.connected) stateClient.emit("objectGetState", ({ config }) => res.send(config))
-	else res.send(worker.getConfig())
+	const local = () => res.send(worker.getConfig())
+	if (stateClient && stateClient.connected) {
+		stateClient.timeout(1000).emit("objectGetState", (err, state) =>
+			err ? fallback(res, local) : res.send(state.config))
+	} else fallback(res, local)
 })
 
 app.post("/config", requireAdmin, (req, res) => {
-	if (stateClient && stateClient.connected) stateClient.emit("objectSetConfig", req.body || {}, (config) => res.send(config))
-	else res.send(worker.setConfig(req.body || {}))
+	const body = req.body || {}
+	const local = () => res.send(worker.setConfig(body))
+	if (stateClient && stateClient.connected) {
+		stateClient.timeout(1000).emit("objectSetConfig", body, (err, config) =>
+			err ? fallback(res, local) : res.send(config))
+	} else fallback(res, local)
 })
 
-app.post("/scan", requireAdmin, async (req, res) => {
+app.post("/scan", requireAdmin, (req, res) => {
 	const camera = parseInt(req.body && req.body.camera)
 	if (!camera) return res.status(400).send({ error: "camera required" })
-	res.send({ camera, detections: await worker.scan(camera) })
+	const local = () => worker.scan(camera).then(detections => res.send({ camera, detections }))
+	if (stateClient && stateClient.connected) {
+		stateClient.timeout(35000).emit("objectScan", camera, (err, detections) =>
+			err ? fallback(res, local) : res.send({ camera, detections }))
+	} else fallback(res, local)
 })
 
 app.get("/detections", async (req, res) => {

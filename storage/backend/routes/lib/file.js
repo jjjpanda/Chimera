@@ -20,9 +20,10 @@ pool.on("error", (err) => {
 
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
-		const {camera} = req.body
-		if(parseInt(camera) == camera){
-			req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", camera.toString())
+		const camera = parseInt(req.body.camera)
+		if(camera == req.body.camera){
+			req.body.camera = camera
+			req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", String(camera))
 			next()
 		}
 		else{
@@ -59,18 +60,13 @@ module.exports = {
 			let {days} = req.body
 			beforeDate = moment.utc().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
 		}
-		queryToUpdateDatabaseForDeletion(camera, filesOrDirectory, beforeDate).then(deletedValues => {
-			const sumSize = deletedValues.rows.reduce((sum, row) => {
-				return sum + parseInt(row.size)
-			}, 0)
-			return queryToAddToDeletionsTable(camera, sumSize, deletedValues.rows.length)
-				.then(insertedValues => {
-					req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
-					req.deletedFileNames = deletedValues.rows.map(row => row.name)
-					next()
-				})
+		queryToDeleteAndRecord(camera, filesOrDirectory, beforeDate).then(deletedValues => {
+			req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
+			req.deletedFileNames = deletedValues.rows.map(row => row.name)
+			next()
 		}).catch(err => {
 			console.log(err)
+			res.status(500).send({ error: true })
 		})
 	},
 
@@ -86,8 +82,8 @@ module.exports = {
 		}
 		const names = req.deletedFileNames || []
 		Promise.all(names.map(name =>
-			fs.promises.unlink(path.join(req.body.appendedPath, name)).catch(() => {})
-		)).then(() => res.send({deleted: true}))
+			fs.promises.unlink(path.join(req.body.appendedPath, name)).then(() => true).catch(() => false)
+		)).then(results => res.send({deleted: results.every(Boolean)}))
 	},
 
 	dailyStats: (req, res) => {
@@ -212,14 +208,10 @@ const queryForMetric = (camera, metric) => {
 	return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=${camera};`)
 }
 
-const queryToUpdateDatabaseForDeletion = (camera, deleting, before="") => {
+const queryToDeleteAndRecord = (camera, deleting, before="") => {
 	const timestampCondition = deleting=="files" ? `AND timestamp<=timestamp '${before}'` : ""
-	return pool.query(`DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING *;`)
-}
-
-const queryToAddToDeletionsTable = (camera, size, count) => {
 	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
-	return pool.query(`INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES('${now}', ${camera}, ${size}, ${count});`)
+	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT '${now}', ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
 }
 
 const queryForDailyStats = (cameras) => {

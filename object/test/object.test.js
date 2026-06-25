@@ -3,15 +3,18 @@ const supertest = require("supertest")
 process.env.memory_ON = "true"
 
 let mockConnected = false
+let mockEmitError = false
 const mockEmit = jest.fn((event, arg, cb2) => {
 	const cb = typeof cb2 === "function" ? cb2 : arg
-	if (event === "objectGetState") cb({ config: { confidence: 0.42, intervalMs: 5000, classes: [] }, status: { 9: { running: true } } })
-	else if (event === "objectSetConfig") cb({ confidence: 0.8, intervalMs: 5000, classes: [] })
+	if (mockEmitError) return cb(new Error("ack timeout"))
+	if (event === "objectGetState") cb(null, { config: { confidence: 0.42, intervalMs: 5000, classes: [] }, status: { 9: { running: true } } })
+	else if (event === "objectSetConfig") cb(null, { confidence: 0.8, intervalMs: 5000, classes: [] })
+	else if (event === "objectScan") cb(null, [{ class: "car", score: 0.77, box: [0, 0, 1, 1] }])
 })
 
 jest.mock("lib")
 jest.mock("axios")
-jest.mock("memory", () => ({ client: () => ({ get connected() { return mockConnected }, emit: mockEmit, on: () => {} }) }))
+jest.mock("memory", () => ({ client: () => ({ get connected() { return mockConnected }, timeout() { return this }, emit: mockEmit, on: () => {} }) }))
 jest.mock("pg", () => ({
 	Pool: jest.fn().mockImplementation(() => ({
 		on: jest.fn(),
@@ -93,6 +96,7 @@ describe("Object Routes", () => {
 describe("Object Routes (shared state via a connected memory client)", () => {
 	beforeAll(() => { mockConnected = true })
 	afterAll(() => { mockConnected = false })
+	afterEach(() => { mockEmitError = false })
 
 	test("status reads state from the memory client", (done) => {
 		supertest(app)
@@ -129,6 +133,50 @@ describe("Object Routes (shared state via a connected memory client)", () => {
 				expect(res.body.confidence).toBe(0.42)
 				expect(mockEmit).toHaveBeenCalledWith("objectGetState", expect.any(Function))
 			})
+			.end(done)
+	})
+
+	test("scan routes through the memory client", (done) => {
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 3 })
+			.expect(200)
+			.expect((res) => {
+				expect(res.body.camera).toBe(3)
+				expect(res.body.detections[0].class).toBe("car")
+				expect(mockEmit).toHaveBeenCalledWith("objectScan", 3, expect.any(Function))
+			})
+			.end(done)
+	})
+
+	test("falls back to the local worker when the memory ack errors", (done) => {
+		mockEmitError = true
+		supertest(app)
+			.get("/object/status")
+			.set("Cookie", authorized)
+			.expect(200)
+			.expect((res) => {
+				expect(res.body.config.confidence).toBe(0.5)
+				expect(res.body.cameras["1"].running).toBe(true)
+			})
+			.end(done)
+	})
+})
+
+describe("Object Routes (non-prime instance)", () => {
+	test("returns 503 when shared state is unavailable", (done) => {
+		const lib = require("lib")
+		const wasPrime = lib.isPrimeInstance
+		lib.isPrimeInstance = false
+		let freshApp
+		jest.isolateModules(() => { freshApp = require("../backend/object.js") })
+		lib.isPrimeInstance = wasPrime
+		supertest(freshApp)
+			.get("/object/status")
+			.set("Cookie", authorized)
+			.expect(503)
+			.expect((res) => expect(res.body.error).toBe("state unavailable"))
 			.end(done)
 	})
 })

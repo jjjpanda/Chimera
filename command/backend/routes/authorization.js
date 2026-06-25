@@ -18,21 +18,19 @@ const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
 	const local = memory.loginAttempts()
+	const reserveLocal = (key, cb) =>
+		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
 	const reserve = (key, cb) => {
-		if (!sharedAttempts || !memoryClient.connected) return local.loginReserve(key, max, windowMs, cb)
+		if (!sharedAttempts || !memoryClient.connected) return reserveLocal(key, cb)
 		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) =>
-			err ? local.loginReserve(key, max, windowMs, cb) : cb(blocked))
-	}
-	const release = (key) => {
-		if (!sharedAttempts || !memoryClient.connected) return local.loginRelease(key)
-		memoryClient.emit("loginRelease", key)
+			err ? reserveLocal(key, cb) : cb(blocked, () => memoryClient.emit("loginRelease", key)))
 	}
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
-		reserve(key, (blocked) => {
+		reserve(key, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
-				if (res.statusCode < 400 || res.statusCode >= 500) release(key)
+				if (res.statusCode < 400 || res.statusCode >= 500) release()
 			})
 			next()
 		})
@@ -234,14 +232,21 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
+	let client
 	try {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
-		await pool.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
+		client = await pool.connect()
+		await client.query("BEGIN")
+		await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+		await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
+		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
+		if (client) await client.query("ROLLBACK").catch(() => {})
 		res.status(500).json({ error: true })
+	} finally {
+		if (client) client.release()
 	}
 })
 

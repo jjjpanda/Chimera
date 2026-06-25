@@ -198,5 +198,6 @@ module.exports = {
 objectState.register({
 	getConfig: () => config,
 	getStatus: () => status,
-	setConfig: module.exports.setConfig
+	setConfig: module.exports.setConfig,
+	scan: module.exports.scan
 })

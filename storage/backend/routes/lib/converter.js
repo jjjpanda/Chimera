@@ -101,7 +101,7 @@ module.exports = {
 			})
 		}
 		else{
-			req.body.camera = camera.toString()
+			req.body.camera = String(parseInt(camera))
 			next()
 		}
 	},
