@@ -12,47 +12,53 @@ const stateClient = sharedState ? require("memory").client("OBJECT") : null
 const cameraIndex = (id) => {
 	const cam = loadCameras().find(c => String(c.id) === String(id))
 	const idx = cam ? worker.getCameraNames().indexOf(cam.name) + 1 : 0
-	return idx > 0 ? idx : id
+	return idx > 0 ? idx : null
 }
 
 const fallback = (res, local) =>
 	isPrimeInstance ? local() : res.status(503).send({ error: "state unavailable" })
 
+const withState = (res, { timeout = 1000, event, args = [], onState, local }) => {
+	if (stateClient && stateClient.connected) {
+		stateClient.timeout(timeout).emit(event, ...args, (err, result) =>
+			err ? fallback(res, local) : onState(result))
+	} else fallback(res, local)
+}
+
 app.use("/captures", express.static(worker.CAPTURES_DIR))
 
-app.get("/status", (req, res) => {
-	const local = () => res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
-	if (stateClient && stateClient.connected) {
-		stateClient.timeout(1000).emit("objectGetState", (err, state) =>
-			err ? fallback(res, local) : res.send({ config: state.config, cameras: state.status, cameraNames: worker.getCameraNames() }))
-	} else fallback(res, local)
-})
+app.get("/status", (req, res) => withState(res, {
+	event: "objectGetState",
+	onState: state => res.send({ config: state.config, cameras: state.status, cameraNames: worker.getCameraNames() }),
+	local: () => res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: worker.getCameraNames() })
+}))
 
-app.get("/config", (req, res) => {
-	const local = () => res.send(worker.getConfig())
-	if (stateClient && stateClient.connected) {
-		stateClient.timeout(1000).emit("objectGetState", (err, state) =>
-			err ? fallback(res, local) : res.send(state.config))
-	} else fallback(res, local)
-})
+app.get("/config", (req, res) => withState(res, {
+	event: "objectGetState",
+	onState: state => res.send(state.config),
+	local: () => res.send(worker.getConfig())
+}))
 
 app.post("/config", requireAdmin, (req, res) => {
 	const body = req.body || {}
-	const local = () => res.send(worker.setConfig(body))
-	if (stateClient && stateClient.connected) {
-		stateClient.timeout(1000).emit("objectSetConfig", body, (err, config) =>
-			err ? fallback(res, local) : res.send(config))
-	} else fallback(res, local)
+	withState(res, {
+		event: "objectSetConfig",
+		args: [body],
+		onState: config => res.send(config),
+		local: () => res.send(worker.setConfig(body))
+	})
 })
 
 app.post("/scan", requireAdmin, (req, res) => {
 	const camera = parseInt(req.body && req.body.camera)
 	if (!camera) return res.status(400).send({ error: "camera required" })
-	const local = () => worker.scan(camera).then(detections => res.send({ camera, detections }))
-	if (stateClient && stateClient.connected) {
-		stateClient.timeout(35000).emit("objectScan", camera, (err, detections) =>
-			err ? fallback(res, local) : res.send({ camera, detections }))
-	} else fallback(res, local)
+	withState(res, {
+		timeout: 35000,
+		event: "objectScan",
+		args: [camera],
+		onState: detections => res.send({ camera, detections }),
+		local: () => worker.scan(camera).then(detections => res.send({ camera, detections }))
+	})
 })
 
 app.get("/detections", async (req, res) => {
@@ -60,7 +66,11 @@ app.get("/detections", async (req, res) => {
 	const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 50, 500))
 	const where = []
 	const params = []
-	if (camera) { params.push(cameraIndex(camera)); where.push(`camera = $${params.length}`) }
+	if (camera) {
+		const idx = cameraIndex(camera)
+		if (!idx) return res.status(400).send({ error: "unknown camera" })
+		params.push(idx); where.push(`camera = $${params.length}`)
+	}
 	if (start) { params.push(start); where.push(`timestamp >= $${params.length}`) }
 	if (end) { params.push(end); where.push(`timestamp <= $${params.length}`) }
 	params.push(limit)

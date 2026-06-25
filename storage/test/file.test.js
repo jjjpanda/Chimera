@@ -131,13 +131,11 @@ describe("File Routes", () => {
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
 			})
 
-			test("also sweeps untracked .jpg orphans older than the cutoff", async () => {
+			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
 				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
-					.mockResolvedValue(["tracked.jpg", "orphan-old.jpg", "orphan-new.jpg", "note.txt"])
-				const statSpy = jest.spyOn(fs.promises, "stat")
-					.mockImplementation((fp) => Promise.resolve({ mtimeMs: fp.endsWith("orphan-old.jpg") ? 0 : Date.now() }))
+					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -145,11 +143,26 @@ describe("File Routes", () => {
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: true })
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "tracked.jpg"))
-				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "orphan-old.jpg"))
-				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "orphan-new.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20991231-235959-00.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "garbage.jpg"))
 				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "note.txt"))
 				readdirSpy.mockRestore()
-				statSpy.mockRestore()
+			})
+
+			test("does not sweep orphans when the database delete matched no rows", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const readdirSpy = jest.spyOn(fs.promises, "readdir")
+					.mockResolvedValue(["20200101-000000-00.jpg"])
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: false })
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				readdirSpy.mockRestore()
 			})
 
 			test("reports deleted:false when an unlink fails", async () => {

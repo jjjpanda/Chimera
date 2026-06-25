@@ -81,18 +81,17 @@ module.exports = {
 		const dir = req.body.appendedPath
 		const names = req.deletedFileNames || []
 		const tracked = await Promise.all(names.map(name =>
-			fs.promises.unlink(path.join(dir, name)).then(() => true).catch(() => false)
+			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch(() => false)
 		))
-		if (req.beforeDate) {
+		if (req.beforeDate && req.numberOfFilesDeletedInDatabase > 0) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
-			const known = new Set(names)
+			const known = new Set(names.map(n => path.basename(n)))
 			const entries = await fs.promises.readdir(dir).catch(() => [])
 			await Promise.all(entries
 				.filter(f => f.endsWith(".jpg") && !known.has(f))
 				.map(async (f) => {
-					const fp = path.join(dir, f)
-					const { mtimeMs } = await fs.promises.stat(fp).catch(() => ({ mtimeMs: Infinity }))
-					if (mtimeMs <= cutoff) await fs.promises.unlink(fp).catch(() => {})
+					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
+					if (captured.isValid() && captured.valueOf() <= cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
 				}))
 		}
 		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && tracked.every(Boolean) })

@@ -73,6 +73,14 @@ describe("Object Routes", () => {
 			.end((err) => { worker.getCameraNames = origNames; done(err) })
 	})
 
+	test("Detections reject an unknown camera id instead of querying the raw id", (done) => {
+		require("lib").loadCameras.mockReturnValueOnce([{ id: 7, name: "outdoor" }])
+		supertest(app)
+			.get("/object/detections?camera=999")
+			.set("Cookie", authorized)
+			.expect(400, done)
+	})
+
 	test("Config update requires auth", (done) => {
 		supertest(app).post("/object/config").send({ confidence: 0.7 }).expect(401, done)
 	})
