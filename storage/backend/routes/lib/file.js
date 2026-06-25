@@ -63,6 +63,7 @@ module.exports = {
 		queryToDeleteAndRecord(camera, filesOrDirectory, beforeDate).then(deletedValues => {
 			req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
 			req.deletedFileNames = deletedValues.rows.map(row => row.name)
+			req.beforeDate = beforeDate
 			next()
 		}).catch(err => {
 			console.log(err)
@@ -76,14 +77,25 @@ module.exports = {
 		})
 	},
 
-	deleteFilesBeforeDateGlob: (req, res) => {
-		if(req.numberOfFilesDeletedInDatabase == 0){
-			return res.send({deleted: false})
-		}
+	deleteFilesBeforeDateGlob: async (req, res) => {
+		const dir = req.body.appendedPath
 		const names = req.deletedFileNames || []
-		Promise.all(names.map(name =>
-			fs.promises.unlink(path.join(req.body.appendedPath, name)).then(() => true).catch(() => false)
-		)).then(results => res.send({deleted: results.every(Boolean)}))
+		const tracked = await Promise.all(names.map(name =>
+			fs.promises.unlink(path.join(dir, name)).then(() => true).catch(() => false)
+		))
+		if (req.beforeDate) {
+			const cutoff = moment.utc(req.beforeDate).valueOf()
+			const known = new Set(names)
+			const entries = await fs.promises.readdir(dir).catch(() => [])
+			await Promise.all(entries
+				.filter(f => f.endsWith(".jpg") && !known.has(f))
+				.map(async (f) => {
+					const fp = path.join(dir, f)
+					const { mtimeMs } = await fs.promises.stat(fp).catch(() => ({ mtimeMs: Infinity }))
+					if (mtimeMs <= cutoff) await fs.promises.unlink(fp).catch(() => {})
+				}))
+		}
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && tracked.every(Boolean) })
 	},
 
 	dailyStats: (req, res) => {
