@@ -1,6 +1,16 @@
 process.env.SECRETKEY = "test-secret"
 
-jest.mock("lib")
+jest.mock("lib", () => {
+	const lib = jest.requireActual("lib")
+	return {
+		...lib,
+		handleServerStart: jest.fn(),
+		auth: {
+			...lib.auth,
+			createAuthorize: jest.fn().mockReturnValue((req, res, next) => next())
+		}
+	}
+})
 jest.mock("pg")
 jest.mock("pm2")
 jest.mock("axios")
