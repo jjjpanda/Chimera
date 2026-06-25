@@ -1,5 +1,5 @@
 const express = require("express")
-const { auth, isPrimeInstance } = require("lib")
+const { auth, isPrimeInstance, loadCameras } = require("lib")
 const { requireAdmin } = auth
 const pool = require("../lib/pool.js")
 const worker = require("../lib/worker.js")
@@ -8,6 +8,12 @@ const app = express.Router()
 
 const sharedState = process.env.memory_ON === "true"
 const stateClient = sharedState ? require("memory").client("OBJECT") : null
+
+const cameraIndex = (id) => {
+	const cam = loadCameras().find(c => String(c.id) === String(id))
+	const idx = cam ? worker.getCameraNames().indexOf(cam.name) + 1 : 0
+	return idx > 0 ? idx : id
+}
 
 const fallback = (res, local) =>
 	isPrimeInstance ? local() : res.status(503).send({ error: "state unavailable" })
@@ -54,7 +60,7 @@ app.get("/detections", async (req, res) => {
 	const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 50, 500))
 	const where = []
 	const params = []
-	if (camera) { params.push(camera); where.push(`camera = $${params.length}`) }
+	if (camera) { params.push(cameraIndex(camera)); where.push(`camera = $${params.length}`) }
 	if (start) { params.push(start); where.push(`timestamp >= $${params.length}`) }
 	if (end) { params.push(end); where.push(`timestamp <= $${params.length}`) }
 	params.push(limit)

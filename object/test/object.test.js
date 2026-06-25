@@ -12,16 +12,15 @@ const mockEmit = jest.fn((event, arg, cb2) => {
 	else if (event === "objectScan") cb(null, [{ class: "car", score: 0.77, box: [0, 0, 1, 1] }])
 })
 
+const mockQuery = jest.fn().mockResolvedValue({
+	rows: [{ id: 1, camera: 1, timestamp: "t", type: "person", confidence: 0.9 }]
+})
+
 jest.mock("lib")
 jest.mock("axios")
 jest.mock("memory", () => ({ client: () => ({ get connected() { return mockConnected }, timeout() { return this }, emit: mockEmit, on: () => {} }) }))
 jest.mock("pg", () => ({
-	Pool: jest.fn().mockImplementation(() => ({
-		on: jest.fn(),
-		query: jest.fn().mockResolvedValue({
-			rows: [{ id: 1, camera: 1, timestamp: "t", type: "person", confidence: 0.9 }]
-		})
-	}))
+	Pool: jest.fn().mockImplementation(() => ({ on: jest.fn(), query: mockQuery }))
 }))
 jest.mock("../backend/lib/worker.js", () => ({
 	startWorkers: jest.fn(),
@@ -59,6 +58,19 @@ describe("Object Routes", () => {
 			.get("/object/detections")
 			.set("Cookie", authorized)
 			.expect(200, [{ id: 1, camera: 1, timestamp: "t", type: "person", confidence: 0.9 }], done)
+	})
+
+	test("Detections translate a camera_id to the worker's env-order index", (done) => {
+		const worker = require("../backend/lib/worker.js")
+		const origNames = worker.getCameraNames
+		require("lib").loadCameras.mockReturnValueOnce([{ id: 7, name: "outdoor" }, { id: 3, name: "indoor" }])
+		worker.getCameraNames = () => ["indoor", "outdoor"]
+		supertest(app)
+			.get("/object/detections?camera=7")
+			.set("Cookie", authorized)
+			.expect(200)
+			.expect(() => expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 50]))
+			.end((err) => { worker.getCameraNames = origNames; done(err) })
 	})
 
 	test("Config update requires auth", (done) => {
