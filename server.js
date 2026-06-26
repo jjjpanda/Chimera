@@ -2,11 +2,16 @@ require("dotenv").config()
 
 console.log("--- Starting Servers ---")
 
-const startService = (name, mod) => {
-	try { mod.start() } catch (e) { console.error(`❌ ${name} failed to start:`, e.message) }
+const startService = (name, mod, { fatal = false } = {}) => {
+	try {
+		mod.start()
+	} catch (e) {
+		console.error(`❌ ${name} failed to start:`, e.message)
+		if (fatal) throw e
+	}
 }
 
-startService("command", require("command"))
+startService("command", require("command"), { fatal: true })
 startService("storage", require("storage"))
 startService("livestream", require("livestream"))
 startService("schedule", require("schedule"))
