@@ -92,6 +92,16 @@ describe("File Routes", () => {
 				.set("Cookie", "userCookie")
 				.expect(403, done)
 		})
+
+		test("reports deleted:false when the database delete matched no rows", async () => {
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			const res = await supertest(app)
+				.post("/file/pathDelete")
+				.send({ camera: 1 })
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deleted: false })
+		})
 	})
 
 	describe("/file/pathClean", () => {

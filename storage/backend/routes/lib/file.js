@@ -73,7 +73,7 @@ module.exports = {
 
 	deleteFileDirectory: (req, res) => {
 		rimraf(req.body.appendedPath, (err) => {
-			res.send({deleted: !err})
+			res.send({deleted: !err && req.numberOfFilesDeletedInDatabase > 0})
 		})
 	},
 
