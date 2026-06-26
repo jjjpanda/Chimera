@@ -22,8 +22,13 @@ const rateLimit = ({ windowMs, max }) => {
 		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
 	const reserve = (key, cb) => {
 		if (!sharedAttempts || !memoryClient.connected) return reserveLocal(key, cb)
-		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) =>
-			err ? reserveLocal(key, cb) : cb(blocked, () => memoryClient.emit("loginRelease", key)))
+		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => {
+			if (err) {
+				memoryClient.emit("loginRelease", key)
+				return reserveLocal(key, cb)
+			}
+			cb(blocked, () => memoryClient.emit("loginRelease", key))
+		})
 	}
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
@@ -130,8 +135,12 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
 	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
-	let client
+	let hash, client
 	try {
+		if (password !== undefined) {
+			const salt = await bcrypt.genSalt(10)
+			hash = await bcrypt.hash(password, salt)
+		}
 		client = await pool.connect()
 		await client.query("BEGIN")
 		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
@@ -153,15 +162,14 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 			updates.push(`role = $${values.length}`)
 		}
 		if (password !== undefined) {
-			const salt = await bcrypt.genSalt(10)
-			values.push(await bcrypt.hash(password, salt))
+			values.push(hash)
 			updates.push(`hash = $${values.length}`)
 			updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
 		}
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
 		if (password !== undefined) {
-			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1", [username])
+			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		}
 		await client.query("COMMIT")
 		res.json({ error: false })

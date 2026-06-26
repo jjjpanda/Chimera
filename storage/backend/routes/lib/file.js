@@ -73,7 +73,7 @@ module.exports = {
 
 	deleteFileDirectory: (req, res) => {
 		rimraf(req.body.appendedPath, (err) => {
-			res.send({deleted: !err && req.numberOfFilesDeletedInDatabase > 0})
+			res.send({deleted: !err})
 		})
 	},
 
@@ -81,7 +81,7 @@ module.exports = {
 		const dir = req.body.appendedPath
 		const names = req.deletedFileNames || []
 		const tracked = await Promise.all(names.map(name =>
-			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch(() => false)
+			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
 		))
 		if (req.beforeDate && req.numberOfFilesDeletedInDatabase > 0) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
@@ -91,7 +91,7 @@ module.exports = {
 				.filter(f => f.endsWith(".jpg") && !known.has(f))
 				.map(async (f) => {
 					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
-					if (captured.isValid() && captured.valueOf() <= cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
+					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
 				}))
 		}
 		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && tracked.every(Boolean) })

@@ -348,7 +348,7 @@ describe("Authorization Routes", () => {
 				.send({ password: "newpassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
-			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["bob"])
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {

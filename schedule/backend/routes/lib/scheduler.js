@@ -16,7 +16,7 @@ module.exports = {
 			if(isValidId(id, tasks, true)){
 				client.emit("startTask", id, (scheduledTasks) => {
 					res.send({
-						running: scheduledTasks[id].running
+						running: scheduledTasks[id]?.running ?? false
 					})
 				})
 			}

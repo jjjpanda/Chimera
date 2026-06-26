@@ -49,6 +49,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			let cancelled = false
 
 			output.on("error", (err) => {
+				cancelled = true
 				console.log("ZIP OUTPUT ERROR: " + err.message)
 				fs.unlink(txtPath, () => {})
 				fs.unlink(zipPath, () => {})
