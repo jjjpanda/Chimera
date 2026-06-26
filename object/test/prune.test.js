@@ -1,5 +1,4 @@
 process.env.object_MAX_CAPTURES = "2"
-process.env.cameras = JSON.stringify(["a"])
 
 jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => [{ id: 1, name: "a" }]) }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))

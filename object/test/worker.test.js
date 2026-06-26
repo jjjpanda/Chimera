@@ -50,21 +50,19 @@ describe("toTensor (bgr24 -> planar BGR float32)", () => {
 })
 
 describe("cameras", () => {
-	test("maps configured names to camera_id and 1-based feed index, skipping unmatched names", () => {
-		process.env.cameras = JSON.stringify(["a", "ghost", "b"])
-		loadCameras.mockReturnValue([{ id: 7, name: "a" }, { id: 3, name: "b" }])
-		expect(worker.cameras()).toEqual([{ id: 7, name: "a", feed: 1 }, { id: 3, name: "b", feed: 3 }])
+	test("returns id, name, and feed=id from loadCameras", () => {
+		loadCameras.mockReturnValue([{ id: 7, name: "a", rtsp_url: "", full_url: "" }, { id: 3, name: "b", rtsp_url: "", full_url: "" }])
+		expect(worker.cameras()).toEqual([{ id: 7, name: "a", feed: 7 }, { id: 3, name: "b", feed: 3 }])
 	})
 
-	test("returns [] for malformed cameras", () => {
-		process.env.cameras = "not json"
+	test("returns [] when loadCameras returns []", () => {
+		loadCameras.mockReturnValue([])
 		expect(worker.cameras()).toEqual([])
 	})
 })
 
 describe("scan", () => {
 	beforeEach(() => {
-		process.env.cameras = JSON.stringify(["a", "b", "c", "d", "e"])
 		loadCameras.mockReturnValue([
 			{ id: 1, name: "a" }, { id: 2, name: "b" }, { id: 3, name: "c" }, { id: 4, name: "d" }, { id: 5, name: "e" }
 		])
@@ -149,7 +147,6 @@ describe("startWorkers / stopWorkers", () => {
 		jest.useFakeTimers()
 		execFile.mockClear()
 		process.env.object_ON = "true"
-		process.env.cameras = JSON.stringify(["a", "b"])
 		loadCameras.mockReturnValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
 		detector.detect.mockResolvedValue([])
 	})

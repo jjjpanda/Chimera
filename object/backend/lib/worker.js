@@ -49,23 +49,7 @@ const status = {}
 const timers = {}
 let workersRunning = false
 
-let camerasCache = null
-let camerasCacheKey = null
-const cameras = () => {
-	const key = process.env.cameras || ""
-	if (camerasCache && camerasCacheKey === key) return camerasCache
-	let names
-	try { names = JSON.parse(key || "[]") } catch (e) { names = [] }
-	const conf = loadCameras()
-	camerasCache = names
-		.map((name, i) => {
-			const cam = conf.find(c => c.name === name)
-			return cam ? { id: cam.id, name, feed: i + 1 } : null
-		})
-		.filter(Boolean)
-	camerasCacheKey = key
-	return camerasCache
-}
+const cameras = () => loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
 
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 

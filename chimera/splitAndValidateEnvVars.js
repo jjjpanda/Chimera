@@ -62,10 +62,6 @@ env.command += writeVarLine("NODE_ENV")
 
 writeVarLine("chimeraInstances")
 
-env.command += writeVarLine("cameras")
-env.storage += writeVarLine("cameras")
-env.object += writeVarLine("cameras")
-
 env.storage += writeVarLine("storage_MAX_GB")
 env.schedule += writeVarLine("storage_MAX_GB")
 
@@ -128,6 +124,7 @@ confirmPath("storage_FOLDERPATH", true)
 
 env.storage += writeVarLine("storage_MOTION_CONF_FILEPATH")
 env.command += writeVarLine("storage_MOTION_CONF_FILEPATH")
+env.object += writeVarLine("storage_MOTION_CONF_FILEPATH")
 
 env.storage += writeVarLine("ffmpeg_FILEPATH")
 env.object += writeVarLine("ffmpeg_FILEPATH")

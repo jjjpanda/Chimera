@@ -1,7 +1,11 @@
-camera_id 3
+# One file per camera in ./cameraconf/.
+# Motion loads every *.conf in camera_dir; camera_id drives feed index and storage paths.
+# Copy to cam1.conf, cam2.conf, etc. and fill in your values.
+
+camera_id 1
 camera_name front_door
 
-netcam_url rtsp://192.168.1.X/cam
+netcam_url rtsp://192.168.1.10:554/cam
 netcam_userpass admin:password
 netcam_keepalive on
 netcam_use_tcp on

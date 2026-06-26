@@ -8,7 +8,7 @@ const stripCreds = (url) => url
 	.replace(/([?&](?:username|user|usr|password|passwd|pass|pwd|pw|auth|token|secret|u|p)=)[^&#]*/gi, "$1***")
 
 app.get("/", (req, res) => {
-	res.json(loadCameras().map(c => ({ ...c, rtsp_url: stripCreds(c.rtsp_url) })))
+	res.json(loadCameras().map(({ id, name, rtsp_url }) => ({ id, name, rtsp_url: stripCreds(rtsp_url) })))
 })
 
 module.exports = app
