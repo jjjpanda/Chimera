@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance, objectState } = require("lib")
+const { isPrimeInstance, objectState, loadCameras } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -49,34 +49,36 @@ const status = {}
 const timers = {}
 let workersRunning = false
 
-const cameraCount = () => {
-	try {
-		return JSON.parse(process.env.cameras || "[]").length
-	} catch (e) {
-		return 0
-	}
+let camerasCache = null
+let camerasCacheKey = null
+const cameras = () => {
+	const key = process.env.cameras || ""
+	if (camerasCache && camerasCacheKey === key) return camerasCache
+	let names
+	try { names = JSON.parse(key || "[]") } catch (e) { names = [] }
+	const conf = loadCameras()
+	camerasCache = names
+		.map((name, i) => {
+			const cam = conf.find(c => c.name === name)
+			return cam ? { id: cam.id, name, feed: i + 1 } : null
+		})
+		.filter(Boolean)
+	camerasCacheKey = key
+	return camerasCache
 }
 
-const getCameraNames = () => {
-	try {
-		return JSON.parse(process.env.cameras || "[]")
-	} catch (e) {
-		return []
-	}
-}
-
-const feedPath = (camera) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(camera), "video.m3u8")
+const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
 let scanSeq = 0
 
-const extractFrame = (camera) => new Promise((resolve, reject) => {
-	const id = `${camera}-${process.pid}-${scanSeq++}`
+const extractFrame = (feed) => new Promise((resolve, reject) => {
+	const id = `${feed}-${process.pid}-${scanSeq++}`
 	const jpeg = path.join(TEMP_DIR, `${id}.jpg`)
 	const raw = path.join(TEMP_DIR, `${id}.raw`)
 	const vf = `scale=${INPUT}:${INPUT}:force_original_aspect_ratio=decrease,pad=${INPUT}:${INPUT}:0:0:color=0x727272`
 	const args = [
 		"-y", "-loglevel", "error",
-		"-i", feedPath(camera),
+		"-i", feedPath(feed),
 		"-vf", vf, "-frames:v", "1", "-q:v", "3", jpeg,
 		"-vf", vf, "-pix_fmt", "bgr24", "-frames:v", "1", "-f", "rawvideo", raw,
 	]
@@ -128,17 +130,19 @@ const handleDetections = async (camera, detections, jpeg) => {
 	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
 }
 
-const scan = async (camera) => {
-	const st = status[camera] || (status[camera] = {})
+const scan = async (id) => {
+	const cam = cameras().find(c => c.id === id)
+	if (!cam) return []
+	const st = status[id] || (status[id] = {})
 	try {
-		const { jpeg, raw } = await extractFrame(camera)
+		const { jpeg, raw } = await extractFrame(cam.feed)
 		const all = await detector.detect(toTensor(raw), config.confidence)
 		const detections = all.filter((d) => config.classes.includes(d.class))
 		st.lastRun = new Date().toISOString()
 		st.error = null
 		if (detections.length) {
 			st.lastDetection = { time: st.lastRun, detections }
-			await handleDetections(camera, detections, jpeg)
+			await handleDetections(id, detections, jpeg)
 		}
 		return detections
 	} catch (e) {
@@ -150,16 +154,16 @@ const scan = async (camera) => {
 const startWorkers = () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
 	workersRunning = true
-	const count = cameraCount()
-	for (let camera = 1; camera <= count; camera++) {
-		status[camera] = { running: true, lastRun: null, lastDetection: null, error: null }
+	const list = cameras()
+	for (const cam of list) {
+		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
 		const loop = async () => {
-			await scan(camera)
-			if (workersRunning) timers[camera] = setTimeout(loop, config.intervalMs)
+			await scan(cam.id)
+			if (workersRunning) timers[cam.id] = setTimeout(loop, config.intervalMs)
 		}
 		loop()
 	}
-	console.log(`🔍 Object detection workers started for ${count} camera(s)`)
+	console.log(`🔍 Object detection workers started for ${list.length} camera(s)`)
 }
 
 const stopWorkers = () => {
@@ -175,8 +179,7 @@ module.exports = {
 	stopWorkers,
 	scan,
 	toTensor,
-	cameraCount,
-	getCameraNames,
+	cameras,
 	CAPTURES_DIR,
 	MAX_CAPTURES,
 	getStatus: () => status,

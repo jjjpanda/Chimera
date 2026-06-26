@@ -79,7 +79,7 @@ module.exports = {
 
 	deleteFilesBeforeDateGlob: async (req, res) => {
 		const dir = req.body.appendedPath
-		const names = req.deletedFileNames || []
+		const names = (req.deletedFileNames || []).filter(Boolean)
 		const tracked = await Promise.all(names.map(name =>
 			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
 		))
@@ -94,7 +94,9 @@ module.exports = {
 					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
 				}))
 		}
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && tracked.every(Boolean) })
+		const failed = tracked.filter(ok => !ok).length
+		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 })
 	},
 
 	dailyStats: (req, res) => {
@@ -225,13 +227,15 @@ const queryToDeleteAndRecord = (camera, deleting, before="") => {
 	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT '${now}', ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
 }
 
+const escapeIdent = (name) => name.replace(/"/g, '""')
+
 const queryForDailyStats = (cameras) => {
-	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name.replace(/"/g, '""')}"`)
+	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)
 	return pool.query(`SELECT date_trunc('minute', timestamp) as timestamp,${cols.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const queryForGroupedStats = (cameras) => {
-	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${name.replace(/"/g, '""')}"`)
+	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)
 	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 

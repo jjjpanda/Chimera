@@ -141,6 +141,19 @@ describe("File Routes", () => {
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
 			})
 
+			test("skips null filenames without throwing", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: true })
+				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledTimes(1)
+			})
+
 			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
 				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
@@ -175,7 +188,7 @@ describe("File Routes", () => {
 				readdirSpy.mockRestore()
 			})
 
-			test("reports deleted:false when an unlink fails", async () => {
+			test("reports deleted:true when an unlink fails but the DB rows were removed", async () => {
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
 				unlinkSpy.mockRejectedValueOnce(new Error("EACCES"))
 				const res = await supertest(app)
@@ -183,7 +196,7 @@ describe("File Routes", () => {
 					.send({ camera: 1, days: 1 })
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
-				expect(res.body).toEqual({ deleted: false })
+				expect(res.body).toEqual({ deleted: true })
 			})
 
 			test("returns 500 when the deletion query fails", async () => {

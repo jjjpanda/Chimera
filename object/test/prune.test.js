@@ -1,6 +1,7 @@
 process.env.object_MAX_CAPTURES = "2"
+process.env.cameras = JSON.stringify(["a"])
 
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() } }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => [{ id: 1, name: "a" }]) }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
 jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(), statSync: jest.fn() }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))

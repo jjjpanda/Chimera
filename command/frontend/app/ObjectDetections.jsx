@@ -105,7 +105,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 const ObjectDetectionsMini = () => {
 	const navigate = useNavigate()
 	const { detections, status } = useObjectDetections()
-	const cameraName = (n) => status?.cameraNames?.[n - 1] || `Camera ${n}`
+	const cameraName = (n) => status?.cameraNames?.[n] || `Camera ${n}`
 	const groups = useMemo(() => groupDetections(detections), [detections])
 
 	const lastPerCamera = useMemo(() => {
@@ -161,7 +161,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 
 	const [searchParams] = useSearchParams()
 	const cameras = status?.cameras ? Object.entries(status.cameras) : []
-	const cameraName = (n) => status?.cameraNames?.[Number(n) - 1] || `Camera ${n}`
+	const cameraName = (n) => status?.cameraNames?.[n] || `Camera ${n}`
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [previewHeight, setPreviewHeight] = useState(200)
