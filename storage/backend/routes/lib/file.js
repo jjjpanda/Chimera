@@ -96,7 +96,7 @@ module.exports = {
 		}
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 })
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 })
 	},
 
 	dailyStats: (req, res) => {
