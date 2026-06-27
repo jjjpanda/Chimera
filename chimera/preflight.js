@@ -59,7 +59,7 @@ const varProblem = (v, val) => {
 const getCamDir = () => {
 	if (fs.existsSync(MOTION)) {
 		const conf = parseConf(fs.readFileSync(MOTION, "utf8"))
-		if (conf.camera_dir) return path.resolve(ROOT, conf.camera_dir)
+		if (conf.camera_dir && !path.isAbsolute(conf.camera_dir)) return path.resolve(ROOT, conf.camera_dir)
 	}
 	return CAM_DIR
 }
@@ -68,6 +68,7 @@ const listConfs = () => { const d = getCamDir(); return fs.existsSync(d) ? fs.re
 const cameraProblems = () => {
 	const problems = []
 	const ids = {}
+	const names = {}
 	const camDir = getCamDir()
 	const confs = listConfs()
 	if (!confs.length) return [`no camera .conf files in ${camDir}`]
@@ -78,6 +79,8 @@ const cameraProblems = () => {
 		else if (ids[id]) problems.push(`${f}: duplicate camera_id ${id} (also in ${ids[id]})`)
 		else ids[id] = f
 		if (!cam.camera_name) problems.push(`${f}: camera_name not set`)
+		else if (names[cam.camera_name]) problems.push(`${f}: duplicate camera_name "${cam.camera_name}" (also in ${names[cam.camera_name]})`)
+		else names[cam.camera_name] = f
 		if (!cam.netcam_url) problems.push(`${f}: netcam_url not set`)
 	}
 	return problems
