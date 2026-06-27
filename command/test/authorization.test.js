@@ -348,6 +348,7 @@ describe("Authorization Routes", () => {
 				.send({ password: "newpassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
@@ -551,6 +552,10 @@ describe("Authorization Routes", () => {
 				"UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2",
 				expect.arrayContaining(["bob"])
 			)
+			expect(mockedPool.query).toHaveBeenCalledWith(
+				"UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2",
+				["bob", "jti-user"]
+			)
 		})
 	})
 
@@ -679,7 +684,7 @@ describe("Authorization Routes", () => {
 			expect(run(b, "8.8.8.8").res.status).toHaveBeenCalledWith(429)
 		})
 
-		test("fails open (calls next) when the shared client is disconnected", () => {
+		test("falls back to a local limiter when the shared client is disconnected", () => {
 			let limiter
 			jest.isolateModules(() => {
 				jest.doMock("memory", () => ({
@@ -688,17 +693,17 @@ describe("Authorization Routes", () => {
 						timeout() { return this },
 						emit: jest.fn(),
 						on: () => {}
-					})
+					}),
+					loginAttempts: require("../../memory/lib/loginAttempts.js")
 				}))
 				limiter = require("../backend/routes/authorization.js").rateLimit
 			})
 			const mw = limiter({ windowMs: 60000, max: 1 })
-			const { res, next } = run(mw, "6.6.6.6")
-			expect(next).toHaveBeenCalled()
-			expect(res.status).not.toHaveBeenCalledWith(429)
+			expect(run(mw, "6.6.6.6").next).toHaveBeenCalled()
+			expect(run(mw, "6.6.6.6").res.status).toHaveBeenCalledWith(429)
 		})
 
-		test("fails open (calls next) when the shared store ack errors or times out", () => {
+		test("falls back to a local limiter when the shared store ack errors or times out", () => {
 			let limiter
 			jest.isolateModules(() => {
 				jest.doMock("memory", () => ({
@@ -710,14 +715,14 @@ describe("Authorization Routes", () => {
 							if (typeof ack === "function") ack(new Error("operation has timed out"))
 						},
 						on: () => {}
-					})
+					}),
+					loginAttempts: require("../../memory/lib/loginAttempts.js")
 				}))
 				limiter = require("../backend/routes/authorization.js").rateLimit
 			})
 			const mw = limiter({ windowMs: 60000, max: 1 })
-			const { res, next } = run(mw, "7.7.7.7")
-			expect(next).toHaveBeenCalled()
-			expect(res.status).not.toHaveBeenCalledWith(429)
+			expect(run(mw, "7.7.7.7").next).toHaveBeenCalled()
+			expect(run(mw, "7.7.7.7").res.status).toHaveBeenCalledWith(429)
 		})
 	})
 

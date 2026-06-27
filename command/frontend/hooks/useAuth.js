@@ -86,10 +86,14 @@ const useAuth = () => {
 
 		const refreshRole = () => {
 			if (document.hidden) return
-			attemptVerification().then(res => {
-				if (res.error) handleLoginAttempt(false, null, state.timestamp, setState)
-				else setState(s => ({ ...s, role: res.role }))
-			})
+			request("/authorization/verify", {
+				method: "POST",
+				headers: { "Accept": "application/json", "Content-Type": "application/json" },
+			}, prom => prom.then(res => {
+				if (res.status === 401) return handleLoginAttempt(false, null, state.timestamp, setState)
+				if (!res.ok) return
+				res.json().then(body => { if (!body.error) setState(s => ({ ...s, role: body.role })) }).catch(() => {})
+			}).catch(() => {}))
 		}
 		document.addEventListener("visibilitychange", refreshRole)
 		return () => document.removeEventListener("visibilitychange", refreshRole)

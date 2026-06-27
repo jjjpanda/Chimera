@@ -22,7 +22,7 @@ const AdminPanel = ({ withButton } = {}) => {
 	const [tempPassword, setTempPassword] = useState(null)
 	const [copied, setCopied] = useState(false)
 	const [editTarget, setEditTarget] = useState(null)
-	const [editForm, setEditForm] = useState({ role: "", password: "" })
+	const [editForm, setEditForm] = useState({ role: "", password: "", confirm: "" })
 	const [deleteTarget, setDeleteTarget] = useState(null)
 	const [expandedSessions, setExpandedSessions] = useState({})
 	const [sessions, setSessions] = useState({})
@@ -58,6 +58,7 @@ const AdminPanel = ({ withButton } = {}) => {
 	const updateUser = (e) => {
 		e.preventDefault()
 		if (editForm.password) {
+			if (editForm.password !== editForm.confirm) return toast("Passwords do not match")
 			const invalid = validatePassword(editForm.password)
 			if (invalid) return toast(invalid)
 		}
@@ -263,7 +264,7 @@ const AdminPanel = ({ withButton } = {}) => {
 											{expandedSessions[user.username] ? "Hide Sessions" : "Sessions"}
 										</Button>
 										<Dialog open={editTarget?.username === user.username} onOpenChange={open => {
-											if (open) { setEditTarget(user); setEditForm({ role: user.role, password: "" }) }
+											if (open) { setEditTarget(user); setEditForm({ role: user.role, password: "", confirm: "" }) }
 											else setEditTarget(null)
 										}}>
 											<DialogTrigger asChild>
@@ -293,6 +294,16 @@ const AdminPanel = ({ withButton } = {}) => {
 															onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
 															className="bg-surface-raised border-border text-primary placeholder:text-muted"
 															placeholder="leave blank to keep current"
+														/>
+													</div>
+													<div className="flex flex-col gap-1">
+														<Label className="text-primary">Confirm Password</Label>
+														<Input
+															type="password"
+															value={editForm.confirm}
+															onChange={e => setEditForm(f => ({ ...f, confirm: e.target.value }))}
+															className="bg-surface-raised border-border text-primary placeholder:text-muted"
+															placeholder="re-enter new password"
 														/>
 													</div>
 													<DialogFooter>

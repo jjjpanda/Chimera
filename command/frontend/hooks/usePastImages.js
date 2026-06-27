@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react"
 import useCamDateNumInfo from "./useCamDateNumInfo.js"
+import useCameras from "./useCameras.js"
 
 import moment from "moment"
 
 import { request, jsonProcessing } from "./../js/request.js"
 
-const processBody = (state) => {
+const processBody = (state, camId) => {
 	const body = JSON.stringify({
-		camera: (state.camera+1).toString(),
+		camera: String(camId),
 		start: moment(state.startDate).utc().format("YYYYMMDD-HHmmss"),
 		end: moment(state.endDate).utc().format("YYYYMMDD-HHmmss"),
 		frames: state.number
@@ -15,7 +16,9 @@ const processBody = (state) => {
 	return body
 }
 
-const updateImages = (state, setState) => {
+const updateImages = (state, setState, cameras) => {
+	const camId = cameras[state.camera]?.id
+	if (camId == null) return
 	setState((oldState) => ({
 		...oldState,
 		list: ["/res/logo.png"],
@@ -27,7 +30,7 @@ const updateImages = (state, setState) => {
 		headers: {
 			"Content-Type": "application/json",
 		},
-		body: processBody(state)
+		body: processBody(state, camId)
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			const list = data && Array.isArray(data.list) ? data.list : []
@@ -52,6 +55,7 @@ const onReloadGenerator = (setState) => (newState) => {
 }
 
 const usePastImages = (numberOfFrames = 100) => {
+	const [cameras] = useCameras()
 	const [state, setState] = useCamDateNumInfo({
 		number: numberOfFrames,
 		numberType: "frames",
@@ -66,8 +70,8 @@ const usePastImages = (numberOfFrames = 100) => {
 	const allImagesLoaded = !listHasContents || state.imagesLoaded >= state.list.length
 
 	useEffect(() => {
-		updateImages(state, setState)
-	}, [state.number, state.camera, state.startDate, state.endDate])
+		updateImages(state, setState, cameras)
+	}, [state.number, state.camera, state.startDate, state.endDate, cameras])
 
 	useEffect(()=> {
 		if( allImagesLoaded ){

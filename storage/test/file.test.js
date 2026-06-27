@@ -17,6 +17,7 @@ jest.mock("pg", () => {
 
 const app = require("../backend/storage.js")
 const fs = require("fs")
+const path = require("path")
 const { execFile } = require("child_process")
 const { __query: query } = require("pg")
 
@@ -65,6 +66,15 @@ describe("File Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("escapes double quotes in camera names (SQL identifier injection)", async () => {
+			loadCameras.mockReturnValue([{ id: 1, name: 'ev"il' }])
+			const res = await supertest(app)
+				.get("/file/dailyStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(query).toHaveBeenCalledWith(expect.stringContaining('as "ev""il"'))
+		})
 	})
 
 	describe("/file/pathDelete", () => {
@@ -82,6 +92,16 @@ describe("File Routes", () => {
 				.set("Cookie", "userCookie")
 				.expect(403, done)
 		})
+
+		test("reports deleted:false when the database delete matched no rows", async () => {
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			const res = await supertest(app)
+				.post("/file/pathDelete")
+				.send({ camera: 1 })
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deleted: false })
+		})
 	})
 
 	describe("/file/pathClean", () => {
@@ -98,6 +118,108 @@ describe("File Routes", () => {
 				.send({})
 				.set("Cookie", "userCookie")
 				.expect(403, done)
+		})
+
+		describe("as admin", () => {
+			let unlinkSpy
+			beforeEach(() => {
+				unlinkSpy = jest.spyOn(fs.promises, "unlink").mockResolvedValue(undefined)
+			})
+			afterEach(() => { unlinkSpy.mockRestore() })
+
+			test("deletes the exact filenames returned from the database", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: true })
+				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "b.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledTimes(2)
+			})
+
+			test("skips null filenames without throwing", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: true })
+				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledTimes(1)
+			})
+
+			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
+				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const readdirSpy = jest.spyOn(fs.promises, "readdir")
+					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: true })
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "tracked.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20991231-235959-00.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "garbage.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "note.txt"))
+				readdirSpy.mockRestore()
+			})
+
+			test("does not sweep orphans when the database delete matched no rows", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const readdirSpy = jest.spyOn(fs.promises, "readdir")
+					.mockResolvedValue(["20200101-000000-00.jpg"])
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: false })
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				readdirSpy.mockRestore()
+			})
+
+			test("reports deleted:false when an unlink fails but the DB rows were removed", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+				unlinkSpy.mockRejectedValueOnce(new Error("EACCES"))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deleted: false })
+			})
+
+			test("returns 500 when the deletion query fails", async () => {
+				query.mockRejectedValueOnce(new Error("db error"))
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(500)
+				expect(res.body).toEqual({ error: true })
+				expect(unlinkSpy).not.toHaveBeenCalled()
+			})
+
+			test("rejects days=0 (wipe-everything) before any deletion", async () => {
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 0 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ error: "number of days not provided" })
+				expect(query).not.toHaveBeenCalled()
+				expect(unlinkSpy).not.toHaveBeenCalled()
+			})
 		})
 	})
 

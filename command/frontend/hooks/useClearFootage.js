@@ -13,10 +13,10 @@ const useClearFootage = (cameras, onDone) => {
 		setPending(null)
 		const remove = toast("Attempting Delete…", 0)
 
-		const deleteCamera = (camId) => request("/file/pathClean", {
+		const deleteCamera = (camId) => request(days === 0 ? "/file/pathDelete" : "/file/pathClean", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ camera: camId, days })
+				body: JSON.stringify(days === 0 ? { camera: camId } : { camera: camId, days })
 			}, prom => prom
 				.then(res => res.text())
 				.then(text => { try { return JSON.parse(text) } catch { return text } })

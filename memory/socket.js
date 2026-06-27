@@ -20,6 +20,7 @@ module.exports = () => {
 		const {createTask, startTask, stopTask, destroyTask, listTasks} = require("./lib/scheduledTasks.js")(io)
 		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
+		const {objectGetState, objectSetConfig, objectScan} = require("./lib/objectState.js")()
 		const cronTask = require("./lib/cronTask.js")(io)
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
@@ -44,6 +45,10 @@ module.exports = () => {
 
 			client.on("loginReserve", loginReserve)
 			client.on("loginRelease", loginRelease)
+
+			client.on("objectGetState", objectGetState)
+			client.on("objectSetConfig", objectSetConfig)
+			client.on("objectScan", objectScan)
 
 			client.on("disconnect", () => {
 				console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)

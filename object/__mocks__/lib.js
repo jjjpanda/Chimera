@@ -12,4 +12,6 @@ lib.auth.authorize = jest.fn().mockImplementation((req = { headers: {} }, res, n
 
 lib.auth.createAuthorize = jest.fn().mockReturnValue(lib.auth.authorize)
 
+lib.loadCameras = jest.fn(lib.loadCameras)
+
 module.exports = lib

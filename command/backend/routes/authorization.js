@@ -17,22 +17,25 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 
 const rateLimit = ({ windowMs, max }) => {
-	const store = sharedAttempts ? null : memory.loginAttempts()
+	const local = memory.loginAttempts()
+	const reserveLocal = (key, cb) =>
+		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
 	const reserve = (key, cb) => {
-		if (!sharedAttempts) return store.loginReserve(key, max, windowMs, cb)
-		if (!memoryClient.connected) return cb(false)
-		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => cb(!err && blocked))
-	}
-	const release = (key) => {
-		if (!sharedAttempts) return store.loginRelease(key)
-		if (memoryClient.connected) memoryClient.emit("loginRelease", key)
+		if (!sharedAttempts || !memoryClient.connected) return reserveLocal(key, cb)
+		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => {
+			if (err) {
+				memoryClient.emit("loginRelease", key)
+				return reserveLocal(key, cb)
+			}
+			cb(blocked, () => memoryClient.emit("loginRelease", key))
+		})
 	}
 	return (req, res, next) => {
 		const key = `${req.ip || ""}:${req.path}`
-		reserve(key, (blocked) => {
+		reserve(key, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
-				if (res.statusCode < 400 || res.statusCode >= 500) release(key)
+				if (res.statusCode < 400 || res.statusCode >= 500) release()
 			})
 			next()
 		})
@@ -132,8 +135,12 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
 	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
-	let client
+	let hash, client
 	try {
+		if (password !== undefined) {
+			const salt = await bcrypt.genSalt(10)
+			hash = await bcrypt.hash(password, salt)
+		}
 		client = await pool.connect()
 		await client.query("BEGIN")
 		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
@@ -155,13 +162,15 @@ app.post("/users/update/:username", authorize, requireAdmin, validateBody, async
 			updates.push(`role = $${values.length}`)
 		}
 		if (password !== undefined) {
-			const salt = await bcrypt.genSalt(10)
-			values.push(await bcrypt.hash(password, salt))
+			values.push(hash)
 			updates.push(`hash = $${values.length}`)
 			updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
 		}
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
+		if (password !== undefined) {
+			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
+		}
 		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
@@ -231,13 +240,21 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
+	let client
 	try {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await pool.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+		client = await pool.connect()
+		await client.query("BEGIN")
+		await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+		await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
+		await client.query("COMMIT")
 		res.json({ error: false })
 	} catch (e) {
+		if (client) await client.query("ROLLBACK").catch(() => {})
 		res.status(500).json({ error: true })
+	} finally {
+		if (client) client.release()
 	}
 })
 
