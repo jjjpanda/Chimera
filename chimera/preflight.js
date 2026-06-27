@@ -82,6 +82,7 @@ const cameraProblems = () => {
 		else if (names[cam.camera_name]) problems.push(`${f}: duplicate camera_name "${cam.camera_name}" (also in ${names[cam.camera_name]})`)
 		else names[cam.camera_name] = f
 		if (!cam.netcam_url) problems.push(`${f}: netcam_url not set`)
+		else if (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(cam.netcam_url)) problems.push(`${f}: netcam_url missing scheme (e.g. rtsp://)`)
 	}
 	return problems
 }

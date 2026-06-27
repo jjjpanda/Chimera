@@ -40,7 +40,9 @@ if(process.env.storage_ON === "true"){
 
 if(process.env.livestream_ON === "true"){
 	const { loadCameras } = require("./lib/utils/loadCameras.js")
-	for (const cam of loadCameras()) {
+	const liveCams = loadCameras()
+	if (!liveCams.length) console.error("livestream_ON=true but no cameras loaded — check storage_MOTION_CONF_FILEPATH and .conf files")
+	for (const cam of liveCams) {
 		config.apps.push({
 			script: `mkdir -p ${process.env.livestream_FOLDERPATH}feed/${cam.id} && ffmpeg -rtsp_transport tcp -i '${cam.full_url.replace(/'/g, "'\\''")}' -fflags flush_packets -max_delay 1 -flags -global_header -hls_time 1 -hls_list_size 3 -segment_wrap 10 -hls_flags delete_segments -vcodec copy -y ${path.join(process.env.livestream_FOLDERPATH, "feed", cam.id.toString(), "video.m3u8")}`,
 			name: `live_stream_cam_${cam.id}`,

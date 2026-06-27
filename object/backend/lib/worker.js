@@ -48,8 +48,9 @@ const config = {
 const status = {}
 const timers = {}
 let workersRunning = false
+let _cameras = null
 
-const cameras = () => loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
+const cameras = () => _cameras || loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
 
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
@@ -138,6 +139,7 @@ const scan = async (id) => {
 const startWorkers = () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
 	workersRunning = true
+	_cameras = loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
 	const list = cameras()
 	for (const cam of list) {
 		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
@@ -152,6 +154,7 @@ const startWorkers = () => {
 
 const stopWorkers = () => {
 	workersRunning = false
+	_cameras = null
 	for (const camera of Object.keys(timers)) {
 		clearTimeout(timers[camera])
 		delete timers[camera]

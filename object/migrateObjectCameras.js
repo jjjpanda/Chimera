@@ -8,11 +8,12 @@ const buildMapping = () => {
 	let names
 	try { names = JSON.parse(process.argv[2] || process.env.cameras || "[]") } catch (e) { names = [] }
 	const conf = loadCameras()
+	if (!conf.length) throw new Error("loadCameras() returned no cameras — check storage_MOTION_CONF_FILEPATH and .conf files")
 	const map = []
 	names.forEach((name, i) => {
 		const cam = conf.find(c => normalize(c.name) === normalize(name))
 		if (cam) map.push({ feed: i + 1, id: cam.id })
-		else console.warn(`no match for camera "${name}" (feed ${i + 1})`)
+		else throw new Error(`no match for camera "${name}" (feed ${i + 1}) — all names must match to avoid partial remap`)
 	})
 	return map
 }
@@ -34,6 +35,11 @@ const migrate = async () => {
 		return 0
 	}
 	const { rows: [{ max: cutoff }] } = await pool.query("SELECT MAX(id) FROM objects_detected")
+	if (cutoff === null) {
+		console.log("objects_detected is empty; nothing to remap")
+		await pool.query(`INSERT INTO _migrations (name) VALUES ('migrateObjectCameras') ON CONFLICT DO NOTHING`)
+		return 0
+	}
 	const cases = map.map(m => `WHEN ${m.feed} THEN ${m.id}`).join(" ")
 	const feeds = map.map(m => m.feed).join(",")
 	const { rowCount } = await pool.query(
