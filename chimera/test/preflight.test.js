@@ -12,6 +12,7 @@ jest.mock("fs", () => {
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
+			if (p.includes("motion.conf")) return ""
 			return actual.readFileSync(p)
 		}),
 		readdirSync: jest.fn(() => ["cam1.conf", "cam2.conf"])
