@@ -13,6 +13,8 @@ import { detectGrayPad } from "../js/letterbox.js"
 
 const STROKE = "#34d399"
 
+const cameraName = (status, n) => status?.cameraNames?.[n] || `Camera ${n}`
+
 const groupDetections = (detections) => {
 	const byImage = new Map()
 	for (const d of detections) {
@@ -105,7 +107,6 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 const ObjectDetectionsMini = () => {
 	const navigate = useNavigate()
 	const { detections, status } = useObjectDetections()
-	const cameraName = (n) => status?.cameraNames?.[n - 1] || `Camera ${n}`
 	const groups = useMemo(() => groupDetections(detections), [detections])
 
 	const lastPerCamera = useMemo(() => {
@@ -138,7 +139,7 @@ const ObjectDetectionsMini = () => {
 						{g && (
 							<div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
 								<span className="bg-accent/85 text-accent-foreground text-xs font-medium px-3 py-0.5 rounded-full">
-									{cameraName(g.camera)}
+									{cameraName(status, g.camera)}
 								</span>
 							</div>
 						)}
@@ -161,7 +162,6 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 
 	const [searchParams] = useSearchParams()
 	const cameras = status?.cameras ? Object.entries(status.cameras) : []
-	const cameraName = (n) => status?.cameraNames?.[Number(n) - 1] || `Camera ${n}`
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [previewHeight, setPreviewHeight] = useState(200)
@@ -306,7 +306,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 							variant={selectedCam === cam ? "default" : "outline"}
 							className="h-7 px-2 text-xs"
 							onClick={() => setSelectedCam(cam)}>
-							{cameraName(cam)}
+							{cameraName(status, cam)}
 						</Button>
 					))}
 				</div>

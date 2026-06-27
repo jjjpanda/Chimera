@@ -102,22 +102,13 @@ on_picture_save SZ=$(wc -c "%f" | head -n1 | awk '{print $1;}'); PGPASSWORD="$da
 # Per-camera include directory
 #
 # Motion loads every *.conf in this directory as a separate
-# camera thread. To add a camera, just drop a new file into
-# ./cameraconf/ — no docker-compose edit required.
+# camera thread. These conf files are the source of truth for
+# camera id/name/url across all services. Create one per camera
+# in ./cameraconf/ — see cameraconf/camera.conf.example.
+# `npm run preflight` validates them before docker.
 #
 # docker-compose.yml bind-mounts the whole directory:
 #   - ./cameraconf:/etc/motion/cameraconf:ro
 ############################################################
 
 camera_dir /etc/motion/cameraconf
-
-############################################################
-# cameraconf/cam1.conf example — create ./cameraconf/cam1.conf with:
-#
-# camera_id 1
-# camera_name front_door
-# netcam_url rtsp://192.168.1.10:554/cam
-# netcam_userpass admin:password
-# netcam_keepalive on
-# netcam_use_tcp on
-############################################################

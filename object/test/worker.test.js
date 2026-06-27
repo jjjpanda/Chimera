@@ -1,4 +1,4 @@
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() } }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => []) }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
 jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })) }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
@@ -11,6 +11,7 @@ const fs = require("fs")
 const pool = require("../backend/lib/pool.js")
 const sendWebhook = require("../backend/lib/webhook.js")
 const detector = require("../backend/lib/detector.js")
+const { loadCameras } = require("lib")
 const worker = require("../backend/lib/worker.js")
 
 const SIZE = detector.INPUT * detector.INPUT
@@ -27,6 +28,7 @@ const makeRaw = () => {
 }
 
 beforeEach(() => {
+	worker.stopWorkers()
 	process.env.alert_URL = "http://hook.test"
 	delete process.env.object_ALERT_ON
 	execFile.mockImplementation((file, args, opts, cb) => cb(null))
@@ -48,19 +50,25 @@ describe("toTensor (bgr24 -> planar BGR float32)", () => {
 	})
 })
 
-describe("cameraCount", () => {
-	test("counts the cameras JSON array", () => {
-		process.env.cameras = JSON.stringify(["a", "b", "c"])
-		expect(worker.cameraCount()).toBe(3)
+describe("cameras", () => {
+	test("returns id and name from loadCameras", () => {
+		loadCameras.mockReturnValue([{ id: 7, name: "a", rtsp_url: "", full_url: "" }, { id: 3, name: "b", rtsp_url: "", full_url: "" }])
+		expect(worker.cameras()).toEqual([{ id: 7, name: "a" }, { id: 3, name: "b" }])
 	})
 
-	test("returns 0 for malformed cameras", () => {
-		process.env.cameras = "not json"
-		expect(worker.cameraCount()).toBe(0)
+	test("returns [] when loadCameras returns []", () => {
+		loadCameras.mockReturnValue([])
+		expect(worker.cameras()).toEqual([])
 	})
 })
 
 describe("scan", () => {
+	beforeEach(() => {
+		loadCameras.mockReturnValue([
+			{ id: 1, name: "a" }, { id: 2, name: "b" }, { id: 3, name: "c" }, { id: 4, name: "d" }, { id: 5, name: "e" }
+		])
+	})
+
 	test("feeds a BGR planar tensor to the detector", async () => {
 		detector.detect.mockResolvedValue([])
 		await worker.scan(1)
@@ -140,7 +148,7 @@ describe("startWorkers / stopWorkers", () => {
 		jest.useFakeTimers()
 		execFile.mockClear()
 		process.env.object_ON = "true"
-		process.env.cameras = JSON.stringify(["a", "b"])
+		loadCameras.mockReturnValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
 		detector.detect.mockResolvedValue([])
 	})
 

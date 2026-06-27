@@ -1,9 +1,6 @@
 services:
   chimera:
-    build:
-      context: .
-      args:
-        cameras: ${cameras}
+    build: .
     env_file: .env
     environment:
       TZ: UTC

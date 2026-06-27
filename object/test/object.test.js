@@ -27,7 +27,7 @@ jest.mock("../backend/lib/worker.js", () => ({
 	CAPTURES_DIR: ".",
 	scan: jest.fn().mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }]),
 	getStatus: () => ({ 1: { running: true, lastRun: null, lastDetection: null, error: null } }),
-	getCameraNames: () => ["Camera 1"],
+	cameras: () => [{ id: 1, name: "Camera 1" }],
 	getConfig: () => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"] }),
 	setConfig: (updates) => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"], ...updates })
 }))
@@ -60,23 +60,18 @@ describe("Object Routes", () => {
 			.expect(200, [{ id: 1, camera: 1, timestamp: "t", type: "person", confidence: 0.9 }], done)
 	})
 
-	test("Detections translate a camera_id to the worker's env-order index", (done) => {
-		const worker = require("../backend/lib/worker.js")
-		const origNames = worker.getCameraNames
-		require("lib").loadCameras.mockReturnValueOnce([{ id: 7, name: "outdoor" }, { id: 3, name: "indoor" }])
-		worker.getCameraNames = () => ["indoor", "outdoor"]
+	test("Detections filter by the camera_id directly", (done) => {
 		supertest(app)
 			.get("/object/detections?camera=7")
 			.set("Cookie", authorized)
 			.expect(200)
-			.expect(() => expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [2, 50]))
-			.end((err) => { worker.getCameraNames = origNames; done(err) })
+			.expect(() => expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [7, 50]))
+			.end(done)
 	})
 
-	test("Detections reject an unknown camera id instead of querying the raw id", (done) => {
-		require("lib").loadCameras.mockReturnValueOnce([{ id: 7, name: "outdoor" }])
+	test("Detections reject a non-numeric camera", (done) => {
 		supertest(app)
-			.get("/object/detections?camera=999")
+			.get("/object/detections?camera=abc")
 			.set("Cookie", authorized)
 			.expect(400, done)
 	})
@@ -180,6 +175,19 @@ describe("Object Routes (shared state via a connected memory client)", () => {
 				expect(res.body.config.confidence).toBe(0.5)
 				expect(res.body.cameras["1"].running).toBe(true)
 			})
+			.end(done)
+	})
+
+	test("does not re-run the local scan when the memory ack times out", (done) => {
+		mockEmitError = true
+		const worker = require("../backend/lib/worker.js")
+		worker.scan.mockClear()
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 3 })
+			.expect(504)
+			.expect(() => expect(worker.scan).not.toHaveBeenCalled())
 			.end(done)
 	})
 })

@@ -1,8 +1,6 @@
 FROM node:22 AS builder
 WORKDIR /app
 COPY . .
-ARG cameras
-ENV cameras=$cameras
 RUN npm install && npm run install:modules:frontend && npm run build:command && npm prune --omit=dev
 
 FROM ubuntu:22.04
