@@ -30,12 +30,20 @@ const creationTasks = [
 		description: "objects detected table"
 	},
 	{
+		query: "CREATE TABLE task_runs(id SERIAL PRIMARY KEY, task_id TEXT NOT NULL, url TEXT NOT NULL, status TEXT NOT NULL, http_status INTEGER, error TEXT, ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW());",
+		description: "task runs table"
+	},
+	{
 		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
 		description: "frame files (camera, timestamp) index"
 	},
 	{
 		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
 		description: "objects detected (camera, timestamp) index"
+	},
+	{
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_runs_ran_at ON task_runs(ran_at);",
+		description: "task runs (ran_at) index"
 	},
 ]
 

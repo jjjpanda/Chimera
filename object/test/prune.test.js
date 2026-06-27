@@ -37,9 +37,9 @@ beforeEach(() => {
 
 afterAll(() => { delete process.env.object_ALERT_ON })
 
-describe("pruneCaptures (via scan)", () => {
+describe("pruneCaptures", () => {
 	test("evicts lowest confidence tier first, oldest mtime as tiebreak, beyond MAX_CAPTURES", async () => {
-		await worker.scan(1)
+		await worker.pruneCaptures()
 
 		const captures = new Set(["a.jpg", "b.jpg", "c.jpg", "d.jpg"])
 		const unlinked = fs.unlinkSync.mock.calls

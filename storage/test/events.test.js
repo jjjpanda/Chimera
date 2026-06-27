@@ -80,7 +80,11 @@ describe("Events Routes", () => {
 				next()
 			})
 			origPromises = fs.promises
-			fs.promises = { rm: jest.fn().mockResolvedValue(undefined) }
+			fs.promises = {
+				rm: jest.fn().mockResolvedValue(undefined),
+				readdir: jest.fn().mockResolvedValue([]),
+				unlink: jest.fn().mockResolvedValue(undefined)
+			}
 		})
 		afterEach(() => {
 			fs.promises = origPromises
@@ -99,6 +103,19 @@ describe("Events Routes", () => {
 				.delete("/camera/abc")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(400)
+		})
+
+		test("clears objects_detected rows and prefixed objectCaptures files", async () => {
+			fs.promises.readdir.mockResolvedValueOnce(["1-100.jpg", "1-200.jpg", "12-300.jpg", "2-400.jpg"])
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(query).toHaveBeenCalledWith("DELETE FROM objects_detected WHERE camera = $1", ["1"])
+			const unlinked = fs.promises.unlink.mock.calls.map((c) => c[0])
+			expect(unlinked).toHaveLength(2)
+			expect(unlinked.some((p) => p.endsWith("1-100.jpg"))).toBe(true)
+			expect(unlinked.some((p) => p.endsWith("1-200.jpg"))).toBe(true)
 		})
 	})
 

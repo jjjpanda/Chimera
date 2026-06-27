@@ -10,6 +10,7 @@ const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
 const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
 const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
+const PRUNE_INTERVAL_MS = 300000
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
@@ -47,6 +48,7 @@ const config = {
 
 const status = {}
 const timers = {}
+let pruneTimer = null
 let workersRunning = false
 let _cameras = null
 
@@ -109,7 +111,6 @@ const handleDetections = async (camera, detections, jpeg) => {
 			[camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image]
 		).catch((e) => console.log("OBJECT INSERT ERROR", e.message))
 	}
-	await pruneCaptures().catch(() => {})
 	if (process.env.object_ALERT_ON === "false") return
 	const summary = detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(", ")
 	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
@@ -149,12 +150,15 @@ const startWorkers = () => {
 		}
 		loop()
 	}
+	pruneTimer = setInterval(() => pruneCaptures().catch(() => {}), PRUNE_INTERVAL_MS)
 	console.log(`🔍 Object detection workers started for ${list.length} camera(s)`)
 }
 
 const stopWorkers = () => {
 	workersRunning = false
 	_cameras = null
+	clearInterval(pruneTimer)
+	pruneTimer = null
 	for (const camera of Object.keys(timers)) {
 		clearTimeout(timers[camera])
 		delete timers[camera]
@@ -164,6 +168,7 @@ const stopWorkers = () => {
 module.exports = {
 	startWorkers,
 	stopWorkers,
+	pruneCaptures,
 	scan,
 	toTensor,
 	cameras,

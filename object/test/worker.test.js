@@ -158,13 +158,23 @@ describe("startWorkers / stopWorkers", () => {
 		delete process.env.object_ON
 	})
 
-	test("runs one scan per camera and arms a re-arm timer for each", async () => {
+	test("runs one scan per camera and arms a re-arm timer for each plus a prune timer", async () => {
 		worker.startWorkers()
 		await tick()
 		expect(execFile).toHaveBeenCalledTimes(2)
-		expect(jest.getTimerCount()).toBe(2)
+		expect(jest.getTimerCount()).toBe(3)
 		worker.stopWorkers()
 		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("prunes captures on an interval, not per detection", async () => {
+		fs.readdirSync.mockClear()
+		worker.startWorkers()
+		await tick()
+		expect(fs.readdirSync).not.toHaveBeenCalled()
+		jest.advanceTimersByTime(300000)
+		expect(fs.readdirSync).toHaveBeenCalled()
+		worker.stopWorkers()
 	})
 
 	test("does nothing when object_ON is not 'true'", () => {
