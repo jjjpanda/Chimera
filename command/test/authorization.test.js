@@ -13,6 +13,10 @@ const app = require("../backend/command.js")
 const { mockedPool } = require("pg")
 
 describe("Authorization Routes", () => {
+	beforeEach(() => {
+		delete process.env.setup_TOKEN
+	})
+
 	describe("GET /authorization/status", () => {
 		test("returns setup: false when table is empty", async () => {
 			const res = await supertest(app).get("/authorization/status")

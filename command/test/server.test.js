@@ -22,7 +22,7 @@ process.env.command_ON = "true"
 const { start } = require("../server")
 
 describe("server startup guard", () => {
-	afterEach(() => {
+	beforeEach(() => {
 		handleServerStart.mockReset()
 		delete process.env.setup_TOKEN
 	})
