@@ -23,8 +23,8 @@ const migrate = async () => {
 		process.exit(1)
 	}
 	await pool.query(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`)
-	const { rowCount: inserted } = await pool.query(`INSERT INTO _migrations (name) VALUES ('migrateObjectCameras') ON CONFLICT DO NOTHING`)
-	if (inserted === 0) {
+	const { rowCount: alreadyApplied } = await pool.query(`SELECT 1 FROM _migrations WHERE name = 'migrateObjectCameras'`)
+	if (alreadyApplied > 0) {
 		console.log("migration already applied")
 		return 0
 	}
@@ -33,11 +33,14 @@ const migrate = async () => {
 		console.log("no camera mapping resolved; nothing to migrate")
 		return 0
 	}
+	const { rows: [{ max: cutoff }] } = await pool.query("SELECT MAX(id) FROM objects_detected")
 	const cases = map.map(m => `WHEN ${m.feed} THEN ${m.id}`).join(" ")
 	const feeds = map.map(m => m.feed).join(",")
 	const { rowCount } = await pool.query(
-		`UPDATE objects_detected SET camera = CASE camera ${cases} ELSE camera END WHERE camera IN (${feeds});`
+		`UPDATE objects_detected SET camera = CASE camera ${cases} ELSE camera END WHERE camera IN (${feeds}) AND id <= $1;`,
+		[cutoff]
 	)
+	await pool.query(`INSERT INTO _migrations (name) VALUES ('migrateObjectCameras') ON CONFLICT DO NOTHING`)
 	console.log(`remapped ${rowCount} detection row(s) from feed index to camera_id`)
 	return rowCount
 }
