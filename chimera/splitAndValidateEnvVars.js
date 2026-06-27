@@ -35,7 +35,7 @@ const isFolderCheck = (varName) => {
 }
 
 const confirmPath = (varName, shouldBeFolder=false) => {
-	if(process.env[varName].length == 0){
+	if(process.env[varName] == null || process.env[varName].length == 0){
 		return
 	}
 	const isAbsolutePath =  path.isAbsolute(process.env[varName])

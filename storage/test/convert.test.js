@@ -207,6 +207,22 @@ describe("Convert Routes", () => {
 				.set("Cookie", cookieWithBearerToken)
 				.expect(400, { error: true, msg: "no id" }, done)
 		})
+
+		test("check status with a blank id", (done) => {
+			supertest(app)
+				.post("/convert/statusProcess")
+				.send({id: "   "})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(400, { error: true, msg: "no id" }, done)
+		})
+
+		test("check status with a non-string id", (done) => {
+			supertest(app)
+				.post("/convert/statusProcess")
+				.send({id: 5})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(400, { error: true, msg: "no id" }, done)
+		})
 	})
 
 	describe("/convert/cancelProcess", () => {

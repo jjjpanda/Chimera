@@ -63,7 +63,11 @@ module.exports = {
 				callback(defaultName)
 			}
 			else{
-				const file = files.find(file => file.includes(id) && !file.includes(".txt"))
+				const file = files.find(file => {
+					if(file.includes(".txt")) return false
+					const parts = file.split("_")
+					return parts.length >= 5 && parts[4].split(".")[0] === id
+				})
 				callback(file ? file : defaultName)
 			}
 		})
@@ -108,8 +112,8 @@ module.exports = {
 
 	validateID: (req, res, next) => {
 		const { id } = req.body
-        
-		if(id == undefined){
+
+		if(typeof id !== "string" || !id.trim()){
 			res.status(400).send({
 				error: true,
 				msg: "no id"
