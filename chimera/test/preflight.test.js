@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -110,5 +110,28 @@ describe("cameraProblems", () => {
 		})
 		const problems = cameraProblems()
 		expect(problems.some(p => /camera_id/.test(p))).toBe(true)
+	})
+})
+
+describe("isServiceOff (storage_MOTION_CONF_FILEPATH)", () => {
+	const mkLines = (overrides = {}) => {
+		const vals = { storage_ON: "false", object_ON: "false", livestream_ON: "false", ...overrides }
+		return Object.entries(vals).map(([k, v]) => `${k} = ${v}`)
+	}
+
+	test("skipped when all camera services are off", () => {
+		expect(isServiceOff(mkLines(), "storage_MOTION_CONF_FILEPATH")).toBe(true)
+	})
+
+	test("required when storage_ON=true", () => {
+		expect(isServiceOff(mkLines({ storage_ON: "true" }), "storage_MOTION_CONF_FILEPATH")).toBe(false)
+	})
+
+	test("required when object_ON=true", () => {
+		expect(isServiceOff(mkLines({ object_ON: "true" }), "storage_MOTION_CONF_FILEPATH")).toBe(false)
+	})
+
+	test("required when livestream_ON=true", () => {
+		expect(isServiceOff(mkLines({ livestream_ON: "true" }), "storage_MOTION_CONF_FILEPATH")).toBe(false)
 	})
 })

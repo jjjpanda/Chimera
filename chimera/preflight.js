@@ -91,7 +91,9 @@ const camTemplate = (id, name, url, userpass) =>
 	`camera_id ${id}\ncamera_name ${name}\n\nnetcam_url ${url}\nnetcam_userpass ${userpass}\nnetcam_keepalive on\nnetcam_use_tcp on\n`
 
 const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
+const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => getVal(lines, `${s}_ON`) === "true")
 const isServiceOff = (lines, key) => {
+	if (key === "storage_MOTION_CONF_FILEPATH") return !camerasNeeded(lines)
 	const prefix = SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
@@ -113,14 +115,16 @@ const runCheck = () => {
 		if (probs.length) failed = true
 	}
 
-	const motionOk = fs.existsSync(MOTION)
-	console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : "  missing"}`)
-	if (!motionOk) failed = true
+	if (camerasNeeded(lines)) {
+		const motionOk = fs.existsSync(MOTION)
+		console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : "  missing"}`)
+		if (!motionOk) failed = true
 
-	const cam = cameraProblems()
-	console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
-	cam.forEach(p => console.log(`                  - ${p}`))
-	if (cam.length) failed = true
+		const cam = cameraProblems()
+		console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
+		cam.forEach(p => console.log(`                  - ${p}`))
+		if (cam.length) failed = true
+	}
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -162,36 +166,43 @@ const runInteractive = async () => {
 	fs.writeFileSync(ENV, lines.join("\n"))
 	console.log(`.env ${OK}\n`)
 
-	console.log("Checking motion.conf...")
-	if (!fs.existsSync(MOTION)) {
-		if (await confirm("  motion.conf missing. Create from motion.conf.example?"))
-			fs.copyFileSync(MOTION_EXAMPLE, MOTION)
-	}
-	console.log(`motion.conf ${fs.existsSync(MOTION) ? OK : BAD}\n`)
+	const needCams = camerasNeeded(lines)
+	let motionOk = true, camOk = true
+	if (needCams) {
+		console.log("Checking motion.conf...")
+		if (!fs.existsSync(MOTION)) {
+			if (await confirm("  motion.conf missing. Create from motion.conf.example?"))
+				fs.copyFileSync(MOTION_EXAMPLE, MOTION)
+		}
+		motionOk = fs.existsSync(MOTION)
+		console.log(`motion.conf ${motionOk ? OK : BAD}\n`)
 
-	console.log("Checking cameraconf/...")
-	const camDir = getCamDir()
-	if (!fs.existsSync(camDir)) fs.mkdirSync(camDir, { recursive: true })
-	while (cameraProblems().length) {
-		for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
-		if (!(await confirm("  Add a camera now?"))) break
-		const used = listConfs().map(f => parseInt(parseConf(fs.readFileSync(path.join(camDir, f), "utf8")).camera_id))
-		let id
-		do { id = parseInt(await ask("    camera_id (positive integer) = ")) } while (!(id > 0) || used.includes(id))
-		let name
-		do { name = await ask("    camera_name = ") } while (!name)
-		let url
-		do { url = await ask("    netcam_url (rtsp://...) = ") } while (!url)
-		const userpass = await ask("    netcam_userpass (user:pass, blank if none) = ")
-		fs.writeFileSync(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
-		console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
-		if (!(await confirm("  Add another camera?", false))) break
+		console.log("Checking cameraconf/...")
+		const camDir = getCamDir()
+		if (!fs.existsSync(camDir)) fs.mkdirSync(camDir, { recursive: true })
+		while (cameraProblems().length) {
+			for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
+			if (!(await confirm("  Add a camera now?"))) break
+			const confs = listConfs().map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
+			const used = confs.map(c => parseInt(c.camera_id))
+			const usedNames = confs.map(c => c.camera_name)
+			let id
+			do { id = parseInt(await ask("    camera_id (positive integer) = ")) } while (!(id > 0) || used.includes(id))
+			let name
+			do { name = await ask("    camera_name = ") } while (!name || usedNames.includes(name))
+			let url
+			do { url = await ask("    netcam_url (rtsp://...) = ") } while (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(url))
+			const userpass = await ask("    netcam_userpass (user:pass, blank if none) = ")
+			fs.writeFileSync(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
+			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
+			if (!(await confirm("  Add another camera?", false))) break
+		}
+		camOk = !cameraProblems().length
+		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
-	const camOk = !cameraProblems().length
-	console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 
 	rl.close()
-	if (fs.existsSync(MOTION) && camOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
+	if (motionOk && camOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
 	else { console.log(`Still incomplete ${BAD}  Docker blocked.`); process.exit(1) }
 }
 

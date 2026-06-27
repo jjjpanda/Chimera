@@ -50,7 +50,7 @@ const timers = {}
 let workersRunning = false
 let _cameras = null
 
-const cameras = () => _cameras || loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
+const cameras = () => _cameras || (_cameras = loadCameras().map(cam => ({ id: cam.id, name: cam.name })))
 
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
@@ -120,7 +120,7 @@ const scan = async (id) => {
 	if (!cam) return []
 	const st = status[id] || (status[id] = {})
 	try {
-		const { jpeg, raw } = await extractFrame(cam.feed)
+		const { jpeg, raw } = await extractFrame(cam.id)
 		const all = await detector.detect(toTensor(raw), config.confidence)
 		const detections = all.filter((d) => config.classes.includes(d.class))
 		st.lastRun = new Date().toISOString()
@@ -139,7 +139,7 @@ const scan = async (id) => {
 const startWorkers = () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
 	workersRunning = true
-	_cameras = loadCameras().map(cam => ({ id: cam.id, name: cam.name, feed: cam.id }))
+	_cameras = null
 	const list = cameras()
 	for (const cam of list) {
 		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }

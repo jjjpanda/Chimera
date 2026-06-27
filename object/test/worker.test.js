@@ -28,6 +28,7 @@ const makeRaw = () => {
 }
 
 beforeEach(() => {
+	worker.stopWorkers()
 	process.env.alert_URL = "http://hook.test"
 	delete process.env.object_ALERT_ON
 	execFile.mockImplementation((file, args, opts, cb) => cb(null))
@@ -50,9 +51,9 @@ describe("toTensor (bgr24 -> planar BGR float32)", () => {
 })
 
 describe("cameras", () => {
-	test("returns id, name, and feed=id from loadCameras", () => {
+	test("returns id and name from loadCameras", () => {
 		loadCameras.mockReturnValue([{ id: 7, name: "a", rtsp_url: "", full_url: "" }, { id: 3, name: "b", rtsp_url: "", full_url: "" }])
-		expect(worker.cameras()).toEqual([{ id: 7, name: "a", feed: 7 }, { id: 3, name: "b", feed: 3 }])
+		expect(worker.cameras()).toEqual([{ id: 7, name: "a" }, { id: 3, name: "b" }])
 	})
 
 	test("returns [] when loadCameras returns []", () => {
