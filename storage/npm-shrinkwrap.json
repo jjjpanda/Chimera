@@ -32,6 +32,7 @@
         "bcryptjs": "^2.4.3",
         "dotenv": "^16.4.0",
         "jsonwebtoken": "^9.0.0",
+        "moment-timezone": "^0.6.2",
         "nanoid": "^3.1.30",
         "pm2": "^5.4.3",
         "request-ip": "^2.1.3"
