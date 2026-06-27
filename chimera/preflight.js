@@ -90,6 +90,13 @@ const cameraProblems = () => {
 const camTemplate = (id, name, url, userpass) =>
 	`camera_id ${id}\ncamera_name ${name}\n\nnetcam_url ${url}\nnetcam_userpass ${userpass}\nnetcam_keepalive on\nnetcam_use_tcp on\n`
 
+const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
+const isServiceOff = (lines, key) => {
+	const prefix = SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
+	if (!prefix || key === `${prefix}_ON`) return false
+	return getVal(lines, `${prefix}_ON`) === "false"
+}
+
 const runCheck = () => {
 	const schema = parseSchema()
 	const lines = readLines()
@@ -100,7 +107,7 @@ const runCheck = () => {
 		console.log(`  .env          ${BAD}  missing`)
 		failed = true
 	} else {
-		const probs = schema.map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
+		const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
@@ -140,6 +147,7 @@ const runInteractive = async () => {
 	const lines = readLines()
 	console.log("Checking .env...")
 	for (const v of schema) {
+		if (isServiceOff(lines, v.key)) continue
 		const p = varProblem(v, getVal(lines, v.key))
 		if (!p) continue
 		console.log(`\n  ${v.key} ${BAD} ${p}`)
@@ -192,4 +200,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }
