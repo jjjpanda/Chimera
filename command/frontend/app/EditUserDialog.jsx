@@ -25,8 +25,12 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 			if (invalid) return toast(invalid)
 		}
 		const body = {}
-		if (form.role) body.role = form.role
+		if (form.role && form.role !== user.role) body.role = form.role
 		if (form.password) body.password = form.password
+		if (Object.keys(body).length === 0) {
+			onOpenChange(false)
+			return toast("No changes made")
+		}
 		request(`/authorization/users/${encodeURIComponent(user.username)}`, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },

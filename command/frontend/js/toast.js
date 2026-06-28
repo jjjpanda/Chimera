@@ -1,6 +1,9 @@
 const toast = (message, ms = 2500) => {
-	window.dispatchEvent(new CustomEvent("chimera-toast", { detail: { message, ms } }))
-	return () => {} // remove function stub for backwards compatibility
+	const id = Date.now() + Math.random()
+	window.dispatchEvent(new CustomEvent("chimera-toast", { detail: { id, message, ms } }))
+	return () => {
+		window.dispatchEvent(new CustomEvent("chimera-toast-remove", { detail: { id } }))
+	}
 }
 
 export default toast

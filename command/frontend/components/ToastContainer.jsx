@@ -5,8 +5,7 @@ export default function ToastContainer() {
 
 	useEffect(() => {
 		const handleToast = (e) => {
-			const id = Date.now() + Math.random()
-			const { message, ms } = e.detail
+			const { id, message, ms } = e.detail
 			setToasts(t => [...t, { id, message }])
 			if (ms > 0) {
 				setTimeout(() => {
@@ -14,8 +13,16 @@ export default function ToastContainer() {
 				}, ms)
 			}
 		}
+		const handleRemove = (e) => {
+			const { id } = e.detail
+			setToasts(t => t.filter(toast => toast.id !== id))
+		}
 		window.addEventListener("chimera-toast", handleToast)
-		return () => window.removeEventListener("chimera-toast", handleToast)
+		window.addEventListener("chimera-toast-remove", handleRemove)
+		return () => {
+			window.removeEventListener("chimera-toast", handleToast)
+			window.removeEventListener("chimera-toast-remove", handleRemove)
+		}
 	}, [])
 
 	if (toasts.length === 0) return null
