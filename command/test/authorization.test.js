@@ -341,6 +341,7 @@ describe("Authorization Routes", () => {
 				.send({ role: "admin" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
 		})
 
 		test("returns 200 when updating password", async () => {
