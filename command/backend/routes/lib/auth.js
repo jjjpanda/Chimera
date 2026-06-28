@@ -23,7 +23,7 @@ module.exports = {
 		pool.query("SELECT hash, role, force_password_change, temp_password_expires, theme FROM auth WHERE username = $1", [username], (err, values) => {
 			if (err) return deny()
 			const row = values.rows[0]
-			bcrypt.compare(password == undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
+			bcrypt.compare(password === undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
 				if (err || !success || !row || !row.hash) return deny()
 				if (row.force_password_change && row.temp_password_expires && new Date(row.temp_password_expires) < new Date()) return deny()
 				req.userRole = row.role

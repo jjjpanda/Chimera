@@ -14,6 +14,7 @@ import ChangePasswordForm from "./app/ChangePasswordForm.jsx"
 import AuthContext from "./app/AuthContext.jsx"
 import { ThemeProvider } from "./app/ThemeContext.jsx"
 import useAuth from "./hooks/useAuth.js"
+import ToastContainer from "./components/ToastContainer.jsx"
 
 const AppInner = ({ loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword, routerKey }) => {
 	if (!loaded) return <LoadingIcon />
@@ -48,7 +49,7 @@ const AppInner = ({ loaded, setup, tokenRequired, loggedIn, role, forcePasswordC
 }
 
 const App = () => {
-	const [loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword, serverTheme] = useAuth()
+	const { loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword, theme: serverTheme } = useAuth()
 	const [key, setKey] = useState(0)
 
 	useEffect(() => {
@@ -57,6 +58,7 @@ const App = () => {
 
 	return (
 		<ThemeProvider serverTheme={serverTheme}>
+			<ToastContainer />
 			<AppInner
 				loaded={loaded}
 				setup={setup}

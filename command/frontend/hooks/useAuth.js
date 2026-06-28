@@ -126,7 +126,7 @@ const useAuth = () => {
 		})
 	}
 
-	return [state.loaded, state.setup, state.tokenRequired, state.loggedIn, state.role, state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, state.theme]
+	return { loaded: state.loaded, setup: state.setup, tokenRequired: state.tokenRequired, loggedIn: state.loggedIn, role: state.role, forcePasswordChange: state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, theme: state.theme }
 }
 
 export default useAuth

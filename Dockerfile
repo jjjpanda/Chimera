@@ -3,18 +3,13 @@ WORKDIR /app
 COPY . .
 RUN npm install && npm run install:modules:frontend && npm run build:command && npm prune --omit=dev
 
-FROM ubuntu:22.04
+FROM node:22-slim
 WORKDIR /app
 
 ENV TZ=UTC
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl software-properties-common \
-    && add-apt-repository universe \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        motion ffmpeg postgresql-client \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
+        ca-certificates motion ffmpeg postgresql-client \
     && npm install -g pm2 \
     && rm -rf /var/lib/apt/lists/*
 
