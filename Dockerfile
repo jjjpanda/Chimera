@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/gateway/node_modules ./gateway/node_modules
+COPY --from=builder /app/storage/node_modules ./storage/node_modules
+COPY --from=builder /app/object/node_modules ./object/node_modules
+COPY --from=builder /app/schedule/node_modules ./schedule/node_modules
 COPY --from=builder /app/command/dist ./command/dist
 
 RUN chmod +x entrypoint.sh

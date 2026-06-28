@@ -63,11 +63,13 @@ module.exports = {
 			let list = [].concat.apply([], listOfFileLists)
 
 			Promise.all(list.map(file => {
-				const { id, type } = parseFileName(file)
+				const parsed = parseFileName(file)
+				if (parsed.error) return Promise.resolve(null)
+				const { id, type } = parsed
 				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
 					fs.stat(path.join(imgDir, file), (statErr, stats) => {
 						resolve({
-							...parseFileName(file),
+							...parsed,
 							running: !err,
 							size: statErr ? null : stats.size
 						})
@@ -75,7 +77,7 @@ module.exports = {
 				}))
 			})).then((asyncCompiledList) => {
 				res.send({
-					list: asyncCompiledList
+					list: asyncCompiledList.filter(Boolean)
 				})
 			}).catch(() => {
 				res.send({

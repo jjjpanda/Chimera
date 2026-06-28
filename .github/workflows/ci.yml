@@ -38,7 +38,7 @@ jobs:
       - name: Coverage report comment
         if: ${{ always() && github.event_name == 'pull_request' }}
         continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@2500dafcee7dd64f85ab689c0b83798a8359770e # v2.8.0
+        uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4 # v2
 
       - name: Upload coverage artifact
         if: ${{ always() }}

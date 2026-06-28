@@ -262,7 +262,10 @@ describe("File Routes", () => {
 
 			test("reports cleaned:false when usage is under target", async () => {
 				process.env.storage_MAX_GB = "10"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "1000000\t/path\n"))
+				execFile.mockImplementation((_cmd, args, cb) => {
+					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
+					cb(null, "1000000\t/path\n")
+				})
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
@@ -273,7 +276,10 @@ describe("File Routes", () => {
 
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
+				execFile.mockImplementation((_cmd, args, cb) => {
+					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
+					cb(null, "2000000000\t/path\n")
+				})
 				query
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
@@ -293,7 +299,10 @@ describe("File Routes", () => {
 
 			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
+				execFile.mockImplementation((_cmd, args, cb) => {
+					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
+					cb(null, "2000000000\t/path\n")
+				})
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")

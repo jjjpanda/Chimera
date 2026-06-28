@@ -44,6 +44,7 @@ module.exports = {
 
 	parseFileName: (fileName) => {
 		const fileInfo = fileName.split("_")
+		if (fileInfo.length < 5) return { error: true }
 		const id = fileInfo[4].split(".")[0]
 		return {
 			link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
@@ -113,7 +114,7 @@ module.exports = {
 	validateID: (req, res, next) => {
 		const { id } = req.body
 
-		if(typeof id !== "string" || !id.trim()){
+		if(typeof id !== "string" || !id.trim() || id.includes("/") || id.includes("\\") || id.includes("..")){
 			res.status(400).send({
 				error: true,
 				msg: "no id"

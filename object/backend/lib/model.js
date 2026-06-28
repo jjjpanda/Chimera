@@ -4,7 +4,7 @@ const path = require("path")
 const MODEL_DIR = path.join(__dirname, "..", "model")
 const MODEL_PATH = path.join(MODEL_DIR, "yolox_tiny.onnx")
 const DEFAULT_URL = "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx"
-const MIN_BYTES = 1e6
+const MIN_BYTES = 20000000
 
 const ensureModel = async () => {
 	if (fs.existsSync(MODEL_PATH) && fs.statSync(MODEL_PATH).size > MIN_BYTES) {
