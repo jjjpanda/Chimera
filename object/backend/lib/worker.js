@@ -10,7 +10,7 @@ const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
 const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
 const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
-const PRUNE_INTERVAL_MS = 300000
+const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? parseInt(process.env.object_PRUNE_INTERVAL_MS) : 300000
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
