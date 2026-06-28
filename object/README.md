@@ -9,7 +9,7 @@ The object server runs native [YOLOX](https://github.com/Megvii-BaseDetection/YO
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
 |GET|/status|Current config + per-camera worker status|None|JSON|
-|GET|/detections|Recent detections from the database|`camera`, `limit`|JSON|
+|GET|/detections|Recent detections from the database|`camera`, `start`, `end`, `limit`|JSON|
 |GET|/config|Current detection config|None|JSON|
 |POST|/config|Update detection config (admin)|`{ confidence, intervalMs, classes }`|JSON|
 |POST|/scan|Force an immediate scan (admin)|`{ camera }`|JSON|
@@ -18,4 +18,4 @@ The object server runs native [YOLOX](https://github.com/Megvii-BaseDetection/YO
 
 ## Env
 
-See [`env.example`](../env.example) for `object_*` keys. Reuses `cameras`, `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, `database_*`, and `storage_FOLDERPATH` (where `objectCaptures/` is written).
+See [`env.example`](../env.example) for `object_*` keys. Loads cameras via `storage_MOTION_CONF_FILEPATH`, and reuses `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, `database_*`, and `storage_FOLDERPATH` (where `objectCaptures/` is written).

@@ -9,7 +9,6 @@ The command server is face of the operation. It runs the web-app and the authent
 |Type|Route|Description|Parameters|Returns|
 | :-|:- |:-:|:-:|:-:|
 |POST|/login|Auth Routes|N/A|N/A|
-|POST|/requestLink|Auth Routes|N/A|N/A|
 |POST|/verify|Auth Routes|N/A|N/A|
 ## ▶ /
 

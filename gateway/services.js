@@ -30,5 +30,6 @@ module.exports = [{
 	postPathRegex: /\/.*/,
 	getPathRegex: /\/.*/,
 	deletePathRegex: /\/.*/,
-	putPathRegex: /\/.*/
+	putPathRegex: /\/.*/,
+	patchPathRegex: /\/.*/
 }]

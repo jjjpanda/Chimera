@@ -49,4 +49,16 @@ describe("Gateway Tests", () => {
 				})
 		})
 	})
+
+	test("Gateway forwards PATCH requests", (done) => {
+		const server = handleServerStart(command, process.env.command_PORT, () => {
+			supertest(gateway)
+				.patch("/authorization/users/someone")
+				.send({ role: "user" })
+				.expect(401, (err) => {
+					server.close()
+					done(err)
+				})
+		})
+	})
 })
