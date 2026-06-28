@@ -31,7 +31,7 @@ const rateLimit = ({ windowMs, max }) => {
 		})
 	}
 	return (req, res, next) => {
-		const key = `${req.ip || ""}:${req.path}:${req.body?.username || ""}`
+		const key = `${req.ip || ""}:${req.path}`
 		reserve(key, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
@@ -175,11 +175,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 		values.push(username)
 		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
 		if (password !== undefined || role !== undefined) {
-			if (role !== undefined && role !== target.rows[0].role) {
-				await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1", [username])
-			} else {
-				await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
-			}
+			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		}
 		await client.query("COMMIT")
 		res.json({ error: false })
