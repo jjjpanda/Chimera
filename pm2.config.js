@@ -3,6 +3,11 @@ const path = require("path")
 
 const isDev = process.env.NODE_ENV == "development"
 
+if ((Number(process.env.chimeraInstances) > 1 || process.env.chimeraInstances === "max") && process.env.memory_ON !== "true") {
+	console.warn("Forcing memory_ON=true because chimeraInstances > 1 or max")
+	process.env.memory_ON = "true"
+}
+
 const config = {
 	apps : [{
 		script: "server.js",
@@ -16,6 +21,7 @@ const config = {
 		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
 		env: {
 			"NODE_ENV": process.env.NODE_ENV,
+			"memory_ON": process.env.memory_ON,
 		}
 	}]
 }

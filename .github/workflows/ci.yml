@@ -12,6 +12,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  checks: read
 
 jobs:
   test:
@@ -29,8 +30,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules
 
       - name: Run tests
         run: npm test
@@ -38,7 +37,9 @@ jobs:
       - name: Coverage report comment
         if: ${{ always() && github.event_name == 'pull_request' }}
         continue-on-error: true
-        uses: davelosert/vitest-coverage-report-action@2500dafcee7dd64f85ab689c0b83798a8359770e # v2.8.0
+        uses: MishaKav/jest-coverage-comment@25f2818fee93043532f640ad32a7565b4bd4ea9a # v1.0.34
+        with:
+          coverage-summary-path: ./coverage/coverage-summary.json
 
       - name: Upload coverage artifact
         if: ${{ always() }}
@@ -59,8 +60,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules:frontend
 
       - name: Build frontend
         run: npm run build:command
@@ -83,8 +82,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules:frontend
 
       - name: Install Playwright browser
         run: npm run e2e:install

@@ -2,10 +2,8 @@
   "name": "gateway",
   "main": "server.js",
   "scripts": {
-    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:acme prepare:env",
     "start": "node start.js",
-    "test": "jest --verbose",
-    "prunewrap": "npm shrinkwrap"
+    "test": "jest --verbose"
   },
   "dependencies": {
     "dotenv": "^16.4.0",

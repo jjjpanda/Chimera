@@ -2,10 +2,8 @@
   "name": "schedule",
   "main": "server.js",
   "scripts": {
-    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:env",
     "start": "node start.js",
-    "test": "jest --verbose",
-    "prunewrap": "npm shrinkwrap"
+    "test": "jest --verbose"
   },
   "dependencies": {
     "axios": "^1.7.0",

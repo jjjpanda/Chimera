@@ -27,7 +27,7 @@ app.post("/listFramesVideo", validateBody, validateDays, validateRequest, listOf
 
 app.post("/createZip", requireAdmin, validateBody, validateDays, validateRequest, createZip)
 
-app.post("/statusProcess", validateBody, validateID, statusProcess)
+app.post("/statusProcess", requireAdmin, validateBody, validateID, statusProcess)
 app.post("/cancelProcess", requireAdmin, validateBody, validateID, cancelProcess)
 app.get("/listProcess", listProcess)
 app.post("/deleteProcess", requireAdmin, validateBody, validateID, deleteProcess)

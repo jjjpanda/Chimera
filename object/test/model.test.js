@@ -1,0 +1,168 @@
+const fs = require("fs")
+const crypto = require("crypto")
+const { PassThrough } = require("stream")
+
+jest.mock("fs")
+global.fetch = jest.fn()
+
+const { ensureModel, MODEL_PATH } = require("../backend/lib/model.js")
+
+describe("ensureModel", () => {
+	const originalEnv = process.env
+	
+	beforeEach(() => {
+		jest.resetAllMocks()
+		process.env = { ...originalEnv }
+		delete process.env.object_MODEL_URL
+		delete process.env.object_MODEL_SHA256
+		
+		fs.mkdirSync.mockImplementation(() => {})
+		fs.writeFileSync.mockImplementation(() => {})
+	})
+	
+	afterAll(() => {
+		process.env = originalEnv
+	})
+
+	const mockFetch = (buffer, ok = true, status = 200) => {
+		fetch.mockResolvedValueOnce({
+			ok,
+			status,
+			arrayBuffer: () => Promise.resolve(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength))
+		})
+	}
+
+	const mockReadStream = (data) => {
+		fs.createReadStream.mockImplementationOnce(() => {
+			const stream = new PassThrough()
+			stream.end(data)
+			return stream
+		})
+	}
+
+	test("returns existing file if SHA matches", async () => {
+		fs.existsSync.mockReturnValue(true)
+		const buffer = Buffer.from("existing data")
+		const hash = crypto.createHash("sha256").update(buffer).digest("hex")
+		process.env.object_MODEL_SHA256 = hash
+		
+		mockReadStream(buffer)
+		
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).not.toHaveBeenCalled()
+	})
+
+	test("redownloads if existing file fails SHA check", async () => {
+		fs.existsSync.mockReturnValue(true)
+		const badBuffer = Buffer.from("bad data")
+		mockReadStream(badBuffer)
+		
+		const goodBuffer = Buffer.from("good data")
+		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
+		mockFetch(goodBuffer)
+		
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).toHaveBeenCalled()
+		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
+	})
+
+	test("throws error if downloaded file fails SHA check", async () => {
+		fs.existsSync.mockReturnValue(false)
+		const buffer = Buffer.from("bad download data")
+		process.env.object_MODEL_SHA256 = "expectedhash"
+		
+		mockFetch(buffer)
+		
+		await expect(ensureModel()).rejects.toThrow("downloaded model failed SHA256 integrity check")
+	})
+
+	test("skips SHA check and uses size check if custom URL provided without SHA", async () => {
+		fs.existsSync.mockReturnValue(true)
+		process.env.object_MODEL_URL = "http://custom.url"
+		fs.statSync.mockReturnValue({ size: 21000000 }) // > MIN_BYTES
+		
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).not.toHaveBeenCalled()
+	})
+
+	test("redownloads if custom URL existing file fails size check", async () => {
+		fs.existsSync.mockReturnValue(true)
+		process.env.object_MODEL_URL = "http://custom.url"
+		fs.statSync.mockReturnValue({ size: 100 }) // < MIN_BYTES
+		
+		const goodBuffer = Buffer.alloc(21000000)
+		mockFetch(goodBuffer)
+		
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).toHaveBeenCalledWith("http://custom.url")
+		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
+	})
+
+	test("throws error if downloaded custom URL file fails size check", async () => {
+		fs.existsSync.mockReturnValue(false)
+		process.env.object_MODEL_URL = "http://custom.url"
+		
+		const smallBuffer = Buffer.alloc(100)
+		mockFetch(smallBuffer)
+		
+		await expect(ensureModel()).rejects.toThrow("downloaded model too small")
+	})
+
+	test("throws error if fetch fails with HTTP error", async () => {
+		fs.existsSync.mockReturnValue(false)
+		mockFetch(Buffer.from(""), false, 404)
+		
+		await expect(ensureModel()).rejects.toThrow("model download failed: 404")
+	})
+
+	test("default path: returns existing file if it matches DEFAULT_SHA256", async () => {
+		fs.existsSync.mockReturnValue(true)
+		const buffer = Buffer.from("default data")
+		
+		const mockHash = {
+			update: jest.fn().mockReturnThis(),
+			digest: jest.fn().mockReturnValue("427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7")
+		}
+		jest.spyOn(crypto, "createHash").mockReturnValue(mockHash)
+		
+		mockReadStream(buffer)
+		
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).not.toHaveBeenCalled()
+		
+		crypto.createHash.mockRestore()
+	})
+
+	test("default path: redownloads from DEFAULT_URL if existing file fails DEFAULT_SHA256 check", async () => {
+		fs.existsSync.mockReturnValue(true)
+		const badBuffer = Buffer.from("bad data")
+		mockReadStream(badBuffer)
+		
+		const goodBuffer = Buffer.from("good data")
+		mockFetch(goodBuffer)
+		
+		const mockHashBad = {
+			update: jest.fn().mockReturnThis(),
+			digest: jest.fn().mockReturnValue("badhash")
+		}
+		const mockHashGood = {
+			update: jest.fn().mockReturnThis(),
+			digest: jest.fn().mockReturnValue("427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7")
+		}
+		jest.spyOn(crypto, "createHash")
+			.mockReturnValueOnce(mockHashBad)
+			.mockReturnValueOnce(mockHashGood)
+			
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fetch).toHaveBeenCalledWith("https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx")
+		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
+		
+		crypto.createHash.mockRestore()
+	})
+})

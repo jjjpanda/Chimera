@@ -38,4 +38,4 @@ npm run docker:up
 ```
 `docker:logs` tails output · `docker:down` stops · `docker:rebuild` redeploys · `docker:delete` wipes volumes.
 
-> **Bare-metal is unsupported.** Without Docker you must install motion/ffmpeg/postgres yourself and export `TZ=UTC` for every process (node + motion + postgres) — otherwise clips, zips, and frame lists silently misalign. Then `npm run setup && npm start`.
+> **Bare-metal is unsupported.** Please use Docker. Running via pm2 on bare-metal is heavily discouraged and no longer documented.

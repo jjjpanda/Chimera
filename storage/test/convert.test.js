@@ -20,16 +20,18 @@ const fileList = [
 	"output_1_20210101-235959_20210201-235959_video3-20210301-235959.mp4",
 	"mp4_video3-20210301-235959.txt",
 	"output_1_20210101-235959_20210201-235959_zip1-20210301-235959.zip",
+	"malformed_video.mp4",
 ]
 
 const listOfProcesses = fileList.filter(file => file.includes(".mp4") || file.includes(".zip")).map((file) => {
 	const obj = parseFileName(file)
+	if (obj.error) return null
 	return {
 		...obj,
 		running: obj.id.includes("video3"),
 		size: 1024
 	}
-})
+}).filter(Boolean)
 
 const listOfImages = fileList.filter(file => file.includes(".jpg")).map(file => `/shared/captures/1/${file}`)
 
@@ -162,6 +164,13 @@ describe("Convert Routes", () => {
 		})
 	})
 
+	describe("parseFileName guard", () => {
+		test("returns error for malformed filename", () => {
+			const result = parseFileName("malformed_file.mp4")
+			expect(result.error).toBe(true)
+		})
+	})
+
 	describe("/convert/listFramesVideo with hours", () => {
 		test("hours window flows through the middleware chain", (done) => {
 			supertest(app)
@@ -204,6 +213,14 @@ describe("Convert Routes", () => {
 			supertest(app)
 				.post("/convert/statusProcess")
 				.send({bruh: true})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(400, { error: true, msg: "no id" }, done)
+		})
+
+		test("rejects an id with path traversal", (done) => {
+			supertest(app)
+				.post("/convert/statusProcess")
+				.send({id: "../bruh"})
 				.set("Cookie", cookieWithBearerToken)
 				.expect(400, { error: true, msg: "no id" }, done)
 		})

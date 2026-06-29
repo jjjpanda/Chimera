@@ -145,10 +145,18 @@ module.exports = {
 				)
 			)
 
-			const targetBytes = maxGb * 0.9 * 1e9
-			if (usedBytes <= targetBytes) return res.send({ cleaned: false })
+			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
+			const usedObjectBytes = await new Promise(resolve =>
+				execFile("du", ["-sb", objectCapturesPath], (err, stdout) =>
+					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
+				)
+			)
+			const totalUsedBytes = usedBytes + usedObjectBytes
 
-			const toFree = usedBytes - targetBytes
+			const targetBytes = maxGb * 0.9 * 1e9
+			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
+
+			const toFree = totalUsedBytes - targetBytes
 
 			const { rows: frameTotalRows } = await pool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"

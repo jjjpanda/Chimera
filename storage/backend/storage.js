@@ -27,4 +27,31 @@ app.use("/file", require("./routes/file.js"))
     
 app.use("/shared", express.static(path.join(process.env.storage_FOLDERPATH, "shared")))
 
+const fs = require("fs")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
+const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
+fs.readdir(imgDir, (err, files) => {
+	if (!err) {
+		const orphans = []
+		files.forEach(file => {
+			const match = file.match(/^(mp4|zip)_(.+)\.txt$/)
+			if (match) {
+				const lockPath = path.join(imgDir, file)
+				let stat
+				try { stat = fs.statSync(lockPath) } catch { return }
+				if (Date.now() - stat.mtimeMs < ORPHAN_AGE_MS) return
+				orphans.push({ type: match[1], id: match[2] })
+				fs.unlink(lockPath, () => {})
+			}
+		})
+		files.forEach(file => {
+			orphans.forEach(({ type, id }) => {
+				if (file.startsWith("output_") && file.endsWith(`_${id}.${type}`)) {
+					fs.unlink(path.join(imgDir, file), () => {})
+				}
+			})
+		})
+	}
+})
+
 module.exports = app

@@ -1,7 +1,7 @@
 FROM node:22 AS builder
 WORKDIR /app
 COPY . .
-RUN npm install && npm run install:modules:frontend && npm run build:command && npm prune --omit=dev
+RUN npm install && npm run build:command && npm prune --omit=dev
 
 FROM node:22-slim
 WORKDIR /app
@@ -13,9 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && npm install -g pm2 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY . .
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/command/dist ./command/dist
+COPY --from=builder /app ./
 
 RUN chmod +x entrypoint.sh
 
