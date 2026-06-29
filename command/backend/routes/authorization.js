@@ -55,9 +55,8 @@ app.get("/status", async (req, res) => {
 		const result = await pool.query("SELECT COUNT(*) FROM auth")
 		res.json({ setup: parseInt(result.rows[0].count) > 0, tokenRequired: !!process.env.setup_TOKEN })
 	} catch (e) {
-		console.error(e)
 		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!process.env.setup_TOKEN })
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -91,8 +90,7 @@ app.post("/verify", authorize, async (req, res) => {
 		const row = result.rows[0] ?? {}
 		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system" })
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -103,8 +101,7 @@ app.put("/theme", authorize, validateBody, async (req, res) => {
 		await pool.query("UPDATE auth SET theme = $1 WHERE username = $2", [theme, req.decoded.username])
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -113,8 +110,7 @@ app.get("/users", authorize, requireAdmin, async (req, res) => {
 		const result = await pool.query("SELECT username, role, last_login FROM auth ORDER BY username")
 		res.json(result.rows)
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -130,8 +126,8 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
-		console.error(e)
-		res.status(e.code === "23505" ? 400 : 500).json({ error: true })
+		if (e.code === "23505") return sendError(res, new HttpError(400))
+		sendError(res, e)
 	}
 })
 
@@ -184,8 +180,7 @@ app.get("/users/:username/sessions", authorize, requireAdmin, async (req, res) =
 		)
 		res.json(result.rows)
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -197,8 +192,7 @@ app.delete("/sessions/:id", authorize, requireAdmin, async (req, res) => {
 		if (result.rowCount === 0) return res.status(404).json({ error: true })
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
@@ -246,8 +240,7 @@ app.post("/logout", authorize, async (req, res) => {
 		res.clearCookie("bearertoken", { httpOnly: true, secure: process.env.NODE_ENV !== "development", sameSite: "lax" })
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
+		sendError(res, e)
 	}
 })
 
