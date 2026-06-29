@@ -118,8 +118,8 @@ module.exports = {
 		try {
 			const { taskId } = req.params
 			const query = taskId
-				? `SELECT * FROM task_runs WHERE task_id=$1 ORDER BY ran_at DESC LIMIT 200`
-				: `SELECT * FROM task_runs ORDER BY ran_at DESC LIMIT 200`
+				? "SELECT * FROM task_runs WHERE task_id=$1 ORDER BY ran_at DESC LIMIT 200"
+				: "SELECT * FROM task_runs ORDER BY ran_at DESC LIMIT 200"
 			const { rows } = await pool.query(query, taskId ? [taskId] : [])
 			res.send({ runs: rows })
 		} catch (e) {
@@ -162,14 +162,14 @@ const generateTask = (url, id, body) => () => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
 		console.log(data)
 		pool.query(
-			`INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, 'success', 200)`,
+			"INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, 'success', 200)",
 			[id, url]
 		).catch(err => console.log("RUN INSERT ERROR", err))
 	}).catch(({response, message}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
 		console.log(`code ${response?.status} | error ${message}`)
 		pool.query(
-			`INSERT INTO task_runs (task_id, url, status, http_status, error) VALUES ($1, $2, 'failure', $3, $4)`,
+			"INSERT INTO task_runs (task_id, url, status, http_status, error) VALUES ($1, $2, 'failure', $3, $4)",
 			[id, url, response?.status ?? null, message]
 		).catch(err => console.log("RUN INSERT ERROR", err))
 	})

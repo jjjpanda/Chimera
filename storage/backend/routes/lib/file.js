@@ -235,7 +235,7 @@ const queryToDeleteAndRecord = (camera, deleting, before="") => {
 	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT '${now}', ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
 }
 
-const escapeIdent = (name) => name.replace(/"/g, '""')
+const escapeIdent = (name) => name.replace(/"/g, "\"\"")
 
 const queryForDailyStats = (cameras) => {
 	const cols = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)

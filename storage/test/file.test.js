@@ -68,12 +68,12 @@ describe("File Routes", () => {
 		})
 
 		test("escapes double quotes in camera names (SQL identifier injection)", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: 'ev"il' }])
+			loadCameras.mockReturnValue([{ id: 1, name: "ev\"il" }])
 			const res = await supertest(app)
 				.get("/file/dailyStats")
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(200)
-			expect(query).toHaveBeenCalledWith(expect.stringContaining('as "ev""il"'))
+			expect(query).toHaveBeenCalledWith(expect.stringContaining("as \"ev\"\"il\""))
 		})
 	})
 

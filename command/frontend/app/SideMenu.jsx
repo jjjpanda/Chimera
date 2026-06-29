@@ -58,9 +58,9 @@ const SideMenu = ({ index, mobile }) => {
 							)}
 						>
 							{key === "route-0"
-						? <img src="/res/logo.png" alt="Home" className="size-6 object-contain" />
-						: <Icon className="size-6" />
-					}
+								? <img src="/res/logo.png" alt="Home" className="size-6 object-contain" />
+								: <Icon className="size-6" />
+							}
 							<span className="leading-none">{title}</span>
 						</button>
 					)
