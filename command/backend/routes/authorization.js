@@ -1,7 +1,7 @@
 var express = require("express")
-var { validateBody, auth } = require("lib")
+var { validateBody, auth, password } = require("lib")
 const { requireAdmin } = auth
-const { passwordCheck, login, pool } = require("./lib/auth.js")
+const { passwordCheck, login, pool, withTransaction, HttpError } = require("./lib/auth.js")
 const authorize = auth.createAuthorize(pool)
 
 const bcrypt = require("bcryptjs")
@@ -10,8 +10,14 @@ const memory = require("memory")
 
 const app = express.Router()
 
-const isValidPassword = (p) => typeof p === "string" && p.length >= 8
-const PASSWORD_REQUIREMENT = "Password must be at least 8 characters."
+const { minLength: MIN_PASSWORD_LENGTH, requirement: PASSWORD_REQUIREMENT } = password
+const isValidPassword = (p) => typeof p === "string" && p.length >= MIN_PASSWORD_LENGTH
+
+const sendError = (res, e) => {
+	if (e instanceof HttpError) return res.status(e.status).json({ error: true, ...(e.errors && { errors: e.errors }) })
+	console.error(e)
+	res.status(500).json({ error: true })
+}
 
 const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
@@ -61,26 +67,20 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	if (!username) return res.status(400).json({ error: true })
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
-	let client
 	try {
-		client = await pool.connect()
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		await client.query("BEGIN")
-		await client.query("SELECT pg_advisory_xact_lock(1)")
-		const result = await client.query(
-			"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth)",
-			[username, hash]
-		)
-		await client.query("COMMIT")
+		const result = await withTransaction(async (client) => {
+			await client.query("SELECT pg_advisory_xact_lock(1)")
+			return client.query(
+				"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth)",
+				[username, hash]
+			)
+		})
 		if (result.rowCount === 0) return res.status(403).json({ error: true })
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		if (client) await client.query("ROLLBACK").catch(() => {})
-		res.status(500).json({ error: true })
-	} finally {
-		if (client) client.release()
+		sendError(res, e)
 	}
 })
 
@@ -141,50 +141,37 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
 	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
-	let hash, client
+	let hash
 	try {
 		if (password !== undefined) {
 			const salt = await bcrypt.genSalt(10)
 			hash = await bcrypt.hash(password, salt)
 		}
-		client = await pool.connect()
-		await client.query("BEGIN")
-		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
-		if (target.rowCount === 0) {
-			await client.query("ROLLBACK")
-			return res.status(404).json({ error: true })
-		}
-		if (target.rows[0].role === "admin" && role === "user") {
-			const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
-			if (adminRows.rows.length <= 1) {
-				await client.query("ROLLBACK")
-				return res.status(400).json({ error: true, errors: "cannot demote last admin" })
+		await withTransaction(async (client) => {
+			const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
+			if (target.rowCount === 0) throw new HttpError(404)
+			if (target.rows[0].role === "admin" && role === "user") {
+				const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
+				if (adminRows.rows.length <= 1) throw new HttpError(400, "cannot demote last admin")
 			}
-		}
-		const updates = []
-		const values = []
-		if (role !== undefined) {
-			values.push(role)
-			updates.push(`role = $${values.length}`)
-		}
-		if (password !== undefined) {
-			values.push(hash)
-			updates.push(`hash = $${values.length}`)
-			updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
-		}
-		values.push(username)
-		await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
-		if (password !== undefined || role !== undefined) {
+			const updates = []
+			const values = []
+			if (role !== undefined) {
+				values.push(role)
+				updates.push(`role = $${values.length}`)
+			}
+			if (password !== undefined) {
+				values.push(hash)
+				updates.push(`hash = $${values.length}`)
+				updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
+			}
+			values.push(username)
+			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
-		}
-		await client.query("COMMIT")
+		})
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		if (client) await client.query("ROLLBACK").catch(() => {})
-		res.status(500).json({ error: true })
-	} finally {
-		if (client) client.release()
+		sendError(res, e)
 	}
 })
 
@@ -218,31 +205,19 @@ app.delete("/sessions/:id", authorize, requireAdmin, async (req, res) => {
 app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	const { username } = req.params
 	if (username === req.decoded.username) return res.status(400).json({ error: true })
-	let client
 	try {
-		client = await pool.connect()
-		await client.query("BEGIN")
-		const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
-		if (target.rowCount === 0) {
-			await client.query("ROLLBACK")
-			return res.status(404).json({ error: true })
-		}
-		if (target.rows[0].role === "admin") {
-			const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
-			if (adminRows.rows.length <= 1) {
-				await client.query("ROLLBACK")
-				return res.status(400).json({ error: true, errors: "cannot delete last admin" })
+		await withTransaction(async (client) => {
+			const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
+			if (target.rowCount === 0) throw new HttpError(404)
+			if (target.rows[0].role === "admin") {
+				const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
+				if (adminRows.rows.length <= 1) throw new HttpError(400, "cannot delete last admin")
 			}
-		}
-		await client.query("DELETE FROM auth WHERE username = $1", [username])
-		await client.query("COMMIT")
+			await client.query("DELETE FROM auth WHERE username = $1", [username])
+		})
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		if (client) await client.query("ROLLBACK").catch(() => {})
-		res.status(500).json({ error: true })
-	} finally {
-		if (client) client.release()
+		sendError(res, e)
 	}
 })
 
@@ -250,22 +225,16 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 	const { password } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
-	let client
 	try {
 		const salt = await bcrypt.genSalt(10)
 		const hash = await bcrypt.hash(password, salt)
-		client = await pool.connect()
-		await client.query("BEGIN")
-		await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
-		await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
-		await client.query("COMMIT")
+		await withTransaction(async (client) => {
+			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
+		})
 		res.json({ error: false })
 	} catch (e) {
-		console.error(e)
-		if (client) await client.query("ROLLBACK").catch(() => {})
-		res.status(500).json({ error: true })
-	} finally {
-		if (client) client.release()
+		sendError(res, e)
 	}
 })
 

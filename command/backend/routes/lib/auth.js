@@ -14,8 +14,33 @@ const pool = new Pool({
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
 
+class HttpError extends Error {
+	constructor(status, errors) {
+		super(errors || "http error")
+		this.status = status
+		this.errors = errors
+	}
+}
+
+const withTransaction = async (fn) => {
+	const client = await pool.connect()
+	try {
+		await client.query("BEGIN")
+		const result = await fn(client)
+		await client.query("COMMIT")
+		return result
+	} catch (e) {
+		await client.query("ROLLBACK").catch(() => {})
+		throw e
+	} finally {
+		client.release()
+	}
+}
+
 module.exports = {
 	pool,
+	withTransaction,
+	HttpError,
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
 		const deny = () => res.status(400).json({ error: true, errors: "Invalid username or password" })
@@ -47,6 +72,7 @@ module.exports = {
 		}
 		jwt.sign({ username, role: req.userRole, jti }, secretKey, { expiresIn: "30d" },
 			(err, token) => {
+				if (err || !token) return res.status(500).json({ error: true })
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000,
 					httpOnly: true,
