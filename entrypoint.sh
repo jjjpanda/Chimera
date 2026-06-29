@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+echo "→ Preparing acme challenge directory..."
+mkdir -p ./.well-known/acme-challenge
+
+echo "→ Validating environment variables..."
+node chimera/validateEnvVars.js
+
 echo "→ Preparing database..."
 node chimera/prepareDatabase.js
 

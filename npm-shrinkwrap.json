@@ -7,6 +7,16 @@
     "": {
       "name": "chimera",
       "version": "5.1.2",
+      "workspaces": [
+        "command",
+        "gateway",
+        "lib",
+        "livestream",
+        "memory",
+        "object",
+        "schedule",
+        "storage"
+      ],
       "dependencies": {
         "command": "file:./command",
         "dotenv": "^16.4.0",
