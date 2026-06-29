@@ -75,6 +75,18 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
+
+		test("returns 500 when the transaction throws a generic error", async () => {
+			const errSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+			mockedPool.query.mockRejectedValueOnce(new Error("db down"))
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "admin", password: "password123" })
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(errSpy).toHaveBeenCalled()
+			errSpy.mockRestore()
+		})
 	})
 
 	describe("POST /authorization/login", () => {
@@ -120,6 +132,16 @@ describe("Authorization Routes", () => {
 				.send({ username: "bob", password: "temppass123" })
 			expect(res.status).toBe(200)
 			expect(res.body.error).toBe(false)
+		})
+
+		test("returns 500 when token signing fails", async () => {
+			const signSpy = jest.spyOn(jwt, "sign").mockImplementationOnce((payload, key, opts, cb) => cb(new Error("sign failed")))
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			signSpy.mockRestore()
 		})
 	})
 
