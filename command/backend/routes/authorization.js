@@ -63,7 +63,7 @@ app.get("/status", async (req, res) => {
 app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
-	if (!username) return res.status(400).json({ error: true })
+	if (typeof username !== "string") return res.status(400).json({ error: true })
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 	try {
