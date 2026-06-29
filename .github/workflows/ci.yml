@@ -30,8 +30,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules
 
       - name: Run tests
         run: npm test
@@ -62,8 +60,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules:frontend
 
       - name: Build frontend
         run: npm run build:command
@@ -86,8 +82,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install module dependencies
-        run: npm run install:modules:frontend
 
       - name: Install Playwright browser
         run: npm run e2e:install
