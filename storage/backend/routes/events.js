@@ -78,30 +78,27 @@ app.get("/usage", async (req, res) => {
 
 		const duBytes = await du(capturesPath)
 
-		const cameraStats = await Promise.all(
-			cameras.map(async ({ id, name }) => {
-				const camPath = path.join(capturesPath, id.toString())
-				const [countResult, duResult] = await Promise.all([
-					pool.query("SELECT COUNT(*) FROM frame_files WHERE camera = $1", [id]),
-					du(camPath)
-				])
-				return {
-					id,
-					name,
-					used_gb: parseFloat((duResult / 1e9).toFixed(3)),
-					frame_count: parseInt(countResult.rows[0].count) || 0
-				}
-			})
+		const { rows: statRows } = await pool.query(
+			"SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes FROM frame_files GROUP BY camera"
 		)
+		const countByCamera = new Map(statRows.map(r => [String(r.camera), parseInt(r.count) || 0]))
+		const bytesByCamera = new Map(statRows.map(r => [String(r.camera), parseInt(r.bytes) || 0]))
+		const totalFrames = statRows.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0)
 
-		const totalFrames = await pool.query("SELECT COUNT(*) FROM frame_files")
+		const cameraStats = cameras.map(({ id, name }) => ({
+			id,
+			name,
+			used_gb: parseFloat(((bytesByCamera.get(String(id)) || 0) / 1e9).toFixed(3)),
+			frame_count: countByCamera.get(String(id)) || 0
+		}))
+
 		const breakdown = await captureBreakdown(capturesPath, duBytes)
 
 		res.json({
 			used_gb: parseFloat(((duBytes + breakdown.objects) / 1e9).toFixed(3)),
 			max_gb: maxGb,
 			cameras: cameraStats,
-			total_frames: parseInt(totalFrames.rows[0].count) || 0,
+			total_frames: totalFrames,
 			breakdown
 		})
 	} catch (e) {

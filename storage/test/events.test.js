@@ -209,13 +209,17 @@ describe("Events Routes", () => {
 
 		test("aggregates per-camera stats when cameras are configured", async () => {
 			lib.loadCameras.mockReturnValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
+			query.mockResolvedValueOnce({ rows: [
+				{ camera: "1", count: "3", bytes: "500000000" },
+				{ camera: "2", count: "2", bytes: "250000000" }
+			] })
 			const res = await supertest(app)
 				.get("/usage")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
 			expect(res.body.cameras).toEqual([
-				{ id: 1, name: "Front", used_gb: 0.5, frame_count: 0 },
-				{ id: 2, name: "Back", used_gb: 0.5, frame_count: 0 }
+				{ id: 1, name: "Front", used_gb: 0.5, frame_count: 3 },
+				{ id: 2, name: "Back", used_gb: 0.25, frame_count: 2 }
 			])
 		})
 
