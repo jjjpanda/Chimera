@@ -191,6 +191,16 @@ describe("startWorkers / stopWorkers", () => {
 		expect(execFile).toHaveBeenCalledTimes(2)
 		expect(jest.getTimerCount()).toBe(0)
 	})
+
+	test("stopWorkers flips every camera's running flag to false", async () => {
+		worker.startWorkers()
+		await tick()
+		expect(worker.getStatus()[1].running).toBe(true)
+		expect(worker.getStatus()[2].running).toBe(true)
+		worker.stopWorkers()
+		expect(worker.getStatus()[1].running).toBe(false)
+		expect(worker.getStatus()[2].running).toBe(false)
+	})
 })
 
 describe("setConfig validation", () => {
