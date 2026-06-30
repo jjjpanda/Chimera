@@ -56,6 +56,8 @@ describe("Authorization Routes", () => {
 			process.env.setup_TOKEN = "recovery-token"
 			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
 			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // no admin exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
 			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
@@ -68,6 +70,8 @@ describe("Authorization Routes", () => {
 			process.env.setup_TOKEN = "recovery-token"
 			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
 			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // an admin already exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }] }) // target is that admin
 			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert (ON CONFLICT)
 			const res = await supertest(app)
 				.post("/authorization/setup")
@@ -75,6 +79,33 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["existingadmin"])
+		})
+
+		test("rejects taking over a non-admin account while an admin exists", async () => {
+			process.env.setup_TOKEN = "recovery-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // an admin already exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }] }) // target is a non-admin
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "victim", password: "password123", token: "recovery-token" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["victim"])
+		})
+
+		test("rejects minting a second admin while an admin exists", async () => {
+			process.env.setup_TOKEN = "recovery-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // an admin already exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "second-admin", password: "password123", token: "recovery-token" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: true })
 		})
 
 		test("rejects setup with an invalid setup_TOKEN", async () => {
