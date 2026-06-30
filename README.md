@@ -45,10 +45,16 @@ npm run docker:up
 If you are locked out of the admin account — a forgotten password, or the admin row was removed — an operator with deployment access can recover it:
 
 1. Note the `setup_TOKEN` value (it is already required for the command service to start).
-2. POST to `/setup` (or use the setup screen) with that token, the admin username, and a new password.
+2. POST to `/authorization/setup` with that token, the admin username, and a new password:
 
-This creates the admin if it does not exist, or resets the password of the named account and ensures it has the `admin` role if it does. The account can log in immediately afterward.
+```sh
+curl -X POST https://<host>/authorization/setup \
+  -H "Content-Type: application/json" \
+  -d '{"token":"<setup_TOKEN>","username":"<admin>","password":"<new-password>"}'
+```
+
+This creates the admin if it does not exist, or resets the password of the named account and ensures it has the `admin` role if it does. The account can log in immediately afterward. The in-app setup screen only appears on a fresh install (empty account table), so an existing admin can only be recovered through this request.
 
 Keep `setup_TOKEN` secret: anyone who has it can create or reset an admin through this route.
 
-> `/setup` is rate-limited to 10 attempts per 15 minutes per IP, and wrong-token attempts count toward that limit. If you lock yourself out, wait 15 minutes before retrying.
+> `/authorization/setup` is rate-limited to 10 attempts per 15 minutes per IP, and wrong-token attempts count toward that limit. If you lock yourself out, wait 15 minutes before retrying.
