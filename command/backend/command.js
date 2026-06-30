@@ -27,4 +27,11 @@ for(const webpath of ["/login", "/", "/clip", "/live", "/recordings", "/stats", 
 	}))
 }
 
+app.startDbPruning = () => {
+	const prune = () => {
+		pool.query("DELETE FROM sessions WHERE revoked = TRUE OR issued_at < NOW() - INTERVAL '30 days'").catch(console.error)
+	}
+	return setInterval(prune, 1000 * 60 * 60 * 12).unref()
+}
+
 module.exports = app
