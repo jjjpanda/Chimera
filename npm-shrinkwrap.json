@@ -626,20 +626,13 @@
         "dotenv": "^16.4.0",
         "express": "^4.21.0",
         "helmet": "^8.0.0",
-        "http-proxy-middleware": "^1.0.6",
+        "http-proxy-middleware": "^2.0.10",
         "lib": "file:../lib"
       },
       "peerDependencies": {
         "command": "file:../command",
         "jest": "^29.0.0",
         "supertest": "^6.1.6"
-      }
-    },
-    "gateway/node_modules/@types/http-proxy": {
-      "version": "1.17.8",
-      "license": "MIT",
-      "dependencies": {
-        "@types/node": "*"
       }
     },
     "gateway/node_modules/asap": {
@@ -669,10 +662,6 @@
         "asap": "^2.0.0",
         "wrappy": "1"
       }
-    },
-    "gateway/node_modules/eventemitter3": {
-      "version": "4.0.7",
-      "license": "MIT"
     },
     "gateway/node_modules/fast-safe-stringify": {
       "version": "2.1.1",
@@ -712,63 +701,10 @@
         "node": ">=8"
       }
     },
-    "gateway/node_modules/http-proxy": {
-      "version": "1.18.1",
-      "license": "MIT",
-      "dependencies": {
-        "eventemitter3": "^4.0.0",
-        "follow-redirects": "^1.0.0",
-        "requires-port": "^1.0.0"
-      },
-      "engines": {
-        "node": ">=8.0.0"
-      }
-    },
-    "gateway/node_modules/http-proxy-middleware": {
-      "version": "1.3.1",
-      "license": "MIT",
-      "dependencies": {
-        "@types/http-proxy": "^1.17.5",
-        "http-proxy": "^1.18.1",
-        "is-glob": "^4.0.1",
-        "is-plain-obj": "^3.0.0",
-        "micromatch": "^4.0.2"
-      },
-      "engines": {
-        "node": ">=8.0.0"
-      }
-    },
     "gateway/node_modules/inherits": {
       "version": "2.0.4",
       "license": "ISC",
       "peer": true
-    },
-    "gateway/node_modules/is-extglob": {
-      "version": "2.1.1",
-      "license": "MIT",
-      "engines": {
-        "node": ">=0.10.0"
-      }
-    },
-    "gateway/node_modules/is-glob": {
-      "version": "4.0.3",
-      "license": "MIT",
-      "dependencies": {
-        "is-extglob": "^2.1.1"
-      },
-      "engines": {
-        "node": ">=0.10.0"
-      }
-    },
-    "gateway/node_modules/is-plain-obj": {
-      "version": "3.0.0",
-      "license": "MIT",
-      "engines": {
-        "node": ">=10"
-      },
-      "funding": {
-        "url": "https://github.com/sponsors/sindresorhus"
-      }
     },
     "gateway/node_modules/lib": {
       "resolved": "lib",
@@ -813,10 +749,6 @@
       "engines": {
         "node": ">= 6"
       }
-    },
-    "gateway/node_modules/requires-port": {
-      "version": "1.0.0",
-      "license": "MIT"
     },
     "gateway/node_modules/string_decoder": {
       "version": "1.3.0",
@@ -5485,6 +5417,15 @@
         "@types/node": "*"
       }
     },
+    "node_modules/@types/http-proxy": {
+      "version": "1.17.17",
+      "resolved": "https://registry.npmjs.org/@types/http-proxy/-/http-proxy-1.17.17.tgz",
+      "integrity": "sha512-ED6LB+Z1AVylNTu7hdzuBqOgMnvG/ld6wGCG8wFnAzKX5uyW2K3WD52v0gnLCTK/VLpXtKckgWuyScYK6cSPaw==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/node": "*"
+      }
+    },
     "node_modules/@types/istanbul-lib-coverage": {
       "version": "2.0.6",
       "resolved": "https://registry.npmjs.org/@types/istanbul-lib-coverage/-/istanbul-lib-coverage-2.0.6.tgz",
@@ -8503,6 +8444,20 @@
         "url": "https://opencollective.com/express"
       }
     },
+    "node_modules/http-proxy": {
+      "version": "1.18.1",
+      "resolved": "https://registry.npmjs.org/http-proxy/-/http-proxy-1.18.1.tgz",
+      "integrity": "sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==",
+      "license": "MIT",
+      "dependencies": {
+        "eventemitter3": "^4.0.0",
+        "follow-redirects": "^1.0.0",
+        "requires-port": "^1.0.0"
+      },
+      "engines": {
+        "node": ">=8.0.0"
+      }
+    },
     "node_modules/http-proxy-agent": {
       "version": "4.0.1",
       "license": "MIT",
@@ -8513,6 +8468,30 @@
       },
       "engines": {
         "node": ">= 6"
+      }
+    },
+    "node_modules/http-proxy-middleware": {
+      "version": "2.0.10",
+      "resolved": "https://registry.npmjs.org/http-proxy-middleware/-/http-proxy-middleware-2.0.10.tgz",
+      "integrity": "sha512-RKzRWNPxUZqbuk3BC5mGVJbBnWgr+diEnjJexIOytFbBzDy88Fbh/YvBr3DsNrl1jYAfjWfpATEv0NO35FDuPQ==",
+      "license": "MIT",
+      "dependencies": {
+        "@types/http-proxy": "^1.17.8",
+        "http-proxy": "^1.18.1",
+        "is-glob": "^4.0.1",
+        "is-plain-obj": "^3.0.0",
+        "micromatch": "^4.0.2"
+      },
+      "engines": {
+        "node": ">=12.0.0"
+      },
+      "peerDependencies": {
+        "@types/express": "^4.17.13"
+      },
+      "peerDependenciesMeta": {
+        "@types/express": {
+          "optional": true
+        }
       }
     },
     "node_modules/https-proxy-agent": {
@@ -8811,6 +8790,18 @@
       },
       "funding": {
         "url": "https://github.com/sponsors/ljharb"
+      }
+    },
+    "node_modules/is-plain-obj": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/is-plain-obj/-/is-plain-obj-3.0.0.tgz",
+      "integrity": "sha512-gwsOE28k+23GP1B6vFl1oVh/WOzmawBrKwo5Ev6wMKzPkaXaCDIQKzLnvsA42DRlbVTWorkgTKIviAKCWkfUwA==",
+      "license": "MIT",
+      "engines": {
+        "node": ">=10"
+      },
+      "funding": {
+        "url": "https://github.com/sponsors/sindresorhus"
       }
     },
     "node_modules/is-regex": {
@@ -12021,6 +12012,12 @@
       "funding": {
         "url": "https://github.com/sponsors/ljharb"
       }
+    },
+    "node_modules/requires-port": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/requires-port/-/requires-port-1.0.0.tgz",
+      "integrity": "sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==",
+      "license": "MIT"
     },
     "node_modules/resolve": {
       "version": "2.0.0-next.3",
@@ -17309,6 +17306,14 @@
         "@types/node": "*"
       }
     },
+    "@types/http-proxy": {
+      "version": "1.17.17",
+      "resolved": "https://registry.npmjs.org/@types/http-proxy/-/http-proxy-1.17.17.tgz",
+      "integrity": "sha512-ED6LB+Z1AVylNTu7hdzuBqOgMnvG/ld6wGCG8wFnAzKX5uyW2K3WD52v0gnLCTK/VLpXtKckgWuyScYK6cSPaw==",
+      "requires": {
+        "@types/node": "*"
+      }
+    },
     "@types/istanbul-lib-coverage": {
       "version": "2.0.6",
       "resolved": "https://registry.npmjs.org/@types/istanbul-lib-coverage/-/istanbul-lib-coverage-2.0.6.tgz",
@@ -19561,16 +19566,10 @@
         "dotenv": "^16.4.0",
         "express": "^4.21.0",
         "helmet": "^8.0.0",
-        "http-proxy-middleware": "^1.0.6",
+        "http-proxy-middleware": "^2.0.10",
         "lib": "file:../lib"
       },
       "dependencies": {
-        "@types/http-proxy": {
-          "version": "1.17.8",
-          "requires": {
-            "@types/node": "*"
-          }
-        },
         "asap": {
           "version": "2.0.6",
           "peer": true
@@ -20114,9 +20113,6 @@
             "wrappy": "1"
           }
         },
-        "eventemitter3": {
-          "version": "4.0.7"
-        },
         "fast-safe-stringify": {
           "version": "2.1.1",
           "peer": true
@@ -20141,39 +20137,9 @@
           "version": "1.0.0",
           "peer": true
         },
-        "http-proxy": {
-          "version": "1.18.1",
-          "requires": {
-            "eventemitter3": "^4.0.0",
-            "follow-redirects": "^1.0.0",
-            "requires-port": "^1.0.0"
-          }
-        },
-        "http-proxy-middleware": {
-          "version": "1.3.1",
-          "requires": {
-            "@types/http-proxy": "^1.17.5",
-            "http-proxy": "^1.18.1",
-            "is-glob": "^4.0.1",
-            "is-plain-obj": "^3.0.0",
-            "micromatch": "^4.0.2"
-          }
-        },
         "inherits": {
           "version": "2.0.4",
           "peer": true
-        },
-        "is-extglob": {
-          "version": "2.1.1"
-        },
-        "is-glob": {
-          "version": "4.0.3",
-          "requires": {
-            "is-extglob": "^2.1.1"
-          }
-        },
-        "is-plain-obj": {
-          "version": "3.0.0"
         },
         "lib": {
           "version": "file:lib",
@@ -20252,9 +20218,6 @@
             "string_decoder": "^1.1.1",
             "util-deprecate": "^1.0.1"
           }
-        },
-        "requires-port": {
-          "version": "1.0.0"
         },
         "string_decoder": {
           "version": "1.3.0",
@@ -20539,12 +20502,34 @@
         "toidentifier": "~1.0.1"
       }
     },
+    "http-proxy": {
+      "version": "1.18.1",
+      "resolved": "https://registry.npmjs.org/http-proxy/-/http-proxy-1.18.1.tgz",
+      "integrity": "sha512-7mz/721AbnJwIVbnaSv1Cz3Am0ZLT/UBwkC92VlxhXv/k/BBQfM2fXElQNC27BVGr0uwUpplYPQM9LnaBMR5NQ==",
+      "requires": {
+        "eventemitter3": "^4.0.0",
+        "follow-redirects": "^1.0.0",
+        "requires-port": "^1.0.0"
+      }
+    },
     "http-proxy-agent": {
       "version": "4.0.1",
       "requires": {
         "@tootallnate/once": "1",
         "agent-base": "6",
         "debug": "4"
+      }
+    },
+    "http-proxy-middleware": {
+      "version": "2.0.10",
+      "resolved": "https://registry.npmjs.org/http-proxy-middleware/-/http-proxy-middleware-2.0.10.tgz",
+      "integrity": "sha512-RKzRWNPxUZqbuk3BC5mGVJbBnWgr+diEnjJexIOytFbBzDy88Fbh/YvBr3DsNrl1jYAfjWfpATEv0NO35FDuPQ==",
+      "requires": {
+        "@types/http-proxy": "^1.17.8",
+        "http-proxy": "^1.18.1",
+        "is-glob": "^4.0.1",
+        "is-plain-obj": "^3.0.0",
+        "micromatch": "^4.0.2"
       }
     },
     "https-proxy-agent": {
@@ -20704,6 +20689,11 @@
       "requires": {
         "has-tostringtag": "^1.0.0"
       }
+    },
+    "is-plain-obj": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/is-plain-obj/-/is-plain-obj-3.0.0.tgz",
+      "integrity": "sha512-gwsOE28k+23GP1B6vFl1oVh/WOzmawBrKwo5Ev6wMKzPkaXaCDIQKzLnvsA42DRlbVTWorkgTKIviAKCWkfUwA=="
     },
     "is-regex": {
       "version": "1.1.4",
@@ -23158,6 +23148,11 @@
           }
         }
       }
+    },
+    "requires-port": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/requires-port/-/requires-port-1.0.0.tgz",
+      "integrity": "sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ=="
     },
     "resolve": {
       "version": "2.0.0-next.3",
