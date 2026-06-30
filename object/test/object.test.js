@@ -107,6 +107,17 @@ describe("Object Routes", () => {
 			})
 			.end(done)
 	})
+
+	test("Scan returns 502 when the local worker scan fails", (done) => {
+		require("../backend/lib/worker.js").scan.mockRejectedValueOnce(new Error("frame grab failed"))
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 1 })
+			.expect(502)
+			.expect((res) => expect(res.body.error).toBe("frame grab failed"))
+			.end(done)
+	})
 })
 
 describe("Object Routes (shared state via a connected memory client)", () => {

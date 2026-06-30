@@ -1,4 +1,5 @@
 module.exports = {
+	displayName: "memory",
 	clearMocks: true,
 	moduleFileExtensions: [
 		"js",

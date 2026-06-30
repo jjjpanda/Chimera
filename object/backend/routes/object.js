@@ -54,7 +54,7 @@ app.post("/scan", requireAdmin, (req, res) => {
 		event: "objectScan",
 		args: [camera],
 		onState: ({ detections, error }) => error ? res.status(502).send({ error }) : res.send({ camera, detections }),
-		local: () => worker.scan(camera).then(detections => res.send({ camera, detections }))
+		local: () => worker.scan(camera).then(detections => res.send({ camera, detections })).catch(e => res.status(502).send({ error: e.message }))
 	})
 })
 

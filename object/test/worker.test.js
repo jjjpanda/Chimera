@@ -121,10 +121,9 @@ describe("scan", () => {
 		delete process.env.object_ALERT_ON
 	})
 
-	test("records ffmpeg failure in status and returns []", async () => {
+	test("records ffmpeg failure in status and rejects", async () => {
 		execFile.mockImplementation((file, args, opts, cb) => cb(new Error("ffmpeg boom")))
-		const detections = await worker.scan(4)
-		expect(detections).toEqual([])
+		await expect(worker.scan(4)).rejects.toThrow("ffmpeg boom")
 		expect(detector.detect).not.toHaveBeenCalled()
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
 	})
