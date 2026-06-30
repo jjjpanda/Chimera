@@ -163,6 +163,9 @@ const stopWorkers = () => {
 		clearTimeout(timers[camera])
 		delete timers[camera]
 	}
+	for (const camera of Object.keys(status)) {
+		status[camera].running = false
+	}
 }
 
 module.exports = {

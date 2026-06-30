@@ -1,18 +1,18 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
+const { parseSchema } = require("./preflight.js")
 
 let allEnvPresent = true
+const optionalKeys = new Set(parseSchema().filter(v => v.optional).map(v => v.key))
 
 const checkVar = (varName) => {
-	if(varName in process.env){
-		return true
-	}
-	else{
-		console.log("MISSING ENV VAR", varName)
-		allEnvPresent = false
-		return false
-	}
+	if (optionalKeys.has(varName)) return true
+	const val = process.env[varName]
+	if (val != null && val.trim() !== "") return true
+	console.log("MISSING ENV VAR", varName)
+	allEnvPresent = false
+	return false
 }
 
 const isFolderCheck = (varName) => {
