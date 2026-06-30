@@ -37,7 +37,30 @@ describe("File Routes", () => {
 	})
 
 	describe("/file/pathMetrics", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		const { loadCameras } = require("lib")
+		afterEach(() => { loadCameras.mockReturnValue([]) })
+
+		test("maps per-camera size and count metrics", async () => {
+			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
+			query
+				.mockImplementationOnce(() => Promise.resolve({ rows: [{ sum: "500" }] }))
+				.mockImplementationOnce(() => Promise.resolve({ rows: [{ count: "7" }] }))
+			const res = await supertest(app)
+				.post("/file/pathMetrics")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ size: { cam1: "500" }, count: { cam1: "7" } })
+		})
+
+		test("returns 500 when a metric query fails instead of hanging", async () => {
+			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
+			query.mockRejectedValueOnce(new Error("db error"))
+			const res = await supertest(app)
+				.post("/file/pathMetrics")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
 	})
 
 	describe("/file/dailyStats", () => {

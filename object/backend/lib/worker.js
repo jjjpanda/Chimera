@@ -133,7 +133,7 @@ const scan = async (id) => {
 		return detections
 	} catch (e) {
 		st.error = e.message
-		return []
+		throw e
 	}
 }
 
@@ -145,7 +145,7 @@ const startWorkers = () => {
 	for (const cam of list) {
 		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
 		const loop = async () => {
-			await scan(cam.id)
+			await scan(cam.id).catch(() => {})
 			if (workersRunning) timers[cam.id] = setTimeout(loop, config.intervalMs)
 		}
 		loop()
@@ -162,6 +162,9 @@ const stopWorkers = () => {
 	for (const camera of Object.keys(timers)) {
 		clearTimeout(timers[camera])
 		delete timers[camera]
+	}
+	for (const camera of Object.keys(status)) {
+		status[camera].running = false
 	}
 }
 

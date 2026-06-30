@@ -4,12 +4,13 @@ process.env.memory_ON = "true"
 
 let mockConnected = false
 let mockEmitError = false
+let mockScanError = false
 const mockEmit = jest.fn((event, arg, cb2) => {
 	const cb = typeof cb2 === "function" ? cb2 : arg
 	if (mockEmitError) return cb(new Error("ack timeout"))
 	if (event === "objectGetState") cb(null, { config: { confidence: 0.42, intervalMs: 5000, classes: [] }, status: { 9: { running: true } } })
 	else if (event === "objectSetConfig") cb(null, { confidence: 0.8, intervalMs: 5000, classes: [] })
-	else if (event === "objectScan") cb(null, [{ class: "car", score: 0.77, box: [0, 0, 1, 1] }])
+	else if (event === "objectScan") cb(null, mockScanError ? { error: "scan failed" } : { detections: [{ class: "car", score: 0.77, box: [0, 0, 1, 1] }] })
 })
 
 const mockQuery = jest.fn().mockResolvedValue({
@@ -106,12 +107,23 @@ describe("Object Routes", () => {
 			})
 			.end(done)
 	})
+
+	test("Scan returns 502 when the local worker scan fails", (done) => {
+		require("../backend/lib/worker.js").scan.mockRejectedValueOnce(new Error("frame grab failed"))
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 1 })
+			.expect(502)
+			.expect((res) => expect(res.body.error).toBe("frame grab failed"))
+			.end(done)
+	})
 })
 
 describe("Object Routes (shared state via a connected memory client)", () => {
 	beforeAll(() => { mockConnected = true })
 	afterAll(() => { mockConnected = false })
-	afterEach(() => { mockEmitError = false })
+	afterEach(() => { mockEmitError = false; mockScanError = false })
 
 	test("status reads state from the memory client", (done) => {
 		supertest(app)
@@ -175,6 +187,17 @@ describe("Object Routes (shared state via a connected memory client)", () => {
 				expect(res.body.config.confidence).toBe(0.5)
 				expect(res.body.cameras["1"].running).toBe(true)
 			})
+			.end(done)
+	})
+
+	test("returns 502 when the memory scan acks an error", (done) => {
+		mockScanError = true
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 3 })
+			.expect(502)
+			.expect((res) => expect(res.body.error).toBe("scan failed"))
 			.end(done)
 	})
 

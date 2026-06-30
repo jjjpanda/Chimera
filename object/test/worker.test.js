@@ -121,10 +121,9 @@ describe("scan", () => {
 		delete process.env.object_ALERT_ON
 	})
 
-	test("records ffmpeg failure in status and returns []", async () => {
+	test("records ffmpeg failure in status and rejects", async () => {
 		execFile.mockImplementation((file, args, opts, cb) => cb(new Error("ffmpeg boom")))
-		const detections = await worker.scan(4)
-		expect(detections).toEqual([])
+		await expect(worker.scan(4)).rejects.toThrow("ffmpeg boom")
 		expect(detector.detect).not.toHaveBeenCalled()
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
 	})
@@ -190,6 +189,16 @@ describe("startWorkers / stopWorkers", () => {
 		await tick()
 		expect(execFile).toHaveBeenCalledTimes(2)
 		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("stopWorkers flips every camera's running flag to false", async () => {
+		worker.startWorkers()
+		await tick()
+		expect(worker.getStatus()[1].running).toBe(true)
+		expect(worker.getStatus()[2].running).toBe(true)
+		worker.stopWorkers()
+		expect(worker.getStatus()[1].running).toBe(false)
+		expect(worker.getStatus()[2].running).toBe(false)
 	})
 })
 

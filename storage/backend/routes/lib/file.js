@@ -221,6 +221,7 @@ module.exports = {
 			res.send(metrics)
 		}).catch(err => {
 			console.log("err", err)
+			res.status(500).send({ error: true })
 		})
 	}
 }
