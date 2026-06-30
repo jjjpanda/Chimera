@@ -52,6 +52,27 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: true })
 		})
 
+		test("allows admin recovery with a valid setup_TOKEN when no admin exists", async () => {
+			process.env.setup_TOKEN = "recovery-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // INSERT
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "newadmin", password: "password123", token: "recovery-token" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+
+		test("rejects setup with an invalid setup_TOKEN", async () => {
+			process.env.setup_TOKEN = "right-token"
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "admin", password: "password123", token: "wrong-token" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: true })
+		})
+
 		test("returns 400 when username or password is missing", async () => {
 			const res = await supertest(app)
 				.post("/authorization/setup")

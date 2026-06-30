@@ -72,8 +72,8 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 		const result = await withTransaction(async (client) => {
 			await client.query("SELECT pg_advisory_xact_lock(1)")
 			return client.query(
-				"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth)",
-				[username, hash]
+				"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth WHERE role = 'admin') AND ($3::boolean OR NOT EXISTS (SELECT 1 FROM auth))",
+				[username, hash, !!process.env.setup_TOKEN]
 			)
 		})
 		if (result.rowCount === 0) return res.status(403).json({ error: true })

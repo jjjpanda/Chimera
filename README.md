@@ -39,3 +39,12 @@ npm run docker:up
 `docker:logs` tails output · `docker:down` stops · `docker:rebuild` redeploys · `docker:delete` wipes volumes.
 
 > **Bare-metal is unsupported.** Please use Docker. Running via pm2 on bare-metal is heavily discouraged and no longer documented.
+
+### Admin account recovery
+
+If no admin user remains (e.g. the admin account was deleted), an operator can create a new one:
+
+1. Set the `setup_TOKEN` environment variable to a secret value and restart.
+2. POST to `/setup` (or use the setup screen) with that token plus a username and password.
+
+A new admin is created as long as no admin currently exists. The chosen username must not already be taken.
