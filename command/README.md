@@ -10,6 +10,7 @@ The command server is face of the operation. It runs the web-app and the authent
 | :-|:- |:-:|:-:|:-:|
 |POST|/login|Auth Routes|N/A|N/A|
 |POST|/verify|Auth Routes|N/A|N/A|
+|POST|/setup|Bootstrap or recover admin (requires `setup_TOKEN`)|N/A|N/A|
 ## ▶ /
 
 |Type|Route|Description|Parameters|Returns|
