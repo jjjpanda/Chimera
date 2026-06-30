@@ -1,4 +1,4 @@
-const {handleServerStart} = require("lib")
+const {handleServerStart, isPrimeInstance} = require("lib")
 const app = require("./backend/storage.js")
 
 module.exports = {
@@ -8,6 +8,7 @@ module.exports = {
 			console.log("\t▶ Converter Routes:\t /converter")
 			console.log("\t▶ Motion Routes:\t /motion")
 			console.log("\t▶ File Routes:\t /shared")
+			if (isPrimeInstance) app.startDbPruning()
 		}
 		const failureCallback = () => {
 			console.log("📂 Storage Off ❌")
