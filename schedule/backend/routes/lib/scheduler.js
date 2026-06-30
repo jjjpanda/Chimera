@@ -147,6 +147,11 @@ module.exports = {
 		}
 		client.on("connect", register)
 		if (client.connected) register()
+	},
+
+	startTaskRunPruning: () => {
+		const prune = () => pool.query("DELETE FROM task_runs WHERE ran_at < NOW() - INTERVAL '30 days'").catch(console.error)
+		return setInterval(prune, 1000 * 60 * 60 * 12).unref()
 	}
 }
 
