@@ -56,10 +56,22 @@ describe("Authorization Routes", () => {
 			process.env.setup_TOKEN = "recovery-token"
 			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
 			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
-			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // INSERT
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "newadmin", password: "password123", token: "recovery-token" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+
+		test("resets the password of an existing admin with a valid setup_TOKEN", async () => {
+			process.env.setup_TOKEN = "recovery-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert (ON CONFLICT)
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "existingadmin", password: "newpassword123", token: "recovery-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})

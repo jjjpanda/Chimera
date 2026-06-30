@@ -42,9 +42,13 @@ npm run docker:up
 
 ### Admin account recovery
 
-If no admin user remains (e.g. the admin account was deleted), an operator can create a new one:
+If you are locked out of the admin account — a forgotten password, or the admin row was removed — an operator with deployment access can recover it:
 
-1. Set the `setup_TOKEN` environment variable to a secret value and restart.
-2. POST to `/setup` (or use the setup screen) with that token plus a username and password.
+1. Note the `setup_TOKEN` value (it is already required for the command service to start).
+2. POST to `/setup` (or use the setup screen) with that token, the admin username, and a new password.
 
-A new admin is created as long as no admin currently exists. The chosen username must not already be taken.
+This creates the admin if it does not exist, or resets the password of the named account and ensures it has the `admin` role if it does. The account can log in immediately afterward.
+
+Keep `setup_TOKEN` secret: anyone who has it can create or reset an admin through this route.
+
+> `/setup` is rate-limited to 10 attempts per 15 minutes per IP, and wrong-token attempts count toward that limit. If you lock yourself out, wait 15 minutes before retrying.
