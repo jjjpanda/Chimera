@@ -74,6 +74,7 @@ describe("Authorization Routes", () => {
 				.send({ username: "existingadmin", password: "newpassword123", token: "recovery-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["existingadmin"])
 		})
 
 		test("rejects setup with an invalid setup_TOKEN", async () => {
