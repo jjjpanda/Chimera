@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { auth, helmetOptions, tracker } = require("lib")
+const { auth, helmetOptions, tracker, pruneInterval } = require("lib")
 const helmet = require("helmet")
 const pool = require("./lib/pool")
 
@@ -54,11 +54,6 @@ fs.readdir(imgDir, (err, files) => {
 	}
 })
 
-app.startDbPruning = () => {
-	const prune = () => {
-		pool.query("DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'").catch(console.error)
-	}
-	return setInterval(prune, 1000 * 60 * 60 * 12).unref()
-}
+app.startDbPruning = () => pruneInterval(pool, "DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'")
 
 module.exports = app

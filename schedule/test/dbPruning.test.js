@@ -1,4 +1,3 @@
-jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
