@@ -2,7 +2,7 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const { webhookAlert, alertTime, randomID, jsonFileHanding, auth } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, auth, pruneInterval } = require("lib")
 const pool = require("../../lib/pool")
 
 const {schedulableUrls} = auth
@@ -147,7 +147,9 @@ module.exports = {
 		}
 		client.on("connect", register)
 		if (client.connected) register()
-	}
+	},
+
+	startDbPruning: () => pruneInterval(pool, "DELETE FROM task_runs WHERE ran_at < NOW() - INTERVAL '30 days'")
 }
 
 const validateRequestURL = (url) => {

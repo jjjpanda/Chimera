@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { helmetOptions, tracker, auth } = require("lib")
+const { helmetOptions, tracker, auth, pruneInterval } = require("lib")
 const { pool } = require("./routes/lib/auth.js")
 const helmet = require("helmet")
 
@@ -26,5 +26,7 @@ for(const webpath of ["/login", "/", "/clip", "/live", "/recordings", "/stats", 
 		index: "index.html"
 	}))
 }
+
+app.startDbPruning = () => pruneInterval(pool, "DELETE FROM sessions WHERE revoked = TRUE OR issued_at < NOW() - INTERVAL '30 days'")
 
 module.exports = app
