@@ -244,9 +244,5 @@ app.post("/logout", authorize, async (req, res) => {
 	}
 })
 
-setInterval(() => {
-	pool.query("DELETE FROM sessions WHERE revoked = TRUE OR issued_at < NOW() - INTERVAL '30 days'").catch(console.error)
-}, 1000 * 60 * 60 * 12).unref()
-
 app.rateLimit = rateLimit
 module.exports = app

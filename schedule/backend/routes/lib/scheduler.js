@@ -149,8 +149,12 @@ module.exports = {
 		if (client.connected) register()
 	},
 
-	startTaskRunPruning: () => {
-		const prune = () => pool.query("DELETE FROM task_runs WHERE ran_at < NOW() - INTERVAL '30 days'").catch(console.error)
+	startDbPruning: () => {
+		const prune = () => {
+			pool.query("DELETE FROM task_runs WHERE ran_at < NOW() - INTERVAL '30 days'").catch(console.error)
+			pool.query("DELETE FROM sessions WHERE revoked = TRUE OR issued_at < NOW() - INTERVAL '30 days'").catch(console.error)
+			pool.query("DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'").catch(console.error)
+		}
 		return setInterval(prune, 1000 * 60 * 60 * 12).unref()
 	}
 }

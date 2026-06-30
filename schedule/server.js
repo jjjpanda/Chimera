@@ -1,6 +1,6 @@
 const {handleServerStart, isPrimeInstance} = require("lib")
 const app = require("./backend/schedule.js")
-const { autoRegisterCleanup, startTaskRunPruning } = require("./backend/routes/lib/scheduler.js")
+const { autoRegisterCleanup, startDbPruning } = require("./backend/routes/lib/scheduler.js")
 
 module.exports = {
 	start: () => {
@@ -9,7 +9,7 @@ module.exports = {
 			console.log("\t▶ Scheduler Routes:\t /task")
 			if (isPrimeInstance) {
 				autoRegisterCleanup()
-				startTaskRunPruning()
+				startDbPruning()
 			}
 		}
 		const failureCallback = () => {
