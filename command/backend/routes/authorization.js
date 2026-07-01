@@ -71,6 +71,18 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 		const hash = await bcrypt.hash(password, salt)
 		const result = await withTransaction(async (client) => {
 			await client.query("SELECT pg_advisory_xact_lock(1)")
+			if (process.env.setup_TOKEN) {
+				const noAdmin = (await client.query("SELECT 1 FROM auth WHERE role = 'admin' LIMIT 1")).rowCount === 0
+				const target = (await client.query("SELECT role FROM auth WHERE username = $1", [username])).rows[0]
+				const allowed = target ? target.role === "admin" : noAdmin
+				if (!allowed) return { rowCount: 0 }
+				const upsert = await client.query(
+					"INSERT INTO auth(username, hash, role) VALUES ($1, $2, 'admin') ON CONFLICT (username) DO UPDATE SET hash = EXCLUDED.hash, role = 'admin', force_password_change = FALSE, temp_password_expires = NULL",
+					[username, hash]
+				)
+				await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1", [username])
+				return upsert
+			}
 			return client.query(
 				"INSERT INTO auth(username, hash, role) SELECT $1, $2, 'admin' WHERE NOT EXISTS (SELECT 1 FROM auth)",
 				[username, hash]
