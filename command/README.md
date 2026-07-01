@@ -1,51 +1,54 @@
 # Command <img src="frontend/res/logo.png" alt="logo" width="20"/> 
 
-The command server is the face of the operation. It serves the web app and handles authentication, RBAC, and session management for the whole system.
+Serves the web app and handles authentication, RBAC, and session management.
 
 ---
 # Routes
 ## ▶ /authorization
 
-`auth` = valid session required (`authorize`). `admin` = valid session **and** admin role (`authorize` + `requireAdmin`). `none` = public.
+`auth` = session (`authorize`); `admin` = session + admin (`requireAdmin`); `none` = public.
 
 |Type|Route|Auth|Description|Body|Returns|
 | :-|:- |:-:|:-|:-:|:-:|
-|GET|/status|none|Whether setup has been completed and if a setup token is required|—|`{setup, tokenRequired}`|
-|POST|/setup|token*|Bootstrap the first admin, or recover the admin account (rate-limited)|`{username, password, token?}`|`{error}`|
-|POST|/login|none|Authenticate and set the `bearertoken` cookie (rate-limited)|`{username, password}`|`{error, ...}` + cookie|
-|POST|/verify|auth|Validate the current session|—|`{role, theme, forcePasswordChange}`|
-|PUT|/theme|auth|Save the user's theme preference (`light`/`dark`/`system`)|`{theme}`|`{error}`|
-|GET|/users|admin|List all users|—|`[{username, role, last_login}]`|
-|POST|/users|admin|Create a user with a temporary password|`{username, role}`|`{tempPassword}`|
-|PATCH|/users/:username|admin|Update a user's role and/or password (can't demote the last admin)|`{role?, password?}`|`{error}`|
-|DELETE|/users/:username|admin|Delete a user (not yourself, not the last admin)|—|`{error}`|
-|GET|/users/:username/sessions|admin|List a user's sessions|—|`[{id, issued_at, last_seen, ip, user_agent, revoked}]`|
+|GET|/status|none|Setup state and whether a token is required|—|`{setup, tokenRequired}`|
+|POST|/setup|token*|Bootstrap first admin or recover admin (rate-limited)|`{username, password, token?}`|`{error}`|
+|POST|/login|none|Authenticate, set `bearertoken` cookie (rate-limited)|`{username, password}`|`{error, ...}` + cookie|
+|POST|/verify|auth|Validate session|—|`{role, theme, forcePasswordChange}`|
+|PUT|/theme|auth|Save theme (`light`/`dark`/`system`)|`{theme}`|`{error}`|
+|GET|/users|admin|List users|—|`[{username, role, last_login}]`|
+|POST|/users|admin|Create user with temp password|`{username, role}`|`{tempPassword}`|
+|PATCH|/users/:username|admin|Update role/password (can't demote last admin)|`{role?, password?}`|`{error}`|
+|DELETE|/users/:username|admin|Delete user (not self, not last admin)|—|`{error}`|
+|GET|/users/:username/sessions|admin|List user's sessions|—|`[{id, issued_at, last_seen, ip, user_agent, revoked}]`|
 |DELETE|/sessions/:id|admin|Revoke a session|—|`{error}`|
-|POST|/password|auth|Change your own password|`{password}`|`{error}`|
-|POST|/logout|auth|Revoke the current session and clear the cookie|—|`{error}`|
+|POST|/password|auth|Change own password|`{password}`|`{error}`|
+|POST|/logout|auth|Revoke session, clear cookie|—|`{error}`|
 
-\* `/setup` is public but rate-limited. `setup_TOKEN` is **required** — the command service refuses to boot without it (`command/server.js`), so a reachable `/setup` always demands the token. With a valid token the call bootstraps the first admin (when the `auth` table is empty) or resets an existing admin account (recovery).
+\* `/setup` is public but rate-limited. `setup_TOKEN` is required; the service won't boot without it (`command/server.js`), so a reachable `/setup` always demands the token. A valid token bootstraps the first admin (when the `auth` table is empty) or resets an existing admin (recovery).
 
 ## ▶ /cameras
 
-Mounted behind `authorize`, so a valid session is required.
+Behind `authorize`; session required.
 
 |Type|Route|Auth|Description|Body|Returns|
 | :-|:- |:-:|:-|:-:|:-:|
-|GET|/|auth|List configured cameras (RTSP credentials stripped)|—|`[{id, name, rtsp_url}]`|
+|GET|/|auth|List cameras (RTSP creds stripped)|—|`[{id, name, rtsp_url}]`|
 
 ## ▶ /command
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/health|Confirms server alive|N/A|N/A|
+|Type|Route|Auth|Description|Parameters|Returns|
+| :-|:- |:-:|:-|:-:|:-:|
+|GET|/health|none|Server alive|N/A|N/A|
 
 ---
 # Web app
 
-The backend serves the compiled single-page app (`dist/`, built from `frontend/`) as static files at `/`, `/login`, and every app path (`/clip`, `/live`, `/recordings`, `/stats`, `/schedule`, `/admin`, `/objects`); `/res` serves static assets such as the logo. All rendering and navigation happen client-side in React (`frontend/App.jsx`), which matches the app sections via a dynamic `/:route` segment alongside dedicated `/` and `/login` routes; unauthenticated visitors are redirected to `/login`.
+- Serves the compiled SPA (`dist/`, built from `frontend/`) as static files at `/`, `/login`, and every app path below.
+- `/res` serves static assets (logo).
+- Rendering and navigation are client-side React (`frontend/App.jsx`): dynamic `/:route` segment plus dedicated `/` and `/login`.
+- Unauthenticated visitors are redirected to `/login`.
 
-The app is organized into sections defined in `frontend/app/SideMenu.jsx` and mapped to paths by `frontend/js/routeIndexMapping.js`:
+Sections defined in `frontend/app/SideMenu.jsx`, mapped to paths by `frontend/js/routeIndexMapping.js`:
 
 |Section|Path|Notes|
 | :-|:- |:- |
@@ -56,6 +59,11 @@ The app is organized into sections defined in `frontend/app/SideMenu.jsx` and ma
 |Stats|/stats||
 |Schedule|/schedule||
 |Objects|/objects||
-|Admin|/admin|Admin only — hidden unless the session role is `admin` (RBAC-gated)|
+|Admin|/admin|Admin only; hidden unless role is `admin` (RBAC-gated)|
 
-Mobile navigation surfaces a subset of these (Clip, Live, Home, Recordings, Stats); the full set is available on desktop.
+Mobile nav shows a subset (Clip, Live, Home, Recordings, Stats); desktop shows all.
+
+---
+# Config
+
+`command_ON`, `command_PORT`, `command_HOST`, `command_PROXY_ON`, `SECRETKEY`, `setup_TOKEN`; see [../env.example](../env.example).
