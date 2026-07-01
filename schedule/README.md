@@ -3,58 +3,11 @@
 Runs cron-based tasks for the other servers: each tick fires an authenticated HTTP call to a whitelisted service route and records the outcome.
 
 ---
-# Routes
-## ▶ /task
+# API
 
-All `/task` routes need a session (`authorize`); `/start`, `/stop`, `/destroy` also require `admin` (`requireAdmin`).
+Session-guarded (`authorize`); starting, stopping, and destroying tasks additionally require admin (`requireAdmin`). `/schedule/health` is public.
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/start|Schedule a task. `url` must be whitelisted, `body` a JSON string. A stopped `id` restarts it; already-running no-ops|`{ url: String, body: JSON-String, cronString: String }` for a new task, or `{ id: String }` to restart|`{ running: Boolean }`|
-|GET|/list|List all scheduled tasks|None|`{ tasks: [TaskObj] }`|
-|POST|/stop|Stop a task; protected tasks rejected|`{ id: String }`|`{ stopped: Boolean }`|
-|POST|/destroy|Destroy a task; protected tasks rejected|`{ id: String }`|`{ destroyed: Boolean }`|
-|GET|/runs|Run history across all tasks (latest 200, newest first)|None|`{ runs: [RunObj] }`|
-|GET|/runs/:taskId|Run history for one task (latest 200, newest first)|`taskId` path param|`{ runs: [RunObj] }`|
-
-```javascript
-// id = task-[RandomAlphaNumeric]
-
-//TaskObj
-{
-    id: String, // id
-    url: String,
-    body: Object,
-    cronString: String,
-    running: Boolean,
-    protected: Boolean // true for the internal auto-cleanup task
-}
-
-//RunObj (a task_runs row)
-{
-    id: Number,
-    task_id: String,
-    url: String,
-    status: String, // "success" | "failure"
-    http_status: Number,
-    error: String,
-    ran_at: String // TIMESTAMPTZ
-}
-```
-
-## ▶ /memory
-
-Needs a session (`authorize`).
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/status|Round-trips the [memory](../memory) socket to check coordination is responsive|None|`{}`|
-
-## ▶ /schedule
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/health|Confirms server alive|N/A|N/A|
+The API schedules, lists, stops, and destroys cron tasks, and reads run history from `task_runs` (per task or across all, newest first). A new task's `url` must be whitelisted (see Behavior) and carry a JSON-string body; protected tasks — the internal auto-cleanup — can't be stopped or destroyed. A separate endpoint round-trips the [memory](../memory) socket to check cluster coordination is responsive.
 
 ---
 # Behavior

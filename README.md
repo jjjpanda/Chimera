@@ -51,9 +51,36 @@ No users exist on first boot. Open the gateway and create the first admin from t
 
 ## Architecture
 
-- One Node process. [`server.js`](server.js) `require()`s and starts each service in order: command (fatal; process exits if it fails), storage, livestream, schedule, object (all via `.start()`), then the [memory](memory) socket (via `.server()`), then the [gateway](gateway) (via `.start()`). Each service is gated by its `<prefix>_ON` flag in `.env`; if off, it is not started.
-- pm2 ([`pm2.config.js`](pm2.config.js)) manages one `chimera` app and launches `motion` (`storage_ON=true`), one `ffmpeg` HLS process per camera (`livestream_ON=true`), and `heartbeat` (production only). `chimeraInstances` sets the mode: `1` = single fork-mode process; `> 1` (or `max`) = cluster mode, which forces `memory_ON=true` so instances coordinate through the memory socket.
-- Docker boot chain ([`entrypoint.sh`](entrypoint.sh)): create ACME challenge dir → `node chimera/validateEnvVars.js` (fail-fast on missing required env var) → `node chimera/prepareDatabase.js` (idempotently create tables/indexes) → `exec pm2-runtime pm2.config.js`.
-- Postgres side container ([`docker-compose.yml`](docker-compose.yml)): Chimera image plus `postgres:15`; Chimera waits on its healthcheck before starting. `TZ=UTC` pinned on both, required.
-- Schema ([`chimera/prepareDatabase.js`](chimera/prepareDatabase.js)): `frame_files`, `frame_deletes` (storage); `auth`, `sessions` (command auth/RBAC); `objects_detected` (object); `task_runs` (schedule); plus indexes.
-- Gateway reverse-proxies each service with `<prefix>_PROXY_ON=true` and terminates TLS. See [`env.example`](env.example) for the full config schema.
+One Node process under pm2, fronted by a Postgres side container. Each service is toggled by its `<prefix>_ON` flag in `.env`; if off, it never starts.
+
+**Process tree** — pm2 ([`pm2.config.js`](pm2.config.js)) runs the Node app plus a few native helpers:
+
+```
+pm2
+├─ chimera  (server.js)   one process; runs all enabled services
+├─ motion                 storage_ON
+├─ ffmpeg × N             one HLS transcoder per camera, livestream_ON
+└─ heartbeat              production only
+```
+
+Inside `chimera`, [`server.js`](server.js) starts services in order: **command** first (fatal — the process exits if it fails), then **storage**, **livestream**, **schedule**, **object**, then the **memory** coordination socket, then the **gateway** last. The gateway is the single public entrypoint: it reverse-proxies every service with `<prefix>_PROXY_ON=true` and terminates TLS.
+
+**Boot chain** — Docker [`entrypoint.sh`](entrypoint.sh) runs before pm2, aborting on the first failure:
+
+```
+ACME dir → validateEnvVars.js → prepareDatabase.js → pm2-runtime
+ (TLS)     (fail-fast env)       (create schema)      (start pm2)
+```
+
+Postgres runs as a side container ([`docker-compose.yml`](docker-compose.yml), `postgres:15`); Chimera waits on its healthcheck. `TZ=UTC` is pinned on both and is required — non-UTC misaligns clips, zips, and frames.
+
+**Single vs. cluster** — `chimeraInstances` picks the mode: `1` is a single fork-mode process; `>1` or `max` is cluster mode, which forces `memory_ON=true` so instances coordinate through the memory socket.
+
+**Schema** — [`prepareDatabase.js`](chimera/prepareDatabase.js) idempotently creates these tables (plus indexes), per owning service:
+
+- **storage** — `frame_files`, `frame_deletes`
+- **command** — `auth`, `sessions`
+- **object** — `objects_detected`
+- **schedule** — `task_runs`
+
+See [`env.example`](env.example) for the full config schema.

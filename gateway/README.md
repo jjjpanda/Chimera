@@ -33,13 +33,7 @@ Reverse proxy and single public entrypoint; matches each request by method + pat
 ---
 # ACME challenges
 
-Before any proxying, the gateway statically serves `/.well-known/` from the repo-root `.well-known/` directory (dotfiles allowed), so HTTP-01 challenges are answered directly and exempt from the HTTPS redirect. `entrypoint.sh` creates `./.well-known/acme-challenge` on boot.
-
-## ▶ /.well-known
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/acme-challenge/:token|Serves the ACME HTTP-01 challenge file|`token` (file name)|Challenge file contents|
+Before any proxying, the gateway statically serves `/.well-known/` from the repo-root `.well-known/` directory (dotfiles allowed), so HTTP-01 challenge files (`/.well-known/acme-challenge/<token>`) are answered directly and exempt from the HTTPS redirect. `entrypoint.sh` creates `./.well-known/acme-challenge` on boot.
 
 ---
 # Runtime

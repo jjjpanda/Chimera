@@ -3,20 +3,11 @@
 Runs YOLOX inference on the camera HLS feeds, records detections to the `objects_detected` table, and fires webhook alerts via `alert_URL`.
 
 ---
-# Routes
-## ▶ /object
+# API
 
-All routes need a session (`authorize`) except `/health` (public); `POST /config` and `POST /scan` also need admin (`requireAdmin`).
+Session-guarded (`authorize`) except `/health`; updating detection config and triggering an on-demand scan additionally require admin (`requireAdmin`).
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/status|Config + per-camera worker status|None|`{config, cameras, cameraNames}`|
-|GET|/config|Current detection config|None|JSON|
-|POST|/config|Update detection config (admin)|`{confidence, intervalMs, classes}`|JSON|
-|POST|/scan|Scan one camera now (admin)|`{camera}`|`{camera, detections}`|
-|GET|/detections|Recent detections (`id, camera, timestamp, type, confidence, box, image`)|`camera`, `start`, `end`, `limit` (default 50, max 500)|JSON[]|
-|GET|/captures/{file}|Detection frame from `image` in `/detections`|None|jpg|
-|GET|/health|Server alive|N/A|N/A|
+The API reports current config and per-camera worker status, updates the detection config (confidence, interval, classes), scans a camera on demand, and queries recent detections along with their capture frames.
 
 ---
 # Runtime

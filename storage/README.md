@@ -14,92 +14,11 @@ on_picture_save SZ=$(wc -c %f | head -n1 | awk '{print $1;}'); PGPASSWORD="$data
 `postgresql-client` ships in the chimera image; `database_*` come from `.env`. Full Docker-ready config: [`motion.conf.example`](../motion.conf.example). [ffmpeg](https://ffmpeg.org) is required for video generation.
 
 ---
-# Routes
+# API
 
-`auth` = session (`authorize`); `admin` = session + admin (`requireAdmin`); `none` = public.
+Routes are session-guarded (`authorize`); creating videos and zips, deleting files, and quota cleanup additionally require admin (`requireAdmin`). `/storage/health` is public.
 
-## ▶ /
-
-Mounted at the root (`routes/events.js`).
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|GET|/events|auth|Paginated frames for a camera on a date|Query `camera_id`, `date` (`YYYY-MM-DD`), `page`, `per_page` (max 1000)|`{ events: [{ id, timestamp, name, size }], total, page, per_page }`|
-|GET|/frames/:camera_id/:filename|auth|Serves a frame image|Path `camera_id`, `filename`|jpg (400 if `camera_id` non-numeric or `filename` invalid; 404 if missing)|
-|GET|/usage|auth|Usage summary across cameras and artifact types|None|`{ used_gb, max_gb, cameras: [{ id, name, used_gb, frame_count }], total_frames, breakdown: { frames, videos, zips, objects, other } }`|
-|DELETE|/camera/:id|admin|Purge a camera's frames, `objects_detected` rows, and files|Path `id`|`{ deleted: true }`|
-
-## ▶ /motion
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|GET|/status|auth|pm2 status of the bundled motion process|None|`[{ name, status, restarts }]`, or 204 if not running|
-
-## ▶ /database
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|GET|/status|auth|Postgres connectivity check (`SELECT 2 + 2`)|None|200 `{}` if healthy, else 204|
-
-## ▶ /convert
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|POST|/createVideo|admin|Create video from frames by timestamp|`{ camera: Number, fps: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, skip: Number }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
-|POST|/listFramesVideo|auth|List frame links for scrubbing|`{ camera: Number, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, frames: Number }`|`{ list: [ String ] }`|
-|POST|/createZip|admin|Create zip archive from frames by timestamp|`{ camera: Number, save: Boolean, start: Date or YYYYMMDD-HHMMSS, end: Date or YYYYMMDD-HHMMSS, skip: Number }`|`{ id: String, url: String, frameLimitMet: Boolean }`|
-|POST|/statusProcess|admin|Status of a video/zip process|`{ id: String }`|`{ running: Boolean, id: String }`|
-|POST|/cancelProcess|admin|Cancel a running video/zip process|`{ id: String }`|`{ cancelled: Boolean, id: String }`|
-|GET|/listProcess|auth|List all processes|None|`{ list: [ ProcessObj ] }`|
-|POST|/deleteProcess|admin|Delete a video/zip by ID|`{ id: String }`|`{ deleted: Boolean, id: String }`|
-
-### ProcessObj
-
-```javascript
-// fileName = output_[cameraNumber]_[startDateTime]_[endDateTime]_[ID].[type]
-
-// id = [RandomAlphaNumeric]-[requestDateTime]
-
-// dateTime = YYYYMMDD-hhmmss (0-23 hour clock)
-
-//ProcessObj
-{
-    link: String // gateway_HOST/shared/captures/[fileName]
-    type: String // mp4, zip, etc
-    id: String, // id
-    requested: String, //dateTime
-    camera: Number,
-    start: String,  // dateTime,
-    end: String, //dateTime,
-    running: Boolean,
-    size: Number // bytes, null if the file stat failed
-}
-```
-
-## ▶ /file
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|POST|/pathSize|auth|Folder or file size|`{ camera: Number }`|`{ size: String }`|
-|POST|/pathFileCount|auth|Folder file count|`{ camera: Number }`|`{ count: String }`|
-|POST|/pathDelete|admin|Delete a camera's folder and frame rows (records to `frame_deletes`)|`{ camera: Number }`|`{ deleted: Boolean }`|
-|POST|/pathClean|admin|Delete a camera's files older than N days (records to `frame_deletes`)|`{ camera: Number, days: Number }`|`{ deleted: Boolean }`|
-|GET|/pathStats|auth|Hourly totals of stored bytes per camera (all time)|None|`[{ timestamp: Number, [camera_name]: Number }]`|
-|GET|/dailyStats|auth|Per-minute totals of stored bytes per camera over last 24h|None|`[{ timestamp: Number, [camera_name]: Number }]`|
-|POST|/pathMetrics|auth|Per-camera total size and frame count|None|`{ size: { [camera_name]: String }, count: { [camera_name]: String } }`|
-|POST|/pathAutoClean|admin|Enforce `storage_MAX_GB`: when capture+object usage exceeds 90% of cap, delete oldest frames (disk + `frame_files`) until under target; alerts admin webhook if non-frame artifacts dominate|None|`{ cleaned: Boolean, deleted: Number }` / `{ skipped: true }` / `{ cleaned: false }`|
-
-## ▶ /shared
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|GET|/directory/example.mp4|auth|Downloads the specified file|None|mp4|
-
-## ▶ /storage
-
-|Type|Route|Auth|Description|Parameters|Returns|
-| :-|:- |:-:|:-|:-:|:-:|
-|GET|/health|none|Confirms server alive|N/A|N/A|
+The API browses and serves saved frames, reports storage usage plus per-camera size/count and time-series stats, builds and manages downloadable videos and zips from frames by timestamp (then serves them for download), deletes camera files and rows, enforces the `storage_MAX_GB` quota, and checks the bundled motion process and Postgres connectivity.
 
 ---
 # Runtime

@@ -5,18 +5,9 @@ Serves and monitors per-camera HLS video streams; RTSP→HLS transcoding runs in
 [ffmpeg](https://ffmpeg.org) must be on `PATH` for streams to start.
 
 ---
-# Routes
-## ▶ /livestream
+# API
 
-All routes need a session (`authorize`) except `/health`.
-
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/status|pm2 status of all cameras' HLS processes (`live_stream_cam_*`)|None|`[{name, status, restarts}]`, or `204` if none running|
-|GET|/status?camera={camera id}|pm2 status of one camera|`camera` query = camera id|`[{name, status, restarts}]`, or `204` if not running|
-|POST|/restart|Restart one camera's ffmpeg process|`{ camera: Number }`|`{}` (`400` if `camera` omitted)|
-|GET|/feed/{camera id}/video.m3u8|HLS playlist (rolling `.ts` segments served alongside)|None|`video.m3u8`|
-|GET|/health|Liveness check|N/A|N/A|
+Session-guarded (`authorize`) except `/health`. The API reports pm2 status for all cameras' HLS processes or a single camera, restarts a camera's ffmpeg process, and serves each camera's rolling HLS playlist (`/feed/<id>/video.m3u8`).
 
 ---
 # Streams
