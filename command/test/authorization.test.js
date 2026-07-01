@@ -81,6 +81,21 @@ describe("Authorization Routes", () => {
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["existingadmin"])
 		})
 
+		test("rejects taking over an existing non-admin account when no admin exists", async () => {
+			process.env.setup_TOKEN = "recovery-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // no admin exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }] }) // target is an existing non-admin
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.send({ username: "victim", password: "password123", token: "recovery-token" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
+			expect(mockedPool.query).not.toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["victim"])
+		})
+
 		test("rejects taking over a non-admin account while an admin exists", async () => {
 			process.env.setup_TOKEN = "recovery-token"
 			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
@@ -92,6 +107,7 @@ describe("Authorization Routes", () => {
 				.send({ username: "victim", password: "password123", token: "recovery-token" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 			expect(mockedPool.query).not.toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["victim"])
 		})
 
@@ -106,6 +122,7 @@ describe("Authorization Routes", () => {
 				.send({ username: "second-admin", password: "password123", token: "recovery-token" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
 		test("rejects setup with an invalid setup_TOKEN", async () => {
