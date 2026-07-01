@@ -24,7 +24,7 @@ The command server is the face of the operation. It serves the web app and handl
 |POST|/password|auth|Change your own password|`{password}`|`{error}`|
 |POST|/logout|auth|Revoke the current session and clear the cookie|—|`{error}`|
 
-\* `/setup` is public but rate-limited. When `setup_TOKEN` is configured it must be supplied, and the call can bootstrap the first admin (when none exists) or reset an existing admin account (recovery). When `setup_TOKEN` is not configured it only bootstraps the very first admin — i.e. it succeeds only while the `auth` table is empty.
+\* `/setup` is public but rate-limited. `setup_TOKEN` is **required** — the command service refuses to boot without it (`command/server.js`), so a reachable `/setup` always demands the token. With a valid token the call bootstraps the first admin (when the `auth` table is empty) or resets an existing admin account (recovery).
 
 ## ▶ /cameras
 
