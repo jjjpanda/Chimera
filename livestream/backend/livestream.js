@@ -21,8 +21,10 @@ app.use(auth.createAuthorize(pool))
 
 app.use("/livestream", require("./routes/livestream.js"))
 
-for (const cam of loadCameras()) {
-	fs.mkdirSync(path.join(process.env.livestream_FOLDERPATH, "feed", String(cam.id)), { recursive: true })
+if (process.env.livestream_ON === "true") {
+	for (const cam of loadCameras()) {
+		fs.mkdirSync(path.join(process.env.livestream_FOLDERPATH, "feed", String(cam.id)), { recursive: true })
+	}
 }
 
 module.exports = app
