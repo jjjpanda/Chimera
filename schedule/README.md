@@ -1,33 +1,28 @@
 # Schedule <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-The schedule server runs cron-based tasks on behalf of the other servers.
+Cron tasks for the other services: each tick fires an authenticated HTTP call to a whitelisted route and records the outcome.
 
 ---
-# Routes
-## ▶ /task
+# API
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/start|Schedules a task|`{ id: String, url: String, body: JSON, cronString: String }`|`{ running: Boolean }`|
-|GET|/list|Checks details of tasks|None|`{ tasks: [TaskObj] }`|
-|POST|/stop|Stops a task|`{ id: String }`|`{ stopped: Boolean }`|
-|POST|/destroy|Destroys a task|`{ id: String }`|`{ destroyed: Boolean }`|
+Session-guarded (`authorize`) except `/schedule/health`; start/stop/destroy also require admin (`requireAdmin`):
 
-```javascript
-// id = task-[RandomAlphaNumeric]
+- schedule, list, stop, destroy cron tasks
+- read run history from `task_runs` (per task or all, newest first)
+- health-check the [memory](../memory) socket round-trip
 
-//TaskObj
-{
-    id: String, // id
-    url: String,
-    body: Object,
-    cronString: String,
-    running: Boolean
-}
-```
+New tasks need a whitelisted `url` and a JSON-string body. Protected tasks (the auto-cleanup) can't be stopped or destroyed.
 
-## ▶ /schedule
+---
+# Runtime
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/health|Confirms server alive|N/A|N/A|
+- Runs under pm2 when `schedule_ON=true`; [gateway](../gateway) proxies when `schedule_PROXY_ON=true`.
+- Crons POST to `${gateway_HOST}${url}` with `scheduler_AUTH` in `Authorization`. [lib](../lib) accepts this token (instead of a session) only for `schedulableUrls`: `/convert/createVideo`, `/convert/createZip`, `/file/pathMetrics`, `/file/pathDelete`, `/file/pathClean`, `/file/pathAutoClean`.
+- Task configs and timers live in the [memory](../memory) socket, shared across the cluster; on tick memory emits the task id and this service makes the call.
+- Each fire writes a `task_runs` row and a webhook alert. The prime instance prunes rows older than 30 days.
+- If `storage_MAX_GB` is set, the prime instance registers a protected hourly `/file/pathAutoClean` task trimming oldest footage.
+
+---
+# Config
+
+`schedule_ON`, `schedule_PORT`, `schedule_HOST`, `schedule_PROXY_ON`, `scheduler_AUTH`, `gateway_HOST`, `storage_MAX_GB`; see [../env.example](../env.example).
