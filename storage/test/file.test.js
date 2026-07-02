@@ -17,7 +17,6 @@ jest.mock("pg", () => {
 const app = require("../backend/storage.js")
 const fs = require("fs")
 const path = require("path")
-const { getDirectorySize } = require("lib")
 const { __query: query } = require("pg")
 
 describe("File Routes", () => {
@@ -281,7 +280,6 @@ describe("File Routes", () => {
 			})
 			afterEach(() => {
 				unlinkSpy.mockRestore()
-				getDirectorySize.mockReset()
 				delete process.env.storage_MAX_GB
 			})
 
@@ -297,18 +295,17 @@ describe("File Routes", () => {
 
 			test("reports cleaned:false when usage is under target", async () => {
 				process.env.storage_MAX_GB = "10"
-				getDirectorySize.mockResolvedValueOnce(1000000).mockResolvedValueOnce(0)
+				query.mockResolvedValueOnce({ rows: [{ total: "1000000" }] })
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: false })
-				expect(query).not.toHaveBeenCalled()
+				expect(query).toHaveBeenCalledTimes(1)
 			})
 
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
-				getDirectorySize.mockResolvedValueOnce(2000000000).mockResolvedValueOnce(0)
 				query
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
@@ -328,20 +325,28 @@ describe("File Routes", () => {
 
 			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
 				process.env.storage_MAX_GB = "1"
-				getDirectorySize.mockResolvedValueOnce(2000000000).mockResolvedValueOnce(0)
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
-				const res = await supertest(app)
-					.post("/file/pathAutoClean")
-					.set("Cookie", cookieWithBearerToken)
-				expect(res.status).toBe(200)
-				expect(res.body).toEqual({ cleaned: false })
-				expect(query).toHaveBeenCalledTimes(1)
-				expect(unlinkSpy).not.toHaveBeenCalled()
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+					Promise.resolve(String(p).endsWith("captures")
+						? [{ name: "big.mp4", isFile: () => true }]
+						: []))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 2000000000 })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+					expect(query).toHaveBeenCalledTimes(1)
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
 			})
 
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
-				getDirectorySize.mockResolvedValue(2000000000)
 				query.mockRejectedValueOnce(new Error("db error"))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")

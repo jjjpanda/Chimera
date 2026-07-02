@@ -2,7 +2,7 @@ const path = require("path")
 const fs = require("fs")
 const rimraf = require("rimraf")
 const moment = require("moment")
-const { loadCameras, webhookAlert, getDirectorySize } = require("lib")
+const { loadCameras, webhookAlert } = require("lib")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -16,6 +16,16 @@ const pool = new Pool({
 pool.on("error", (err) => {
 	console.log("STORAGE FILE POOL ERROR", err)
 })
+
+const topLevelFileBytes = async (dir) => {
+	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
+	const sizes = await Promise.all(entries.map(async (entry) => {
+		if (!entry.isFile()) return 0
+		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
+		return size
+	}))
+	return sizes.reduce((sum, size) => sum + size, 0)
+}
 
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
@@ -137,22 +147,21 @@ module.exports = {
 			if (!maxGb) return res.send({ skipped: true })
 
 			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-
-			const usedBytes = await getDirectorySize(capturesPath)
-
 			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
-			const usedObjectBytes = await getDirectorySize(objectCapturesPath)
-			const totalUsedBytes = usedBytes + usedObjectBytes
-
-			const targetBytes = maxGb * 0.9 * 1e9
-			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
-
-			const toFree = totalUsedBytes - targetBytes
 
 			const { rows: frameTotalRows } = await pool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
 			)
 			const frameTotal = parseInt(frameTotalRows[0].total) || 0
+
+			const nonFrameBytes = await topLevelFileBytes(capturesPath)
+			const usedObjectBytes = await topLevelFileBytes(objectCapturesPath)
+			const totalUsedBytes = frameTotal + nonFrameBytes + usedObjectBytes
+
+			const targetBytes = maxGb * 0.9 * 1e9
+			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
+
+			const toFree = totalUsedBytes - targetBytes
 			if (toFree >= frameTotal) {
 				webhookAlert(`⚠️ Storage over ${maxGb}GB cap but non-frame artifacts (videos/zips) dominate — deleting all frames would not reach target, so auto-clean was skipped.`, "admin")
 				return res.send({ cleaned: false })

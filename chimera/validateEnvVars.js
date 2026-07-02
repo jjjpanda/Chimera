@@ -89,7 +89,6 @@ checkVar("storage_PORT")
 checkVar("storage_HOST")
 checkVar("storage_FOLDERPATH")
 confirmPath("storage_FOLDERPATH", true)
-checkVar("storage_DIR_CONCURRENCY")
 
 checkVar("storage_MOTION_CONF_FILEPATH")
 

@@ -1,14 +1,24 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
-var { auth, loadCameras, getDirectorySize } = require("lib")
+var { auth, loadCameras } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
 
 const app = express.Router()
 
-const captureBreakdown = async (capturesPath, totalBytes) => {
+const dirFileBytes = async (dir) => {
+	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
+	const sizes = await Promise.all(entries.map(async (entry) => {
+		if (!entry.isFile()) return 0
+		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
+		return size
+	}))
+	return sizes.reduce((sum, size) => sum + size, 0)
+}
+
+const captureBreakdown = async (capturesPath, frameBytes) => {
 	let videos = 0, zips = 0, other = 0
 	const entries = await fs.promises.readdir(capturesPath, { withFileTypes: true }).catch(() => [])
 	await Promise.all(entries.map(async (entry) => {
@@ -18,8 +28,8 @@ const captureBreakdown = async (capturesPath, totalBytes) => {
 		else if (entry.name.endsWith(".zip")) zips += size
 		else other += size
 	}))
-	const objects = await getDirectorySize(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
-	return { frames: Math.max(0, totalBytes - videos - zips - other), videos, zips, objects, other }
+	const objects = await dirFileBytes(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
+	return { frames: frameBytes, videos, zips, objects, other }
 }
 
 app.get("/events", async (req, res) => {
@@ -69,14 +79,13 @@ app.get("/usage", async (req, res) => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		const cameras = loadCameras()
 
-		const duBytes = await getDirectorySize(capturesPath)
-
 		const { rows: statRows } = await pool.query(
 			"SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes FROM frame_files GROUP BY camera"
 		)
 		const countByCamera = new Map(statRows.map(r => [String(r.camera), parseInt(r.count) || 0]))
 		const bytesByCamera = new Map(statRows.map(r => [String(r.camera), parseInt(r.bytes) || 0]))
 		const totalFrames = statRows.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0)
+		const frameBytes = statRows.reduce((sum, r) => sum + (parseInt(r.bytes) || 0), 0)
 
 		const cameraStats = cameras.map(({ id, name }) => ({
 			id,
@@ -85,10 +94,10 @@ app.get("/usage", async (req, res) => {
 			frame_count: countByCamera.get(String(id)) || 0
 		}))
 
-		const breakdown = await captureBreakdown(capturesPath, duBytes)
+		const breakdown = await captureBreakdown(capturesPath, frameBytes)
 
 		res.json({
-			used_gb: parseFloat(((duBytes + breakdown.objects) / 1e9).toFixed(3)),
+			used_gb: parseFloat(((frameBytes + breakdown.videos + breakdown.zips + breakdown.other + breakdown.objects) / 1e9).toFixed(3)),
 			max_gb: maxGb,
 			cameras: cameraStats,
 			total_frames: totalFrames,
