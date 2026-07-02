@@ -19,6 +19,8 @@ describe("Authorization Routes", () => {
 		auth.invalidateAllSessions()
 	})
 
+	afterEach(() => jest.restoreAllMocks())
+
 	describe("GET /authorization/status", () => {
 		test("returns setup: false when table is empty", async () => {
 			const res = await supertest(app).get("/authorization/status")
@@ -36,11 +38,13 @@ describe("Authorization Routes", () => {
 
 	describe("POST /authorization/setup", () => {
 		test("returns 200 on first-time setup", async () => {
+			const spy = jest.spyOn(auth, "invalidateAllSessions")
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(spy).toHaveBeenCalled()
 		})
 
 		test("returns 403 when table already has a row", async () => {
@@ -440,6 +444,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when updating role", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
+			const spy = jest.spyOn(auth, "invalidateAllSessions")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.patch("/authorization/users/bob")
@@ -448,10 +453,12 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
+			expect(spy).toHaveBeenCalled()
 		})
 
 		test("returns 200 when updating password", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
+			const spy = jest.spyOn(auth, "invalidateAllSessions")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.patch("/authorization/users/bob")
@@ -460,6 +467,7 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
+			expect(spy).toHaveBeenCalled()
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
@@ -513,12 +521,14 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 on successful deletion", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
+			const spy = jest.spyOn(auth, "invalidateAllSessions")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(spy).toHaveBeenCalled()
 		})
 
 		test("returns 404 when user does not exist", async () => {
@@ -626,6 +636,7 @@ describe("Authorization Routes", () => {
 		test("returns 200 on successful revoke", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ jti: "jti-victim" }], rowCount: 1 })
+			const spy = jest.spyOn(auth, "invalidateSession")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/5")
@@ -633,6 +644,7 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE id = $1 RETURNING jti", [5])
+			expect(spy).toHaveBeenCalledWith("jti-victim")
 		})
 	})
 
@@ -653,6 +665,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {
+			const spy = jest.spyOn(auth, "invalidateAllSessions")
 			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
@@ -668,6 +681,7 @@ describe("Authorization Routes", () => {
 				"UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2",
 				["bob", "jti-user"]
 			)
+			expect(spy).toHaveBeenCalled()
 		})
 	})
 
@@ -678,6 +692,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("revokes the session jti and clears the cookie", async () => {
+			const spy = jest.spyOn(auth, "invalidateSession")
 			const token = jwt.sign({ username: "bob", role: "user", jti: "sess-1" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/logout")
@@ -686,6 +701,7 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE jti = $1", ["sess-1"])
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=;/)
+			expect(spy).toHaveBeenCalledWith("sess-1")
 		})
 	})
 

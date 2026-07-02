@@ -21,6 +21,7 @@ const sendError = (res, e) => {
 
 const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
+if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const rateLimit = ({ windowMs, max }) => {
 	const local = memory.loginAttempts()
