@@ -5,21 +5,22 @@ Serves the web app and handles authentication, RBAC, and session management.
 ---
 # API
 
-Three access levels: public, session-required (`authorize`), and admin-only (`requireAdmin`). Authentication, RBAC, and sessions all live here — other services validate their sessions against this service's `auth`/`sessions` tables via [lib](../lib).
+Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth/RBAC/sessions live here; other services validate against this service's `auth`/`sessions` tables via [lib](../lib).
 
-The API covers login/logout and session verification, the first-admin bootstrap and admin recovery (`/authorization/setup`), admin-only user and session management (create/list/update/delete users, list and revoke sessions), theme, and password changes. It also lists cameras (RTSP credentials stripped) for the web app.
+- login/logout, session verification
+- first-admin bootstrap + admin recovery (`/authorization/setup`)
+- admin-only user and session management (create/list/update/delete users; list/revoke sessions)
+- theme and password changes
+- list cameras (RTSP credentials stripped) for the web app
 
-`setup_TOKEN` is required — the service won't boot without it ([`server.js`](server.js)) — so a reachable `/setup` always demands the token. A valid token bootstraps the first admin (when the `auth` table is empty) or resets an existing admin (recovery). `/setup` is public but rate-limited.
+`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin (empty `auth` table) or resets an existing one (recovery). `/setup` is public but rate-limited.
 
 ---
 # Web app
 
-- Serves the compiled SPA (`dist/`, built from `frontend/`) as static files at `/`, `/login`, and every app path below.
-- `/res` serves static assets (logo).
-- Rendering and navigation are client-side React (`frontend/App.jsx`): dynamic `/:route` segment plus dedicated `/` and `/login`.
-- Unauthenticated visitors are redirected to `/login`.
-
-Sections (defined in `frontend/app/SideMenu.jsx`, mapped to paths by `frontend/js/routeIndexMapping.js`): Home, Live, Clip Maker, Recordings, Stats, Schedule, Objects, and an admin-only Admin section (hidden unless your role is `admin`). Mobile nav shows a subset (Clip, Live, Home, Recordings, Stats); desktop shows all.
+- Serves the compiled SPA (`dist/`, built from `frontend/`) at `/`, `/login`, and every app path; `/res` serves static assets.
+- Client-side React ([frontend/App.jsx](frontend/App.jsx)); unauthenticated visitors redirect to `/login`.
+- Sections: Home, Live, Clip Maker, Recordings, Stats, Schedule, Objects, and an admin-only Admin (hidden unless role is `admin`). Mobile shows a subset.
 
 ---
 # Config
