@@ -89,7 +89,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 			)
 		})
 		if (result.rowCount === 0) return res.status(403).json({ error: true })
-		auth.invalidateAllSessions(pool)
+		auth.invalidateAllSessions()
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -178,7 +178,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
-		auth.invalidateAllSessions(pool)
+		auth.invalidateAllSessions()
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -204,7 +204,7 @@ app.delete("/sessions/:id", authorize, requireAdmin, async (req, res) => {
 	try {
 		const result = await pool.query("UPDATE sessions SET revoked = TRUE WHERE id = $1 RETURNING jti", [id])
 		if (result.rowCount === 0) return res.status(404).json({ error: true })
-		auth.invalidateSession(pool, result.rows[0].jti)
+		auth.invalidateSession(result.rows[0].jti)
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -224,7 +224,7 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 			}
 			await client.query("DELETE FROM auth WHERE username = $1", [username])
 		})
-		auth.invalidateAllSessions(pool)
+		auth.invalidateAllSessions()
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -242,7 +242,7 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
-		auth.invalidateAllSessions(pool)
+		auth.invalidateAllSessions()
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -253,7 +253,7 @@ app.post("/logout", authorize, async (req, res) => {
 	try {
 		if (req.decoded?.jti) {
 			await pool.query("UPDATE sessions SET revoked = TRUE WHERE jti = $1", [req.decoded.jti])
-			auth.invalidateSession(pool, req.decoded.jti)
+			auth.invalidateSession(req.decoded.jti)
 		}
 		res.clearCookie("bearertoken", { httpOnly: true, secure: process.env.NODE_ENV !== "development", sameSite: "lax" })
 		res.json({ error: false })

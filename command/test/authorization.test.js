@@ -16,7 +16,7 @@ const { mockedPool } = require("pg")
 describe("Authorization Routes", () => {
 	beforeEach(() => {
 		delete process.env.setup_TOKEN
-		auth.invalidateAllSessions(mockedPool)
+		auth.invalidateAllSessions()
 	})
 
 	describe("GET /authorization/status", () => {
