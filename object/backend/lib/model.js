@@ -36,10 +36,15 @@ const ensureModel = async () => {
 				try { fs.unlinkSync(MODEL_PATH) } catch (e) { console.warn("Could not remove corrupt model file", e.message) }
 			}
 		} else {
-			if (fs.statSync(MODEL_PATH).size > MIN_BYTES) {
-				return MODEL_PATH
+			try {
+				if (fs.statSync(MODEL_PATH).size > MIN_BYTES) {
+					return MODEL_PATH
+				}
+				console.log("🔍 Existing model failed size check, redownloading...")
+			} catch (err) {
+				console.log("🔍 Existing model size check failed or unreadable, removing and redownloading...", err.message)
 			}
-			console.log("🔍 Existing model failed size check, redownloading...")
+			try { fs.unlinkSync(MODEL_PATH) } catch (e) { console.warn("Could not remove corrupt model file", e.message) }
 		}
 	}
 	const url = customUrl || DEFAULT_URL
