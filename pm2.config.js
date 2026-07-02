@@ -36,6 +36,8 @@ if(!isDev){
 }
 
 if(process.env.storage_ON === "true"){
+	const fs = require("fs")
+	fs.mkdirSync(path.join(process.env.storage_FOLDERPATH, "shared/captures"), { recursive: true })
 	config.apps.push({
 		script: "motion",
 		args: ["-c", process.env.storage_MOTION_CONF_FILEPATH],
@@ -50,7 +52,9 @@ if(process.env.livestream_ON === "true"){
 	const { loadCameras } = require("./lib/utils/loadCameras.js")
 	const liveCams = loadCameras()
 	if (!liveCams.length) console.error("livestream_ON=true but no cameras loaded — check storage_MOTION_CONF_FILEPATH and .conf files")
+	const fs = require("fs")
 	for (const cam of liveCams) {
+		fs.mkdirSync(path.join(process.env.livestream_FOLDERPATH, "feed", String(cam.id)), { recursive: true })
 		config.apps.push({
 			script: process.env.ffmpeg_FILEPATH || "ffmpeg",
 			args: [

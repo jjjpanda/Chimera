@@ -33,7 +33,7 @@ const ensureModel = async () => {
 				console.log("🔍 Existing model failed SHA256 check, redownloading...")
 			} catch (err) {
 				console.log("🔍 Existing model unreadable, removing and redownloading...", err.message)
-				fs.unlinkSync(MODEL_PATH)
+				try { fs.unlinkSync(MODEL_PATH) } catch (e) { console.warn("Could not remove corrupt model file", e.message) }
 			}
 		} else {
 			if (fs.statSync(MODEL_PATH).size > MIN_BYTES) {
