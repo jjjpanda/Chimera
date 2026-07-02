@@ -21,11 +21,14 @@ module.exports = () => {
 		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
 		const {objectGetState, objectSetConfig, objectScan} = require("./lib/objectState.js")()
+		const sessionSync = require("./lib/sessionSync.js")
 		const cronTask = require("./lib/cronTask.js")(io)
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
         
 		io.on("connection", client => {
+			const {sessionInvalidate, sessionInvalidateAll} = sessionSync(client)
+
 			client.on("log", data => console.log(data))
 
 			client.on("callback", (callback) => {
@@ -49,6 +52,9 @@ module.exports = () => {
 			client.on("objectGetState", objectGetState)
 			client.on("objectSetConfig", objectSetConfig)
 			client.on("objectScan", objectScan)
+
+			client.on("sessionInvalidate", sessionInvalidate)
+			client.on("sessionInvalidateAll", sessionInvalidateAll)
 
 			client.on("disconnect", () => {
 				console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)

@@ -45,6 +45,10 @@ const creationTasks = [
 		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_runs_ran_at ON task_runs(ran_at);",
 		description: "task runs (ran_at) index"
 	},
+	{
+		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sessions_username ON sessions(username);",
+		description: "sessions (username) index"
+	},
 ]
 
 module.exports = { creationTasks }

@@ -231,9 +231,9 @@ const queryForMetric = (camera, metric) => {
 }
 
 const queryToDeleteAndRecord = (camera, deleting, before="") => {
-	const timestampCondition = deleting=="files" ? `AND timestamp<=timestamp '${before}'` : ""
+	const timestampCondition = deleting=="files" ? `AND timestamp<=(timestamp '${before}' AT TIME ZONE 'UTC')` : ""
 	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
-	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT '${now}', ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
+	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT (timestamp '${now}' AT TIME ZONE 'UTC'), ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
 }
 
 const escapeIdent = (name) => name.replace(/"/g, "\"\"")

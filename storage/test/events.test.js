@@ -56,8 +56,8 @@ describe("Events Routes", () => {
 				.get("/events?camera_id=7&date=2026-05-16")
 				.set("Cookie", "validCookie")
 			const [dataSql, dataParams] = query.mock.calls[0]
-			expect(dataSql).toMatch(/timestamp >= \$2::date/)
-			expect(dataSql).toMatch(/< \(\$2::date \+ INTERVAL '1 day'\)/)
+			expect(dataSql).toMatch(/timestamp >= \(\$2::date AT TIME ZONE 'UTC'\)/)
+			expect(dataSql).toMatch(/< \(\(\$2::date \+ INTERVAL '1 day'\) AT TIME ZONE 'UTC'\)/)
 			expect(dataSql).not.toMatch(/DATE\(/)
 			expect(dataParams).toEqual(["7", "2026-05-16", 100, 0])
 		})

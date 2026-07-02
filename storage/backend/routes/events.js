@@ -40,11 +40,11 @@ app.get("/events", async (req, res) => {
 		const offset = (page - 1) * per_page
 		const [dataResult, countResult] = await Promise.all([
 			pool.query(
-				"SELECT id, timestamp, name, size FROM frame_files WHERE camera = $1 AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 day') ORDER BY timestamp DESC LIMIT $3 OFFSET $4",
+				"SELECT id, timestamp, name, size FROM frame_files WHERE camera = $1 AND timestamp >= ($2::date AT TIME ZONE 'UTC') AND timestamp < (($2::date + INTERVAL '1 day') AT TIME ZONE 'UTC') ORDER BY timestamp DESC LIMIT $3 OFFSET $4",
 				[camera_id, date, per_page, offset]
 			),
 			pool.query(
-				"SELECT COUNT(*) FROM frame_files WHERE camera = $1 AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 day')",
+				"SELECT COUNT(*) FROM frame_files WHERE camera = $1 AND timestamp >= ($2::date AT TIME ZONE 'UTC') AND timestamp < (($2::date + INTERVAL '1 day') AT TIME ZONE 'UTC')",
 				[camera_id, date]
 			)
 		])
@@ -112,8 +112,6 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 	const camPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", id)
 	const objectsPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
 	try {
-		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
-		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
 		await fs.promises.rm(camPath, { recursive: true, force: true })
 		const objectFiles = await fs.promises.readdir(objectsPath).catch(() => [])
 		await Promise.all(
@@ -121,6 +119,8 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 				.filter((f) => f.startsWith(`${id}-`))
 				.map((f) => fs.promises.unlink(path.join(objectsPath, f)).catch(() => {}))
 		)
+		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
+		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
 		res.json({ deleted: true })
 	} catch (e) {
 		res.status(500).json({ error: true })
