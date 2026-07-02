@@ -21,12 +21,14 @@ module.exports = () => {
 		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
 		const {objectGetState, objectSetConfig, objectScan} = require("./lib/objectState.js")()
-		const {sessionInvalidate, sessionInvalidateAll} = require("./lib/sessionSync.js")(io)
+		const sessionSync = require("./lib/sessionSync.js")
 		const cronTask = require("./lib/cronTask.js")(io)
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
         
 		io.on("connection", client => {
+			const {sessionInvalidate, sessionInvalidateAll} = sessionSync(client)
+
 			client.on("log", data => console.log(data))
 
 			client.on("callback", (callback) => {
