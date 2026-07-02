@@ -9,12 +9,14 @@ const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const app = require("../backend/command.js")
+const { auth } = require("lib")
 
 const { mockedPool } = require("pg")
 
 describe("Authorization Routes", () => {
 	beforeEach(() => {
 		delete process.env.setup_TOKEN
+		auth.invalidateAllSessions(mockedPool)
 	})
 
 	describe("GET /authorization/status", () => {
@@ -623,13 +625,14 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 on successful revoke", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ id: 5 }], rowCount: 1 })
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ jti: "jti-victim" }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/sessions/5")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE id = $1 RETURNING jti", [5])
 		})
 	})
 

@@ -164,6 +164,17 @@ describe("File Routes", () => {
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
 			})
 
+			test("builds the delete cutoff and recorded timestamp in UTC regardless of session timezone", async () => {
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				const sql = query.mock.calls[0][0]
+				expect(sql).toMatch(/AND timestamp<=\(timestamp '[^']+' AT TIME ZONE 'UTC'\)/)
+				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(timestamp '[^']+' AT TIME ZONE 'UTC'\)/)
+			})
+
 			test("skips null filenames without throwing", async () => {
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
 				const res = await supertest(app)
