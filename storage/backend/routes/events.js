@@ -1,19 +1,12 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
-var { execFile } = require("child_process")
-var { auth, loadCameras } = require("lib")
+var { auth, loadCameras, getDirectorySize } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
 
 const app = express.Router()
-
-const du = (target) => new Promise((resolve) => {
-	execFile("du", ["-sb", target], (err, stdout) => {
-		resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
-	})
-})
 
 const captureBreakdown = async (capturesPath, totalBytes) => {
 	let videos = 0, zips = 0, other = 0
@@ -25,7 +18,7 @@ const captureBreakdown = async (capturesPath, totalBytes) => {
 		else if (entry.name.endsWith(".zip")) zips += size
 		else other += size
 	}))
-	const objects = await du(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
+	const objects = await getDirectorySize(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
 	return { frames: Math.max(0, totalBytes - videos - zips - other), videos, zips, objects, other }
 }
 
@@ -76,7 +69,7 @@ app.get("/usage", async (req, res) => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		const cameras = loadCameras()
 
-		const duBytes = await du(capturesPath)
+		const duBytes = await getDirectorySize(capturesPath)
 
 		const { rows: statRows } = await pool.query(
 			"SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes FROM frame_files GROUP BY camera"

@@ -4,7 +4,6 @@ const supertest = require("supertest")
 
 jest.mock("lib")
 jest.mock("fs")
-jest.mock("child_process")
 jest.mock("memory")
 jest.mock("pm2")
 jest.mock("axios")
@@ -18,7 +17,7 @@ jest.mock("pg", () => {
 const app = require("../backend/storage.js")
 const fs = require("fs")
 const path = require("path")
-const { execFile } = require("child_process")
+const { getDirectorySize } = require("lib")
 const { __query: query } = require("pg")
 
 describe("File Routes", () => {
@@ -170,9 +169,11 @@ describe("File Routes", () => {
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
 					.set("Cookie", cookieWithBearerToken)
-				const sql = query.mock.calls[0][0]
-				expect(sql).toMatch(/AND timestamp<=\(timestamp '[^']+' AT TIME ZONE 'UTC'\)/)
-				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(timestamp '[^']+' AT TIME ZONE 'UTC'\)/)
+				const [sql, values] = query.mock.calls[0]
+				expect(sql).toMatch(/AND timestamp<=\(\$2::timestamp AT TIME ZONE 'UTC'\)/)
+				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$3::timestamp AT TIME ZONE 'UTC'\)/)
+				expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+				expect(values[2]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 			})
 
 			test("skips null filenames without throwing", async () => {
@@ -280,7 +281,7 @@ describe("File Routes", () => {
 			})
 			afterEach(() => {
 				unlinkSpy.mockRestore()
-				execFile.mockReset()
+				getDirectorySize.mockReset()
 				delete process.env.storage_MAX_GB
 			})
 
@@ -296,10 +297,7 @@ describe("File Routes", () => {
 
 			test("reports cleaned:false when usage is under target", async () => {
 				process.env.storage_MAX_GB = "10"
-				execFile.mockImplementation((_cmd, args, cb) => {
-					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
-					cb(null, "1000000\t/path\n")
-				})
+				getDirectorySize.mockResolvedValueOnce(1000000).mockResolvedValueOnce(0)
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
@@ -310,10 +308,7 @@ describe("File Routes", () => {
 
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, args, cb) => {
-					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
-					cb(null, "2000000000\t/path\n")
-				})
+				getDirectorySize.mockResolvedValueOnce(2000000000).mockResolvedValueOnce(0)
 				query
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
@@ -333,10 +328,7 @@ describe("File Routes", () => {
 
 			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, args, cb) => {
-					if (args[1].includes("objectCaptures")) return cb(null, "0\t/path\n")
-					cb(null, "2000000000\t/path\n")
-				})
+				getDirectorySize.mockResolvedValueOnce(2000000000).mockResolvedValueOnce(0)
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
@@ -349,7 +341,7 @@ describe("File Routes", () => {
 
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
-				execFile.mockImplementation((_cmd, _args, cb) => cb(null, "2000000000\t/path\n"))
+				getDirectorySize.mockResolvedValue(2000000000)
 				query.mockRejectedValueOnce(new Error("db error"))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")

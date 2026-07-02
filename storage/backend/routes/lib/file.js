@@ -1,9 +1,8 @@
 const path = require("path")
 const fs = require("fs")
-const { execFile } = require("child_process")
 const rimraf = require("rimraf")
 const moment = require("moment")
-const { loadCameras, webhookAlert } = require("lib")
+const { loadCameras, webhookAlert, getDirectorySize } = require("lib")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -139,18 +138,10 @@ module.exports = {
 
 			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
-			const usedBytes = await new Promise(resolve =>
-				execFile("du", ["-sb", capturesPath], (err, stdout) =>
-					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
-				)
-			)
+			const usedBytes = await getDirectorySize(capturesPath)
 
 			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
-			const usedObjectBytes = await new Promise(resolve =>
-				execFile("du", ["-sb", objectCapturesPath], (err, stdout) =>
-					resolve(err ? 0 : parseInt(stdout.split("\t")[0]) || 0)
-				)
-			)
+			const usedObjectBytes = await getDirectorySize(objectCapturesPath)
 			const totalUsedBytes = usedBytes + usedObjectBytes
 
 			const targetBytes = maxGb * 0.9 * 1e9
@@ -227,13 +218,21 @@ module.exports = {
 }
 
 const queryForMetric = (camera, metric) => {
-	return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=${camera};`)
+	return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=$1;`, [camera])
 }
 
 const queryToDeleteAndRecord = (camera, deleting, before="") => {
-	const timestampCondition = deleting=="files" ? `AND timestamp<=(timestamp '${before}' AT TIME ZONE 'UTC')` : ""
 	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
-	return pool.query(`WITH deleted AS (DELETE FROM frame_files WHERE camera=${camera} ${timestampCondition} RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT (timestamp '${now}' AT TIME ZONE 'UTC'), ${camera}, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;`)
+	if (deleting == "files") {
+		return pool.query(
+			"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 AND timestamp<=($2::timestamp AT TIME ZONE 'UTC') RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($3::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;",
+			[camera, before, now]
+		)
+	}
+	return pool.query(
+		"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($2::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;",
+		[camera, now]
+	)
 }
 
 const escapeIdent = (name) => name.replace(/"/g, "\"\"")

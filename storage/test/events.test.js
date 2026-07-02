@@ -2,7 +2,6 @@ process.env.storage_FOLDERPATH = "/tmp/storage-events-test"
 
 jest.mock("lib")
 jest.mock("fs")
-jest.mock("child_process")
 jest.mock("memory")
 jest.mock("pm2")
 jest.mock("pg", () => {
@@ -16,7 +15,7 @@ const supertest = require("supertest")
 const lib = require("lib")
 const { __query: query } = require("pg")
 const fs = require("fs")
-const { execFile } = require("child_process")
+const { getDirectorySize } = lib
 const app = require("../backend/storage.js")
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
@@ -158,11 +157,11 @@ describe("Events Routes", () => {
 				req.decoded = { role: "admin" }
 				next()
 			})
-			execFile.mockImplementation((_cmd, _args, cb) => cb(null, "500000000\t/path\n"))
+			getDirectorySize.mockResolvedValue(500000000)
 		})
 
 		afterEach(() => {
-			execFile.mockReset()
+			getDirectorySize.mockReset()
 		})
 
 		test("returns usage stats", async () => {
