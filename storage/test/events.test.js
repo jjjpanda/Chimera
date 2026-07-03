@@ -2,7 +2,6 @@ process.env.storage_FOLDERPATH = "/tmp/storage-events-test"
 
 jest.mock("lib")
 jest.mock("fs")
-jest.mock("child_process")
 jest.mock("memory")
 jest.mock("pm2")
 jest.mock("pg", () => {
@@ -16,7 +15,6 @@ const supertest = require("supertest")
 const lib = require("lib")
 const { __query: query } = require("pg")
 const fs = require("fs")
-const { execFile } = require("child_process")
 const app = require("../backend/storage.js")
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
@@ -153,16 +151,22 @@ describe("Events Routes", () => {
 	})
 
 	describe("GET /usage", () => {
+		let readdirSpy, statSpy
 		beforeEach(() => {
 			lib.auth.authorize.mockImplementation((req, res, next) => {
 				req.decoded = { role: "admin" }
 				next()
 			})
-			execFile.mockImplementation((_cmd, _args, cb) => cb(null, "500000000\t/path\n"))
+			readdirSpy = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+				Promise.resolve(String(p).endsWith("objectCaptures")
+					? [{ name: "1-a.jpg", isFile: () => true }]
+					: []))
+			statSpy = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 500000000 })
 		})
 
 		afterEach(() => {
-			execFile.mockReset()
+			readdirSpy.mockRestore()
+			statSpy.mockRestore()
 		})
 
 		test("returns usage stats", async () => {
@@ -170,7 +174,7 @@ describe("Events Routes", () => {
 				.get("/usage")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
-			expect(res.body).toMatchObject({ used_gb: 1, max_gb: 0, cameras: [], total_frames: 0 })
+			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
 		})
 
 		test("includes a per-category byte breakdown", async () => {
@@ -179,32 +183,28 @@ describe("Events Routes", () => {
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
 			expect(res.body.breakdown).toEqual({
-				frames: 500000000, videos: 0, zips: 0, objects: 500000000, other: 0
+				frames: 0, videos: 0, zips: 0, objects: 500000000, other: 0
 			})
 		})
 
-		test("categorizes top-level mp4/zip/other files and subtracts them from frames", async () => {
-			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue([
+		test("sources frame bytes from the DB, independent of top-level mp4/zip/other files", async () => {
+			query.mockResolvedValueOnce({ rows: [{ camera: "1", count: "3", bytes: "500000000" }] })
+			readdirSpy.mockImplementation((p) => Promise.resolve(String(p).endsWith("objectCaptures") ? [] : [
 				{ name: "clip.mp4", isFile: () => true },
 				{ name: "bundle.zip", isFile: () => true },
 				{ name: "notes.txt", isFile: () => true },
 				{ name: "1", isFile: () => false }
-			])
-			const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) => Promise.resolve({
-				size: p.endsWith("clip.mp4") ? 100 : p.endsWith("bundle.zip") ? 50 : 25
+			]))
+			statSpy.mockImplementation((p) => Promise.resolve({
+				size: String(p).endsWith("clip.mp4") ? 100 : String(p).endsWith("bundle.zip") ? 50 : 25
 			}))
-			try {
-				const res = await supertest(app)
-					.get("/usage")
-					.set("Cookie", "validCookie")
-				expect(res.status).toBe(200)
-				expect(res.body.breakdown).toEqual({
-					frames: 500000000 - 175, videos: 100, zips: 50, objects: 500000000, other: 25
-				})
-			} finally {
-				readdir.mockRestore()
-				stat.mockRestore()
-			}
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body.breakdown).toEqual({
+				frames: 500000000, videos: 100, zips: 50, objects: 0, other: 25
+			})
 		})
 
 		test("aggregates per-camera stats when cameras are configured", async () => {

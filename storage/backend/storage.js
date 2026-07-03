@@ -30,6 +30,7 @@ app.use("/shared", express.static(path.join(process.env.storage_FOLDERPATH, "sha
 const fs = require("fs")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
+try { fs.mkdirSync(imgDir, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
 fs.readdir(imgDir, (err, files) => {
 	if (!err) {
 		const orphans = []

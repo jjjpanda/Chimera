@@ -1,5 +1,7 @@
+var path       = require("path")
+var fs         = require("fs")
 var express    = require("express")
-const { auth, helmetOptions, tracker } = require("lib")
+const { auth, helmetOptions, tracker, loadCameras } = require("lib")
 const pool = require("./lib/pool.js")
 const helmet = require("helmet")
 
@@ -18,5 +20,15 @@ app.use("/livestream/health", require("heartbeat").heart)
 app.use(auth.createAuthorize(pool))
 
 app.use("/livestream", require("./routes/livestream.js"))
-    
+
+if (process.env.livestream_ON === "true") {
+	try {
+		for (const cam of loadCameras()) {
+			fs.mkdirSync(path.join(process.env.livestream_FOLDERPATH, "feed", String(cam.id)), { recursive: true })
+		}
+	} catch (e) {
+		console.error("❌ Failed to create livestream feed directories:", e.message)
+	}
+}
+
 module.exports = app

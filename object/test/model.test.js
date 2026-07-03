@@ -53,6 +53,24 @@ describe("ensureModel", () => {
 		expect(fetch).not.toHaveBeenCalled()
 	})
 
+	test("redownloads and unlinks if existing file is unreadable/corrupt", async () => {
+		fs.existsSync.mockReturnValue(true)
+		fs.createReadStream.mockImplementationOnce(() => {
+			const stream = new PassThrough()
+			stream.emit("error", new Error("corrupt"))
+			return stream
+		})
+		const goodBuffer = Buffer.from("good data")
+		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
+		mockFetch(goodBuffer)
+
+		const result = await ensureModel()
+		expect(result).toBe(MODEL_PATH)
+		expect(fs.unlinkSync).toHaveBeenCalledWith(MODEL_PATH)
+		expect(fetch).toHaveBeenCalled()
+		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
+	})
+
 	test("redownloads if existing file fails SHA check", async () => {
 		fs.existsSync.mockReturnValue(true)
 		const badBuffer = Buffer.from("bad data")
