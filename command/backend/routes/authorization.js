@@ -19,6 +19,19 @@ const sendError = (res, e) => {
 	res.status(500).json({ error: true })
 }
 
+const hashPassword = async (pw) => bcrypt.hash(pw, await bcrypt.genSalt(10))
+
+const getUserOr404 = async (client, username) => {
+	const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
+	if (target.rowCount === 0) throw new HttpError(404)
+	return target.rows[0]
+}
+
+const assertNotLastAdmin = async (client, message) => {
+	const admins = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
+	if (admins.rows.length <= 1) throw new HttpError(400, message)
+}
+
 const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 if (memoryClient) auth.connectSessionSync(memoryClient)
@@ -68,8 +81,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 	try {
-		const salt = await bcrypt.genSalt(10)
-		const hash = await bcrypt.hash(password, salt)
+		const hash = await hashPassword(password)
 		const result = await withTransaction(async (client) => {
 			await client.query("SELECT pg_advisory_xact_lock(1)")
 			if (process.env.setup_TOKEN) {
@@ -135,8 +147,7 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
 		const tempPassword = randomBytes(16).toString("hex")
-		const salt = await bcrypt.genSalt(10)
-		const hash = await bcrypt.hash(tempPassword, salt)
+		const hash = await hashPassword(tempPassword)
 		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
@@ -154,16 +165,11 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 	let hash
 	try {
 		if (password !== undefined) {
-			const salt = await bcrypt.genSalt(10)
-			hash = await bcrypt.hash(password, salt)
+			hash = await hashPassword(password)
 		}
 		await withTransaction(async (client) => {
-			const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
-			if (target.rowCount === 0) throw new HttpError(404)
-			if (target.rows[0].role === "admin" && role === "user") {
-				const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
-				if (adminRows.rows.length <= 1) throw new HttpError(400, "cannot demote last admin")
-			}
+			const target = await getUserOr404(client, username)
+			if (target.role === "admin" && role === "user") await assertNotLastAdmin(client, "cannot demote last admin")
 			const updates = []
 			const values = []
 			if (role !== undefined) {
@@ -217,12 +223,8 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	if (username === req.decoded.username) return res.status(400).json({ error: true })
 	try {
 		await withTransaction(async (client) => {
-			const target = await client.query("SELECT role FROM auth WHERE username = $1", [username])
-			if (target.rowCount === 0) throw new HttpError(404)
-			if (target.rows[0].role === "admin") {
-				const adminRows = await client.query("SELECT username FROM auth WHERE role = 'admin' FOR UPDATE")
-				if (adminRows.rows.length <= 1) throw new HttpError(400, "cannot delete last admin")
-			}
+			const target = await getUserOr404(client, username)
+			if (target.role === "admin") await assertNotLastAdmin(client, "cannot delete last admin")
 			await client.query("DELETE FROM auth WHERE username = $1", [username])
 		})
 		auth.invalidateAllSessions()
@@ -237,8 +239,7 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
-		const salt = await bcrypt.genSalt(10)
-		const hash = await bcrypt.hash(password, salt)
+		const hash = await hashPassword(password)
 		await withTransaction(async (client) => {
 			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])

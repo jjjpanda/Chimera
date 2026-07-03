@@ -19,7 +19,11 @@ const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : 
 const pruneCaptures = async () => {
 	const names = fs.readdirSync(CAPTURES_DIR)
 	if (names.length <= MAX_CAPTURES) return
-	const files = names.map((f) => ({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }))
+	const files = names.reduce((acc, f) => {
+		try { acc.push({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }) } catch (e) {}
+		return acc
+	}, [])
+	if (files.length <= MAX_CAPTURES) return
 
 	const { rows } = await pool.query(
 		"SELECT image, MAX(confidence) AS confidence FROM objects_detected WHERE image = ANY($1) GROUP BY image",
