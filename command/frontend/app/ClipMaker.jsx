@@ -631,7 +631,7 @@ const ClipMakerFull = () => {
 			headers: { "Content-Type": "application/json" },
 			body: framesBody(camId, start, end)
 		}, prom => jsonProcessing(prom, data => {
-			if (seq !== loadSeq.current) return
+			if (seq !== loadSeq.current) return setFetching(false)
 			setFrames(data?.list ?? [])
 			setScrubIdx(0)
 			setFetching(false)

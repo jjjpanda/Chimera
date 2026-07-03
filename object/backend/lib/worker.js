@@ -23,6 +23,7 @@ const pruneCaptures = async () => {
 		try { acc.push({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }) } catch (e) {}
 		return acc
 	}, [])
+	if (files.length <= MAX_CAPTURES) return
 
 	const { rows } = await pool.query(
 		"SELECT image, MAX(confidence) AS confidence FROM objects_detected WHERE image = ANY($1) GROUP BY image",
