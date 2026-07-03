@@ -90,7 +90,7 @@ app.get("/usage", async (req, res) => {
 		const cameraStats = cameras.map(({ id, name }) => ({
 			id,
 			name,
-			used_gb: parseFloat(((bytesByCamera.get(String(id)) || 0) / 1e9).toFixed(3)),
+			used_gb: (bytesByCamera.get(String(id)) || 0) / 1e9,
 			frame_count: countByCamera.get(String(id)) || 0
 		}))
 
