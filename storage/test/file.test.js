@@ -40,14 +40,12 @@ describe("File Routes", () => {
 
 		test("maps per-camera size and count metrics", async () => {
 			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
-			query
-				.mockImplementationOnce(() => Promise.resolve({ rows: [{ sum: "500" }] }))
-				.mockImplementationOnce(() => Promise.resolve({ rows: [{ count: "7" }] }))
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ size: { cam1: "500" }, count: { cam1: "7" } })
+			expect(res.body).toEqual({ size: { cam1: 500 }, count: { cam1: 7 } })
 		})
 
 		test("returns 500 when a metric query fails instead of hanging", async () => {

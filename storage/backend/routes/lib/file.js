@@ -202,21 +202,13 @@ module.exports = {
 	cameraMetrics: (req, res) => {
 		const cameras = loadCameras()
 
-		const sizePromises = Promise.all(cameras.map(({ id }) => {
-			return queryForMetric(id, "size").then(extractValueForMetric("size"))
-		}))
-
-		const countPromises = Promise.all(cameras.map(({ id }) => {
-			return queryForMetric(id, "count").then(extractValueForMetric("count"))
-		}))
-
-		Promise.all([sizePromises, countPromises]).then(values => {
-			let sizes = values[0]
-			let counts = values[1]
-			let metrics = { size: {}, count: {} }
-			cameras.forEach(({ name }, index) => {
-				metrics.size[name] = sizes[index] ? sizes[index] : 0
-				metrics.count[name] = counts[index] ? counts[index] : 0
+		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
+			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))
+			const metrics = { size: {}, count: {} }
+			cameras.forEach(({ id, name }) => {
+				const row = byCamera.get(String(id))
+				metrics.size[name] = row ? parseInt(row.size) || 0 : 0
+				metrics.count[name] = row ? parseInt(row.count) || 0 : 0
 			})
 			res.send(metrics)
 		}).catch(err => {

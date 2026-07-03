@@ -130,7 +130,7 @@ const ObjectDetectionsMini = () => {
 						className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}
 					>
 						{g ? (
-							<DetectionImage image={g.image} boxes={g.boxes} cover />
+							<DetectionImage key={g.image} image={g.image} boxes={g.boxes} cover />
 						) : (
 							<div className="absolute inset-0 flex items-center justify-center">
 								<ImageOff className="size-5 opacity-30 text-muted" />
@@ -153,9 +153,7 @@ const ObjectDetectionsMini = () => {
 	)
 }
 
-const ObjectDetections = ({ mini, mobile = false }) => {
-	if (mini) return <ObjectDetectionsMini />
-
+const ObjectDetectionsFull = () => {
 	const role = useRole()
 	const { status, detections, loadStatus, loadDetections, scan } = useObjectDetections()
 	const groups = useMemo(() => groupDetections(detections), [detections])
@@ -239,7 +237,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 			</div>
 
 			{currentGroup ? (
-				<DetectionImage image={currentGroup.image} boxes={currentGroup.boxes} height={previewHeight} />
+				<DetectionImage key={currentGroup.image} image={currentGroup.image} boxes={currentGroup.boxes} height={previewHeight} />
 			) : (
 				<div className="flex items-center justify-center bg-muted/10" style={{ height: previewHeight }}>
 					<ImageOff className="size-8 opacity-20 text-muted" />
@@ -314,5 +312,7 @@ const ObjectDetections = ({ mini, mobile = false }) => {
 		</div>
 	)
 }
+
+const ObjectDetections = ({ mini }) => mini ? <ObjectDetectionsMini /> : <ObjectDetectionsFull />
 
 export default ObjectDetections

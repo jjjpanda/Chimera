@@ -236,8 +236,7 @@ const ClipMakerMini = () => {
 	)
 }
 
-const ClipMaker = ({ mini } = {}) => {
-	if (mini) return <ClipMakerMini />
+const ClipMakerFull = () => {
 	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const role = useRole()
 	const isAdmin = role === "admin"
@@ -270,6 +269,8 @@ const ClipMaker = ({ mini } = {}) => {
 
 	const canvasRef = useRef(null)
 	const imageCache = useRef({})
+	const loadSeq = useRef(0)
+	const navTimer = useRef(null)
 
 	// multi-cam state
 	const [multiCam, setMultiCam] = useState(false)
@@ -283,6 +284,8 @@ const ClipMaker = ({ mini } = {}) => {
 	useEffect(() => {
 		if (!isDesktop && multiCam) toggleMultiCam()
 	}, [isDesktop])
+
+	useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
 	useEffect(() => {
 		if (!multiCam && camera != null && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
@@ -594,6 +597,21 @@ const ClipMaker = ({ mini } = {}) => {
 			jsonProcessing(prom, data => setDetections(Array.isArray(data) ? data : [])))
 	}
 
+	const framesBody = (camId, start, end) => JSON.stringify({
+		camera: String(camId),
+		start: moment(start).utc().format("YYYYMMDD-HHmmss"),
+		end: moment(end).utc().format("YYYYMMDD-HHmmss"),
+		frames: number
+	})
+
+	const createBody = (camId, type) => JSON.stringify({
+		camera: String(camId),
+		start: moment(trimStart).utc().format("YYYYMMDD-HHmmss"),
+		end: moment(trimEnd).utc().format("YYYYMMDD-HHmmss"),
+		save: true,
+		...(type === "video" ? { fps, skip } : { skip })
+	})
+
 	const loadPreview = (overrideStart, overrideEnd, camIdx = camera) => {
 		if (loading) return
 		if (cameras[camIdx]?.id == null) return toast("No camera selected")
@@ -607,16 +625,13 @@ const ClipMaker = ({ mini } = {}) => {
 		setTrimming(false)
 		const camId = cameras[camIdx].id
 		loadDetections(camId, start, end)
+		const seq = ++loadSeq.current
 		request("/convert/listFramesVideo", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				camera: String(camId),
-				start: start.utc().format("YYYYMMDD-HHmmss"),
-				end: end.utc().format("YYYYMMDD-HHmmss"),
-				frames: number
-			})
+			body: framesBody(camId, start, end)
 		}, prom => jsonProcessing(prom, data => {
+			if (seq !== loadSeq.current) return
 			setFrames(data?.list ?? [])
 			setScrubIdx(0)
 			setFetching(false)
@@ -635,17 +650,14 @@ const ClipMaker = ({ mini } = {}) => {
 		setTrimming(false)
 		const camIds = selectedCams.map(idx => cameras[idx].id)
 		setCamStates(Object.fromEntries(camIds.map(id => [id, { frames: [], imagesLoaded: 0, fetching: true }])))
+		const seq = ++loadSeq.current
 		camIds.forEach(camId => {
 			request("/convert/listFramesVideo", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					camera: String(camId),
-					start: start.utc().format("YYYYMMDD-HHmmss"),
-					end: end.utc().format("YYYYMMDD-HHmmss"),
-					frames: number
-				})
+				body: framesBody(camId, start, end)
 			}, prom => jsonProcessing(prom, data => {
+				if (seq !== loadSeq.current) return
 				setCamStates(s => ({ ...s, [camId]: { frames: data?.list ?? [], imagesLoaded: 0, fetching: false } }))
 			}))
 		})
@@ -697,13 +709,7 @@ const ClipMaker = ({ mini } = {}) => {
 		request(endpoint, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				camera: String(camId),
-				start: moment(trimStart).utc().format("YYYYMMDD-HHmmss"),
-				end: moment(trimEnd).utc().format("YYYYMMDD-HHmmss"),
-				save: true,
-				...(type === "video" ? { fps, skip } : { skip })
-			})
+			body: createBody(camId, type)
 		}, prom => jsonProcessing(prom, data => {
 			setGenerating(null)
 			if (!data || data.error) {
@@ -714,7 +720,7 @@ const ClipMaker = ({ mini } = {}) => {
 				toast("No frames found")
 			} else {
 				toast(`${type === "video" ? "Video" : "Archive"} queued`)
-				setTimeout(() => navigate("/recordings"), 1500)
+				navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 			}
 		}))
 	}
@@ -729,13 +735,7 @@ const ClipMaker = ({ mini } = {}) => {
 			request(endpoint, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					camera: String(camId),
-					start: moment(trimStart).utc().format("YYYYMMDD-HHmmss"),
-					end: moment(trimEnd).utc().format("YYYYMMDD-HHmmss"),
-					save: true,
-					...(type === "video" ? { fps, skip } : { skip })
-				})
+				body: createBody(camId, type)
 			}, prom => jsonProcessing(prom, data => {
 				setMultiGenerating(g => ({ ...g, [camId]: null }))
 				if (!data || data.error || !data.url) {
@@ -744,7 +744,7 @@ const ClipMaker = ({ mini } = {}) => {
 			}))
 		})
 		toast(`${type === "video" ? "Videos" : "Archives"} queued`)
-		setTimeout(() => navigate("/recordings"), 1500)
+		navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 	}
 
 	const setDatePart = (setter, part, val) => {
@@ -1146,5 +1146,7 @@ const ClipMaker = ({ mini } = {}) => {
 		</div>
 	)
 }
+
+const ClipMaker = ({ mini } = {}) => mini ? <ClipMakerMini /> : <ClipMakerFull />
 
 export default ClipMaker
