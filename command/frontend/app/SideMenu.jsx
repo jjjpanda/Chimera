@@ -32,7 +32,7 @@ const SideMenu = ({ index, mobile }) => {
 		{ key: "route-1", icon: Scissors, title: "Clip Maker" },
 		{ key: "route-3", icon: Rewind, title: "Recordings" },
 		{ key: "route-4", icon: Activity, title: "Stats" },
-		{ key: "route-5", icon: CalendarClock, title: "Schedule" },
+		...(role === "admin" ? [{ key: "route-5", icon: CalendarClock, title: "Schedule" }] : []),
 		{ key: "route-7", icon: ScanEye, title: "Objects" },
 		...(role === "admin" ? [
 			{ key: "route-6", icon: Users, title: "Admin" },

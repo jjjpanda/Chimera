@@ -244,7 +244,6 @@ const ClipMakerFull = () => {
 	const [searchParams] = useSearchParams()
 	const [cameras] = useCameras()
 
-	// single-cam state
 	const [camera, setCamera] = useState(null)
 	const [startDate, setStartDate] = useState(moment().subtract(4, "hours"))
 	const [endDate, setEndDate] = useState(moment())
@@ -272,7 +271,6 @@ const ClipMakerFull = () => {
 	const loadSeq = useRef(0)
 	const navTimer = useRef(null)
 
-	// multi-cam state
 	const [multiCam, setMultiCam] = useState(false)
 	const [selectedCams, setSelectedCams] = useState([]) // camera indices, up to 4
 	const [camStates, setCamStates] = useState({}) // { [camId]: { frames, imagesLoaded, fetching } }
@@ -586,7 +584,7 @@ const ClipMakerFull = () => {
 		setScrubIdx(0)
 	}
 
-	const loadDetections = (camId, start, end) => {
+	const loadDetections = (camId, start, end, seq) => {
 		const qs = new URLSearchParams({
 			camera: String(camId),
 			start: moment(start).toISOString(),
@@ -594,7 +592,10 @@ const ClipMakerFull = () => {
 			limit: "500",
 		})
 		request(`/object/detections?${qs}`, { cache: "no-store" }, prom =>
-			jsonProcessing(prom, data => setDetections(Array.isArray(data) ? data : [])))
+			jsonProcessing(prom, data => {
+				if (seq !== loadSeq.current) return
+				setDetections(Array.isArray(data) ? data : [])
+			}))
 	}
 
 	const framesBody = (camId, start, end) => JSON.stringify({
@@ -624,8 +625,8 @@ const ClipMakerFull = () => {
 		setTrimRange([0, 100])
 		setTrimming(false)
 		const camId = cameras[camIdx].id
-		loadDetections(camId, start, end)
 		const seq = ++loadSeq.current
+		loadDetections(camId, start, end, seq)
 		request("/convert/listFramesVideo", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },

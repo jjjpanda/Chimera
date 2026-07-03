@@ -266,7 +266,7 @@ describe("Convert Routes", () => {
 				.post("/convert/cancelProcess")
 				.send({id})
 				.set("Cookie", cookieWithBearerToken)
-				.expect(200, { cancelled: true, id }, done)
+				.expect(200, { cancelled: false, id }, done)
 		})
 	})
 

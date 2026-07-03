@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import useCamDateNumInfo from "./useCamDateNumInfo.js"
 import useCameras from "./useCameras.js"
 
@@ -16,9 +16,10 @@ const processBody = (state, camId) => {
 	return body
 }
 
-const updateImages = (state, setState, cameras) => {
+const updateImages = (state, setState, cameras, seqRef) => {
 	const camId = cameras[state.camera]?.id
 	if (camId == null) return
+	const seq = ++seqRef.current
 	setState((oldState) => ({
 		...oldState,
 		list: ["/res/logo.png"],
@@ -33,6 +34,7 @@ const updateImages = (state, setState, cameras) => {
 		body: processBody(state, camId)
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			if (seq !== seqRef.current) return
 			const list = data && Array.isArray(data.list) ? data.list : []
 			setState((oldState) => ({
 				...oldState,
@@ -56,6 +58,7 @@ const onReloadGenerator = (setState) => (newState) => {
 
 const usePastImages = (numberOfFrames = 100) => {
 	const [cameras] = useCameras()
+	const seqRef = useRef(0)
 	const [state, setState] = useCamDateNumInfo({
 		number: numberOfFrames,
 		numberType: "frames",
@@ -70,7 +73,7 @@ const usePastImages = (numberOfFrames = 100) => {
 	const allImagesLoaded = !listHasContents || state.imagesLoaded >= state.list.length
 
 	useEffect(() => {
-		updateImages(state, setState, cameras)
+		updateImages(state, setState, cameras, seqRef)
 	}, [state.number, state.camera, state.startDate, state.endDate, cameras])
 
 	useEffect(()=> {

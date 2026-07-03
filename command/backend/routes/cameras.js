@@ -5,6 +5,7 @@ const app = express.Router()
 
 const stripCreds = (url) => url
 	.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^/]*@/i, "$1")
+	.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^\s@]*:[^\s@]*@(?=[^@/?#]*(?:[/?#]|$))/i, "$1")
 	.replace(/([?&](?:username|user|usr|password|passwd|pass|pwd|pw|auth|token|secret|u|p)=)[^&#]*/gi, "$1***")
 
 app.get("/", (req, res) => {

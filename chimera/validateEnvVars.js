@@ -4,16 +4,26 @@ const path = require("path")
 const { parseSchema, isServiceOff } = require("./preflight.js")
 
 let allEnvPresent = true
-const optionalKeys = new Set(parseSchema().filter(v => v.optional).map(v => v.key))
+const schema = parseSchema()
+const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
+const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
+const secretKeys = new Set(["SECRETKEY", "scheduler_AUTH", "memory_AUTH_TOKEN", "database_PASSWORD"])
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
 	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return true
 	const val = process.env[varName]
-	if (val != null && val.trim() !== "") return true
-	console.log("MISSING ENV VAR", varName)
-	allEnvPresent = false
-	return false
+	if (val == null || val.trim() === "") {
+		console.log("MISSING ENV VAR", varName)
+		allEnvPresent = false
+		return false
+	}
+	if (secretKeys.has(varName) && val.trim() === placeholders.get(varName)) {
+		console.log("PLACEHOLDER SECRET — change before deploying:", varName)
+		allEnvPresent = false
+		return false
+	}
+	return true
 }
 
 const isFolderCheck = (varName) => {

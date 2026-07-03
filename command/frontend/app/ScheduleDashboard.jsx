@@ -71,6 +71,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
 	const [busyId, setBusyId] = useState(null)
+	const [deleteTarget, setDeleteTarget] = useState(null)
 	useEffect(() => { setBusyId(null) }, [processList])
 
 	const sortedUpcoming = [...processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
@@ -95,8 +96,8 @@ const ScheduleDashboardMini = ({ withButton }) => {
 									disabled={busyId === item.id}
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
-								{item.id !== "task-auto-cleanup" && (
-									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => { setBusyId(item.id); deleteTask(item.id) }}>
+								{!item.protected && (
+									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => setDeleteTarget(item)}>
 										<Trash2 className="size-3.5" />
 									</Button>
 								)}
@@ -125,6 +126,18 @@ const ScheduleDashboardMini = ({ withButton }) => {
 					<TabsContent value="upcoming">{renderMiniList(sortedUpcoming)}</TabsContent>
 					<TabsContent value="all">{renderMiniList(sortedAll)}</TabsContent>
 				</Tabs>
+				<Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
+					<DialogContent className="max-w-sm">
+						<DialogHeader>
+							<DialogTitle>Delete task?</DialogTitle>
+							<DialogDescription className="truncate">{deleteTarget?.url}</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+							<Button variant="destructive" onClick={() => { setBusyId(deleteTarget.id); deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 			</CardContent>
 		</Card>
 	)

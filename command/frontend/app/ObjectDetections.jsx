@@ -190,7 +190,8 @@ const ObjectDetectionsFull = () => {
 	[groups, selectedCam]
 	)
 
-	useEffect(() => { setScrubIdx(Math.max(0, camGroups.length - 1)) }, [selectedCam, camGroups.length])
+	useEffect(() => { setScrubIdx(Math.max(0, camGroups.length - 1)) }, [selectedCam])
+	useEffect(() => { setScrubIdx((i) => Math.min(i, Math.max(0, camGroups.length - 1))) }, [camGroups.length])
 
 	const currentGroup = camGroups[scrubIdx] ?? null
 	const scrubPct = camGroups.length > 1 ? (scrubIdx / (camGroups.length - 1)) * 100 : 0

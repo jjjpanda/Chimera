@@ -24,7 +24,7 @@ const DesktopView = ({ index }) => {
 
 	if (index === "route-4") return <Stats />
 
-	if (index === "route-5") return <ScheduleDashboard />
+	if (index === "route-5") return role === "admin" ? <ScheduleDashboard /> : <Navigate to="/" />
 
 	if (index === "route-7") return <ObjectDetections />
 
@@ -42,7 +42,7 @@ const DesktopView = ({ index }) => {
 				<ClipMaker mini />
 			</div>
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "16rem" }}>
-				<ScheduleDashboard mini withButton />
+				{role === "admin" && <ScheduleDashboard mini withButton />}
 				<ProcessList mini />
 				{role === "admin" && <AdminPanel withButton />}
 			</div>

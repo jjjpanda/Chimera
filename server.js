@@ -2,25 +2,36 @@ require("dotenv").config()
 
 console.log("--- Starting Servers ---")
 
-const startService = (name, mod, { fatal = false } = {}) => {
+process.on("uncaughtException", (e) => console.error("uncaught exception:", e))
+process.on("unhandledRejection", (e) => console.error("unhandled rejection:", e))
+
+const startService = (name, moduleName, { fatal = false } = {}) => {
 	try {
-		mod.start()
+		require(moduleName).start()
 	} catch (e) {
 		console.error(`❌ ${name} failed to start:`, e.message)
 		if (fatal) throw e
 	}
 }
 
-startService("command", require("command"), { fatal: true })
-startService("storage", require("storage"))
-startService("livestream", require("livestream"))
-startService("schedule", require("schedule"))
-startService("object", require("object"))
+startService("command", "command", { fatal: true })
+startService("storage", "storage")
+startService("livestream", "livestream")
+startService("schedule", "schedule")
+startService("object", "object")
 
 console.log("--- Starting Socket ---")
 
-require("memory").server()
+try {
+	require("memory").server()
+} catch (e) {
+	console.error("❌ memory failed to start:", e.message)
+}
 
 console.log("--- Starting Gateway ---")
 
-require("gateway").start()
+try {
+	require("gateway").start()
+} catch (e) {
+	console.error("❌ gateway failed to start:", e.message)
+}

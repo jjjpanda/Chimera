@@ -24,7 +24,7 @@ const MobileView = ({ index }) => {
 
 	if (index === "route-4") return <Stats />
 
-	if (index === "route-5") return <ScheduleDashboard mobile />
+	if (index === "route-5") return role === "admin" ? <ScheduleDashboard mobile /> : <Navigate to="/" />
 
 	if (index === "route-7") return <ObjectDetections mobile />
 
@@ -41,7 +41,7 @@ const MobileView = ({ index }) => {
 			<Status />
 			{role === "admin" && <AdminPanel withButton />}
 			{role === "admin" && <StorageWidget />}
-			<ScheduleDashboard mini withButton />
+			{role === "admin" && <ScheduleDashboard mini withButton />}
 		</div>
 	)
 }

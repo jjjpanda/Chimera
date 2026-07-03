@@ -71,6 +71,7 @@ const Stats = () => {
 	const usedBytes = usage.used_gb * 1e9
 	const maxBytes = usage.max_gb * 1e9
 	const sortedCameras = [...usage.cameras].sort((a, b) => b.used_gb - a.used_gb)
+	const camColor = new Map(sortedCameras.map((c, i) => [c.id, segmentColor(i)]))
 	const totalCamGb = usage.cameras.reduce((s, c) => s + Math.max(c.used_gb, 0.001), 0) || 1
 	const maxCamGb = Math.max(...usage.cameras.map(c => c.used_gb), 0.001)
 
@@ -84,7 +85,7 @@ const Stats = () => {
 							<div className="flex h-3 flex-1 overflow-hidden rounded-full">
 								{usage.cameras.length > 0
 									? usage.cameras.map((cam, i) => (
-										<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: segmentColor(i) }} />
+										<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: camColor.get(cam.id) }} />
 									))
 									: <div className="flex-1 rounded-full bg-border" />
 								}
@@ -215,7 +216,7 @@ const Stats = () => {
 							{sortedCameras.map((cam, i) => (
 								<div key={cam.id} className="flex flex-col gap-1.5 px-4 py-3">
 									<div className="flex items-center gap-3">
-										<div className="size-3 rounded-full shrink-0" style={{ backgroundColor: segmentColor(i) }} />
+										<div className="size-3 rounded-full shrink-0" style={{ backgroundColor: camColor.get(cam.id) }} />
 										<div className="flex-1 min-w-0">
 											<p className="text-sm font-medium">{cam.name}</p>
 										</div>
@@ -239,7 +240,7 @@ const Stats = () => {
 									<div className="ml-[22px] h-1.5 overflow-hidden rounded-full bg-border">
 										<div
 											className="h-full rounded-full transition-all"
-											style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: segmentColor(i) }}
+											style={{ width: `${((cam.used_gb / maxCamGb) * 100).toFixed(1)}%`, backgroundColor: camColor.get(cam.id) }}
 										/>
 									</div>
 								</div>

@@ -72,6 +72,11 @@ const LiveVideo = (props) => {
 		setVideos(props.grid ? squarify(state.videoList) : state.videoList)
 	}, [state.videoList, props.grid])
 
+	useEffect(() => {
+		const count = state.videoList.length
+		if (count > 0 && parseInt(activeTab) >= count) setActiveTab(String(count - 1))
+	}, [state.videoList])
+
 	if (props.list) {
 		return (
 			<div className="flex flex-col gap-3">
