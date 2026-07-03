@@ -14,7 +14,7 @@
     "helmet": "^8.0.0",
     "lib": "file:../lib",
     "memory": "file:../memory",
-    "node-cron": "^3.0.0",
+    "node-cron": "^4.5.0",
     "pg": "^8.21.0"
   },
   "peerDependencies": {
