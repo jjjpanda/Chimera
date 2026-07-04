@@ -35,6 +35,7 @@ const services = [
 ]
 for (const { name, instances } of services) {
 	if (process.env[`${name}_ON`] === "true") config.apps.push(svc(name, { instances }))
+	else console.log(`↷ skipping ${name} (${name}_ON is "${process.env[`${name}_ON`] ?? "unset"}")`)
 }
 
 if(!isDev){

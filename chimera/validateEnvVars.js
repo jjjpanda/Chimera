@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
@@ -20,6 +20,11 @@ const checkVar = (varName) => {
 	}
 	if (isSecret(varName) && val.trim() === placeholders.get(varName)) {
 		console.log("PLACEHOLDER SECRET — change before deploying:", varName)
+		allEnvPresent = false
+		return false
+	}
+	if (typeOf(varName, placeholders.get(varName)) === "bool" && val.trim() !== "true" && val.trim() !== "false") {
+		console.log("MUST BE true OR false:", varName)
 		allEnvPresent = false
 		return false
 	}
