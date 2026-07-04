@@ -60,6 +60,7 @@ const confirmPath = (varName, shouldBeFolder=false) => {
 }
 
 const confirmURL = (varName) => {
+	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return
 	const val = process.env[varName]
 	if (val == null || val.trim() === "") return
 	try {

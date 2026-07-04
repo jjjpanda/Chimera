@@ -36,8 +36,4 @@ try {
 
 console.log("--- Starting Gateway ---")
 
-try {
-	require("gateway").start()
-} catch (e) {
-	console.error("❌ gateway failed to start:", e.message)
-}
+startService("gateway", "gateway", { fatal: true })
