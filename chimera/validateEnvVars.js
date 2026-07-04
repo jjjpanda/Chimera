@@ -59,12 +59,25 @@ const confirmPath = (varName, shouldBeFolder=false) => {
 	return
 }
 
+const confirmURL = (varName) => {
+	const val = process.env[varName]
+	if (val == null || val.trim() === "") return
+	try {
+		new URL(val)
+	} catch (e) {
+		console.log(varName, "MUST BE A VALID URL (SPECIAL CHARACTERS MUST BE URL-ENCODED)")
+		allEnvPresent = false
+	}
+}
+
 checkVar("NODE_ENV")
 checkVar("chimeraInstances")
 
 checkVar("storage_MAX_GB")
 checkVar("alert_URL")
+confirmURL("alert_URL")
 checkVar("admin_alert_URL")
+confirmURL("admin_alert_URL")
 checkVar("PRINTPASSWORD")
 checkVar("SECRETKEY")
 
@@ -119,6 +132,7 @@ checkVar("object_PORT")
 checkVar("object_CONFIDENCE")
 checkVar("object_INTERVAL_MS")
 checkVar("object_MODEL_URL")
+confirmURL("object_MODEL_URL")
 checkVar("object_INPUT_SIZE")
 checkVar("object_ALERT_ON")
 checkVar("object_MAX_CAPTURES")
