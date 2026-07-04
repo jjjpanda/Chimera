@@ -33,4 +33,17 @@ test.describe("role-based access", () => {
 		await page.goto("/admin")
 		await expect(page.getByRole("button", { name: "Add User" })).toBeVisible()
 	})
+
+	test("non-admin deep link to /schedule redirects to the dashboard", async ({ page }) => {
+		await mockApi(page, asUserSession)
+		await page.goto("/schedule")
+		await expect(page.getByText("Storage Usage")).toBeVisible()
+		await expect(page.getByText("Schedule a Task")).toHaveCount(0)
+	})
+
+	test("admin deep link to /schedule renders the scheduler", async ({ page }) => {
+		await mockApi(page, asAdminSession)
+		await page.goto("/schedule")
+		await expect(page.getByText("Schedule a Task")).toBeVisible()
+	})
 })

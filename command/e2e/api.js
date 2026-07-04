@@ -32,7 +32,7 @@ const mockApi = (page, overrides = {}) => {
 		const { pathname } = new URL(request.url())
 		const response = routes[`${request.method()} ${pathname}`]
 		if (response) return route.fulfill(response)
-		if (isApi(pathname)) return route.fulfill(json([]))
+		if (request.resourceType() !== "document" && isApi(pathname)) return route.fulfill(json([]))
 		return route.continue()
 	})
 }

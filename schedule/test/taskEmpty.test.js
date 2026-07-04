@@ -29,6 +29,13 @@ describe("Task Routes with an Empty list", () => {
 	let cookieWithBearerToken = "validCookie"
 
 	describe("/task/list", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.get("/task/list")
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("List task", (done) => {
 			supertest(app)
 				.get("/task/list")

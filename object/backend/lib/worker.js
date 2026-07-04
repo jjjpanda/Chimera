@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance, objectState, loadCameras } = require("lib")
+const { isPrimeInstance, loadCameras } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -196,10 +196,3 @@ module.exports = {
 		return config
 	},
 }
-
-objectState.register({
-	getConfig: () => config,
-	getStatus: () => status,
-	setConfig: module.exports.setConfig,
-	scan: module.exports.scan
-})

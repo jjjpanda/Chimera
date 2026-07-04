@@ -66,11 +66,27 @@ const nextRunSeconds = (cronString) => {
 	}
 }
 
+const DeleteTaskDialog = ({ target, label, truncate = false, onClose, onConfirm }) => (
+	<Dialog open={!!target} onOpenChange={open => !open && onClose()}>
+		<DialogContent className="max-w-sm">
+			<DialogHeader>
+				<DialogTitle>Delete task?</DialogTitle>
+				<DialogDescription className={truncate ? "truncate" : undefined}>{label}</DialogDescription>
+			</DialogHeader>
+			<DialogFooter>
+				<Button variant="outline" onClick={onClose}>Cancel</Button>
+				<Button variant="destructive" onClick={onConfirm}>Delete</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
+)
+
 const ScheduleDashboardMini = ({ withButton }) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
 	const [busyId, setBusyId] = useState(null)
+	const [deleteTarget, setDeleteTarget] = useState(null)
 	useEffect(() => { setBusyId(null) }, [processList])
 
 	const sortedUpcoming = [...processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
@@ -95,8 +111,8 @@ const ScheduleDashboardMini = ({ withButton }) => {
 									disabled={busyId === item.id}
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
-								{item.id !== "task-auto-cleanup" && (
-									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => { setBusyId(item.id); deleteTask(item.id) }}>
+								{!item.protected && (
+									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => setDeleteTarget(item)}>
 										<Trash2 className="size-3.5" />
 									</Button>
 								)}
@@ -125,6 +141,13 @@ const ScheduleDashboardMini = ({ withButton }) => {
 					<TabsContent value="upcoming">{renderMiniList(sortedUpcoming)}</TabsContent>
 					<TabsContent value="all">{renderMiniList(sortedAll)}</TabsContent>
 				</Tabs>
+				<DeleteTaskDialog
+					target={deleteTarget}
+					label={deleteTarget?.url}
+					truncate
+					onClose={() => setDeleteTarget(null)}
+					onConfirm={() => { setBusyId(deleteTarget.id); deleteTask(deleteTarget.id); setDeleteTarget(null) }}
+				/>
 			</CardContent>
 		</Card>
 	)
@@ -169,20 +192,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>Delete task?</DialogTitle>
-						<DialogDescription>
-							{deleteTarget ? taskSummary(deleteTarget, cameras) : ""}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-						<Button variant="destructive" onClick={() => { setBusyId(deleteTarget.id); deleteTask(deleteTarget.id); setDeleteTarget(null) }}>Delete</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			<DeleteTaskDialog
+				target={deleteTarget}
+				label={deleteTarget ? taskSummary(deleteTarget, cameras) : ""}
+				onClose={() => setDeleteTarget(null)}
+				onConfirm={() => { setBusyId(deleteTarget.id); deleteTask(deleteTarget.id); setDeleteTarget(null) }}
+			/>
 			<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
 				<Card className="flex-1 bg-surface border-border">
 					<CardHeader>

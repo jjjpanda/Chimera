@@ -17,7 +17,6 @@ Factories in [lib/](lib), wired to socket events by [socket.js](socket.js):
 - **loginAttempts** — shared login rate limiter (tumbling window); command falls back to a local copy when `memory_ON` is off.
 - **scheduledTasks** — `node-cron` registry; on fire, emits the task id to every instance ([schedule](../schedule)).
 - **converterProcesses** — cancel handles for in-flight mp4/zip jobs ([storage](../storage)).
-- **objectState** — object-detection config/status/scan bridge ([object](../object)).
 - **cronTask** — one `node-cron` job that emits a caller-supplied id.
 
 Built-in events: `log`, `callback` (schedule's `MEMORY-HEALTH` check), `disconnect`.

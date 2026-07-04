@@ -231,6 +231,27 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: true })
 			signSpy.mockRestore()
 		})
+
+		test("returns 500 when the login query errors", async () => {
+			mockedPool.query.mockImplementationOnce((str, params, cb) => {
+				cb(new Error("db down"))
+				return Promise.resolve()
+			})
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test("returns 500 when password comparison errors", async () => {
+			jest.spyOn(bcrypt, "compare").mockImplementationOnce((pw, hash, cb) => cb(new Error("bcrypt fail")))
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
 	})
 
 	describe("POST /authorization/verify", () => {

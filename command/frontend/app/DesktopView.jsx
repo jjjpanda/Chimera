@@ -1,6 +1,7 @@
 import React from "react"
 import { Navigate } from "react-router-dom"
 import { useRole } from "./AuthContext"
+import { adminRoutes } from "../js/routeIndexMapping"
 
 import LiveVideo from "./LiveVideo"
 import ClipMaker from "./ClipMaker"
@@ -16,6 +17,8 @@ import ObjectDetections from "./ObjectDetections.jsx"
 const DesktopView = ({ index }) => {
 	const role = useRole()
 
+	if (adminRoutes.has(index) && role !== "admin") return <Navigate to="/" />
+
 	if (index === "route-1") return <ClipMaker />
 
 	if (index === "route-2") return <LiveVideo grid />
@@ -28,7 +31,7 @@ const DesktopView = ({ index }) => {
 
 	if (index === "route-7") return <ObjectDetections />
 
-	if (index === "route-6") return role === "admin" ? <AdminPanel /> : <Navigate to="/" />
+	if (index === "route-6") return <AdminPanel />
 
 	return (
 		<div className="space-y-4">
@@ -42,7 +45,7 @@ const DesktopView = ({ index }) => {
 				<ClipMaker mini />
 			</div>
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3" style={{ gridAutoRows: "16rem" }}>
-				<ScheduleDashboard mini withButton />
+				{role === "admin" && <ScheduleDashboard mini withButton />}
 				<ProcessList mini />
 				{role === "admin" && <AdminPanel withButton />}
 			</div>

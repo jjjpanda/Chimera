@@ -16,10 +16,10 @@ var {
 const app = express.Router()
 
 app.post("/start", requireAdmin, validateBody, validateStartableTask, taskList, startNewTask)
-app.get("/list", taskList, sendList)
+app.get("/list", requireAdmin, taskList, sendList)
 app.post("/stop", requireAdmin, validateBody, validateId, stopTask)
 app.post("/destroy", requireAdmin, validateBody, validateId, destroyTask)
-app.get("/runs", taskRuns)
-app.get("/runs/:taskId", taskRuns)
+app.get("/runs", requireAdmin, taskRuns)
+app.get("/runs/:taskId", requireAdmin, taskRuns)
 
 module.exports = app

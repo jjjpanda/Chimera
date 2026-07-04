@@ -34,20 +34,10 @@ module.exports = {
 		findFile(id, (fileName) => {
 			const { type } = parseFileName(fileName)
 
-			let cancelled = true
-	
-			client.emit("cancelProcess", id, type, (msg) => {
-				if(msg == undefined || msg === "not cancelled"){
-					cancelled = false
-				}
-				else{
-					webhookAlert(msg)
-				}
-			})
-	
-			res.send({
-				cancelled,
-				id
+			client.timeout(2000).emit("cancelProcess", id, type, (err, msg) => {
+				const cancelled = !err && msg !== undefined && msg !== "not cancelled"
+				if(cancelled) webhookAlert(msg)
+				res.send({ cancelled, id })
 			})
 		})
 	},

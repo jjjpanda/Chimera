@@ -24,4 +24,6 @@ const indexToRoute = (i) => {
 	}
 }
 
-export { routeToIndex, indexToRoute }
+const adminRoutes = new Set(["route-5", "route-6"])
+
+export { routeToIndex, indexToRoute, adminRoutes }

@@ -2,7 +2,7 @@ import React from "react"
 import { useNavigate } from "react-router-dom"
 import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, Sun, Moon, Monitor } from "lucide-react"
 
-import { indexToRoute } from "../js/routeIndexMapping"
+import { indexToRoute, adminRoutes } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
 import { useTheme } from "./ThemeContext.jsx"
 import SignOutButton from "./SignOutButton.jsx"
@@ -34,10 +34,8 @@ const SideMenu = ({ index, mobile }) => {
 		{ key: "route-4", icon: Activity, title: "Stats" },
 		{ key: "route-5", icon: CalendarClock, title: "Schedule" },
 		{ key: "route-7", icon: ScanEye, title: "Objects" },
-		...(role === "admin" ? [
-			{ key: "route-6", icon: Users, title: "Admin" },
-		] : [])
-	]
+		{ key: "route-6", icon: Users, title: "Admin" },
+	].filter(t => role === "admin" || !adminRoutes.has(t.key))
 
 	const go = (key) => {
 		if (index !== key) navigate(indexToRoute(key))

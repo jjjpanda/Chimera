@@ -8,22 +8,34 @@ if ((Number(process.env.chimeraInstances) > 1 || process.env.chimeraInstances ==
 	process.env.memory_ON = "true"
 }
 
-const config = {
-	apps : [{
-		script: "server.js",
-		name: `chimera${isDev ? "Continuous" : ""}`,
-		log: `./log/chimera.${isDev ? "dev." : ""}log`,
-		log_date_format:"YYYY-MM-DD HH:mm:ss",
-		...(isDev ? {
-			watch: ["."],
-			ignore_watch: ["shared", "feed", "objectTemp", "objectCaptures", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"],
-		} : {}),
-		instances: process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances,
-		env: {
-			"NODE_ENV": process.env.NODE_ENV,
-			"memory_ON": process.env.memory_ON,
-		}
-	}]
+const scaled = process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances
+const baseEnv = { NODE_ENV: process.env.NODE_ENV, memory_ON: process.env.memory_ON }
+const ignore_watch = ["shared", "feed", "objectTemp", "objectCaptures", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"]
+
+const svc = (name, { instances = scaled } = {}) => ({
+	script: `${name}/start.js`,
+	name,
+	log: `./log/${name}.${isDev ? "dev." : ""}log`,
+	log_date_format: "YYYY-MM-DD HH:mm:ss",
+	...(isDev ? { watch: [name, "lib"], ignore_watch } : {}),
+	instances,
+	env: baseEnv,
+})
+
+const config = { apps: [] }
+
+const services = [
+	{ name: "command" },
+	{ name: "storage" },
+	{ name: "livestream" },
+	{ name: "schedule" },
+	{ name: "object", instances: 1 },
+	{ name: "gateway" },
+	{ name: "memory", instances: 1 },
+]
+for (const { name, instances } of services) {
+	if (process.env[`${name}_ON`] === "true") config.apps.push(svc(name, { instances }))
+	else console.log(`↷ skipping ${name} (${name}_ON is "${process.env[`${name}_ON`] ?? "unset"}")`)
 }
 
 if(!isDev){

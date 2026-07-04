@@ -4,7 +4,7 @@ const crypto = require("crypto")
 
 const MODEL_DIR = path.join(__dirname, "..", "model")
 const MODEL_PATH = path.join(MODEL_DIR, "yolox_tiny.onnx")
-const DEFAULT_URL = "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx"
+const DEFAULT_URL = "https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx"
 const DEFAULT_SHA256 = "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7"
 const MIN_BYTES = 20000000
 

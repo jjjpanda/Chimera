@@ -1,25 +1,11 @@
 const supertest = require("supertest")
 
-process.env.memory_ON = "true"
-
-let mockConnected = false
-let mockEmitError = false
-let mockScanError = false
-const mockEmit = jest.fn((event, arg, cb2) => {
-	const cb = typeof cb2 === "function" ? cb2 : arg
-	if (mockEmitError) return cb(new Error("ack timeout"))
-	if (event === "objectGetState") cb(null, { config: { confidence: 0.42, intervalMs: 5000, classes: [] }, status: { 9: { running: true } } })
-	else if (event === "objectSetConfig") cb(null, { confidence: 0.8, intervalMs: 5000, classes: [] })
-	else if (event === "objectScan") cb(null, mockScanError ? { error: "scan failed" } : { detections: [{ class: "car", score: 0.77, box: [0, 0, 1, 1] }] })
-})
-
 const mockQuery = jest.fn().mockResolvedValue({
 	rows: [{ id: 1, camera: 1, timestamp: "t", type: "person", confidence: 0.9 }]
 })
 
 jest.mock("lib")
 jest.mock("axios")
-jest.mock("memory", () => ({ client: () => ({ get connected() { return mockConnected }, timeout() { return this }, emit: mockEmit, on: () => {} }) }))
 jest.mock("pg", () => ({
 	Pool: jest.fn().mockImplementation(() => ({ on: jest.fn(), query: mockQuery }))
 }))
@@ -42,7 +28,7 @@ describe("Object Routes", () => {
 		supertest(app).get("/object/status").expect(303, done)
 	})
 
-	test("Authorized status", (done) => {
+	test("Authorized status reads the local worker", (done) => {
 		supertest(app)
 			.get("/object/status")
 			.set("Cookie", authorized)
@@ -51,6 +37,15 @@ describe("Object Routes", () => {
 				expect(res.body.config.confidence).toBe(0.5)
 				expect(res.body.cameras["1"].running).toBe(true)
 			})
+			.end(done)
+	})
+
+	test("Config read from the local worker", (done) => {
+		supertest(app)
+			.get("/object/config")
+			.set("Cookie", authorized)
+			.expect(200)
+			.expect((res) => expect(res.body.confidence).toBe(0.5))
 			.end(done)
 	})
 
@@ -81,7 +76,7 @@ describe("Object Routes", () => {
 		supertest(app).post("/object/config").send({ confidence: 0.7 }).expect(401, done)
 	})
 
-	test("Config update", (done) => {
+	test("Config update writes the local worker", (done) => {
 		supertest(app)
 			.post("/object/config")
 			.set("Cookie", authorized)
@@ -95,7 +90,7 @@ describe("Object Routes", () => {
 		supertest(app).post("/object/scan").set("Cookie", authorized).send({}).expect(400, done)
 	})
 
-	test("Scan", (done) => {
+	test("Scan runs the local worker", (done) => {
 		supertest(app)
 			.post("/object/scan")
 			.set("Cookie", authorized)
@@ -120,103 +115,8 @@ describe("Object Routes", () => {
 	})
 })
 
-describe("Object Routes (shared state via a connected memory client)", () => {
-	beforeAll(() => { mockConnected = true })
-	afterAll(() => { mockConnected = false })
-	afterEach(() => { mockEmitError = false; mockScanError = false })
-
-	test("status reads state from the memory client", (done) => {
-		supertest(app)
-			.get("/object/status")
-			.set("Cookie", authorized)
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.config.confidence).toBe(0.42)
-				expect(res.body.cameras["9"].running).toBe(true)
-				expect(mockEmit).toHaveBeenCalledWith("objectGetState", expect.any(Function))
-			})
-			.end(done)
-	})
-
-	test("config update writes through the memory client", (done) => {
-		supertest(app)
-			.post("/object/config")
-			.set("Cookie", authorized)
-			.send({ confidence: 0.8 })
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.confidence).toBe(0.8)
-				expect(mockEmit).toHaveBeenCalledWith("objectSetConfig", { confidence: 0.8 }, expect.any(Function))
-			})
-			.end(done)
-	})
-
-	test("config read comes from the memory client", (done) => {
-		supertest(app)
-			.get("/object/config")
-			.set("Cookie", authorized)
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.confidence).toBe(0.42)
-				expect(mockEmit).toHaveBeenCalledWith("objectGetState", expect.any(Function))
-			})
-			.end(done)
-	})
-
-	test("scan routes through the memory client", (done) => {
-		supertest(app)
-			.post("/object/scan")
-			.set("Cookie", authorized)
-			.send({ camera: 3 })
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.camera).toBe(3)
-				expect(res.body.detections[0].class).toBe("car")
-				expect(mockEmit).toHaveBeenCalledWith("objectScan", 3, expect.any(Function))
-			})
-			.end(done)
-	})
-
-	test("falls back to the local worker when the memory ack errors", (done) => {
-		mockEmitError = true
-		supertest(app)
-			.get("/object/status")
-			.set("Cookie", authorized)
-			.expect(200)
-			.expect((res) => {
-				expect(res.body.config.confidence).toBe(0.5)
-				expect(res.body.cameras["1"].running).toBe(true)
-			})
-			.end(done)
-	})
-
-	test("returns 502 when the memory scan acks an error", (done) => {
-		mockScanError = true
-		supertest(app)
-			.post("/object/scan")
-			.set("Cookie", authorized)
-			.send({ camera: 3 })
-			.expect(502)
-			.expect((res) => expect(res.body.error).toBe("scan failed"))
-			.end(done)
-	})
-
-	test("does not re-run the local scan when the memory ack times out", (done) => {
-		mockEmitError = true
-		const worker = require("../backend/lib/worker.js")
-		worker.scan.mockClear()
-		supertest(app)
-			.post("/object/scan")
-			.set("Cookie", authorized)
-			.send({ camera: 3 })
-			.expect(504)
-			.expect(() => expect(worker.scan).not.toHaveBeenCalled())
-			.end(done)
-	})
-})
-
 describe("Object Routes (non-prime instance)", () => {
-	test("returns 503 when shared state is unavailable", (done) => {
+	test("returns 503 when not the prime instance", (done) => {
 		const lib = require("lib")
 		const wasPrime = lib.isPrimeInstance
 		lib.isPrimeInstance = false

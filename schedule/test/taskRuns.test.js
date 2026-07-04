@@ -33,9 +33,19 @@ describe("Task Run History", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("returns 403 for non-admin", async () => {
+			const res = await supertest(app).get("/task/runs").set("Cookie", "userCookie")
+			expect(res.status).toBe(403)
+		})
 	})
 
 	describe("/task/runs/:taskId", () => {
+		test("returns 403 for non-admin", async () => {
+			const res = await supertest(app).get("/task/runs/task-auto-cleanup").set("Cookie", "userCookie")
+			expect(res.status).toBe(403)
+		})
+
 		test("filters by task id", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [] })
 			const res = await supertest(app).get("/task/runs/task-auto-cleanup").set("Cookie", cookie)

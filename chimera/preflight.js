@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
-const { parseConf } = require("../lib/utils/loadCameras.js")
+const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -82,7 +82,10 @@ const cameraProblems = () => {
 		else if (names[cam.camera_name]) problems.push(`${f}: duplicate camera_name "${cam.camera_name}" (also in ${names[cam.camera_name]})`)
 		else names[cam.camera_name] = f
 		if (!cam.netcam_url) problems.push(`${f}: netcam_url not set`)
-		else if (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(cam.netcam_url)) problems.push(`${f}: netcam_url missing scheme (e.g. rtsp://)`)
+		else {
+			const p = urlProblem(cam.netcam_url, buildFullUrl(cam.netcam_url, cam.netcam_userpass || ""))
+			if (p) problems.push(`${f}: netcam_url ${p}`)
+		}
 	}
 	return problems
 }
@@ -190,9 +193,13 @@ const runInteractive = async () => {
 			do { id = parseInt(await ask("    camera_id (positive integer) = ")) } while (!(id > 0) || used.includes(id))
 			let name
 			do { name = await ask("    camera_name = ") } while (!name || usedNames.includes(name))
-			let url
-			do { url = await ask("    netcam_url (rtsp://...) = ") } while (!/^[a-z][a-z0-9+\-.]*:\/\//i.test(url))
-			const userpass = await ask("    netcam_userpass (user:pass, blank if none) = ")
+			let url, userpass
+			do {
+				url = await ask("    netcam_url (rtsp://...) = ")
+				userpass = await ask("    netcam_userpass (user:pass, blank if none) = ")
+				const p = urlProblem(url, buildFullUrl(url, userpass))
+				if (p) console.log(`    ${BAD} ${p}`)
+			} while (urlProblem(url, buildFullUrl(url, userpass)))
 			fs.writeFileSync(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
 			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
 			if (!(await confirm("  Add another camera?", false))) break

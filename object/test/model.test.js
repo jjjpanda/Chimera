@@ -178,7 +178,7 @@ describe("ensureModel", () => {
 			
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
-		expect(fetch).toHaveBeenCalledWith("https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx")
+		expect(fetch).toHaveBeenCalledWith("https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx")
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
 		
 		crypto.createHash.mockRestore()
