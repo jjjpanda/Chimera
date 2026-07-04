@@ -26,13 +26,19 @@ describe("validateEnvVars placeholder-secret gate", () => {
 describe("validateEnvVars confirmURL gate", () => {
 	test("blocks boot when alert_URL is not a valid URL", () => {
 		const res = run({ alert_URL: "not a url" })
-		expect(res.stdout).toContain("alert_URL MUST BE A VALID URL")
+		expect(res.stdout).toContain("alert_URL MUST BE A VALID http(s) URL")
+		expect(res.status).toBe(1)
+	})
+
+	test("blocks boot when alert_URL uses a non-http(s) scheme", () => {
+		const res = run({ alert_URL: "javascript:alert(1)" })
+		expect(res.stdout).toContain("alert_URL MUST BE A VALID http(s) URL")
 		expect(res.status).toBe(1)
 	})
 
 	test("accepts a valid alert_URL", () => {
 		const res = run({ alert_URL: "https://example.com/hook" })
-		expect(res.stdout).not.toContain("alert_URL MUST BE A VALID URL")
+		expect(res.stdout).not.toContain("alert_URL MUST BE A VALID http(s) URL")
 	})
 })
 

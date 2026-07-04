@@ -69,9 +69,9 @@ const confirmURL = (varName) => {
 	const val = process.env[varName]
 	if (val == null || val.trim() === "") return
 	try {
-		new URL(val)
+		if (!/^https?:$/.test(new URL(val).protocol)) throw new Error("scheme")
 	} catch (e) {
-		console.log(varName, "MUST BE A VALID URL (SPECIAL CHARACTERS MUST BE URL-ENCODED)")
+		console.log(varName, "MUST BE A VALID http(s) URL (SPECIAL CHARACTERS MUST BE URL-ENCODED)")
 		allEnvPresent = false
 	}
 }
