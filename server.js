@@ -2,8 +2,14 @@ require("dotenv").config()
 
 console.log("--- Starting Servers ---")
 
-process.on("uncaughtException", (e) => console.error("uncaught exception:", e))
-process.on("unhandledRejection", (e) => console.error("unhandled rejection:", e))
+process.on("uncaughtException", (e) => {
+	console.error("uncaught exception:", e)
+	process.exit(1)
+})
+process.on("unhandledRejection", (e) => {
+	console.error("unhandled rejection:", e)
+	process.exit(1)
+})
 
 const startService = (name, moduleName, { fatal = false } = {}) => {
 	try {
