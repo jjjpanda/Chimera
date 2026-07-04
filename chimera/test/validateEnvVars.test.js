@@ -1,0 +1,37 @@
+const os = require("os")
+const path = require("path")
+const { spawnSync } = require("child_process")
+
+const SCRIPT = path.join(__dirname, "..", "validateEnvVars.js")
+
+const run = (overrides) => spawnSync(process.execPath, [SCRIPT], {
+	cwd: os.tmpdir(),
+	env: { ...process.env, ...overrides },
+	encoding: "utf8"
+})
+
+describe("validateEnvVars placeholder-secret gate", () => {
+	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
+		const res = run({ SECRETKEY: "Auth secret key for hashing" })
+		expect(res.stdout).toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
+		expect(res.status).toBe(1)
+	})
+
+	test("does not flag SECRETKEY when set to a real value", () => {
+		const res = run({ SECRETKEY: "a-real-secret-value" })
+		expect(res.stdout).not.toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
+	})
+})
+
+describe("validateEnvVars confirmURL gate", () => {
+	test("blocks boot when alert_URL is not a valid URL", () => {
+		const res = run({ alert_URL: "not a url" })
+		expect(res.stdout).toContain("alert_URL MUST BE A VALID URL")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts a valid alert_URL", () => {
+		const res = run({ alert_URL: "https://example.com/hook" })
+		expect(res.stdout).not.toContain("alert_URL MUST BE A VALID URL")
+	})
+})
