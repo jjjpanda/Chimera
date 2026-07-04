@@ -7,7 +7,7 @@ let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
-const secretKeys = new Set(["SECRETKEY", "scheduler_AUTH", "memory_AUTH_TOKEN", "database_PASSWORD"])
+const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
@@ -18,7 +18,7 @@ const checkVar = (varName) => {
 		allEnvPresent = false
 		return false
 	}
-	if (secretKeys.has(varName) && val.trim() === placeholders.get(varName)) {
+	if (isSecret(varName) && val.trim() === placeholders.get(varName)) {
 		console.log("PLACEHOLDER SECRET — change before deploying:", varName)
 		allEnvPresent = false
 		return false
@@ -60,7 +60,7 @@ const confirmPath = (varName, shouldBeFolder=false) => {
 }
 
 const confirmURL = (varName) => {
-	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return
+	if (isServiceOff(envLines, varName)) return
 	const val = process.env[varName]
 	if (val == null || val.trim() === "") return
 	try {

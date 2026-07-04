@@ -11,9 +11,9 @@ process.on("unhandledRejection", (e) => {
 	process.exit(1)
 })
 
-const startService = (name, moduleName, { fatal = false } = {}) => {
+const startService = (name, moduleName, { fatal = false, method = "start" } = {}) => {
 	try {
-		require(moduleName).start()
+		require(moduleName)[method]()
 	} catch (e) {
 		console.error(`❌ ${name} failed to start:`, e.message)
 		if (fatal) throw e
@@ -28,11 +28,7 @@ startService("object", "object")
 
 console.log("--- Starting Socket ---")
 
-try {
-	require("memory").server()
-} catch (e) {
-	console.error("❌ memory failed to start:", e.message)
-}
+startService("memory", "memory", { fatal: true, method: "server" })
 
 console.log("--- Starting Gateway ---")
 
