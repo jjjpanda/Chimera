@@ -35,3 +35,16 @@ describe("validateEnvVars confirmURL gate", () => {
 		expect(res.stdout).not.toContain("alert_URL MUST BE A VALID URL")
 	})
 })
+
+describe("validateEnvVars bool gate", () => {
+	test("blocks boot when a bool var is not exactly true/false", () => {
+		const res = run({ command_ON: "yes" })
+		expect(res.stdout).toContain("MUST BE true OR false: command_ON")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts a bool var set to true", () => {
+		const res = run({ command_ON: "true" })
+		expect(res.stdout).not.toContain("MUST BE true OR false: command_ON")
+	})
+})
