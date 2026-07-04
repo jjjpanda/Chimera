@@ -20,7 +20,6 @@ module.exports = () => {
 		const {createTask, startTask, stopTask, destroyTask, listTasks} = require("./lib/scheduledTasks.js")(io)
 		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
-		const {objectGetState, objectSetConfig, objectScan} = require("./lib/objectState.js")()
 		const sessionSync = require("./lib/sessionSync.js")
 		const cronTask = require("./lib/cronTask.js")(io)
 
@@ -48,10 +47,6 @@ module.exports = () => {
 
 			client.on("loginReserve", loginReserve)
 			client.on("loginRelease", loginRelease)
-
-			client.on("objectGetState", objectGetState)
-			client.on("objectSetConfig", objectSetConfig)
-			client.on("objectScan", objectScan)
 
 			client.on("sessionInvalidate", sessionInvalidate)
 			client.on("sessionInvalidateAll", sessionInvalidateAll)

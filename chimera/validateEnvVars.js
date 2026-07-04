@@ -102,6 +102,7 @@ checkVar("gateway_HTTPS_Redirect")
 checkVar("command_ON")
 checkVar("command_PORT")
 checkVar("command_HOST")
+checkVar("setup_TOKEN")
 
 checkVar("schedule_ON")
 checkVar("schedule_PORT")
