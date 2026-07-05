@@ -72,19 +72,19 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false })
 		})
 
-		test("resets the password of an existing admin with a valid setup_TOKEN", async () => {
+		test("rejects resetting an existing admin while an admin exists", async () => {
 			process.env.setup_TOKEN = "recovery-token"
 			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
 			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
 			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // an admin already exists
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin" }] }) // target is that admin
-			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert (ON CONFLICT)
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "existingadmin", password: "newpassword123", token: "recovery-token" })
-			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false })
-			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["existingadmin"])
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
+			expect(mockedPool.query).not.toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1", ["existingadmin"])
 		})
 
 		test("rejects taking over an existing non-admin account when no admin exists", async () => {
@@ -308,8 +308,13 @@ describe("Authorization Routes", () => {
 	})
 
 	describe("GET /authorization/users", () => {
-		test("redirects to login with no token", async () => {
+		test("returns 401 with no token", async () => {
 			const res = await supertest(app).get("/authorization/users")
+			expect(res.status).toBe(401)
+		})
+
+		test("redirects a browser navigation with no token", async () => {
+			const res = await supertest(app).get("/authorization/users").set("Sec-Fetch-Mode", "navigate")
 			expect(res.status).toBe(303)
 		})
 
@@ -592,9 +597,9 @@ describe("Authorization Routes", () => {
 	})
 
 	describe("GET /authorization/users/:username/sessions", () => {
-		test("redirects to login with no token", async () => {
+		test("returns 401 with no token", async () => {
 			const res = await supertest(app).get("/authorization/users/bob/sessions")
-			expect(res.status).toBe(303)
+			expect(res.status).toBe(401)
 		})
 
 		test("returns 403 for non-admin token", async () => {
@@ -685,13 +690,13 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
-		test("returns 200 and clears the temp-password expiry on success", async () => {
+		test("returns 200 for a voluntary change with the correct current password", async () => {
 			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword" })
+				.send({ password: "newpassword", currentPassword: "mockedPassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
@@ -703,6 +708,34 @@ describe("Authorization Routes", () => {
 				["bob", "jti-user"]
 			)
 			expect(spy).toHaveBeenCalled()
+		})
+
+		test("returns 400 for a voluntary change with a wrong current password", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword", currentPassword: "wrongpass" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true, errors: "Current password is incorrect" })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(
+				"UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2",
+				expect.anything()
+			)
+		})
+
+		test("allows a forced change without the current password", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			mockedPool.query
+				.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false, last_seen: new Date() }], rowCount: 1 }) // authorize session lookup
+				.mockResolvedValueOnce({}) // BEGIN
+				.mockResolvedValueOnce({ rows: [{ hash: "irrelevant", force_password_change: true }], rowCount: 1 }) // SELECT current
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
 		})
 	})
 
@@ -888,7 +921,10 @@ describe("Authorization Routes", () => {
 		})
 
 		test("allows the password-change route through", async () => {
-			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 })
+			mockedPool.query
+				.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 }) // authorize lookup
+				.mockResolvedValueOnce({}) // BEGIN
+				.mockResolvedValueOnce({ rows: [{ hash: "irrelevant", force_password_change: true }], rowCount: 1 }) // SELECT current
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)

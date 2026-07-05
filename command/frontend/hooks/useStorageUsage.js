@@ -8,7 +8,7 @@ const useStorageUsage = () => {
 		setData(d => ({ ...d, loading: true }))
 		request("/usage", { method: "GET" }, prom =>
 			jsonProcessing(prom, (res) => {
-				if (res && !res.error) {
+				if (res && !res.error && Array.isArray(res.cameras)) {
 					setData({ ...res, loading: false })
 				} else {
 					setData(d => ({ ...d, loading: false }))

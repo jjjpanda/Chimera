@@ -78,7 +78,7 @@ module.exports = {
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000,
 					httpOnly: true,
-					secure: process.env.NODE_ENV !== "development",
+					secure: req.secure,
 					sameSite: "lax"
 				})
 				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange, theme: req.userTheme })
