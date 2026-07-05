@@ -6,7 +6,6 @@ const MODEL_DIR = path.join(__dirname, "..", "model")
 const MODEL_PATH = path.join(MODEL_DIR, "yolox_tiny.onnx")
 const DEFAULT_URL = "https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx"
 const DEFAULT_SHA256 = "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7"
-const MIN_BYTES = 20000000
 
 const getFileHash = (filePath) => new Promise((resolve, reject) => {
 	const hash = crypto.createHash("sha256")
@@ -21,29 +20,20 @@ const getHash = (buffer) => crypto.createHash("sha256").update(buffer).digest("h
 const ensureModel = async () => {
 	const customUrl = process.env.object_MODEL_URL
 	const customSha = process.env.object_MODEL_SHA256
-	const expectedSha256 = customSha ? customSha.toLowerCase() : (customUrl ? null : DEFAULT_SHA256)
+	if (customUrl && !customSha) {
+		throw new Error("object_MODEL_URL requires object_MODEL_SHA256 to verify model integrity")
+	}
+	const expectedSha256 = (customSha || DEFAULT_SHA256).toLowerCase()
 
 	if (fs.existsSync(MODEL_PATH)) {
-		if (expectedSha256) {
-			try {
-				const hash = await getFileHash(MODEL_PATH)
-				if (hash === expectedSha256) {
-					return MODEL_PATH
-				}
-				console.log("🔍 Existing model failed SHA256 check, redownloading...")
-			} catch (err) {
-				console.log("🔍 Existing model unreadable, removing and redownloading...", err.message)
-				try { fs.unlinkSync(MODEL_PATH) } catch (e) { console.warn("Could not remove corrupt model file", e.message) }
+		try {
+			const hash = await getFileHash(MODEL_PATH)
+			if (hash === expectedSha256) {
+				return MODEL_PATH
 			}
-		} else {
-			try {
-				if (fs.statSync(MODEL_PATH).size > MIN_BYTES) {
-					return MODEL_PATH
-				}
-				console.log("🔍 Existing model failed size check, redownloading...")
-			} catch (err) {
-				console.log("🔍 Existing model size check failed or unreadable, removing and redownloading...", err.message)
-			}
+			console.log("🔍 Existing model failed SHA256 check, redownloading...")
+		} catch (err) {
+			console.log("🔍 Existing model unreadable, removing and redownloading...", err.message)
 			try { fs.unlinkSync(MODEL_PATH) } catch (e) { console.warn("Could not remove corrupt model file", e.message) }
 		}
 	}
@@ -52,13 +42,9 @@ const ensureModel = async () => {
 	const res = await fetch(url)
 	if (!res.ok) throw new Error(`model download failed: ${res.status}`)
 	const buffer = Buffer.from(await res.arrayBuffer())
-	
-	if (expectedSha256) {
-		if (getHash(buffer) !== expectedSha256) throw new Error("downloaded model failed SHA256 integrity check")
-	} else {
-		if (buffer.length < MIN_BYTES) throw new Error("downloaded model too small")
-	}
-	
+
+	if (getHash(buffer) !== expectedSha256) throw new Error("downloaded model failed SHA256 integrity check")
+
 	fs.mkdirSync(MODEL_DIR, { recursive: true })
 	fs.writeFileSync(MODEL_PATH, buffer)
 	console.log(`🔍 Model saved (${(buffer.length / 1e6).toFixed(1)} MB)`)

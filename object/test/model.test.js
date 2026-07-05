@@ -96,38 +96,25 @@ describe("ensureModel", () => {
 		await expect(ensureModel()).rejects.toThrow("downloaded model failed SHA256 integrity check")
 	})
 
-	test("skips SHA check and uses size check if custom URL provided without SHA", async () => {
-		fs.existsSync.mockReturnValue(true)
+	test("throws if custom URL provided without SHA256", async () => {
+		fs.existsSync.mockReturnValue(false)
 		process.env.object_MODEL_URL = "http://custom.url"
-		fs.statSync.mockReturnValue({ size: 21000000 }) // > MIN_BYTES
-		
-		const result = await ensureModel()
-		expect(result).toBe(MODEL_PATH)
+
+		await expect(ensureModel()).rejects.toThrow("object_MODEL_URL requires object_MODEL_SHA256")
 		expect(fetch).not.toHaveBeenCalled()
 	})
 
-	test("redownloads if custom URL existing file fails size check", async () => {
-		fs.existsSync.mockReturnValue(true)
+	test("downloads from custom URL and verifies SHA256", async () => {
+		fs.existsSync.mockReturnValue(false)
+		const goodBuffer = Buffer.from("custom model data")
 		process.env.object_MODEL_URL = "http://custom.url"
-		fs.statSync.mockReturnValue({ size: 100 }) // < MIN_BYTES
-		
-		const goodBuffer = Buffer.alloc(21000000)
+		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
 		mockFetch(goodBuffer)
-		
+
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
 		expect(fetch).toHaveBeenCalledWith("http://custom.url")
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
-	})
-
-	test("throws error if downloaded custom URL file fails size check", async () => {
-		fs.existsSync.mockReturnValue(false)
-		process.env.object_MODEL_URL = "http://custom.url"
-		
-		const smallBuffer = Buffer.alloc(100)
-		mockFetch(smallBuffer)
-		
-		await expect(ensureModel()).rejects.toThrow("downloaded model too small")
 	})
 
 	test("throws error if fetch fails with HTTP error", async () => {

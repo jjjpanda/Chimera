@@ -11,7 +11,7 @@ services:
       - chimera-storage:/mnt/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./motion.conf:/etc/motion/motion.conf:ro
-      - ./cameraconf:/etc/motion/cameraconf:ro
+      - ./cameraconf:/etc/motion/cameraconf
     depends_on:
       postgres:
         condition: service_healthy

@@ -26,7 +26,7 @@ module.exports = () => {
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
         
 		io.on("connection", client => {
-			const {sessionInvalidate, sessionInvalidateAll} = sessionSync(client)
+			const {sessionInvalidate, sessionInvalidateUser, sessionInvalidateAll} = sessionSync(client)
 
 			client.on("log", data => console.log(data))
 
@@ -49,6 +49,7 @@ module.exports = () => {
 			client.on("loginRelease", loginRelease)
 
 			client.on("sessionInvalidate", sessionInvalidate)
+			client.on("sessionInvalidateUser", sessionInvalidateUser)
 			client.on("sessionInvalidateAll", sessionInvalidateAll)
 
 			client.on("disconnect", () => {
