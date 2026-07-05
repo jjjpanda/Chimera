@@ -1,7 +1,7 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
-var { auth, loadCameras, cameraConfDir, mapLimit } = require("lib")
+var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
@@ -125,10 +125,9 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 		)
 		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
-		const confDir = cameraConfDir()
-		if (confDir) {
-			await fs.promises.unlink(path.join(confDir, `cam${id}.conf`)).catch((e) => {
-				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove cam${id}.conf; camera may resurrect on reload`, e.message)
+		for (const file of cameraConfFiles(id)) {
+			await fs.promises.unlink(file).catch((e) => {
+				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})
 		}
 		res.json({ deleted: true })
