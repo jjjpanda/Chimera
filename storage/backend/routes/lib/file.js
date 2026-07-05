@@ -2,7 +2,7 @@ const path = require("path")
 const fs = require("fs")
 const rimraf = require("rimraf")
 const moment = require("moment")
-const { loadCameras, webhookAlert } = require("lib")
+const { loadCameras, webhookAlert, mapLimit } = require("lib")
 
 const Pool = require("pg").Pool
 const pool = new Pool({
@@ -18,19 +18,6 @@ pool.on("error", (err) => {
 })
 
 const FS_CONCURRENCY = 64
-
-const mapLimit = async (items, limit, fn) => {
-	const results = new Array(items.length)
-	let next = 0
-	const worker = async () => {
-		while (next < items.length) {
-			const i = next++
-			results[i] = await fn(items[i], i)
-		}
-	}
-	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-	return results
-}
 
 const topLevelFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])

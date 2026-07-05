@@ -6,6 +6,7 @@ const app = express.Router()
 const SENSITIVE_PARAM = /^(username|user|usr|password|passwd|pass|pwd|pw|auth|token|secret|u|p)$/i
 
 const stripCreds = (url) => {
+	let out = url
 	try {
 		const u = new URL(url)
 		u.username = ""
@@ -13,10 +14,11 @@ const stripCreds = (url) => {
 		for (const key of [...u.searchParams.keys()]) {
 			if (SENSITIVE_PARAM.test(key)) u.searchParams.set(key, "***")
 		}
-		return u.toString()
-	} catch {
-		return url.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^@]*@/i, "$1")
-	}
+		out = u.toString()
+	} catch {}
+	return /^[a-z][a-z0-9+.-]*:\/\/[^/?#]*@/i.test(url)
+		? out.replace(/^([a-z][a-z0-9+.-]*:\/\/)[^?#]*@/i, "$1")
+		: out
 }
 
 app.get("/", (req, res) => {

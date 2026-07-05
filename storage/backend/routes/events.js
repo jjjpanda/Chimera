@@ -1,33 +1,35 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
-var { auth, loadCameras, cameraConfDir } = require("lib")
+var { auth, loadCameras, cameraConfDir, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
 
 const app = express.Router()
 
+const FS_CONCURRENCY = 64
+
 const dirFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
-	const sizes = await Promise.all(entries.map(async (entry) => {
-		if (!entry.isFile()) return 0
+	const files = entries.filter((entry) => entry.isFile())
+	const sizes = await mapLimit(files, FS_CONCURRENCY, async (entry) => {
 		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
 		return size
-	}))
+	})
 	return sizes.reduce((sum, size) => sum + size, 0)
 }
 
 const captureBreakdown = async (capturesPath, frameBytes) => {
 	let videos = 0, zips = 0, other = 0
 	const entries = await fs.promises.readdir(capturesPath, { withFileTypes: true }).catch(() => [])
-	await Promise.all(entries.map(async (entry) => {
-		if (!entry.isFile()) return
+	const files = entries.filter((entry) => entry.isFile())
+	await mapLimit(files, FS_CONCURRENCY, async (entry) => {
 		const { size } = await fs.promises.stat(path.join(capturesPath, entry.name)).catch(() => ({ size: 0 }))
 		if (entry.name.endsWith(".mp4")) videos += size
 		else if (entry.name.endsWith(".zip")) zips += size
 		else other += size
-	}))
+	})
 	const objects = await dirFileBytes(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
 	return { frames: frameBytes, videos, zips, objects, other }
 }
