@@ -43,4 +43,22 @@ describe("Livestream Routes", () => {
 				.expect(204, {}, done)
 		})
 	})
+
+	describe("POST /restart admin gating", () => {
+		test("non-admin user is forbidden", (done) => {
+			supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "userCookie")
+				.send({ camera: 1 })
+				.expect(403, done)
+		})
+
+		test("admin passes the gate (400 without a camera)", (done) => {
+			supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.send({})
+				.expect(400, done)
+		})
+	})
 })

@@ -103,6 +103,16 @@ describe("Events Routes", () => {
 			expect(res.status).toBe(400)
 		})
 
+		test("removes the camera's .conf so it does not resurrect on reload", async () => {
+			lib.cameraConfDir.mockReturnValueOnce("/etc/motion/cameraconf")
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			const unlinked = fs.promises.unlink.mock.calls.map((c) => c[0])
+			expect(unlinked.some((p) => p.endsWith("cam1.conf"))).toBe(true)
+		})
+
 		test("clears objects_detected rows and prefixed objectCaptures files", async () => {
 			fs.promises.readdir.mockResolvedValueOnce(["1-100.jpg", "1-200.jpg", "12-300.jpg", "2-400.jpg"])
 			const res = await supertest(app)

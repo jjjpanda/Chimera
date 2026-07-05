@@ -19,6 +19,8 @@ lib.auth.createAuthorize = jest.fn().mockReturnValue(lib.auth.authorize)
 
 lib.loadCameras = jest.fn(lib.loadCameras)
 
+lib.cameraConfDir = jest.fn(lib.cameraConfDir)
+
 lib.webhookAlert = jest.fn()
 
 module.exports = lib

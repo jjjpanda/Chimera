@@ -102,7 +102,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 			)
 		})
 		if (result.rowCount === 0) return res.status(403).json({ error: true })
-		auth.invalidateAllSessions()
+		auth.invalidateUser(username)
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -185,7 +185,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
-		auth.invalidateAllSessions()
+		auth.invalidateUser(username)
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -227,7 +227,7 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 			if (target.role === "admin") await assertNotLastAdmin(client, "cannot delete last admin")
 			await client.query("DELETE FROM auth WHERE username = $1", [username])
 		})
-		auth.invalidateAllSessions()
+		auth.invalidateUser(username)
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -244,7 +244,7 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
-		auth.invalidateAllSessions()
+		auth.invalidateUser(username)
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)

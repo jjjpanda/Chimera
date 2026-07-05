@@ -17,13 +17,28 @@ pool.on("error", (err) => {
 	console.log("STORAGE FILE POOL ERROR", err)
 })
 
+const FS_CONCURRENCY = 64
+
+const mapLimit = async (items, limit, fn) => {
+	const results = new Array(items.length)
+	let next = 0
+	const worker = async () => {
+		while (next < items.length) {
+			const i = next++
+			results[i] = await fn(items[i], i)
+		}
+	}
+	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+	return results
+}
+
 const topLevelFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
-	const sizes = await Promise.all(entries.map(async (entry) => {
-		if (!entry.isFile()) return 0
+	const files = entries.filter((entry) => entry.isFile())
+	const sizes = await mapLimit(files, FS_CONCURRENCY, async (entry) => {
 		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
 		return size
-	}))
+	})
 	return sizes.reduce((sum, size) => sum + size, 0)
 }
 
@@ -89,19 +104,18 @@ module.exports = {
 	deleteFilesBeforeDateGlob: async (req, res) => {
 		const dir = req.body.appendedPath
 		const names = (req.deletedFileNames || []).filter(Boolean)
-		const tracked = await Promise.all(names.map(name =>
+		const tracked = await mapLimit(names, FS_CONCURRENCY, name =>
 			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
-		))
+		)
 		if (req.beforeDate && req.numberOfFilesDeletedInDatabase > 0) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
 			const known = new Set(names.map(n => path.basename(n)))
 			const entries = await fs.promises.readdir(dir).catch(() => [])
-			await Promise.all(entries
-				.filter(f => f.endsWith(".jpg") && !known.has(f))
-				.map(async (f) => {
-					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
-					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
-				}))
+			const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
+			await mapLimit(stale, FS_CONCURRENCY, async (f) => {
+				const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
+				if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
+			})
 		}
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
@@ -183,9 +197,9 @@ module.exports = {
 					freed += parseInt(row.size) || 0
 				}
 
-				await Promise.all(batch.map(row =>
+				await mapLimit(batch, FS_CONCURRENCY, row =>
 					fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
-				))
+				)
 				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
 				deleted += batch.length
 

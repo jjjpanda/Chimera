@@ -38,7 +38,7 @@ describe("Authorization Routes", () => {
 
 	describe("POST /authorization/setup", () => {
 		test("returns 200 on first-time setup", async () => {
-			const spy = jest.spyOn(auth, "invalidateAllSessions")
+			const spy = jest.spyOn(auth, "invalidateUser")
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
@@ -465,7 +465,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when updating role", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
-			const spy = jest.spyOn(auth, "invalidateAllSessions")
+			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.patch("/authorization/users/bob")
@@ -479,7 +479,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 when updating password", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
-			const spy = jest.spyOn(auth, "invalidateAllSessions")
+			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.patch("/authorization/users/bob")
@@ -542,7 +542,7 @@ describe("Authorization Routes", () => {
 
 		test("returns 200 on successful deletion", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
-			const spy = jest.spyOn(auth, "invalidateAllSessions")
+			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
 				.delete("/authorization/users/bob")
@@ -686,7 +686,7 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 200 and clears the temp-password expiry on success", async () => {
-			const spy = jest.spyOn(auth, "invalidateAllSessions")
+			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
