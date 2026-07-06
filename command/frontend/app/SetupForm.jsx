@@ -95,9 +95,13 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 					{status === "failed" && (
 						<p className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
 					)}
+					{status === "done" && (
+						<p className="text-accent text-sm">Account created — redirecting to login…</p>
+					)}
 					<Button
 						className="bg-accent text-accent-foreground hover:opacity-90 w-full"
 						onClick={onSubmit}
+						disabled={status === "done"}
 					>
 						Create Account
 					</Button>

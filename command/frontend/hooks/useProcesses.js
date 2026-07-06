@@ -85,6 +85,7 @@ const useProcesses = (settings = {}) => {
 		if (cameras[state.camera]?.id == null) return toast("No camera selected")
 		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
 		const body = processBody(state, cameras, false)
+		setDialog({ open: false, processType: null, days: false })
 		if (state.download) {
 			const remove = toast("Generating", 0)
 			request(url, {
@@ -101,7 +102,6 @@ const useProcesses = (settings = {}) => {
 				body
 			}, (prom) => {
 				jsonProcessing(prom, () => {
-					setDialog({ open: false, processType: null, days: false })
 					setTimeout(() => listProcesses(setState), 1500)
 				})
 			})

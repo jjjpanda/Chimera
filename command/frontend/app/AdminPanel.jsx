@@ -10,12 +10,15 @@ import AddUserDialog from "./AddUserDialog.jsx"
 const AdminPanel = ({ withButton } = {}) => {
 	const [users, setUsers] = useState([])
 	const [loading, setLoading] = useState(false)
+	const [error, setError] = useState(false)
 
 	const fetchUsers = () => {
 		setLoading(true)
+		setError(false)
 		request("/authorization/users", { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
 			.then(data => {
 				if (!data.error) setUsers(data)
+				else setError(true)
 				setLoading(false)
 			})
 	}
@@ -34,6 +37,8 @@ const AdminPanel = ({ withButton } = {}) => {
 				<CardContent>
 					{loading ? (
 						<p className="py-4 text-center text-sm text-muted">Loading…</p>
+					) : error ? (
+						<p className="py-4 text-center text-sm text-danger">Failed to load users. <button onClick={fetchUsers} className="underline hover:opacity-80">Retry</button></p>
 					) : (
 						<ul className="divide-y divide-border overflow-y-auto max-h-44">
 							{users.map(user => (
@@ -64,6 +69,8 @@ const AdminPanel = ({ withButton } = {}) => {
 				<CardContent>
 					{loading ? (
 						<p className="py-4 text-center text-sm text-muted">Loading…</p>
+					) : error ? (
+						<p className="py-4 text-center text-sm text-danger">Failed to load users. <button onClick={fetchUsers} className="underline hover:opacity-80">Retry</button></p>
 					) : (
 						<UserList users={users} fetchUsers={fetchUsers} />
 					)}
