@@ -19,7 +19,7 @@ const listVideos = (cameras, setState) => {
 				loading: false,
 				lastUpdated: moment().format("h:mm:ss a"),
 				videoList: nums.map((num, idx) => {
-					const cam = cameras.find((c) => c.id === num) || cameras[idx]
+					const cam = cameras.find((c) => c.id === num)
 					return {
 						camera: cam ? cam.name : `Camera ${num}`,
 						online: true,

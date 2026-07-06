@@ -94,7 +94,7 @@ module.exports = {
 		const tracked = await mapLimit(names, FS_CONCURRENCY, name =>
 			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
 		)
-		if (req.beforeDate && req.numberOfFilesDeletedInDatabase > 0) {
+		if (req.beforeDate) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
 			const known = new Set(names.map(n => path.basename(n)))
 			const entries = await fs.promises.readdir(dir).catch(() => [])

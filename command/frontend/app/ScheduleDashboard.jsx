@@ -108,7 +108,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 							<div className="flex shrink-0 items-center gap-2">
 								<Switch
 									checked={item.running}
-									disabled={busyId === item.id}
+									disabled={busyId === item.id || item.protected}
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
 								{!item.protected && (
@@ -221,7 +221,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 											<div className="flex shrink-0 items-center gap-2">
 												<Switch
 													checked={task.running}
-													disabled={busyId === task.id}
+													disabled={busyId === task.id || task.protected}
 													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
@@ -260,7 +260,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 														<div className="flex justify-end items-center gap-2">
 															<Switch
 																checked={task.running}
-																disabled={busyId === task.id}
+																disabled={busyId === task.id || task.protected}
 																onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 															/>
 															{!task.protected && (
