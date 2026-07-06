@@ -110,9 +110,10 @@ const roundTo = (val, sig) => Math.round(val * 10 ** sig) / 10 ** sig
 const handleDetections = async (camera, detections, jpeg) => {
 	const image = `${camera}-${Date.now()}.jpg`
 	try { fs.writeFileSync(path.join(CAPTURES_DIR, image), jpeg) } catch (e) {}
-	if (detections.length) {
+	const persistable = detections.filter((d) => Array.isArray(d.box))
+	if (persistable.length) {
 		const values = []
-		const rows = detections.map((d, i) => {
+		const rows = persistable.map((d, i) => {
 			const p = i * 5
 			values.push(camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image)
 			return `($${p + 1}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`

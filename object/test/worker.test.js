@@ -102,6 +102,19 @@ describe("scan", () => {
 		expect(worker.getStatus()[2].lastDetection.detections).toHaveLength(2)
 	})
 
+	test("skips a malformed detection without dropping the valid rows", async () => {
+		detector.detect.mockResolvedValue([
+			{ class: "person", score: 0.9, box: [0, 0, 1, 1] },
+			{ class: "car", score: 0.8, box: undefined }
+		])
+		await worker.scan(2)
+		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(pool.query).toHaveBeenCalledWith(
+			expect.stringContaining("INSERT INTO objects_detected"),
+			[2, "person", 0.9, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
+		)
+	})
+
 	test("single detection inserts + webhooks", async () => {
 		detector.detect.mockResolvedValue([{ class: "car", score: 0.9, box: [0, 0, 1, 1] }])
 		const detections = await worker.scan(3)
