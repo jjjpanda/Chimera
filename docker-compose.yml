@@ -23,17 +23,20 @@ services:
   # Owns the read-write cert store so the gateway (ro mount) never holds write access.
   certbot:
     image: certbot/certbot
-    env_file: .env
+    environment:
+      gateway_HOST: ${gateway_HOST}
+      alert_URL: ${alert_URL}
     entrypoint: /bin/sh
     command:
       - -c
       - >-
         apk add --no-cache curl >/dev/null 2>&1 || true;
+        sleep 5;
         DOMAIN=$$(echo "$$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $$1}' | awk -F: '{print $$1}');
         while true; do
         if [ -n "$$DOMAIN" ] && [ ! -d "/etc/letsencrypt/live/$$DOMAIN" ]; then
         certbot certonly --webroot -w /webroot -d "$$DOMAIN" --register-unsafely-without-email --agree-tos --non-interactive ||
-        { curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot issuance failed for $$DOMAIN\"}" "$$alert_URL"; sleep 300; continue; };
+        { curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot issuance failed for $$DOMAIN\"}" "$$alert_URL"; sleep 43200; continue; };
         fi;
         certbot renew --webroot -w /webroot --quiet ||
         curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot renew failed on $$(hostname)\"}" "$$alert_URL";
