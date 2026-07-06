@@ -3,8 +3,9 @@ import moment from "moment"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 
-const SessionList = ({ sessions, username, revokeSession }) => {
-	if (!sessions) return <p className="text-xs text-muted py-1">Loading…</p>
+const SessionList = ({ sessions, username, revokeSession, retry }) => {
+	if (sessions === undefined) return <p className="text-xs text-muted py-1">Loading…</p>
+	if (sessions.error) return <p className="text-xs text-danger py-1">Failed to load sessions. <button onClick={retry} className="underline hover:opacity-80">Retry</button></p>
 	if (sessions.length === 0) return <p className="text-xs text-muted py-1">No sessions</p>
 
 	return (

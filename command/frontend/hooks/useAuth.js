@@ -92,7 +92,7 @@ const useAuth = () => {
 			}, prom => prom.then(res => {
 				if (res.status === 401) return handleLoginAttempt(false, null, state.timestamp, setState)
 				if (!res.ok) return
-				res.json().then(body => { if (!body.error) setState(s => ({ ...s, role: body.role })) }).catch(() => {})
+				res.json().then(body => { if (!body.error) setState(s => ({ ...s, role: body.role, forcePasswordChange: !!body.forcePasswordChange })) }).catch(() => {})
 			}).catch(() => {}))
 		}
 		document.addEventListener("visibilitychange", refreshRole)
@@ -108,8 +108,8 @@ const useAuth = () => {
 
 	const trySetup = (username, password, token, callback) => {
 		attemptSetup(username, password, token).then(res => {
-			if (!res.error) setState(s => ({ ...s, setup: true }))
 			callback(!res.error, res.errors)
+			if (!res.error) setTimeout(() => setState(s => ({ ...s, setup: true })), 1500)
 		})
 	}
 

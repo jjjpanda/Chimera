@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 
-const listVideos = (cameras, setState) => {
-	setState((old) => ({ ...old, loading: true, videoList: [] }))
+const listVideos = (cameras, setState, seqRef) => {
+	const seq = ++seqRef.current
+	setState((old) => ({ ...old, loading: true }))
 	request("/livestream/status", {
 		method: "GET",
 		headers: { "Content-Type": "application/json" },
 		mode: "cors"
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			if (seq !== seqRef.current) return
 			const nums = (Array.isArray(data) ? data : [])
 				.map((cam) => parseInt(cam.name.split("_")[3]))
 				.sort((a, b) => a - b)
@@ -41,13 +43,14 @@ const attemptRestart = (camera) => {
 }
 
 const useLiveVideo = (cameras) => {
+	const seqRef = useRef(0)
 	const [state, setState] = useState({
 		loading: false,
 		lastUpdated: moment().format("h:mm:ss a"),
 		videoList: []
 	})
 
-	const refresh = () => listVideos(cameras, setState)
+	const refresh = () => listVideos(cameras, setState, seqRef)
 
 	useEffect(() => {
 		refresh()

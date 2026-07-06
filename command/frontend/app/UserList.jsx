@@ -14,23 +14,28 @@ const UserList = ({ users, fetchUsers }) => {
 	const [editTarget, setEditTarget] = useState(null)
 	const [deleteTarget, setDeleteTarget] = useState(null)
 
+	const loadSessions = (username) => {
+		setSessions(s => ({ ...s, [username]: undefined }))
+		request(`/authorization/users/${encodeURIComponent(username)}/sessions`, { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+			.then(data => {
+				setSessions(s => ({ ...s, [username]: data.error ? { error: true } : data }))
+			})
+	}
+
 	const toggleSessions = (username) => {
 		if (expandedSessions[username]) {
 			setExpandedSessions(s => ({ ...s, [username]: false }))
 			return
 		}
 		setExpandedSessions(s => ({ ...s, [username]: true }))
-		request(`/authorization/users/${encodeURIComponent(username)}/sessions`, { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
-			.then(data => {
-				if (!data.error) setSessions(s => ({ ...s, [username]: data }))
-			})
+		loadSessions(username)
 	}
 
 	const revokeSession = (username, id) => {
 		request(`/authorization/sessions/${id}`, { method: "DELETE" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
 			.then(res => {
 				if (res.error) {
-					toast("Failed to revoke session")
+					toast(res.errors || "Failed to revoke session")
 				} else {
 					toast("Session revoked")
 					setSessions(s => ({
@@ -46,7 +51,7 @@ const UserList = ({ users, fetchUsers }) => {
 			method: "DELETE"
 		}, p => p.then(r => r.json()).catch(() => ({ error: true }))).then(res => {
 			if (res.error) {
-				toast("Cannot delete user")
+				toast(res.errors || "Cannot delete user")
 			} else {
 				toast("User deleted")
 				setDeleteTarget(null)
@@ -96,7 +101,7 @@ const UserList = ({ users, fetchUsers }) => {
 					</div>
 					{expandedSessions[user.username] && (
 						<div className="mt-2 ml-1 border-l-2 border-border pl-3">
-							<SessionList sessions={sessions[user.username]} username={user.username} revokeSession={revokeSession} />
+							<SessionList sessions={sessions[user.username]} username={user.username} revokeSession={revokeSession} retry={() => loadSessions(user.username)} />
 						</div>
 					)}
 				</li>
