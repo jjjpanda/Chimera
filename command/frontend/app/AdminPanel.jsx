@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import moment from "moment"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 import UserList from "./UserList.jsx"
 import AddUserDialog from "./AddUserDialog.jsx"
@@ -15,7 +15,7 @@ const AdminPanel = ({ withButton } = {}) => {
 	const fetchUsers = () => {
 		setLoading(true)
 		setError(false)
-		request("/authorization/users", { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+		request("/authorization/users", { method: "GET" }, authPromiseHandler)
 			.then(data => {
 				if (!data.error) setUsers(data)
 				else setError(true)

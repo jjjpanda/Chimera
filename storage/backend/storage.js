@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { auth, helmetOptions, tracker, pruneInterval } = require("lib")
+const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls } = require("lib")
 const helmet = require("helmet")
 const memory = require("memory")
 const pool = require("./lib/pool")
@@ -17,7 +17,7 @@ app.use(express.json())
 
 app.use("/storage/health", require("heartbeat").heart)
 
-app.use(auth.createAuthorize(pool))
+app.use(auth.createAuthorize(pool, { schedulableUrls }))
 if (process.env.memory_ON == "true") auth.connectSessionSync(memory.client("AUTH"))
 
 app.use("/", require("./routes/events.js"))
