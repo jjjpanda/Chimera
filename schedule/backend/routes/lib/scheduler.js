@@ -2,10 +2,8 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const { webhookAlert, alertTime, randomID, jsonFileHanding, auth, pruneInterval } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls } = require("lib")
 const pool = require("../../lib/pool")
-
-const {schedulableUrls} = auth
 
 const client = require("memory").client("TASK SCHEDULER")
 

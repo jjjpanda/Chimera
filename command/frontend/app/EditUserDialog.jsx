@@ -4,7 +4,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../components/ui/dialog"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
 import { validatePassword } from "../js/password.js"
 
@@ -35,7 +35,7 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(body)
-		}, p => p.then(r => r.json()).catch(() => ({ error: true }))).then(res => {
+		}, authPromiseHandler).then(res => {
 			if (res.error) {
 				toast(res.errors || "Failed to update user")
 			} else {

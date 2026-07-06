@@ -4,7 +4,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
 
 const ROLES = ["user", "admin"]
@@ -21,7 +21,7 @@ const AddUserDialog = ({ onAdded }) => {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(form)
-		}, p => p.then(r => r.json()).catch(() => ({ error: true }))).then(res => {
+		}, authPromiseHandler).then(res => {
 			if (res.error) {
 				toast(res.errors || "Failed to add user")
 			} else {

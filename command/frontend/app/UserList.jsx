@@ -5,7 +5,7 @@ import { Button } from "../components/ui/button"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog"
 import SessionList from "./SessionList.jsx"
 import EditUserDialog from "./EditUserDialog.jsx"
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
 
 const UserList = ({ users, fetchUsers }) => {
@@ -16,7 +16,7 @@ const UserList = ({ users, fetchUsers }) => {
 
 	const loadSessions = (username) => {
 		setSessions(s => ({ ...s, [username]: undefined }))
-		request(`/authorization/users/${encodeURIComponent(username)}/sessions`, { method: "GET" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+		request(`/authorization/users/${encodeURIComponent(username)}/sessions`, { method: "GET" }, authPromiseHandler)
 			.then(data => {
 				setSessions(s => ({ ...s, [username]: data.error ? { error: true } : data }))
 			})
@@ -32,7 +32,7 @@ const UserList = ({ users, fetchUsers }) => {
 	}
 
 	const revokeSession = (username, id) => {
-		request(`/authorization/sessions/${id}`, { method: "DELETE" }, p => p.then(r => r.json()).catch(() => ({ error: true })))
+		request(`/authorization/sessions/${id}`, { method: "DELETE" }, authPromiseHandler)
 			.then(res => {
 				if (res.error) {
 					toast(res.errors || "Failed to revoke session")
@@ -49,7 +49,7 @@ const UserList = ({ users, fetchUsers }) => {
 	const deleteUser = () => {
 		request(`/authorization/users/${encodeURIComponent(deleteTarget.username)}`, {
 			method: "DELETE"
-		}, p => p.then(r => r.json()).catch(() => ({ error: true }))).then(res => {
+		}, authPromiseHandler).then(res => {
 			if (res.error) {
 				toast(res.errors || "Cannot delete user")
 			} else {

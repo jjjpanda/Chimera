@@ -5,6 +5,8 @@ const request = (url, opt, callback) => {
 	return callback(fetch(url, opt))
 }
 
+const authPromiseHandler = (prom) => prom.then(res => res.json()).catch(() => ({ error: true }))
+
 const statusProcessing = (prom, code, callback) => {
 	prom
 		.then(res => callback(res.status === code))
@@ -57,4 +59,4 @@ const downloadProcessing = (prom, callback) => {
 	})
 }
 
-export { request, statusProcessing, jsonProcessing, downloadProcessing }
+export { request, authPromiseHandler, statusProcessing, jsonProcessing, downloadProcessing }
