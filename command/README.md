@@ -13,7 +13,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 - theme and password changes
 - list cameras (RTSP credentials stripped) for the web app
 
-`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin (empty `auth` table) or resets an existing one (recovery). `/setup` is public but rate-limited.
+`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when no admin exists; it cannot reset or take over an existing account. `/setup` is public but rate-limited.
 
 ---
 # Web app

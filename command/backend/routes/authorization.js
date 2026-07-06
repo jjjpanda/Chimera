@@ -87,7 +87,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 			if (process.env.setup_TOKEN) {
 				const noAdmin = (await client.query("SELECT 1 FROM auth WHERE role = 'admin' LIMIT 1")).rowCount === 0
 				const target = (await client.query("SELECT role FROM auth WHERE username = $1", [username])).rows[0]
-				const allowed = target ? target.role === "admin" : noAdmin
+				const allowed = noAdmin && !target
 				if (!allowed) return { rowCount: 0 }
 				const upsert = await client.query(
 					"INSERT INTO auth(username, hash, role) VALUES ($1, $2, 'admin') ON CONFLICT (username) DO UPDATE SET hash = EXCLUDED.hash, role = 'admin', force_password_change = FALSE, temp_password_expires = NULL",
@@ -235,12 +235,15 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 })
 
 app.post("/password", authorize, validateBody, async (req, res) => {
-	const { password } = req.body
+	const { password, currentPassword } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
 		const hash = await hashPassword(password)
 		await withTransaction(async (client) => {
+			const current = (await client.query("SELECT hash, force_password_change FROM auth WHERE username = $1", [username])).rows[0]
+			if (!current) throw new HttpError(404)
+			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "Current password is incorrect")
 			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
@@ -257,7 +260,7 @@ app.post("/logout", authorize, async (req, res) => {
 			await pool.query("UPDATE sessions SET revoked = TRUE WHERE jti = $1", [req.decoded.jti])
 			auth.invalidateSession(req.decoded.jti)
 		}
-		res.clearCookie("bearertoken", { httpOnly: true, secure: process.env.NODE_ENV !== "development", sameSite: "lax" })
+		res.clearCookie("bearertoken", { httpOnly: true, secure: req.secure, sameSite: "lax" })
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)

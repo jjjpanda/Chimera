@@ -34,9 +34,9 @@ const { mockedPool } = require("pg")
 
 describe("Cameras Route", () => {
 	describe("GET /cameras", () => {
-		test("redirects to login with no token", async () => {
+		test("returns 401 with no token", async () => {
 			const res = await supertest(app).get("/cameras/")
-			expect(res.status).toBe(303)
+			expect(res.status).toBe(401)
 		})
 
 		test("returns 200 with id+name+rtsp_url list and strips embedded credentials", async () => {
