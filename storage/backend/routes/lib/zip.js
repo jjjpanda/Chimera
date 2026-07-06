@@ -47,12 +47,19 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			const txtPath = path.join(imgDir, `zip_${rand}.txt`)
 			var output = fs.createWriteStream(zipPath)
 			let cancelled = false
+			let alerted = false
+			const alertFailure = () => {
+				if(alerted) return
+				alerted = true
+				webhookAlert(`Your zip (${rand}) could not be completed.`)
+			}
 
 			output.on("error", (err) => {
 				cancelled = true
 				console.log("ZIP OUTPUT ERROR: " + err.message)
 				fs.unlink(txtPath, () => {})
 				fs.unlink(zipPath, () => {})
+				alertFailure()
 			})
 
 			console.log("SENDING START ALERT")
@@ -74,7 +81,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				console.log("An error occurred: " + err.message)
 				fs.unlink(txtPath, () => {
 					if(!cancelled){
-						webhookAlert(`Your zip (${rand}) could not be completed.`)
+						alertFailure()
 					}
 					fs.unlink(zipPath, () => {})
 				})
@@ -106,6 +113,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 }
 
 module.exports = {
+	zip,
 	createZip: (req, res) => {
 		let { camera, start, end, save, skip } = req.body
 

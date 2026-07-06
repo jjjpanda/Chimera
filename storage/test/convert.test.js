@@ -306,4 +306,30 @@ describe("Convert Routes", () => {
 				.expect(200, { deleted: false, id }, done)
 		})
 	})
+
+	describe("zip save-path output error", () => {
+		const { EventEmitter } = require("events")
+		const fs = require("fs")
+		const lib = require("lib")
+		const { zip } = require("../backend/routes/lib/zip.js")
+
+		test("alerts exactly once when the output stream errors and dedups repeats", () => {
+			lib.webhookAlert.mockClear()
+			const output = new EventEmitter()
+			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+
+			output.emit("error", new Error("ENOSPC: no space left on device"))
+			output.emit("error", new Error("ENOSPC: no space left on device"))
+
+			const failureCalls = lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))
+			expect(failureCalls).toHaveLength(1)
+
+			writeStreamSpy.mockRestore()
+			writeFileSpy.mockRestore()
+		})
+	})
 })

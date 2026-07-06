@@ -205,18 +205,19 @@ describe("File Routes", () => {
 				readdirSpy.mockRestore()
 			})
 
-			test("does not sweep orphans when the database delete matched no rows", async () => {
+			test("sweeps orphans past the cutoff even when the database delete matched no rows", async () => {
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
-					.mockResolvedValue(["20200101-000000-00.jpg"])
+					.mockResolvedValue(["20200101-000000-00.jpg", "20991231-235959-00.jpg"])
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: false })
-				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20991231-235959-00.jpg"))
 				readdirSpy.mockRestore()
 			})
 

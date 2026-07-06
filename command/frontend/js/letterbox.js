@@ -12,7 +12,7 @@ const detectGrayPad = (img) => {
 		ctx.drawImage(img, 0, 0)
 		const isGray = (data) => {
 			for (let i = 0; i < data.length; i += 4)
-				if (Math.abs(data[i] - GRAY) > GRAY_TOL) return false
+				if (Math.abs(data[i] - GRAY) > GRAY_TOL || Math.abs(data[i + 1] - GRAY) > GRAY_TOL || Math.abs(data[i + 2] - GRAY) > GRAY_TOL) return false
 			return true
 		}
 		while (out.top < h / 2 && isGray(ctx.getImageData(0, out.top, w, 1).data)) out.top++
