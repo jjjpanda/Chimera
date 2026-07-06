@@ -5,6 +5,7 @@ const mockQuery = jest.fn().mockResolvedValue({
 })
 
 jest.mock("lib")
+jest.mock("memory")
 jest.mock("axios")
 jest.mock("pg", () => ({
 	Pool: jest.fn().mockImplementation(() => ({ on: jest.fn(), query: mockQuery }))

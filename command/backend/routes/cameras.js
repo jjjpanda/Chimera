@@ -3,7 +3,7 @@ const { loadCameras } = require("lib")
 
 const app = express.Router()
 
-const SENSITIVE_PARAM = /^(username|user|usr|password|passwd|pass|pwd|pw|auth|token|secret|u|p)$/i
+const SENSITIVE_PARAM = /user|usr|pass|pwd|pw|auth|token|secret|key|api|phrase|^[up]$/i
 
 const stripCreds = (url) => {
 	try {

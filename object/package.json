@@ -13,6 +13,7 @@
     "heartbeat": "jjjpanda/heartbeat#v1.4.1",
     "helmet": "^8.0.0",
     "lib": "file:../lib",
+    "memory": "file:../memory",
     "onnxruntime-node": "^1.20.0",
     "pg": "^8.11.0"
   },
