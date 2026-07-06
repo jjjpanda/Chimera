@@ -2,7 +2,8 @@ var express = require("express")
 var { validateBody, auth, password } = require("lib")
 const { requireAdmin } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError } = require("./lib/auth.js")
-const authorize = auth.createAuthorize(pool)
+const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
+const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")

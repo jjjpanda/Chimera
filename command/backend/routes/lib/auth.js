@@ -2,15 +2,9 @@ const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { randomUUID } = require("crypto")
+const { createPool } = require("lib")
 
-const Pool = require("pg").Pool
-const pool = new Pool({
-	user: process.env.database_USER,
-	host: process.env.database_HOST,
-	database: process.env.database_NAME,
-	password: process.env.database_PASSWORD,
-	port: process.env.database_PORT,
-})
+const pool = createPool()
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
 
