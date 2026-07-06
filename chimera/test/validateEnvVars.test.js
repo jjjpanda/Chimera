@@ -43,13 +43,19 @@ describe("validateEnvVars confirmURL gate", () => {
 })
 
 describe("validateEnvVars confirmPath gate", () => {
-	test("skips path validation when the owning service is off", () => {
-		const res = run({ storage_ON: "false", storage_FOLDERPATH: "relative/path" })
+	test("skips path validation when the owning service and object are off", () => {
+		const res = run({ storage_ON: "false", object_ON: "false", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).not.toContain("storage_FOLDERPATH SHOULD BE")
 	})
 
 	test("validates path when the owning service is on", () => {
 		const res = run({ storage_ON: "true", storage_FOLDERPATH: "relative/path" })
+		expect(res.stdout).toContain("storage_FOLDERPATH SHOULD BE AN ABSOLUTE PATH")
+		expect(res.status).toBe(1)
+	})
+
+	test("validates storage_FOLDERPATH when object is on even if storage is off", () => {
+		const res = run({ storage_ON: "false", object_ON: "true", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).toContain("storage_FOLDERPATH SHOULD BE AN ABSOLUTE PATH")
 		expect(res.status).toBe(1)
 	})
