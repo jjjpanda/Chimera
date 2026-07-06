@@ -54,9 +54,14 @@ const rateLimit = ({ windowMs, max }) => {
 		const key = `${req.ip || ""}:${req.path}`
 		reserve(key, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
-			res.on("finish", () => {
-				if (res.statusCode < 400 || res.statusCode >= 500) release()
-			})
+			let settled = false
+			const settle = (shouldRelease) => {
+				if (settled) return
+				settled = true
+				if (shouldRelease) release()
+			}
+			res.on("finish", () => settle(res.statusCode < 400 || res.statusCode >= 500))
+			res.on("close", () => settle(true))
 			next()
 		})
 	}

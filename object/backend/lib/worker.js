@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance, loadCameras } = require("lib")
+const { isPrimeInstance, loadCameras, mapLimit } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -11,18 +11,19 @@ const TEMP_DIR = path.join(process.cwd(), "objectTemp")
 const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
 const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
 const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? parseInt(process.env.object_PRUNE_INTERVAL_MS) : 300000
+const PRUNE_CONCURRENCY = 32
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
 
 const pruneCaptures = async () => {
-	const names = fs.readdirSync(CAPTURES_DIR)
+	const names = await fs.promises.readdir(CAPTURES_DIR)
 	if (names.length <= MAX_CAPTURES) return
-	const files = names.reduce((acc, f) => {
-		try { acc.push({ f, t: fs.statSync(path.join(CAPTURES_DIR, f)).mtimeMs }) } catch (e) {}
-		return acc
-	}, [])
+	const stats = await mapLimit(names, PRUNE_CONCURRENCY, async (f) => {
+		try { return { f, t: (await fs.promises.stat(path.join(CAPTURES_DIR, f))).mtimeMs } } catch (e) { return null }
+	})
+	const files = stats.filter(Boolean)
 	if (files.length <= MAX_CAPTURES) return
 
 	const { rows } = await pool.query(
@@ -36,9 +37,9 @@ const pruneCaptures = async () => {
 		return td !== 0 ? td : a.t - b.t
 	})
 	const removed = files.slice(0, files.length - MAX_CAPTURES)
-	for (const { f } of removed) {
-		try { fs.unlinkSync(path.join(CAPTURES_DIR, f)) } catch (e) {}
-	}
+	await mapLimit(removed, PRUNE_CONCURRENCY, async ({ f }) => {
+		try { await fs.promises.unlink(path.join(CAPTURES_DIR, f)) } catch (e) {}
+	})
 	if (removed.length) {
 		await pool.query("DELETE FROM objects_detected WHERE image = ANY($1)", [removed.map((x) => x.f)]).catch(() => {})
 	}
@@ -109,10 +110,16 @@ const roundTo = (val, sig) => Math.round(val * 10 ** sig) / 10 ** sig
 const handleDetections = async (camera, detections, jpeg) => {
 	const image = `${camera}-${Date.now()}.jpg`
 	try { fs.writeFileSync(path.join(CAPTURES_DIR, image), jpeg) } catch (e) {}
-	for (const d of detections) {
+	if (detections.length) {
+		const values = []
+		const rows = detections.map((d, i) => {
+			const p = i * 5
+			values.push(camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image)
+			return `($${p + 1}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`
+		})
 		await pool.query(
-			"INSERT INTO objects_detected(camera, type, confidence, box, image) VALUES($1, $2, $3, $4, $5)",
-			[camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image]
+			`INSERT INTO objects_detected(camera, type, confidence, box, image) VALUES ${rows.join(", ")}`,
+			values
 		).catch((e) => console.log("OBJECT INSERT ERROR", e.message))
 	}
 	if (process.env.object_ALERT_ON === "false") return

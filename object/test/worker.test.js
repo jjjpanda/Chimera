@@ -1,6 +1,6 @@
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => []) }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => []), mapLimit: require("../../lib/utils/mapLimit.js") }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
-jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })) }))
+jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })), promises: { readdir: jest.fn(() => Promise.resolve([])), stat: jest.fn(() => Promise.resolve({ mtimeMs: 0 })), unlink: jest.fn(() => Promise.resolve()) } }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
 jest.mock("../backend/lib/webhook.js", () => jest.fn())
 jest.mock("../backend/lib/detector.js", () => ({ INPUT: 4, detect: jest.fn() }))
@@ -85,14 +85,13 @@ describe("scan", () => {
 		])
 		const detections = await worker.scan(2)
 		expect(detections).toHaveLength(2)
-		expect(pool.query).toHaveBeenCalledTimes(2)
+		expect(pool.query).toHaveBeenCalledTimes(1)
 		expect(pool.query).toHaveBeenCalledWith(
 			expect.stringContaining("INSERT INTO objects_detected"),
-			[2, "person", 0.876543, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
-		)
-		expect(pool.query).toHaveBeenCalledWith(
-			expect.stringContaining("INSERT INTO objects_detected"),
-			[2, "car", 0.99, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)]
+			[
+				2, "person", 0.876543, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/),
+				2, "car", 0.99, "[0,0,1,1]", expect.stringMatching(/^2-\d+\.jpg$/)
+			]
 		)
 		expect(sendWebhook).toHaveBeenCalledWith(
 			"http://hook.test",
@@ -167,12 +166,12 @@ describe("startWorkers / stopWorkers", () => {
 	})
 
 	test("prunes captures on an interval, not per detection", async () => {
-		fs.readdirSync.mockClear()
+		fs.promises.readdir.mockClear()
 		worker.startWorkers()
 		await tick()
-		expect(fs.readdirSync).not.toHaveBeenCalled()
+		expect(fs.promises.readdir).not.toHaveBeenCalled()
 		jest.advanceTimersByTime(300000)
-		expect(fs.readdirSync).toHaveBeenCalled()
+		expect(fs.promises.readdir).toHaveBeenCalled()
 		worker.stopWorkers()
 	})
 

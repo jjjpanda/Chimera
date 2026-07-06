@@ -1,6 +1,7 @@
 var express = require("express")
 const { auth, helmetOptions, tracker } = require("lib")
 const helmet = require("helmet")
+const memory = require("memory")
 const pool = require("./lib/pool.js")
 
 var app = express()
@@ -16,6 +17,7 @@ app.use(express.json())
 app.use("/object/health", require("heartbeat").heart)
 
 app.use(auth.createAuthorize(pool))
+if (process.env.memory_ON == "true") auth.connectSessionSync(memory.client("AUTH"))
 
 app.use("/object", require("./routes/object.js"))
 

@@ -800,6 +800,18 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "4.4.4.4", 200).next).toHaveBeenCalled()
 		})
 
+		test("releases the slot when an aborted request fires close without finish", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1 })
+			const handlers = {}
+			const req = { headers: {}, ip: "5.5.5.5", path: "/login" }
+			const res = { statusCode: 200, status: jest.fn().mockReturnThis(), json: jest.fn(), on: (event, fn) => { handlers[event] = fn } }
+			const next = jest.fn()
+			mw(req, res, next)
+			expect(next).toHaveBeenCalled()
+			handlers.close()
+			expect(run(mw, "5.5.5.5").next).toHaveBeenCalled()
+		})
+
 		test("is wired onto POST /login and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {

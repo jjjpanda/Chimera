@@ -4,6 +4,7 @@ var express    = require("express")
 const { auth, helmetOptions, tracker, loadCameras } = require("lib")
 const pool = require("./lib/pool.js")
 const helmet = require("helmet")
+const memory = require("memory")
 
 var app = express()
 
@@ -18,6 +19,7 @@ app.use(express.json())
 app.use("/livestream/health", require("heartbeat").heart)
 
 app.use(auth.createAuthorize(pool))
+if (process.env.memory_ON == "true") auth.connectSessionSync(memory.client("AUTH"))
 
 app.use("/livestream", require("./routes/livestream.js"))
 

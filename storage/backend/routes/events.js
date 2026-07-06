@@ -1,7 +1,7 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
-var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
+var { auth, loadCameras, cameraConfFiles, resetCameraCache, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
@@ -130,6 +130,7 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})
 		}
+		resetCameraCache()
 		res.json({ deleted: true })
 	} catch (e) {
 		res.status(500).json({ error: true })
