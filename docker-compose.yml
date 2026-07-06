@@ -5,6 +5,7 @@ services:
     environment:
       TZ: UTC
     ports:
+      - "80:${gateway_PORT}"
       - "${gateway_PORT}:${gateway_PORT}"
       - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
     volumes:
@@ -12,9 +13,37 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./motion.conf:/etc/motion/motion.conf:ro
       - ./cameraconf:/etc/motion/cameraconf
+      - acme-webroot:/app/.well-known
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Automates initial issuance and renewal via HTTP-01.
+  # Owns the read-write cert store so the gateway (ro mount) never holds write access.
+  certbot:
+    image: certbot/certbot
+    env_file: .env
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - >-
+        apk add --no-cache curl >/dev/null 2>&1 || true;
+        DOMAIN=$$(echo "$$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $$1}' | awk -F: '{print $$1}');
+        while true; do
+        if [ -n "$$DOMAIN" ] && [ ! -d "/etc/letsencrypt/live/$$DOMAIN" ]; then
+        certbot certonly --webroot -w /webroot -d "$$DOMAIN" --register-unsafely-without-email --agree-tos --non-interactive ||
+        { curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot issuance failed for $$DOMAIN\"}" "$$alert_URL"; sleep 300; continue; };
+        fi;
+        certbot renew --webroot -w /webroot --quiet ||
+        curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot renew failed on $$(hostname)\"}" "$$alert_URL";
+        sleep 43200;
+        done
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - acme-webroot:/webroot/.well-known
+    depends_on:
+      - chimera
     restart: unless-stopped
 
   postgres:
@@ -36,3 +65,4 @@ services:
 volumes:
   chimera-pgdata:
   chimera-storage:
+  acme-webroot:

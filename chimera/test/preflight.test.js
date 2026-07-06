@@ -135,3 +135,25 @@ describe("isServiceOff (storage_MOTION_CONF_FILEPATH)", () => {
 		expect(isServiceOff(mkLines({ livestream_ON: "true" }), "storage_MOTION_CONF_FILEPATH")).toBe(false)
 	})
 })
+
+describe("isServiceOff (prefix mapping)", () => {
+	const lines = (o = {}) => Object.entries({ schedule_ON: "true", storage_ON: "false", object_ON: "false", livestream_ON: "false", ...o }).map(([k, v]) => `${k} = ${v}`)
+
+	test("scheduler_AUTH follows schedule service (on)", () => {
+		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_AUTH")).toBe(false)
+	})
+
+	test("scheduler_AUTH follows schedule service (off)", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("ffmpeg_FILEPATH / ffprobe_FILEPATH skipped when no camera service is on", () => {
+		expect(isServiceOff(lines(), "ffmpeg_FILEPATH")).toBe(true)
+		expect(isServiceOff(lines(), "ffprobe_FILEPATH")).toBe(true)
+	})
+
+	test("ffmpeg_FILEPATH / ffprobe_FILEPATH required when a camera service is on", () => {
+		expect(isServiceOff(lines({ storage_ON: "true" }), "ffmpeg_FILEPATH")).toBe(false)
+		expect(isServiceOff(lines({ object_ON: "true" }), "ffprobe_FILEPATH")).toBe(false)
+	})
+})

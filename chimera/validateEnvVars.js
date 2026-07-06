@@ -41,6 +41,7 @@ const isFolderCheck = (varName) => {
 }
 
 const confirmPath = (varName, shouldBeFolder=false) => {
+	if (isServiceOff(envLines, varName)) return
 	if(process.env[varName] == null || process.env[varName].length == 0){
 		return
 	}
@@ -96,12 +97,6 @@ checkVar("gateway_ON")
 checkVar("gateway_PORT")
 checkVar("gateway_HOST")
 checkVar("gateway_PORT_SECURE")
-
-checkVar("privateKey_FILEPATH")
-confirmPath("privateKey_FILEPATH")
-
-checkVar("certificate_FILEPATH")
-confirmPath("certificate_FILEPATH")
 
 checkVar("gateway_HTTPS_Redirect")
 checkVar("command_ON")

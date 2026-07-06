@@ -43,6 +43,7 @@ heartbeat              production only
 - [server.js](server.js) starts services in order: **command** (fatal on failure), storage, livestream, schedule, object, the **memory** socket, then the **gateway** last. The gateway is the only public entrypoint — reverse-proxies every `<prefix>_PROXY_ON=true` service and terminates TLS.
 - Boot chain ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
 - Postgres runs as a side container ([docker-compose.yml](docker-compose.yml)); Chimera waits on its healthcheck.
+- TLS renewal: a `certbot` side container issues initial certs and renews them every 12h (HTTP-01 over the shared `acme-webroot` volume, mounted at the gateway's `/.well-known`); the gateway polls the cert mtime and self-restarts (via pm2) in the 3–4am UTC window to pick up new certs.
 - `chimeraInstances`: `1` = single process; `>1`/`max` = cluster, which forces `memory_ON=true` so instances coordinate through the memory socket.
 
 **Schema** ([prepareDatabase.js](chimera/prepareDatabase.js), created idempotently): `frame_files` / `frame_deletes` (storage) · `auth` / `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Full config in [env.example](env.example).
