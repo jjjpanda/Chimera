@@ -2,20 +2,9 @@ const path = require("path")
 const fs = require("fs")
 const rimraf = require("rimraf")
 const moment = require("moment")
-const { loadCameras, webhookAlert, mapLimit } = require("lib")
+const { loadCameras, webhookAlert, mapLimit, createPool } = require("lib")
 
-const Pool = require("pg").Pool
-const pool = new Pool({
-	user: process.env.database_USER,
-	host: process.env.database_HOST,
-	database: process.env.database_NAME,
-	password: process.env.database_PASSWORD,
-	port: process.env.database_PORT,
-})
-
-pool.on("error", (err) => {
-	console.log("STORAGE FILE POOL ERROR", err)
-})
+const pool = createPool("STORAGE FILE POOL ERROR")
 
 const FS_CONCURRENCY = 64
 

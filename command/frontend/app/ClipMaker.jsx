@@ -301,7 +301,6 @@ const ClipMakerFull = () => {
 
 	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
 
-	// single-cam effects
 	useEffect(() => {
 		const canvas = canvasRef.current
 		if (frames.length === 0) {
@@ -422,7 +421,6 @@ const ClipMakerFull = () => {
 		}
 	}, [scrubIdx, frames, imagesLoaded, showBoxes, boxesForScrub, contentPad])
 
-	// multi-cam: load images when frame lists change
 	const multiAllFrames = useMemo(() =>
 		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames])) : {},
 	[multiCam, camStates]
@@ -478,7 +476,6 @@ const ClipMakerFull = () => {
 
 	const multiRows = selectedCams.length > 0 ? Math.ceil(selectedCams.length / 2) : 2
 
-	// multi-cam: paint canvases on scrub, syncing by timestamp
 	useEffect(() => {
 		if (!multiCam) return
 		const pct = multiFrameCount > 1 ? scrubIdx / (multiFrameCount - 1) : 0

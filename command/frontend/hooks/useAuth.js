@@ -1,13 +1,8 @@
 import {useEffect, useState} from "react"
 
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 
 const timeout = 750
-
-const authPromiseHandler = (prom) => {
-	return prom.then(res => res.json())
-		.catch(() => ({ error: true }))
-}
 
 const checkStatus = () =>
 	request("/authorization/status", { method: "GET" }, authPromiseHandler)
