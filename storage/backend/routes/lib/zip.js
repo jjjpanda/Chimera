@@ -113,6 +113,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 }
 
 module.exports = {
+	zip,
 	createZip: (req, res) => {
 		let { camera, start, end, save, skip } = req.body
 
