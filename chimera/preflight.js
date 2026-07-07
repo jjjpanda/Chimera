@@ -96,10 +96,10 @@ const camTemplate = (id, name, url, userpass) =>
 const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
 const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
+const REQUIRES = { storage_FOLDERPATH: ["storage", "object"], livestream_FOLDERPATH: ["livestream", "object"] }
 const isServiceOff = (lines, key) => {
 	if (key === "storage_MOTION_CONF_FILEPATH" || /^(ffmpeg|ffprobe)_/.test(key)) return !camerasNeeded(lines)
-	if (key === "storage_FOLDERPATH") return !(on(lines, "storage") || on(lines, "object"))
-	if (key === "livestream_FOLDERPATH") return !(on(lines, "livestream") || on(lines, "object"))
+	if (REQUIRES[key]) return !REQUIRES[key].some(s => on(lines, s))
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
