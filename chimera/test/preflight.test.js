@@ -164,21 +164,13 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "ffprobe_FILEPATH")).toBe(true)
 	})
 
-	test("storage_FOLDERPATH required when object_ON=true even if storage_ON=false", () => {
-		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
-	})
-
-	test("storage_FOLDERPATH skipped only when both storage and object are off", () => {
-		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "false" }), "storage_FOLDERPATH")).toBe(true)
+	test("storage_FOLDERPATH follows storage service", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ storage_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
 	})
 
-	test("livestream_FOLDERPATH required when object_ON=true even if livestream_ON=false", () => {
-		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
-	})
-
-	test("livestream_FOLDERPATH skipped only when both livestream and object are off", () => {
-		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "false" }), "livestream_FOLDERPATH")).toBe(true)
+	test("livestream_FOLDERPATH follows livestream service", () => {
+		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
 	})
 })
