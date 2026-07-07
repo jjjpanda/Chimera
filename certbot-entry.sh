@@ -1,6 +1,6 @@
 #!/bin/sh
 
-apk add --no-cache curl
+until apk add --no-cache curl; do sleep 5; done
 
 DOMAIN=$(echo "$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $1}' | awk -F: '{print $1}')
 mkdir -p /webroot/.well-known/acme-challenge

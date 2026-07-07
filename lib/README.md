@@ -17,7 +17,7 @@ Shared helpers every service imports (`require("lib")`, a `file:../lib` dep); lo
 **Server & runtime**
 - `handleServerStart` / `handleSecureServerStart` — start HTTP / HTTPS listeners (TLS paths from `certPaths`).
 - `certPaths` — resolves TLS key/cert from `gateway_HOST` under `/etc/letsencrypt/live/`.
-- `watchCertRenewal` — hourly cert/key mtime poll; `pm2.restart("gateway")` in the 3–4am UTC window after the certbot sidecar renews.
+- `watchCertRenewal` — cert/key mtime poll periodically; `pm2.restart("gateway")` in the early AM UTC window after the certbot sidecar renews.
 - `pruneInterval` — run a SQL prune on a 12h timer.
 - `isPrimeInstance` — true on the single/prime pm2 instance.
 - `subprocess` — pm2 helpers (`checkProcess`, `restart`, …).

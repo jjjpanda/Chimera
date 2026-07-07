@@ -98,7 +98,8 @@ const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const REQUIRES = { storage_FOLDERPATH: ["storage", "object"], livestream_FOLDERPATH: ["livestream", "object"] }
 const isServiceOff = (lines, key) => {
-	if (key === "storage_MOTION_CONF_FILEPATH" || /^(ffmpeg|ffprobe)_/.test(key)) return !camerasNeeded(lines)
+	if (key === "storage_MOTION_CONF_FILEPATH" || /^ffmpeg_/.test(key)) return !camerasNeeded(lines)
+	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (REQUIRES[key]) return !REQUIRES[key].some(s => on(lines, s))
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false

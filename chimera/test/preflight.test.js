@@ -152,9 +152,16 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines(), "ffprobe_FILEPATH")).toBe(true)
 	})
 
-	test("ffmpeg_FILEPATH / ffprobe_FILEPATH required when a camera service is on", () => {
+	test("ffmpeg_FILEPATH required when any camera service is on", () => {
 		expect(isServiceOff(lines({ storage_ON: "true" }), "ffmpeg_FILEPATH")).toBe(false)
-		expect(isServiceOff(lines({ object_ON: "true" }), "ffprobe_FILEPATH")).toBe(false)
+		expect(isServiceOff(lines({ object_ON: "true" }), "ffmpeg_FILEPATH")).toBe(false)
+		expect(isServiceOff(lines({ livestream_ON: "true" }), "ffmpeg_FILEPATH")).toBe(false)
+	})
+
+	test("ffprobe_FILEPATH required only when storage is on", () => {
+		expect(isServiceOff(lines({ storage_ON: "true" }), "ffprobe_FILEPATH")).toBe(false)
+		expect(isServiceOff(lines({ object_ON: "true" }), "ffprobe_FILEPATH")).toBe(true)
+		expect(isServiceOff(lines({ livestream_ON: "true" }), "ffprobe_FILEPATH")).toBe(true)
 	})
 
 	test("storage_FOLDERPATH required when object_ON=true even if storage_ON=false", () => {
