@@ -1,4 +1,4 @@
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => []), mapLimit: require("../../lib/utils/mapLimit.js") }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => Promise.resolve([])), mapLimit: require("../../lib/utils/mapLimit.js") }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
 jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })), promises: { readdir: jest.fn(() => Promise.resolve([])), stat: jest.fn(() => Promise.resolve({ mtimeMs: 0 })), unlink: jest.fn(() => Promise.resolve()) } }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
@@ -51,20 +51,20 @@ describe("toTensor (bgr24 -> planar BGR float32)", () => {
 })
 
 describe("cameras", () => {
-	test("returns id and name from loadCameras", () => {
-		loadCameras.mockReturnValue([{ id: 7, name: "a", rtsp_url: "", full_url: "" }, { id: 3, name: "b", rtsp_url: "", full_url: "" }])
-		expect(worker.cameras()).toEqual([{ id: 7, name: "a" }, { id: 3, name: "b" }])
+	test("returns id and name from loadCameras", async () => {
+		loadCameras.mockResolvedValue([{ id: 7, name: "a", rtsp_url: "", full_url: "" }, { id: 3, name: "b", rtsp_url: "", full_url: "" }])
+		expect(await worker.cameras()).toEqual([{ id: 7, name: "a" }, { id: 3, name: "b" }])
 	})
 
-	test("returns [] when loadCameras returns []", () => {
-		loadCameras.mockReturnValue([])
-		expect(worker.cameras()).toEqual([])
+	test("returns [] when loadCameras returns []", async () => {
+		loadCameras.mockResolvedValue([])
+		expect(await worker.cameras()).toEqual([])
 	})
 })
 
 describe("scan", () => {
 	beforeEach(() => {
-		loadCameras.mockReturnValue([
+		loadCameras.mockResolvedValue([
 			{ id: 1, name: "a" }, { id: 2, name: "b" }, { id: 3, name: "c" }, { id: 4, name: "d" }, { id: 5, name: "e" }
 		])
 	})
@@ -159,7 +159,7 @@ describe("startWorkers / stopWorkers", () => {
 		jest.useFakeTimers()
 		execFile.mockClear()
 		process.env.object_ON = "true"
-		loadCameras.mockReturnValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
 		detector.detect.mockResolvedValue([])
 	})
 
@@ -170,7 +170,7 @@ describe("startWorkers / stopWorkers", () => {
 	})
 
 	test("runs one scan per camera and arms a re-arm timer for each plus a prune timer", async () => {
-		worker.startWorkers()
+		await worker.startWorkers()
 		await tick()
 		expect(execFile).toHaveBeenCalledTimes(2)
 		expect(jest.getTimerCount()).toBe(3)
@@ -180,7 +180,7 @@ describe("startWorkers / stopWorkers", () => {
 
 	test("prunes captures on an interval, not per detection", async () => {
 		fs.promises.readdir.mockClear()
-		worker.startWorkers()
+		await worker.startWorkers()
 		await tick()
 		expect(fs.promises.readdir).not.toHaveBeenCalled()
 		jest.advanceTimersByTime(300000)
@@ -188,23 +188,35 @@ describe("startWorkers / stopWorkers", () => {
 		worker.stopWorkers()
 	})
 
-	test("does nothing when object_ON is not 'true'", () => {
+	test("does nothing when object_ON is not 'true'", async () => {
 		process.env.object_ON = "false"
-		worker.startWorkers()
+		await worker.startWorkers()
 		expect(execFile).not.toHaveBeenCalled()
 		expect(jest.getTimerCount()).toBe(0)
 	})
 
 	test("stopWorkers before scans resolve blocks the re-arm", async () => {
-		worker.startWorkers()
+		await worker.startWorkers()
 		worker.stopWorkers()
 		await tick()
 		expect(execFile).toHaveBeenCalledTimes(2)
 		expect(jest.getTimerCount()).toBe(0)
 	})
 
+	test("stopWorkers during the async camera load prevents workers from starting", async () => {
+		let release
+		loadCameras.mockReturnValueOnce(new Promise(r => { release = r }))
+		const started = worker.startWorkers()
+		worker.stopWorkers()
+		release([{ id: 1, name: "a" }, { id: 2, name: "b" }])
+		await started
+		await tick()
+		expect(execFile).not.toHaveBeenCalled()
+		expect(jest.getTimerCount()).toBe(0)
+	})
+
 	test("stopWorkers flips every camera's running flag to false", async () => {
-		worker.startWorkers()
+		await worker.startWorkers()
 		await tick()
 		expect(worker.getStatus()[1].running).toBe(true)
 		expect(worker.getStatus()[2].running).toBe(true)

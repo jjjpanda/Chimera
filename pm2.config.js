@@ -70,8 +70,8 @@ if(process.env.storage_ON === "true"){
 }
 
 if(process.env.livestream_ON === "true"){
-	const { loadCameras } = require("./lib/utils/loadCameras.js")
-	const liveCams = loadCameras()
+	const { loadCamerasSync } = require("./lib/utils/loadCameras.js")
+	const liveCams = loadCamerasSync()
 	if (!liveCams.length) console.error("livestream_ON=true but no cameras loaded — check storage_MOTION_CONF_FILEPATH and .conf files")
 	const fs = require("fs")
 	const livestreamFolder = process.env.livestream_FOLDERPATH

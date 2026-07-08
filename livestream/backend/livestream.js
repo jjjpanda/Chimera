@@ -24,13 +24,11 @@ if (process.env.memory_ON == "true") auth.connectSessionSync(memory.client("AUTH
 app.use("/livestream", require("./routes/livestream.js"))
 
 if (process.env.livestream_ON === "true") {
-	try {
-		for (const cam of loadCameras()) {
+	loadCameras().then(cams => {
+		for (const cam of cams) {
 			fs.mkdirSync(path.join(process.env.livestream_FOLDERPATH, "feed", String(cam.id)), { recursive: true })
 		}
-	} catch (e) {
-		console.error("❌ Failed to create livestream feed directories:", e.message)
-	}
+	}).catch(e => console.error("❌ Failed to create livestream feed directories:", e.message))
 }
 
 module.exports = app

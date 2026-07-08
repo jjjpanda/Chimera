@@ -79,7 +79,7 @@ app.get("/usage", async (req, res) => {
 	try {
 		const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
-		const cameras = loadCameras()
+		const cameras = await loadCameras()
 
 		const { rows: statRows } = await pool.query(
 			"SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes FROM frame_files GROUP BY camera"
@@ -125,7 +125,7 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 		)
 		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
-		for (const file of cameraConfFiles(id)) {
+		for (const file of await cameraConfFiles(id)) {
 			await fs.promises.unlink(file).catch((e) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})

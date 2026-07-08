@@ -15,7 +15,7 @@ jest.mock("../backend/lib/worker.js", () => ({
 	CAPTURES_DIR: ".",
 	scan: jest.fn().mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }]),
 	getStatus: () => ({ 1: { running: true, lastRun: null, lastDetection: null, error: null } }),
-	cameras: () => [{ id: 1, name: "Camera 1" }],
+	cameras: () => Promise.resolve([{ id: 1, name: "Camera 1" }]),
 	getConfig: () => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"] }),
 	setConfig: (updates) => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"], ...updates })
 }))
@@ -37,6 +37,7 @@ describe("Object Routes", () => {
 			.expect((res) => {
 				expect(res.body.config.confidence).toBe(0.5)
 				expect(res.body.cameras["1"].running).toBe(true)
+				expect(res.body.cameraNames).toEqual({ "1": "Camera 1" })
 			})
 			.end(done)
 	})

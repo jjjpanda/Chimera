@@ -98,8 +98,8 @@ module.exports = {
 		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 })
 	},
 
-	dailyStats: (req, res) => {
-		const cameras = loadCameras()
+	dailyStats: async (req, res) => {
+		const cameras = await loadCameras()
 		if(cameras.length == 0) return res.send([])
 		queryForDailyStats(cameras).then(values => {
 			const stats = values.rows.map(row => ({
@@ -113,8 +113,8 @@ module.exports = {
 		})
 	},
 
-	fileStats: (req, res) => {
-		const cameras = loadCameras()
+	fileStats: async (req, res) => {
+		const cameras = await loadCameras()
 		if(cameras.length == 0) return res.send([])
 		queryForGroupedStats(cameras).then(values => {
 			let fileStats = values.rows.map(row => ({
@@ -189,8 +189,8 @@ module.exports = {
 		}
 	},
 
-	cameraMetrics: (req, res) => {
-		const cameras = loadCameras()
+	cameraMetrics: async (req, res) => {
+		const cameras = await loadCameras()
 
 		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
 			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))

@@ -15,7 +15,7 @@ describe("Livestream startup", () => {
 		process.env = originalEnv
 	})
 
-	test("creates a feed directory per camera when livestream_ON=true", () => {
+	test("creates a feed directory per camera when livestream_ON=true", async () => {
 		process.env.livestream_ON = "true"
 
 		jest.doMock("fs", () => {
@@ -24,7 +24,7 @@ describe("Livestream startup", () => {
 		})
 		jest.doMock("lib", () => {
 			const lib = jest.requireActual("../__mocks__/lib.js")
-			lib.loadCameras.mockReturnValue([{ id: 1 }, { id: 2 }])
+			lib.loadCameras.mockResolvedValue([{ id: 1 }, { id: 2 }])
 			return lib
 		})
 
@@ -32,11 +32,13 @@ describe("Livestream startup", () => {
 		const path = require("path")
 		require("../backend/livestream.js")
 
+		await new Promise(resolve => setTimeout(resolve, 0))
+
 		expect(fs.mkdirSync).toHaveBeenCalledWith(path.join("/mnt/storage", "feed", "1"), { recursive: true })
 		expect(fs.mkdirSync).toHaveBeenCalledWith(path.join("/mnt/storage", "feed", "2"), { recursive: true })
 	})
 
-	test("does not touch the filesystem when livestream_ON=false, even with cameras configured", () => {
+	test("does not touch the filesystem when livestream_ON=false, even with cameras configured", async () => {
 		process.env.livestream_ON = "false"
 
 		jest.doMock("fs", () => {
@@ -45,12 +47,14 @@ describe("Livestream startup", () => {
 		})
 		jest.doMock("lib", () => {
 			const lib = jest.requireActual("../__mocks__/lib.js")
-			lib.loadCameras.mockReturnValue([{ id: 1 }, { id: 2 }])
+			lib.loadCameras.mockResolvedValue([{ id: 1 }, { id: 2 }])
 			return lib
 		})
 
 		const fs = require("fs")
 		require("../backend/livestream.js")
+		
+		await new Promise(resolve => setTimeout(resolve, 0))
 
 		expect(fs.mkdirSync).not.toHaveBeenCalled()
 	})

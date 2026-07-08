@@ -19,8 +19,8 @@ const stripCreds = (url) => {
 	}
 }
 
-app.get("/", (req, res) => {
-	res.json(loadCameras().map(({ id, name, rtsp_url }) => ({ id, name, rtsp_url: stripCreds(rtsp_url) })))
+app.get("/", async (req, res) => {
+	res.json((await loadCameras()).map(({ id, name, rtsp_url }) => ({ id, name, rtsp_url: stripCreds(rtsp_url) })))
 })
 
 module.exports = app
