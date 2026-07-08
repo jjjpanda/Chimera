@@ -27,7 +27,7 @@ Session-guarded (`authorize`) except `/storage/health`; video/zip creation, dele
 ---
 # Runtime
 
-- Root `server.js` runs storage + the bundled `motion` under pm2 when `storage_ON=true`; [gateway](../gateway) proxies when `storage_PROXY_ON=true`.
+- pm2 runs storage (`storage/start.js`) + the bundled `motion` when `storage_ON=true`; [gateway](../gateway) proxies when `storage_PROXY_ON=true`.
 - `frame_deletes` logs quota deletions; the prime instance prunes rows older than 30 days.
 - [schedule](../schedule) POSTs `/file/pathAutoClean` when `storage_MAX_GB` is set.
 

@@ -30,17 +30,17 @@ npm run docker:up
 ---
 # Architecture
 
-One Node process under pm2, fronted by a Postgres side container. Each service is toggled by `<prefix>_ON`; off means it never starts.
+One pm2 process per enabled service, fronted by a Postgres side container. Each service is toggled by `<prefix>_ON`; off means pm2 never launches it.
 
-pm2 ([pm2.config.js](pm2.config.js)):
+pm2 ([pm2.config.js](pm2.config.js)) — each app runs `<name>/start.js` as its own process (independent; pm2 restarts crashes per-process, no cross-service fatal chaining):
 ```
-chimera  (server.js)   one process; runs all enabled services
+command · storage · livestream · schedule · object · gateway · memory   one process each, per <prefix>_ON
 motion                 storage_ON
 ffmpeg × N             one HLS transcoder per camera, livestream_ON
 heartbeat              production only
 ```
 
-- [server.js](server.js) starts services in order: **command** (fatal on failure), storage, livestream, schedule, object, the **memory** socket, then the **gateway** last. The gateway is the only public entrypoint — reverse-proxies every `<prefix>_PROXY_ON=true` service and terminates TLS.
+- `object` and `memory` are single-instance; the rest honor `chimeraInstances`. The gateway is the only public entrypoint — reverse-proxies every `<prefix>_PROXY_ON=true` service and terminates TLS.
 - Boot chain ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
 - Postgres runs as a side container ([docker-compose.yml](docker-compose.yml)); Chimera waits on its healthcheck.
 - TLS renewal (`certbot_ON=true`; disable for BYO certs / upstream TLS): a `certbot` side container issues + renews certs every 12h via HTTP-01 (needs `gateway_PORT=80` so the host publishes port 80) over the shared `acme-webroot` volume at the gateway's `/.well-known`; registers with no email (no LE expiry reminders) and POSTs `alert_URL` on failure. The gateway polls cert mtime and self-restarts (pm2) in the 3–4am UTC window to pick up new certs — first issuance restarts immediately.

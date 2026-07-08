@@ -16,7 +16,7 @@ Session-guarded (`authorize`) except `/livestream/health`:
 
 - pm2 spawns one ffmpeg per camera (`live_stream_cam_<id>`) when `livestream_ON=true`: RTSP-over-TCP → rolling HLS in `livestream_FOLDERPATH/feed/<id>/`. Needs `ffmpeg` on `PATH`.
 - Cameras load from [cameraconf/*.conf](../cameraconf) via [lib](../lib) `loadCameras`.
-- Started by root `server.js`; [gateway](../gateway) proxies when `livestream_PROXY_ON=true`.
+- Launched by pm2 (`livestream/start.js`) when `livestream_ON=true`; [gateway](../gateway) proxies when `livestream_PROXY_ON=true`.
 - No tables; sessions validated against [command](../command)'s `auth`/`sessions` via [lib](../lib).
 
 ---
