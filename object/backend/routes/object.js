@@ -6,15 +6,15 @@ const worker = require("../lib/worker.js")
 
 const app = express.Router()
 
-const cameraNames = () => Object.fromEntries(worker.cameras().map(c => [c.id, c.name]))
+const cameraNames = async () => Object.fromEntries((await worker.cameras()).map(c => [c.id, c.name]))
 
 const ifPrime = (res, handler) =>
 	isPrimeInstance ? handler() : res.status(503).send({ error: "state unavailable" })
 
 app.use("/captures", express.static(worker.CAPTURES_DIR))
 
-app.get("/status", (req, res) => ifPrime(res, () =>
-	res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: cameraNames() })))
+app.get("/status", (req, res) => ifPrime(res, async () =>
+	res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: await cameraNames() })))
 
 app.get("/config", (req, res) => ifPrime(res, () => res.send(worker.getConfig())))
 

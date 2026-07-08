@@ -57,7 +57,7 @@ let pruneTimer = null
 let workersRunning = false
 let _cameras = null
 
-const cameras = () => _cameras || (_cameras = loadCameras().map(cam => ({ id: cam.id, name: cam.name })))
+const cameras = async () => _cameras || (_cameras = (await loadCameras()).map(cam => ({ id: cam.id, name: cam.name })))
 
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
@@ -129,7 +129,8 @@ const handleDetections = async (camera, detections, jpeg) => {
 }
 
 const scan = async (id) => {
-	const cam = cameras().find(c => c.id === id)
+	const list = await cameras()
+	const cam = list.find(c => c.id === id)
 	if (!cam) return []
 	const st = status[id] || (status[id] = {})
 	try {
@@ -149,11 +150,12 @@ const scan = async (id) => {
 	}
 }
 
-const startWorkers = () => {
+const startWorkers = async () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
 	workersRunning = true
 	_cameras = null
-	const list = cameras()
+	const list = await cameras()
+	if (!workersRunning) return
 	for (const cam of list) {
 		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
 		const loop = async () => {

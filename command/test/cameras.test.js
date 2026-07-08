@@ -19,7 +19,24 @@ jest.mock("fs", () => {
 		readdirSync: jest.fn((p) => {
 			if (p === "/etc/motion/cameraconf") return ["cam1.conf", "cam2.conf", "cam3.conf", "cam4.conf", "cam5.conf", "cam6.conf", "cam7.conf"]
 			return actual.readdirSync(p)
-		})
+		}),
+		promises: {
+			readFile: jest.fn((p, enc) => {
+				if (p === "/etc/motion/motion.conf") return Promise.resolve("camera_dir /etc/motion/cameraconf\n")
+				if (p.endsWith("cam1.conf")) return Promise.resolve("camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n")
+				if (p.endsWith("cam2.conf")) return Promise.resolve("camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\nnetcam_userpass user:secret\n")
+				if (p.endsWith("cam3.conf")) return Promise.resolve("camera_id 3\ncamera_name gate\nnetcam_url rtsp://user:p@ss@3.3.3.3/cam\n")
+				if (p.endsWith("cam4.conf")) return Promise.resolve("camera_id 4\ncamera_name yard\nnetcam_url rtsp://4.4.4.4/cam?user=admin&p=secret\n")
+				if (p.endsWith("cam5.conf")) return Promise.resolve("camera_id 5\ncamera_name shed\nnetcam_url rtsp://admin:p@ss/word@5.5.5.5/cam\n")
+				if (p.endsWith("cam6.conf")) return Promise.resolve("camera_id 6\ncamera_name front\nnetcam_url rtsp://192.168.1.5/cam@1/stream\n")
+				if (p.endsWith("cam7.conf")) return Promise.resolve("camera_id 7\ncamera_name lab\nnetcam_url rtsp://7.7.7.7/cam?access_token=abc&api_key=def&passphrase=ghi\n")
+				return Promise.resolve(actual.readFileSync(p, enc))
+			}),
+			readdir: jest.fn((p) => {
+				if (p === "/etc/motion/cameraconf") return Promise.resolve(["cam1.conf", "cam2.conf", "cam3.conf", "cam4.conf", "cam5.conf", "cam6.conf", "cam7.conf"])
+				return Promise.resolve(actual.readdirSync(p))
+			})
+		}
 	}
 })
 
