@@ -42,6 +42,36 @@ describe("validateEnvVars confirmURL gate", () => {
 	})
 })
 
+describe("validateEnvVars confirmPath gate", () => {
+	test("skips path validation when the owning service is off", () => {
+		const res = run({ storage_ON: "false", storage_FOLDERPATH: "relative/path" })
+		expect(res.stdout).not.toContain("storage_FOLDERPATH SHOULD BE")
+	})
+
+	test("validates path when the owning service is on", () => {
+		const res = run({ storage_ON: "true", storage_FOLDERPATH: "relative/path" })
+		expect(res.stdout).toContain("storage_FOLDERPATH SHOULD BE AN ABSOLUTE PATH")
+		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars certbot port warning", () => {
+	test("warns (non-fatal) when certbot_ON=true and gateway_PORT is not 80", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "8080" })
+		expect(res.stdout).toContain("gateway_PORT is not 80")
+	})
+
+	test("no warning when gateway_PORT is 80", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80" })
+		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+	})
+
+	test("no warning when certbot_ON is not true", () => {
+		const res = run({ certbot_ON: "false", gateway_PORT: "8080" })
+		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+	})
+})
+
 describe("validateEnvVars bool gate", () => {
 	test("blocks boot when a bool var is not exactly true/false", () => {
 		const res = run({ command_ON: "yes" })

@@ -12,9 +12,29 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./motion.conf:/etc/motion/motion.conf:ro
       - ./cameraconf:/etc/motion/cameraconf
+      - acme-webroot:/app/.well-known
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Automates initial issuance and renewal via HTTP-01.
+  # Owns the read-write cert store so the gateway (ro mount) never holds write access.
+  certbot:
+    image: certbot/certbot:v5.6.0
+    environment:
+      gateway_HOST: ${gateway_HOST}
+      gateway_PORT: ${gateway_PORT}
+      alert_URL: ${alert_URL}
+      certbot_ON: ${certbot_ON}
+    entrypoint: /bin/sh
+    command: /certbot-entry.sh
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - acme-webroot:/webroot/.well-known
+      - ./certbot-entry.sh:/certbot-entry.sh:ro
+    depends_on:
+      - chimera
     restart: unless-stopped
 
   postgres:
@@ -36,3 +56,4 @@ services:
 volumes:
   chimera-pgdata:
   chimera-storage:
+  acme-webroot:
