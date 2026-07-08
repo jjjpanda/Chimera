@@ -1,5 +1,7 @@
 #!/bin/sh
 
+[ "$certbot_ON" = "true" ] || { echo "certbot disabled (certbot_ON!=true)"; exec tail -f /dev/null; }
+
 until apk add --no-cache curl; do sleep 5; done
 
 DOMAIN=$(echo "$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $1}' | awk -F: '{print $1}')

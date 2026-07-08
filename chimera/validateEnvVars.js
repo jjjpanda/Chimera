@@ -83,6 +83,10 @@ schema.filter(v => /_URL$/.test(v.key)).forEach(v => confirmURL(v.key))
 schema.filter(v => /_FILEPATH$/.test(v.key) && v.key !== "storage_MOTION_CONF_FILEPATH").forEach(v => confirmPath(v.key))
 schema.filter(v => /_FOLDERPATH$/.test(v.key)).forEach(v => confirmPath(v.key, true))
 
+if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
+	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
+}
+
 if(allEnvPresent){
 	process.exit(0)
 }

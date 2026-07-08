@@ -5,7 +5,7 @@ services:
     environment:
       TZ: UTC
     ports:
-      - "${gateway_HTTP_HOST_PORT:-80}:${gateway_PORT}"
+      - "${gateway_PORT}:${gateway_PORT}"
       - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
     volumes:
       - chimera-storage:/mnt/storage
@@ -26,6 +26,7 @@ services:
       gateway_HOST: ${gateway_HOST}
       gateway_PORT: ${gateway_PORT}
       alert_URL: ${alert_URL}
+      certbot_ON: ${certbot_ON}
     entrypoint: /bin/sh
     command: /certbot-entry.sh
     volumes:

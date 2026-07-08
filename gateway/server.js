@@ -24,7 +24,7 @@ module.exports = {
 		if(process.env.gateway_ON == "true"){
 			handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
 			handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
-			if (isPrimeInstance) watchCertRenewal()
+			if (isPrimeInstance && process.env.certbot_ON == "true") watchCertRenewal()
 		}
 		else{
 			failureCallback()
