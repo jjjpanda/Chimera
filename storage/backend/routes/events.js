@@ -10,6 +10,9 @@ const app = express.Router()
 
 const FS_CONCURRENCY = 64
 
+const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "shared/captures")
+const OBJECT_CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
+
 const dirFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
 	const files = entries.filter((entry) => entry.isFile())
@@ -20,17 +23,17 @@ const dirFileBytes = async (dir) => {
 	return sizes.reduce((sum, size) => sum + size, 0)
 }
 
-const captureBreakdown = async (capturesPath, frameBytes) => {
+const captureBreakdown = async (frameBytes) => {
 	let videos = 0, zips = 0, other = 0
-	const entries = await fs.promises.readdir(capturesPath, { withFileTypes: true }).catch(() => [])
+	const entries = await fs.promises.readdir(CAPTURES_DIR, { withFileTypes: true }).catch(() => [])
 	const files = entries.filter((entry) => entry.isFile())
 	await mapLimit(files, FS_CONCURRENCY, async (entry) => {
-		const { size } = await fs.promises.stat(path.join(capturesPath, entry.name)).catch(() => ({ size: 0 }))
+		const { size } = await fs.promises.stat(path.join(CAPTURES_DIR, entry.name)).catch(() => ({ size: 0 }))
 		if (entry.name.endsWith(".mp4")) videos += size
 		else if (entry.name.endsWith(".zip")) zips += size
 		else other += size
 	})
-	const objects = await dirFileBytes(path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures"))
+	const objects = await dirFileBytes(OBJECT_CAPTURES_DIR)
 	return { frames: frameBytes, videos, zips, objects, other }
 }
 
@@ -68,8 +71,7 @@ app.get("/frames/:camera_id/:filename", (req, res) => {
 	const { camera_id, filename } = req.params
 	if (!/^\d+$/.test(camera_id)) return res.status(400).json({ error: "camera_id must be numeric" })
 	if (!/^[A-Za-z0-9._-]+$/.test(filename) || filename.includes("..")) return res.status(400).json({ error: "invalid filename" })
-	const capturesBase = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-	const filePath = path.join(capturesBase, camera_id, filename)
+	const filePath = path.join(CAPTURES_DIR, camera_id, filename)
 	res.sendFile(filePath, (err) => {
 		if (err && !res.headersSent) res.status(404).json({ error: "not found" })
 	})
@@ -77,7 +79,6 @@ app.get("/frames/:camera_id/:filename", (req, res) => {
 
 app.get("/usage", async (req, res) => {
 	try {
-		const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		const cameras = await loadCameras()
 
@@ -96,7 +97,7 @@ app.get("/usage", async (req, res) => {
 			frame_count: countByCamera.get(String(id)) || 0
 		}))
 
-		const breakdown = await captureBreakdown(capturesPath, frameBytes)
+		const breakdown = await captureBreakdown(frameBytes)
 
 		res.json({
 			used_gb: parseFloat(((frameBytes + breakdown.videos + breakdown.zips + breakdown.other + breakdown.objects) / 1e9).toFixed(3)),
@@ -113,15 +114,13 @@ app.get("/usage", async (req, res) => {
 app.delete("/camera/:id", requireAdmin, async (req, res) => {
 	const { id } = req.params
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
-	const camPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", id)
-	const objectsPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
 	try {
-		await fs.promises.rm(camPath, { recursive: true, force: true })
-		const objectFiles = await fs.promises.readdir(objectsPath).catch(() => [])
-		await Promise.all(
-			objectFiles
-				.filter((f) => f.startsWith(`${id}-`))
-				.map((f) => fs.promises.unlink(path.join(objectsPath, f)).catch(() => {}))
+		await fs.promises.rm(path.join(CAPTURES_DIR, id), { recursive: true, force: true })
+		const objectFiles = await fs.promises.readdir(OBJECT_CAPTURES_DIR).catch(() => [])
+		await mapLimit(
+			objectFiles.filter((f) => f.startsWith(`${id}-`)),
+			FS_CONCURRENCY,
+			(f) => fs.promises.unlink(path.join(OBJECT_CAPTURES_DIR, f)).catch(() => {})
 		)
 		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])

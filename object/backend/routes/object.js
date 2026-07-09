@@ -13,8 +13,13 @@ const ifPrime = (res, handler) =>
 
 app.use("/captures", express.static(worker.CAPTURES_DIR))
 
-app.get("/status", (req, res) => ifPrime(res, async () =>
-	res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: await cameraNames() })))
+app.get("/status", (req, res) => ifPrime(res, async () => {
+	try {
+		res.send({ config: worker.getConfig(), cameras: worker.getStatus(), cameraNames: await cameraNames() })
+	} catch (e) {
+		res.status(500).send({ error: true })
+	}
+}))
 
 app.get("/config", (req, res) => ifPrime(res, () => res.send(worker.getConfig())))
 

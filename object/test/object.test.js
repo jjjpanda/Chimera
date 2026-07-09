@@ -15,7 +15,7 @@ jest.mock("../backend/lib/worker.js", () => ({
 	CAPTURES_DIR: ".",
 	scan: jest.fn().mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }]),
 	getStatus: () => ({ 1: { running: true, lastRun: null, lastDetection: null, error: null } }),
-	cameras: () => Promise.resolve([{ id: 1, name: "Camera 1" }]),
+	cameras: jest.fn().mockResolvedValue([{ id: 1, name: "Camera 1" }]),
 	getConfig: () => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"] }),
 	setConfig: (updates) => ({ confidence: 0.5, intervalMs: 5000, classes: ["person"], ...updates })
 }))
@@ -40,6 +40,13 @@ describe("Object Routes", () => {
 				expect(res.body.cameraNames).toEqual({ "1": "Camera 1" })
 			})
 			.end(done)
+	})
+
+	test("status returns 500 when the camera confs are unreadable", async () => {
+		require("../backend/lib/worker.js").cameras.mockRejectedValueOnce(new Error("EACCES"))
+		const res = await supertest(app).get("/object/status").set("Cookie", authorized)
+		expect(res.status).toBe(500)
+		expect(res.body).toEqual({ error: true })
 	})
 
 	test("Config read from the local worker", (done) => {

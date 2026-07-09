@@ -60,6 +60,19 @@ describe("cameras", () => {
 		loadCameras.mockResolvedValue([])
 		expect(await worker.cameras()).toEqual([])
 	})
+
+	test("propagates a loadCameras failure instead of masking it as []", async () => {
+		loadCameras.mockRejectedValueOnce(new Error("conf dir unreadable"))
+		await expect(worker.cameras()).rejects.toThrow("conf dir unreadable")
+	})
+
+	test("reload bypasses the TTL cache that a plain call would hit", async () => {
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		expect(await worker.cameras()).toEqual([{ id: 1, name: "a" }])
+		loadCameras.mockResolvedValue([{ id: 2, name: "b" }])
+		expect(await worker.cameras()).toEqual([{ id: 1, name: "a" }])
+		expect(await worker.cameras(true)).toEqual([{ id: 2, name: "b" }])
+	})
 })
 
 describe("scan", () => {
@@ -169,11 +182,11 @@ describe("startWorkers / stopWorkers", () => {
 		delete process.env.object_ON
 	})
 
-	test("runs one scan per camera and arms a re-arm timer for each plus a prune timer", async () => {
+	test("runs one scan per camera and arms a re-arm timer for each plus prune and reconcile timers", async () => {
 		await worker.startWorkers()
 		await tick()
 		expect(execFile).toHaveBeenCalledTimes(2)
-		expect(jest.getTimerCount()).toBe(3)
+		expect(jest.getTimerCount()).toBe(4)
 		worker.stopWorkers()
 		expect(jest.getTimerCount()).toBe(0)
 	})
@@ -223,6 +236,173 @@ describe("startWorkers / stopWorkers", () => {
 		worker.stopWorkers()
 		expect(worker.getStatus()[1].running).toBe(false)
 		expect(worker.getStatus()[2].running).toBe(false)
+	})
+
+	test("a start interleaved with stop/start does not leak timers from the stale era", async () => {
+		let release
+		loadCameras.mockReturnValueOnce(new Promise(r => { release = r }))
+		const stale = worker.startWorkers()
+		worker.stopWorkers()
+		const fresh = worker.startWorkers()
+		release([{ id: 1, name: "a" }, { id: 2, name: "b" }])
+		await Promise.all([stale, fresh])
+		await tick()
+		expect(execFile).toHaveBeenCalledTimes(2)
+		expect(jest.getTimerCount()).toBe(4)
+	})
+
+	test("a camera deleted while running is evicted instead of looping forever", async () => {
+		await worker.startWorkers()
+		await tick()
+		expect(jest.getTimerCount()).toBe(4)
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()[2]).toBeUndefined()
+		expect(jest.getTimerCount()).toBe(3)
+	})
+
+	test("a camera that reappears after eviction gets a worker back", async () => {
+		await worker.startWorkers()
+		await tick()
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+		expect(worker.getStatus()[2]).toBeUndefined()
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()[2].running).toBe(true)
+		expect(jest.getTimerCount()).toBe(4)
+	})
+
+	test("a scan still in flight across an evict and re-add does not leave a second loop behind", async () => {
+		let hung = null
+		execFile.mockImplementation((file, args, opts, cb) => {
+			const feed = String(args[args.indexOf("-i") + 1]).replace(/\\/g, "/")
+			if (feed.endsWith("feed/2/video.m3u8") && !hung) hung = cb
+			else cb(null)
+		})
+		await worker.startWorkers()
+		await tick()
+		expect(hung).toEqual(expect.any(Function))
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+		expect(worker.getStatus()[2]).toBeUndefined()
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }, { id: 2, name: "b" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+		expect(jest.getTimerCount()).toBe(4)
+
+		hung(null)
+		await tick()
+		expect(jest.getTimerCount()).toBe(4)
+		worker.stopWorkers()
+		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("a camera added while running gets a worker without a restart", async () => {
+		await worker.startWorkers()
+		await tick()
+		expect(jest.getTimerCount()).toBe(4)
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }, { id: 2, name: "b" }, { id: 3, name: "c" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()[3].running).toBe(true)
+		expect(jest.getTimerCount()).toBe(5)
+	})
+
+	test("removing the last camera evicts its worker instead of scanning it forever", async () => {
+		await worker.startWorkers()
+		await tick()
+
+		loadCameras.mockResolvedValue([])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()).toEqual({})
+		expect(jest.getTimerCount()).toBe(2)
+
+		execFile.mockClear()
+		jest.advanceTimersByTime(worker.getConfig().intervalMs)
+		await tick()
+		expect(execFile).not.toHaveBeenCalled()
+	})
+
+	test("a camera added after every camera was removed gets a worker back", async () => {
+		await worker.startWorkers()
+		await tick()
+
+		loadCameras.mockResolvedValue([])
+		jest.advanceTimersByTime(30000)
+		await tick()
+		expect(worker.getStatus()).toEqual({})
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()[1].running).toBe(true)
+		expect(jest.getTimerCount()).toBe(3)
+	})
+
+	test("a failed camera load evicts nobody and recovers on the next reconcile", async () => {
+		await worker.startWorkers()
+		await tick()
+
+		loadCameras.mockRejectedValueOnce(new Error("conf dir unreadable"))
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(worker.getStatus()[1].running).toBe(true)
+		expect(worker.getStatus()[2].running).toBe(true)
+		expect(jest.getTimerCount()).toBe(4)
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+		expect(worker.getStatus()[2]).toBeUndefined()
+	})
+
+	test("reconcile reloads on every tick even when a slow load stamps the cache mid-interval", async () => {
+		loadCameras.mockResolvedValue([])
+		await worker.startWorkers()
+		await tick()
+
+		let release
+		loadCameras.mockReturnValueOnce(new Promise(r => { release = r }))
+		jest.advanceTimersByTime(30000)
+		jest.advanceTimersByTime(1)
+		release([])
+		await tick()
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(29999)
+		await tick()
+
+		expect(worker.getStatus()[1].running).toBe(true)
+	})
+
+	test("a deleted camera stops being reported by getStatus", async () => {
+		await worker.startWorkers()
+		await tick()
+		expect(Object.keys(worker.getStatus())).toEqual(["1", "2"])
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(30000)
+		await tick()
+
+		expect(Object.keys(worker.getStatus())).toEqual(["1"])
 	})
 })
 

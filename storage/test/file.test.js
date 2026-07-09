@@ -23,7 +23,18 @@ describe("File Routes", () => {
 	let cookieWithBearerToken = "validCookie"
 
 	describe("/file/pathStats", () => {
-		test("bruh", () => expect(2+2).toBe(4))
+		const { loadCameras } = require("lib")
+		afterEach(() => { loadCameras.mockResolvedValue([]) })
+
+		test("returns 500 when the camera confs are unreadable instead of an empty series", async () => {
+			loadCameras.mockRejectedValueOnce(new Error("EACCES"))
+			const res = await supertest(app)
+				.get("/file/pathStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(query).not.toHaveBeenCalled()
+		})
 	})
 
 	describe("/file/pathSize", () => {
@@ -36,10 +47,10 @@ describe("File Routes", () => {
 
 	describe("/file/pathMetrics", () => {
 		const { loadCameras } = require("lib")
-		afterEach(() => { loadCameras.mockReturnValue([]) })
+		afterEach(() => { loadCameras.mockResolvedValue([]) })
 
 		test("maps per-camera size and count metrics", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
 			query.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
@@ -49,7 +60,7 @@ describe("File Routes", () => {
 		})
 
 		test("returns 500 when a metric query fails instead of hanging", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
 			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
@@ -57,14 +68,24 @@ describe("File Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("returns 500 when the camera confs are unreadable instead of reporting empty metrics", async () => {
+			loadCameras.mockRejectedValueOnce(new Error("EACCES"))
+			const res = await supertest(app)
+				.post("/file/pathMetrics")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(query).not.toHaveBeenCalled()
+		})
 	})
 
 	describe("/file/dailyStats", () => {
 		const { loadCameras } = require("lib")
-		afterEach(() => { loadCameras.mockReturnValue([]) })
+		afterEach(() => { loadCameras.mockResolvedValue([]) })
 
 		test("maps rows to per-camera byte totals", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }, { id: 2, name: "cam2" }])
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }, { id: 2, name: "cam2" }])
 			const ts = new Date("2026-06-11T10:00:00Z")
 			query.mockImplementationOnce(() => Promise.resolve({ rows: [
 				{ timestamp: ts, cam1: "100", cam2: "200" }
@@ -77,7 +98,7 @@ describe("File Routes", () => {
 		})
 
 		test("returns 500 on db error", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: "cam1" }])
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
 			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.get("/file/dailyStats")
@@ -87,12 +108,22 @@ describe("File Routes", () => {
 		})
 
 		test("escapes double quotes in camera names (SQL identifier injection)", async () => {
-			loadCameras.mockReturnValue([{ id: 1, name: "ev\"il" }])
+			loadCameras.mockResolvedValue([{ id: 1, name: "ev\"il" }])
 			const res = await supertest(app)
 				.get("/file/dailyStats")
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(200)
 			expect(query).toHaveBeenCalledWith(expect.stringContaining("as \"ev\"\"il\""))
+		})
+
+		test("returns 500 when the camera confs are unreadable instead of an empty series", async () => {
+			loadCameras.mockRejectedValueOnce(new Error("EACCES"))
+			const res = await supertest(app)
+				.get("/file/dailyStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(query).not.toHaveBeenCalled()
 		})
 	})
 

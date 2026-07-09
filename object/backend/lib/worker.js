@@ -12,6 +12,7 @@ const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), 
 const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
 const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? parseInt(process.env.object_PRUNE_INTERVAL_MS) : 300000
 const PRUNE_CONCURRENCY = 32
+const CAMERA_TTL_MS = 30000
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
@@ -54,10 +55,18 @@ const config = {
 const status = {}
 const timers = {}
 let pruneTimer = null
-let workersRunning = false
+let reconcileTimer = null
+let epoch = 0
 let _cameras = null
+let _camerasAt = 0
 
-const cameras = async () => _cameras || (_cameras = (await loadCameras()).map(cam => ({ id: cam.id, name: cam.name })))
+const cameras = async (reload = false) => {
+	if (reload || Date.now() - _camerasAt >= CAMERA_TTL_MS) {
+		_cameras = (await loadCameras()).map(cam => ({ id: cam.id, name: cam.name }))
+		_camerasAt = Date.now()
+	}
+	return _cameras
+}
 
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
@@ -150,29 +159,52 @@ const scan = async (id) => {
 	}
 }
 
+const startLoop = (id, era) => {
+	const st = status[id]
+	const loop = async () => {
+		await scan(id).catch(() => {})
+		if (era !== epoch || status[id] !== st || !st.running) return
+		timers[id] = setTimeout(loop, config.intervalMs)
+	}
+	loop()
+}
+
+const reconcile = async (era) => {
+	const active = await cameras(true).catch(() => null)
+	if (era !== epoch || !active) return
+	const ids = new Set(active.map((c) => c.id))
+	for (const cam of active) {
+		if (status[cam.id] && status[cam.id].running) continue
+		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
+		startLoop(cam.id, era)
+	}
+	for (const id of Object.keys(status)) {
+		if (ids.has(Number(id))) continue
+		clearTimeout(timers[id])
+		delete timers[id]
+		delete status[id]
+	}
+}
+
 const startWorkers = async () => {
 	if (process.env.object_ON !== "true" || !isPrimeInstance) return
-	workersRunning = true
-	_cameras = null
-	const list = await cameras()
-	if (!workersRunning) return
-	for (const cam of list) {
-		status[cam.id] = { running: true, lastRun: null, lastDetection: null, error: null }
-		const loop = async () => {
-			await scan(cam.id).catch(() => {})
-			if (workersRunning) timers[cam.id] = setTimeout(loop, config.intervalMs)
-		}
-		loop()
-	}
+	stopWorkers()
+	const era = epoch
+	await reconcile(era)
+	if (era !== epoch) return
 	pruneTimer = setInterval(() => pruneCaptures().catch(() => {}), PRUNE_INTERVAL_MS)
-	console.log(`🔍 Object detection workers started for ${list.length} camera(s)`)
+	reconcileTimer = setInterval(() => reconcile(era), CAMERA_TTL_MS)
+	console.log(`🔍 Object detection workers started for ${Object.values(status).filter((s) => s.running).length} camera(s)`)
 }
 
 const stopWorkers = () => {
-	workersRunning = false
+	epoch++
 	_cameras = null
+	_camerasAt = 0
 	clearInterval(pruneTimer)
 	pruneTimer = null
+	clearInterval(reconcileTimer)
+	reconcileTimer = null
 	for (const camera of Object.keys(timers)) {
 		clearTimeout(timers[camera])
 		delete timers[camera]

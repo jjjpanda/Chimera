@@ -219,7 +219,7 @@ describe("Events Routes", () => {
 		})
 
 		test("aggregates per-camera stats when cameras are configured", async () => {
-			lib.loadCameras.mockReturnValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
+			lib.loadCameras.mockResolvedValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
 			query.mockResolvedValueOnce({ rows: [
 				{ camera: "1", count: "3", bytes: "500000000" },
 				{ camera: "2", count: "2", bytes: "250000000" }

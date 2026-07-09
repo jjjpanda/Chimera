@@ -20,7 +20,11 @@ const stripCreds = (url) => {
 }
 
 app.get("/", async (req, res) => {
-	res.json((await loadCameras()).map(({ id, name, rtsp_url }) => ({ id, name, rtsp_url: stripCreds(rtsp_url) })))
+	try {
+		res.json((await loadCameras()).map(({ id, name, rtsp_url }) => ({ id, name, rtsp_url: stripCreds(rtsp_url) })))
+	} catch (e) {
+		res.status(500).json({ error: true })
+	}
 })
 
 module.exports = app
