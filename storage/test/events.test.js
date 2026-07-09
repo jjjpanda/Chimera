@@ -103,8 +103,19 @@ describe("Events Routes", () => {
 			expect(res.status).toBe(400)
 		})
 
+		test("returns 500 without destroying anything when the camera confs are unreadable", async () => {
+			lib.cameraConfFiles.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(fs.promises.rm).not.toHaveBeenCalled()
+			expect(query).not.toHaveBeenCalled()
+		})
+
 		test("removes the camera's .conf (matched by camera_id, any filename) so it does not resurrect on reload", async () => {
-			lib.cameraConfFiles.mockReturnValueOnce(["/etc/motion/cameraconf/frontdoor.conf"])
+			lib.cameraConfFiles.mockResolvedValueOnce(["/etc/motion/cameraconf/frontdoor.conf"])
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
@@ -186,6 +197,16 @@ describe("Events Routes", () => {
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
 			expect(res.body).toMatchObject({ used_gb: 0.5, max_gb: 0, cameras: [], total_frames: 0 })
+		})
+
+		test("returns 500 when the camera confs are unreadable instead of reporting zero cameras", async () => {
+			lib.loadCameras.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+			const res = await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+			expect(query).not.toHaveBeenCalled()
 		})
 
 		test("includes a per-category byte breakdown", async () => {

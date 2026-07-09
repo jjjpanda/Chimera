@@ -115,6 +115,7 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 	const { id } = req.params
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
 	try {
+		const confFiles = await cameraConfFiles(id)
 		await fs.promises.rm(path.join(CAPTURES_DIR, id), { recursive: true, force: true })
 		const objectFiles = await fs.promises.readdir(OBJECT_CAPTURES_DIR).catch(() => [])
 		await mapLimit(
@@ -124,7 +125,7 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 		)
 		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
-		for (const file of await cameraConfFiles(id)) {
+		for (const file of confFiles) {
 			await fs.promises.unlink(file).catch((e) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})

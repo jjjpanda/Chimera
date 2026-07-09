@@ -24,6 +24,7 @@ Shared helpers every service imports (`require("lib")`, a `file:../lib` dep); lo
 
 **Cameras & alerts**
 - `loadCameras` — motion + camera confs → `{id, name, rtsp_url, full_url}` (re-read on every call; rejects on I/O failure so callers can tell "unreadable" from "no cameras"; `loadCamerasSync` is the sync variant and still returns `[]`).
+- `cameraConfFiles` — conf paths declaring a given `camera_id` (rejects on I/O failure, same contract as `loadCameras`).
 - `webhookAlert` — POST to the alert webhook (`alert_URL` / `admin_alert_URL`).
 - `alertTime` — `moment-timezone` helper in `alert_TZ`.
 
