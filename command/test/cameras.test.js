@@ -75,5 +75,17 @@ describe("Cameras Route", () => {
 			])
 			spy.mockRestore()
 		})
+
+		test("returns 500 when the camera confs are unreadable instead of an empty list", async () => {
+			const fs = require("fs")
+			fs.promises.readFile.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", revoked: false }], rowCount: 1 })
+			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.get("/cameras/")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
 	})
 })

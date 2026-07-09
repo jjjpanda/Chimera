@@ -8,6 +8,11 @@ const pool = createPool("STORAGE FILE POOL ERROR")
 
 const FS_CONCURRENCY = 64
 
+const camerasOrFail = (res) => loadCameras().catch(() => {
+	res.status(500).send({ error: true })
+	return null
+})
+
 const topLevelFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
 	const files = entries.filter((entry) => entry.isFile())
@@ -99,7 +104,8 @@ module.exports = {
 	},
 
 	dailyStats: async (req, res) => {
-		const cameras = await loadCameras()
+		const cameras = await camerasOrFail(res)
+		if(!cameras) return
 		if(cameras.length == 0) return res.send([])
 		queryForDailyStats(cameras).then(values => {
 			const stats = values.rows.map(row => ({
@@ -114,7 +120,8 @@ module.exports = {
 	},
 
 	fileStats: async (req, res) => {
-		const cameras = await loadCameras()
+		const cameras = await camerasOrFail(res)
+		if(!cameras) return
 		if(cameras.length == 0) return res.send([])
 		queryForGroupedStats(cameras).then(values => {
 			let fileStats = values.rows.map(row => ({
@@ -137,7 +144,7 @@ module.exports = {
 			if (!maxGb) return res.send({ skipped: true })
 
 			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
+			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
 
 			const { rows: frameTotalRows } = await pool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
@@ -190,7 +197,8 @@ module.exports = {
 	},
 
 	cameraMetrics: async (req, res) => {
-		const cameras = await loadCameras()
+		const cameras = await camerasOrFail(res)
+		if (!cameras) return
 
 		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
 			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))

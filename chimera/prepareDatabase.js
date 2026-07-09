@@ -34,19 +34,19 @@ const creationTasks = [
 		description: "task runs table"
 	},
 	{
-		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
+		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
 		description: "frame files (camera, timestamp) index"
 	},
 	{
-		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
+		query: "CREATE INDEX IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
 		description: "objects detected (camera, timestamp) index"
 	},
 	{
-		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_runs_ran_at ON task_runs(ran_at);",
+		query: "CREATE INDEX IF NOT EXISTS idx_task_runs_ran_at ON task_runs(ran_at);",
 		description: "task runs (ran_at) index"
 	},
 	{
-		query: "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_sessions_username ON sessions(username);",
+		query: "CREATE INDEX IF NOT EXISTS idx_sessions_username ON sessions(username);",
 		description: "sessions (username) index"
 	},
 ]

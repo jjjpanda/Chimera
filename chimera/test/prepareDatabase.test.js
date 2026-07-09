@@ -17,11 +17,12 @@ describe("prepareDatabase migration tasks", () => {
 		}
 	})
 
-	test("builds the camera/timestamp indexes concurrently and idempotently", () => {
+	test("builds the indexes idempotently and without CONCURRENTLY", () => {
 		const idx = creationTasks.filter(t => /CREATE INDEX/.test(t.query))
 		expect(idx).toHaveLength(4)
 		for (const t of idx) {
-			expect(t.query).toMatch(/CREATE INDEX CONCURRENTLY IF NOT EXISTS/)
+			expect(t.query).toMatch(/CREATE INDEX IF NOT EXISTS/)
+			expect(t.query).not.toMatch(/CONCURRENTLY/)
 		}
 	})
 
