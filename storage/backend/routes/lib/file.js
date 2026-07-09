@@ -8,8 +8,7 @@ const pool = createPool("STORAGE FILE POOL ERROR")
 
 const FS_CONCURRENCY = 64
 
-const camerasOrFail = (res) => loadCameras().catch((e) => {
-	console.log("err", e)
+const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
 })
@@ -105,7 +104,8 @@ module.exports = {
 	},
 
 	dailyStats: async (req, res) => {
-		const cameras = await loadCameras()
+		const cameras = await camerasOrFail(res)
+		if(!cameras) return
 		if(cameras.length == 0) return res.send([])
 		queryForDailyStats(cameras).then(values => {
 			const stats = values.rows.map(row => ({
