@@ -138,11 +138,11 @@ const handleDetections = async (camera, detections, jpeg) => {
 }
 
 const scan = async (id) => {
-	const list = await cameras()
-	const cam = list.find(c => c.id === id)
-	if (!cam) return []
-	const st = status[id] || (status[id] = {})
 	try {
+		const list = await cameras()
+		const cam = list.find(c => c.id === id)
+		if (!cam) return []
+		const st = status[id] || (status[id] = {})
 		const { jpeg, raw } = await extractFrame(cam.id)
 		const all = await detector.detect(toTensor(raw), config.confidence)
 		const detections = all.filter((d) => config.classes.includes(d.class))
@@ -154,7 +154,7 @@ const scan = async (id) => {
 		}
 		return detections
 	} catch (e) {
-		st.error = e.message
+		if (status[id]) status[id].error = e.message
 		throw e
 	}
 }

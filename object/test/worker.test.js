@@ -153,6 +153,11 @@ describe("scan", () => {
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
 	})
 
+	test("scanning an unknown camera id leaves no status entry behind", async () => {
+		expect(await worker.scan(999)).toEqual([])
+		expect(worker.getStatus()[999]).toBeUndefined()
+	})
+
 	test("passes a timeout and SIGKILL to execFile", async () => {
 		detector.detect.mockResolvedValue([])
 		await worker.scan(1)
