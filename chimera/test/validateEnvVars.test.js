@@ -12,13 +12,13 @@ const run = (overrides) => spawnSync(process.execPath, [SCRIPT], {
 
 describe("validateEnvVars placeholder-secret gate", () => {
 	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
-		const res = run({ SECRETKEY: "Auth secret key for hashing" })
+		const res = run({ SECRETKEY: "Auth secret key for hashing, min 32 characters" })
 		expect(res.stdout).toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
 		expect(res.status).toBe(1)
 	})
 
 	test("does not flag SECRETKEY when set to a real value", () => {
-		const res = run({ SECRETKEY: "a-real-secret-value" })
+		const res = run({ SECRETKEY: "a-real-secret-value-thats-long-enough" })
 		expect(res.stdout).not.toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
 	})
 
