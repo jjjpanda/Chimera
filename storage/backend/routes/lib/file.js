@@ -2,33 +2,22 @@ const path = require("path")
 const fs = require("fs")
 const rimraf = require("rimraf")
 const moment = require("moment")
-const { loadCameras, webhookAlert, mapLimit, createPool } = require("lib")
+const { loadCameras, webhookAlert, mapLimit } = require("lib")
 
-const pool = createPool("STORAGE FILE POOL ERROR")
-
-const FS_CONCURRENCY = 64
+const pool = require("../../lib/pool")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
 
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
 })
 
-const topLevelFileBytes = async (dir) => {
-	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
-	const files = entries.filter((entry) => entry.isFile())
-	const sizes = await mapLimit(files, FS_CONCURRENCY, async (entry) => {
-		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
-		return size
-	})
-	return sizes.reduce((sum, size) => sum + size, 0)
-}
-
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
 		const camera = parseInt(req.body.camera)
 		if(camera == req.body.camera){
 			req.body.camera = camera
-			req.body.appendedPath = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", String(camera))
+			req.body.appendedPath = path.join(CAPTURES_DIR, String(camera))
 			next()
 		}
 		else{
@@ -143,16 +132,13 @@ module.exports = {
 			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 			if (!maxGb) return res.send({ skipped: true })
 
-			const capturesPath = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-			const objectCapturesPath = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
-
 			const { rows: frameTotalRows } = await pool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
 			)
 			const frameTotal = parseInt(frameTotalRows[0].total) || 0
 
-			const nonFrameBytes = await topLevelFileBytes(capturesPath)
-			const usedObjectBytes = await topLevelFileBytes(objectCapturesPath)
+			const nonFrameBytes = await dirFileBytes(CAPTURES_DIR)
+			const usedObjectBytes = await dirFileBytes(OBJECT_CAPTURES_DIR)
 			const totalUsedBytes = frameTotal + nonFrameBytes + usedObjectBytes
 
 			const targetBytes = maxGb * 0.9 * 1e9
@@ -181,7 +167,7 @@ module.exports = {
 				}
 
 				await mapLimit(batch, FS_CONCURRENCY, row =>
-					fs.promises.unlink(path.join(capturesPath, row.camera.toString(), row.name)).catch(() => {})
+					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name)).catch(() => {})
 				)
 				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
 				deleted += batch.length

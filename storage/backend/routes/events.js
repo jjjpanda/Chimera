@@ -5,23 +5,9 @@ var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../lib/fsUsage")
 
 const app = express.Router()
-
-const FS_CONCURRENCY = 64
-
-const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-const OBJECT_CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
-
-const dirFileBytes = async (dir) => {
-	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
-	const files = entries.filter((entry) => entry.isFile())
-	const sizes = await mapLimit(files, FS_CONCURRENCY, async (entry) => {
-		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
-		return size
-	})
-	return sizes.reduce((sum, size) => sum + size, 0)
-}
 
 const captureBreakdown = async (frameBytes) => {
 	let videos = 0, zips = 0, other = 0
