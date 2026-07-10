@@ -1,6 +1,7 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
+var pm2 = require("pm2")
 var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
@@ -116,7 +117,13 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})
 		}
-		res.json({ deleted: true })
+		pm2.restart("motion", (err) => {
+			if (err) {
+				console.log("STORAGE: motion restart failed after camera delete; camera may resurrect until motion is restarted", err.message || err)
+				return res.status(502).json({ deleted: true, motionRestarted: false })
+			}
+			res.json({ deleted: true, motionRestarted: true })
+		})
 	} catch (e) {
 		res.status(500).json({ error: true })
 	}
