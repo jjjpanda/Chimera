@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react"
 
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
+import toast from "../js/toast.js"
 
 const listVideos = (cameras, setState, seqRef) => {
 	const seq = ++seqRef.current
@@ -33,14 +34,13 @@ const listVideos = (cameras, setState, seqRef) => {
 	})
 }
 
-const attemptRestart = (camera) => {
+const attemptRestart = (camera) =>
 	request("/livestream/restart", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ camera }),
 		mode: "cors"
-	})
-}
+	}, (prom) => prom)
 
 const useLiveVideo = (cameras) => {
 	const seqRef = useRef(0)
@@ -52,11 +52,17 @@ const useLiveVideo = (cameras) => {
 
 	const refresh = () => listVideos(cameras, setState, seqRef)
 
+	const restartAll = () => {
+		if (!cameras.length) return
+		toast("Restarting livestreams…")
+		Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(refresh)
+	}
+
 	useEffect(() => {
 		refresh()
 	}, [cameras])
 
-	return [state, refresh, attemptRestart]
+	return [state, refresh, restartAll]
 }
 
 export default useLiveVideo

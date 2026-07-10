@@ -5,7 +5,7 @@ Serves and monitors per-camera HLS streams. RTSP→HLS transcoding runs in separ
 ---
 # API
 
-Session-guarded (`authorize`) except `/livestream/health`; restart also requires admin (`requireAdmin`):
+Session-guarded (`authorize`) except `/livestream/health`:
 
 - pm2 status for all cameras or one
 - restart a camera's ffmpeg process
