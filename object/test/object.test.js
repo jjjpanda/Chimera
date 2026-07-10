@@ -81,6 +81,27 @@ describe("Object Routes", () => {
 			.expect(400, done)
 	})
 
+	test("Detections reject an unparseable start date", (done) => {
+		supertest(app)
+			.get("/object/detections?start=banana")
+			.set("Cookie", authorized)
+			.expect(400, done)
+	})
+
+	test("Detections reject an unparseable end date", (done) => {
+		supertest(app)
+			.get("/object/detections?end=banana")
+			.set("Cookie", authorized)
+			.expect(400, done)
+	})
+
+	test("Detections accept a valid ISO start/end range", (done) => {
+		supertest(app)
+			.get("/object/detections?start=2024-01-01&end=2024-02-01")
+			.set("Cookie", authorized)
+			.expect(200, done)
+	})
+
 	test("Config update requires auth", (done) => {
 		supertest(app).post("/object/config").send({ confidence: 0.7 }).expect(401, done)
 	})
@@ -120,6 +141,18 @@ describe("Object Routes", () => {
 			.send({ camera: 1 })
 			.expect(502)
 			.expect((res) => expect(res.body.error).toBe("frame grab failed"))
+			.end(done)
+	})
+
+	test("Scan returns 404 for an unknown camera instead of a false-positive empty result", (done) => {
+		const err = Object.assign(new Error("unknown camera"), { code: "UNKNOWN_CAMERA" })
+		require("../backend/lib/worker.js").scan.mockRejectedValueOnce(err)
+		supertest(app)
+			.post("/object/scan")
+			.set("Cookie", authorized)
+			.send({ camera: 999 })
+			.expect(404)
+			.expect((res) => expect(res.body.error).toBe("unknown camera"))
 			.end(done)
 	})
 })

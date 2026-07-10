@@ -15,14 +15,32 @@ const COCO = [
 	"toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 ]
 
+const BACKOFF_MS = 5000
+const MAX_BACKOFF_MS = 30 * 60 * 1000
+
 let sessionPromise = null
+let lastError = null
+let lastFailureAt = 0
+let backoffMs = 0
 
 const load = () => {
-	if (!sessionPromise) {
-		sessionPromise = ensureModel()
-			.then((modelPath) => ort.InferenceSession.create(modelPath))
-			.catch((e) => { sessionPromise = null; throw e })
-	}
+	if (sessionPromise) return sessionPromise
+	if (lastError && Date.now() - lastFailureAt < backoffMs) return Promise.reject(lastError)
+	sessionPromise = ensureModel()
+		.then((modelPath) => ort.InferenceSession.create(modelPath))
+		.then((session) => {
+			lastError = null
+			backoffMs = 0
+			return session
+		})
+		.catch((e) => {
+			sessionPromise = null
+			lastError = e
+			lastFailureAt = Date.now()
+			backoffMs = Math.min(backoffMs ? backoffMs * 2 : BACKOFF_MS, MAX_BACKOFF_MS)
+			console.log(`🔍 Model load failed, backing off ${backoffMs}ms:`, e.message)
+			throw e
+		})
 	return sessionPromise
 }
 

@@ -10,7 +10,7 @@ if ((Number(process.env.chimeraInstances) > 1 || process.env.chimeraInstances ==
 
 const scaled = process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances
 const baseEnv = { NODE_ENV: process.env.NODE_ENV, memory_ON: process.env.memory_ON }
-const ignore_watch = ["shared", "feed", "objectTemp", "objectCaptures", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"]
+const ignore_watch = ["shared", "feed", "objectTemp", "objectCaptures", "object/backend/model", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"]
 
 const svc = (name, { instances = scaled } = {}) => ({
 	script: `${name}/start.js`,

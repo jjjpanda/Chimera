@@ -30,7 +30,8 @@ app.post("/scan", requireAdmin, (req, res) => {
 	const camera = parseInt(req.body && req.body.camera)
 	if (!camera) return res.status(400).send({ error: "camera required" })
 	ifPrime(res, () =>
-		worker.scan(camera).then(detections => res.send({ camera, detections })).catch(e => res.status(502).send({ error: e.message })))
+		worker.scan(camera).then(detections => res.send({ camera, detections }))
+			.catch(e => res.status(e.code === "UNKNOWN_CAMERA" ? 404 : 502).send({ error: e.message })))
 })
 
 app.get("/detections", async (req, res) => {
@@ -43,8 +44,14 @@ app.get("/detections", async (req, res) => {
 		if (!(id > 0)) return res.status(400).send({ error: "unknown camera" })
 		params.push(id); where.push(`camera = $${params.length}`)
 	}
-	if (start) { params.push(start); where.push(`timestamp >= $${params.length}`) }
-	if (end) { params.push(end); where.push(`timestamp <= $${params.length}`) }
+	if (start) {
+		if (isNaN(Date.parse(start))) return res.status(400).send({ error: "invalid start" })
+		params.push(start); where.push(`timestamp >= $${params.length}`)
+	}
+	if (end) {
+		if (isNaN(Date.parse(end))) return res.status(400).send({ error: "invalid end" })
+		params.push(end); where.push(`timestamp <= $${params.length}`)
+	}
 	params.push(limit)
 	const clause = where.length ? `WHERE ${where.join(" AND ")} ` : ""
 	try {
