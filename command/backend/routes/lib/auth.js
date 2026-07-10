@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs")
 const { randomUUID } = require("crypto")
 const { createPool } = require("lib")
 
-const pool = createPool()
+const pool = createPool("COMMAND POOL ERROR")
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
 
