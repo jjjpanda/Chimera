@@ -21,7 +21,6 @@ module.exports = () => {
 		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
 		const sessionSync = require("./lib/sessionSync.js")
-		const cronTask = require("./lib/cronTask.js")(io)
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
         
@@ -33,8 +32,6 @@ module.exports = () => {
 			client.on("callback", (callback) => {
 				callback()
 			})
-
-			client.on("cron", cronTask)
 
 			client.on("createTask", createTask)
 			client.on("startTask", startTask)
