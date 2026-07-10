@@ -15,7 +15,7 @@ const stripCreds = (url) => {
 		}
 		return u.toString()
 	} catch {
-		return url
+		return "***"
 	}
 }
 
@@ -27,4 +27,5 @@ app.get("/", async (req, res) => {
 	}
 })
 
+app.stripCreds = stripCreds
 module.exports = app
