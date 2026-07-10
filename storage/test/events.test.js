@@ -15,6 +15,7 @@ const supertest = require("supertest")
 const lib = require("lib")
 const { __query: query } = require("pg")
 const fs = require("fs")
+const pm2 = require("pm2")
 const app = require("../backend/storage.js")
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
@@ -93,7 +94,23 @@ describe("Events Routes", () => {
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ deleted: true })
+			expect(res.body).toEqual({ deleted: true, motionRestarted: true })
+		})
+
+		test("restarts motion so the deleted camera does not resurrect", async () => {
+			await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
+		})
+
+		test("reports motionRestarted:false without claiming full success when the restart fails", async () => {
+			pm2.restart.mockImplementationOnce((name, cb) => cb(new Error("pm2 busy")))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(502)
+			expect(res.body).toEqual({ deleted: true, motionRestarted: false })
 		})
 
 		test("returns 400 for non-numeric id", async () => {

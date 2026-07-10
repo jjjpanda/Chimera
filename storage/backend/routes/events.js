@@ -1,27 +1,14 @@
 var express = require("express")
 var path = require("path")
 var fs = require("fs")
+var pm2 = require("pm2")
 var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../lib/fsUsage")
 
 const app = express.Router()
-
-const FS_CONCURRENCY = 64
-
-const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-const OBJECT_CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
-
-const dirFileBytes = async (dir) => {
-	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
-	const files = entries.filter((entry) => entry.isFile())
-	const sizes = await mapLimit(files, FS_CONCURRENCY, async (entry) => {
-		const { size } = await fs.promises.stat(path.join(dir, entry.name)).catch(() => ({ size: 0 }))
-		return size
-	})
-	return sizes.reduce((sum, size) => sum + size, 0)
-}
 
 const captureBreakdown = async (frameBytes) => {
 	let videos = 0, zips = 0, other = 0
@@ -130,7 +117,13 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
 			})
 		}
-		res.json({ deleted: true })
+		pm2.restart("motion", (err) => {
+			if (err) {
+				console.log("STORAGE: motion restart failed after camera delete; camera may resurrect until motion is restarted", err.message || err)
+				return res.status(502).json({ deleted: true, motionRestarted: false })
+			}
+			res.json({ deleted: true, motionRestarted: true })
+		})
 	} catch (e) {
 		res.status(500).json({ error: true })
 	}

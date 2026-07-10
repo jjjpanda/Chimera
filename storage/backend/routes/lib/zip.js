@@ -103,6 +103,9 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			})
 		}
 		else{
+			archive.on("error", function(err) {
+				console.log("An error occurred: " + err.message)
+			})
 			res.attachment(fileName(camera, start, end, rand, "zip"))
 			archive.pipe(res, {end: true})
 		}
