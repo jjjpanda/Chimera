@@ -364,4 +364,19 @@ describe("Convert Routes", () => {
 			writeFileSpy.mockRestore()
 		})
 	})
+
+	describe("zip streaming (non-save) branch error handling", () => {
+		const { EventEmitter } = require("events")
+		const { zip } = require("../backend/routes/lib/zip.js")
+
+		test("registers an archive error listener so an fs error does not crash storage", () => {
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+			const res = { attachment: jest.fn(), send: jest.fn() }
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
+
+			expect(() => archive.emit("error", new Error("EPIPE"))).not.toThrow()
+		})
+	})
+
 })
