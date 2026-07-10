@@ -7,7 +7,7 @@ module.exports = (io) => ({
 	createTask: (taskObject) => {
 		if (scheduledTask[taskObject.id]) scheduledTask[taskObject.id].destroy()
 		scheduledTaskConfigs[taskObject.id] = taskObject
-		scheduledTask[taskObject.id] = cron.schedule(
+		scheduledTask[taskObject.id] = cron.createTask(
 			taskObject.cronString,
 			() => io.emit(taskObject.id)
 		)

@@ -4,7 +4,7 @@ beforeEach(() => {
 	jest.resetModules()
 	taskObject = { id: "t1", cronString: "* * * * *", running: true }
 	fakeTask = { start: jest.fn(), stop: jest.fn(), destroy: jest.fn() }
-	jest.doMock("node-cron", () => ({ schedule: jest.fn(() => fakeTask) }))
+	jest.doMock("node-cron", () => ({ createTask: jest.fn(() => fakeTask) }))
 	cron = require("node-cron")
 	makeScheduledTasks = require("../lib/scheduledTasks.js")
 	io = { emit: jest.fn() }
@@ -14,9 +14,9 @@ beforeEach(() => {
 describe("memory scheduledTasks lifecycle", () => {
 	test("createTask schedules, starts, and emits the task id on tick", () => {
 		tasks.createTask(taskObject)
-		expect(cron.schedule).toHaveBeenCalledWith(taskObject.cronString, expect.any(Function))
+		expect(cron.createTask).toHaveBeenCalledWith(taskObject.cronString, expect.any(Function))
 		expect(fakeTask.start).toHaveBeenCalledTimes(1)
-		cron.schedule.mock.calls[0][1]()
+		cron.createTask.mock.calls[0][1]()
 		expect(io.emit).toHaveBeenCalledWith(taskObject.id)
 	})
 
@@ -54,7 +54,7 @@ describe("memory scheduledTasks lifecycle", () => {
 		tasks.createTask(taskObject)
 		const firstTask = fakeTask
 		const secondTask = { start: jest.fn(), stop: jest.fn(), destroy: jest.fn() }
-		cron.schedule.mockReturnValueOnce(secondTask)
+		cron.createTask.mockReturnValueOnce(secondTask)
 
 		tasks.createTask({ ...taskObject, cronString: "*/5 * * * *" })
 
