@@ -15,7 +15,7 @@ var {
 
 const app = express.Router()
 
-app.post("/start", requireAdmin, validateBody, validateStartableTask, taskList, startNewTask)
+app.post("/start", requireAdmin, validateBody, validateStartableTask, startNewTask)
 app.get("/list", requireAdmin, taskList, sendList)
 app.post("/stop", requireAdmin, validateBody, validateId, stopTask)
 app.post("/destroy", requireAdmin, validateBody, validateId, destroyTask)
