@@ -1,6 +1,6 @@
 const { Server } = require("socket.io")
 
-const { isPrimeInstance } = require("lib")
+const { isPrimeInstance, timingSafeCompare } = require("lib")
 
 module.exports = () => {
 	if(process.env.memory_ON == "true" && isPrimeInstance){
@@ -12,7 +12,7 @@ module.exports = () => {
 				credentials: true
 			},
 			allowRequest: (req, callback) => {
-				const authorized = req.headers.authorization == process.env.memory_AUTH_TOKEN
+				const authorized = timingSafeCompare(req.headers.authorization, process.env.memory_AUTH_TOKEN)
 				callback(authorized ? "OK" : "UNAUTHORIZED", authorized)
 			}
 		})

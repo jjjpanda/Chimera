@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password } = require("lib")
+var { validateBody, auth, password, timingSafeCompare } = require("lib")
 const { requireAdmin } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -77,7 +77,7 @@ app.get("/status", async (req, res) => {
 
 app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
-	if (process.env.setup_TOKEN && token !== process.env.setup_TOKEN) return res.status(403).json({ error: true })
+	if (process.env.setup_TOKEN && !timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
