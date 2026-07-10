@@ -5,6 +5,7 @@ module.exports = {
 	checkUrl: {
 		command: `${baseUrl}/command/health`,
 		livestream: `${baseUrl}/livestream/health`,
+		object: `${baseUrl}/object/health`,
 		schedule: `${baseUrl}/schedule/health`,
 		storage: `${baseUrl}/storage/health`
 	},
