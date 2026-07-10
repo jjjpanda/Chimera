@@ -9,14 +9,29 @@ const sendWebhook = require("./webhook.js")
 const INPUT = detector.INPUT
 const TEMP_DIR = path.join(process.cwd(), "objectTemp")
 const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || process.cwd(), "objectCaptures")
-const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? parseInt(process.env.object_MAX_CAPTURES) : 500
+const MAX_CAPTURES = Number.isFinite(parseInt(process.env.object_MAX_CAPTURES)) ? Math.max(0, parseInt(process.env.object_MAX_CAPTURES)) : 500
 const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? parseInt(process.env.object_PRUNE_INTERVAL_MS) : 300000
 const PRUNE_CONCURRENCY = 32
 const CAMERA_TTL_MS = 30000
+const TEMP_STALE_MS = 60000
 fs.mkdirSync(TEMP_DIR, { recursive: true })
 fs.mkdirSync(CAPTURES_DIR, { recursive: true })
 
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
+
+const sweepTemp = async () => {
+	const names = await fs.promises.readdir(TEMP_DIR).catch(() => [])
+	const cutoff = Date.now() - TEMP_STALE_MS
+	await mapLimit(names, PRUNE_CONCURRENCY, async (f) => {
+		const p = path.join(TEMP_DIR, f)
+		try {
+			const stat = await fs.promises.stat(p)
+			if (stat.mtimeMs < cutoff) await fs.promises.unlink(p)
+		} catch (e) {}
+	})
+}
+
+sweepTemp().catch(() => {})
 
 const pruneCaptures = async () => {
 	const names = await fs.promises.readdir(CAPTURES_DIR)
@@ -46,8 +61,13 @@ const pruneCaptures = async () => {
 	}
 }
 
+const parseConfidence = (val) => {
+	const c = parseFloat(val)
+	return Number.isFinite(c) && c >= 0 && c <= 1 ? c : 0.5
+}
+
 const config = {
-	confidence: Number.isFinite(parseFloat(process.env.object_CONFIDENCE)) ? parseFloat(process.env.object_CONFIDENCE) : 0.5,
+	confidence: parseConfidence(process.env.object_CONFIDENCE),
 	intervalMs: parseInt(process.env.object_INTERVAL_MS) || 5000,
 	classes: ["person", "car", "bird", "dog", "cat", "truck", "bus", "motorcycle", "umbrella", "bicycle"],
 }
@@ -141,7 +161,11 @@ const scan = async (id) => {
 	try {
 		const list = await cameras()
 		const cam = list.find(c => c.id === id)
-		if (!cam) return []
+		if (!cam) {
+			const err = new Error("unknown camera")
+			err.code = "UNKNOWN_CAMERA"
+			throw err
+		}
 		const st = status[id] || (status[id] = {})
 		const { jpeg, raw } = await extractFrame(cam.id)
 		const all = await detector.detect(toTensor(raw), config.confidence)
@@ -192,7 +216,10 @@ const startWorkers = async () => {
 	const era = epoch
 	await reconcile(era)
 	if (era !== epoch) return
-	pruneTimer = setInterval(() => pruneCaptures().catch(() => {}), PRUNE_INTERVAL_MS)
+	pruneTimer = setInterval(() => {
+		pruneCaptures().catch(() => {})
+		sweepTemp().catch(() => {})
+	}, PRUNE_INTERVAL_MS)
 	reconcileTimer = setInterval(() => reconcile(era), CAMERA_TTL_MS)
 	console.log(`🔍 Object detection workers started for ${Object.values(status).filter((s) => s.running).length} camera(s)`)
 }
@@ -218,6 +245,7 @@ module.exports = {
 	startWorkers,
 	stopWorkers,
 	pruneCaptures,
+	sweepTemp,
 	scan,
 	toTensor,
 	cameras,

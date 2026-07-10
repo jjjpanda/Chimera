@@ -153,8 +153,11 @@ describe("scan", () => {
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
 	})
 
-	test("scanning an unknown camera id leaves no status entry behind", async () => {
-		expect(await worker.scan(999)).toEqual([])
+	test("scanning an unknown camera id throws distinguishably and leaves no status entry behind", async () => {
+		const err = await worker.scan(999).catch((e) => e)
+		expect(err).toBeInstanceOf(Error)
+		expect(err.message).toBe("unknown camera")
+		expect(err.code).toBe("UNKNOWN_CAMERA")
 		expect(worker.getStatus()[999]).toBeUndefined()
 	})
 
@@ -515,5 +518,23 @@ describe("env-derived numeric config", () => {
 		delete process.env.object_MAX_CAPTURES
 		jest.resetModules()
 		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(500)
+	})
+
+	test("object_MAX_CAPTURES=-1 clamps to 0 instead of deleting every capture", () => {
+		process.env.object_MAX_CAPTURES = "-1"
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(0)
+	})
+
+	test("object_CONFIDENCE > 1 falls back to the default instead of disabling detection", () => {
+		process.env.object_CONFIDENCE = "2"
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").getConfig().confidence).toBe(0.5)
+	})
+
+	test("object_CONFIDENCE < 0 falls back to the default", () => {
+		process.env.object_CONFIDENCE = "-1"
+		jest.resetModules()
+		expect(require("../backend/lib/worker.js").getConfig().confidence).toBe(0.5)
 	})
 })
