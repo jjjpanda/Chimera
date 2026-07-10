@@ -21,6 +21,17 @@ describe("validateEnvVars placeholder-secret gate", () => {
 		const res = run({ SECRETKEY: "a-real-secret-value" })
 		expect(res.stdout).not.toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
 	})
+
+	test("blocks boot when SECRETKEY is shorter than 32 characters", () => {
+		const res = run({ SECRETKEY: "too-short-a-secret" })
+		expect(res.stdout).toContain("SECRETKEY TOO SHORT — must be at least 32 characters: SECRETKEY")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts SECRETKEY at least 32 characters long", () => {
+		const res = run({ SECRETKEY: "a".repeat(32) })
+		expect(res.stdout).not.toContain("SECRETKEY TOO SHORT")
+	})
 })
 
 describe("validateEnvVars confirmURL gate", () => {
