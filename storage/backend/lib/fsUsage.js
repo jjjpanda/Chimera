@@ -4,8 +4,8 @@ const { mapLimit } = require("lib")
 
 const FS_CONCURRENCY = 64
 
-const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "shared/captures")
-const OBJECT_CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH, "objectCaptures")
+const CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || "", "shared/captures")
+const OBJECT_CAPTURES_DIR = path.join(process.env.storage_FOLDERPATH || "", "objectCaptures")
 
 const dirFileBytes = async (dir) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
