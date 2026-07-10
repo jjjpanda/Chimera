@@ -13,6 +13,8 @@ module.exports = {
 		client.emit("listTask", tasks => {
 			if(isValidId(id, tasks, true)){
 				client.emit("startTask", id, (scheduledTasks) => {
+					pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
+						.catch(err => console.log("TASK UPDATE ERROR", err))
 					res.send({
 						running: scheduledTasks[id]?.running ?? false
 					})
@@ -66,11 +68,15 @@ module.exports = {
 		
 		id = `task-${randomID.generate()}`
 		let taskObj = {
-			id, url, body, cronString, 
+			id, url, body, cronString,
 			running: true
 		}
 		client.on(id, generateTask(url, id, body))
 		client.emit("createTask", taskObj)
+		pool.query(
+			"INSERT INTO scheduled_tasks (id, url, body, cron_string, running) VALUES ($1, $2, $3, $4, true)",
+			[id, url, JSON.stringify(body), cronString]
+		).catch(err => console.log("TASK INSERT ERROR", err))
 		res.send({
 			running: true
 		})
@@ -79,6 +85,8 @@ module.exports = {
 	stopTask: (req, res) => {
 		const { id } = req.body
 		client.emit("stopTask", id, tasks=>{
+			pool.query("UPDATE scheduled_tasks SET running=false WHERE id=$1", [id])
+				.catch(err => console.log("TASK UPDATE ERROR", err))
 			res.send({
 				stopped: !(tasks[id] && tasks[id].running)
 			})
@@ -89,6 +97,8 @@ module.exports = {
 		const { id } = req.body
 		client.off(id)
 		client.emit("destroyTask", id, tasks=>{
+			pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
+				.catch(err => console.log("TASK DELETE ERROR", err))
 			res.send({
 				destroyed: !(id in tasks)
 			})
@@ -121,6 +131,7 @@ module.exports = {
 			const { rows } = await pool.query(query, taskId ? [taskId] : [])
 			res.send({ runs: rows })
 		} catch (e) {
+			console.log("TASK RUNS ERROR", e)
 			res.status(500).send({ error: true })
 		}
 	},
@@ -145,6 +156,26 @@ module.exports = {
 		}
 		client.on("connect", register)
 		if (client.connected) register()
+	},
+
+	rehydrateTasks: () => {
+		const register = async () => {
+			let rows
+			try {
+				({ rows } = await pool.query("SELECT * FROM scheduled_tasks"))
+			} catch (e) {
+				console.log("TASK REHYDRATE ERROR", e)
+				return
+			}
+			rows.forEach(({id, url, body, cron_string, running}) => {
+				client.off(id)
+				client.on(id, generateTask(url, id, body))
+				client.emit("createTask", {id, url, body, cronString: cron_string, running: true})
+				if (!running) client.emit("stopTask", id)
+			})
+		}
+		client.on("connect", register)
+		if (client.connected) return register()
 	},
 
 	startDbPruning: () => pruneInterval(pool, "DELETE FROM task_runs WHERE ran_at < NOW() - INTERVAL '30 days'")
@@ -176,7 +207,7 @@ const generateTask = (url, id, body) => () => {
 }
 
 const isValidId = (id, tasks, stoppedTaskValidationNecessary=false) => {
-	if(id != undefined && id.includes("task") && id in tasks){
+	if(typeof id == "string" && id.includes("task") && id in tasks){
 		if(stoppedTaskValidationNecessary){
 			return !tasks[id].running
 		}

@@ -34,6 +34,10 @@ const creationTasks = [
 		description: "task runs table"
 	},
 	{
+		query: "CREATE TABLE scheduled_tasks(id TEXT PRIMARY KEY, url TEXT NOT NULL, body JSONB NOT NULL, cron_string TEXT NOT NULL, running BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());",
+		description: "scheduled tasks table"
+	},
+	{
 		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
 		description: "frame files (camera, timestamp) index"
 	},
