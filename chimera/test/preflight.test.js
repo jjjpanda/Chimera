@@ -7,7 +7,7 @@ jest.mock("fs", () => {
 			if (p.includes("env.example")) return [
 				"SECRETKEY = Auth secret key",
 				"gateway_PORT = Port number",
-				"PRINTPASSWORD = (true | false)",
+				"command_ON = (true | false)",
 				"alert_TZ = IANA tz ***"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
@@ -43,7 +43,7 @@ describe("parseSchema", () => {
 
 describe("typeOf", () => {
 	test("bool for true|false placeholder", () => {
-		expect(typeOf("PRINTPASSWORD", "(true | false)")).toBe("bool")
+		expect(typeOf("command_ON", "(true | false)")).toBe("bool")
 	})
 
 	test("port for _PORT suffix", () => {
@@ -60,7 +60,7 @@ describe("typeOf", () => {
 })
 
 describe("varProblem", () => {
-	const boolVar = { key: "PRINTPASSWORD", placeholder: "(true | false)", optional: false }
+	const boolVar = { key: "command_ON", placeholder: "(true | false)", optional: false }
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }

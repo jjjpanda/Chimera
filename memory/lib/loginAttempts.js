@@ -5,12 +5,10 @@ module.exports = () => {
 		if(hits.size > 5000) for(const [k, v] of hits) if(now > v.reset) hits.delete(k)
 		if(hits.size > MAX_KEYS){
 			const target = MAX_KEYS - (MAX_KEYS >> 3)
-			for(const [k, v] of hits){
+			for(const k of hits.keys()){
 				if(hits.size <= target) break
-				if(now <= v.reset && v.count >= v.max) continue
 				hits.delete(k)
 			}
-			if(hits.size > MAX_KEYS) for(const k of hits.keys()){ if(hits.size <= MAX_KEYS) break; hits.delete(k) }
 		}
 	}
 	return {

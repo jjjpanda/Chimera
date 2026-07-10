@@ -12,14 +12,25 @@ const run = (overrides) => spawnSync(process.execPath, [SCRIPT], {
 
 describe("validateEnvVars placeholder-secret gate", () => {
 	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
-		const res = run({ SECRETKEY: "Auth secret key for hashing" })
+		const res = run({ SECRETKEY: "Auth secret key for hashing, min 32 characters" })
 		expect(res.stdout).toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
 		expect(res.status).toBe(1)
 	})
 
 	test("does not flag SECRETKEY when set to a real value", () => {
-		const res = run({ SECRETKEY: "a-real-secret-value" })
+		const res = run({ SECRETKEY: "a-real-secret-value-thats-long-enough" })
 		expect(res.stdout).not.toContain("PLACEHOLDER SECRET — change before deploying: SECRETKEY")
+	})
+
+	test("blocks boot when SECRETKEY is shorter than 32 characters", () => {
+		const res = run({ SECRETKEY: "too-short-a-secret" })
+		expect(res.stdout).toContain("SECRETKEY TOO SHORT — must be at least 32 characters: SECRETKEY")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts SECRETKEY at least 32 characters long", () => {
+		const res = run({ SECRETKEY: "a".repeat(32) })
+		expect(res.stdout).not.toContain("SECRETKEY TOO SHORT")
 	})
 })
 

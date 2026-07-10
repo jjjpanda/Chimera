@@ -48,6 +48,7 @@ jest.mock("memory")
 const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
 const app = require("../backend/command.js")
+const camerasRoute = require("../backend/routes/cameras.js")
 
 const { mockedPool } = require("pg")
 
@@ -86,6 +87,12 @@ describe("Cameras Route", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
+		})
+	})
+
+	describe("stripCreds", () => {
+		test("returns a placeholder instead of the raw url when parsing fails", () => {
+			expect(camerasRoute.stripCreds("not a valid url")).toBe("***")
 		})
 	})
 })
