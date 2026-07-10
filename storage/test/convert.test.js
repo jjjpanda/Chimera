@@ -379,4 +379,19 @@ describe("Convert Routes", () => {
 		})
 	})
 
+	describe("createVideo frame-list write failure", () => {
+		const fs = require("fs")
+		const { createVideo } = require("../backend/routes/lib/video.js")
+
+		test("returns {error:true} instead of throwing when the frame-list write fails", () => {
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb(new Error("ENOSPC")))
+			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
+			const res = { send: jest.fn() }
+
+			expect(() => createVideo(req, res)).not.toThrow()
+			expect(res.send).toHaveBeenCalledWith({ error: true })
+
+			writeFileSpy.mockRestore()
+		})
+	})
 })

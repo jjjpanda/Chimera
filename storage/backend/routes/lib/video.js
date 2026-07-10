@@ -148,11 +148,12 @@ module.exports = {
 		skip = skip == undefined ? 1 : skip
 
 		console.log(camera, start, end, fps)
-		createVideoList(camera, start, end, skip, (err, {rand, frames}) => {
+		createVideoList(camera, start, end, skip, (err, result) => {
 			if(err){
 				res.send({error: true})
 			}
 			else{
+				const {rand, frames} = result
 				if(save == undefined || save == true || save == "true"){
 					save = true
 				}
