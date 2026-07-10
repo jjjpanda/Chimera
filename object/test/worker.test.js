@@ -520,10 +520,25 @@ describe("env-derived numeric config", () => {
 		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(500)
 	})
 
-	test("object_MAX_CAPTURES=-1 clamps to 0 instead of deleting every capture", () => {
+	test("object_MAX_CAPTURES=-1 clamps to 0 instead of going negative", () => {
 		process.env.object_MAX_CAPTURES = "-1"
 		jest.resetModules()
 		expect(require("../backend/lib/worker.js").MAX_CAPTURES).toBe(0)
+	})
+
+	test("pruneCaptures with MAX_CAPTURES=0 skips pruning instead of wiping every capture", async () => {
+		process.env.object_MAX_CAPTURES = "0"
+		jest.resetModules()
+		const freshFs = require("fs")
+		const freshPool = require("../backend/lib/pool.js")
+		const freshWorker = require("../backend/lib/worker.js")
+		freshFs.promises.readdir.mockResolvedValue(["a.jpg", "b.jpg"])
+
+		await freshWorker.pruneCaptures()
+
+		expect(freshFs.promises.readdir).not.toHaveBeenCalledWith(freshWorker.CAPTURES_DIR)
+		expect(freshFs.promises.unlink).not.toHaveBeenCalled()
+		expect(freshPool.query).not.toHaveBeenCalled()
 	})
 
 	test("object_CONFIDENCE > 1 falls back to the default instead of disabling detection", () => {

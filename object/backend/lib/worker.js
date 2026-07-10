@@ -34,6 +34,7 @@ const sweepTemp = async () => {
 sweepTemp().catch(() => {})
 
 const pruneCaptures = async () => {
+	if (MAX_CAPTURES <= 0) return
 	const names = await fs.promises.readdir(CAPTURES_DIR)
 	if (names.length <= MAX_CAPTURES) return
 	const stats = await mapLimit(names, PRUNE_CONCURRENCY, async (f) => {
