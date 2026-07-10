@@ -1,8 +1,8 @@
-let cron, makeScheduledTasks, io, tasks, fakeTask
-const taskObject = { id: "t1", cronString: "* * * * *", running: true }
+let cron, makeScheduledTasks, io, tasks, fakeTask, taskObject
 
 beforeEach(() => {
 	jest.resetModules()
+	taskObject = { id: "t1", cronString: "* * * * *", running: true }
 	fakeTask = { start: jest.fn(), stop: jest.fn(), destroy: jest.fn() }
 	jest.doMock("node-cron", () => ({ schedule: jest.fn(() => fakeTask) }))
 	cron = require("node-cron")
@@ -18,6 +18,11 @@ describe("memory scheduledTasks lifecycle", () => {
 		expect(fakeTask.start).toHaveBeenCalledTimes(1)
 		cron.schedule.mock.calls[0][1]()
 		expect(io.emit).toHaveBeenCalledWith(taskObject.id)
+	})
+
+	test("createTask does not start the cron when running is false", () => {
+		tasks.createTask({ ...taskObject, running: false })
+		expect(fakeTask.start).not.toHaveBeenCalled()
 	})
 
 	test("stopTask pauses the task and flags running=false", () => {

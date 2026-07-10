@@ -11,7 +11,7 @@ module.exports = (io) => ({
 			taskObject.cronString,
 			() => io.emit(taskObject.id)
 		)
-		scheduledTask[taskObject.id].start()
+		if (taskObject.running) scheduledTask[taskObject.id].start()
 	},
 
 	startTask: (id, callback=()=>{}) => {

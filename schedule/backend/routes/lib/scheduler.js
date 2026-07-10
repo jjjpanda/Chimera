@@ -10,11 +10,15 @@ const client = require("memory").client("TASK SCHEDULER")
 module.exports = {
 	validateStartableTask: (req, res, next) => {
 		const { url, body, id, cronString } = req.body
-		client.emit("listTask", tasks => {
+		client.emit("listTask", async tasks => {
 			if(isValidId(id, tasks, true)){
+				try {
+					await pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
+				} catch (err) {
+					console.log("TASK UPDATE ERROR", err)
+					return res.status(500).send({ error: "Failed to update task in DB" })
+				}
 				client.emit("startTask", id, (scheduledTasks) => {
-					pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
-						.catch(err => console.log("TASK UPDATE ERROR", err))
 					res.send({
 						running: scheduledTasks[id]?.running ?? false
 					})
@@ -63,42 +67,55 @@ module.exports = {
 		})
 	},
 
-	startNewTask: (req, res) => {
+	startNewTask: async (req, res) => {
 		let { url, body, cronString, id } = req.body
-		
+
 		id = `task-${randomID.generate()}`
+		try {
+			await pool.query(
+				"INSERT INTO scheduled_tasks (id, url, body, cron_string, running) VALUES ($1, $2, $3, $4, true)",
+				[id, url, body, cronString]
+			)
+		} catch (err) {
+			console.log("TASK INSERT ERROR", err)
+			return res.status(500).send({ error: "Failed to insert task into DB" })
+		}
 		let taskObj = {
 			id, url, body, cronString,
 			running: true
 		}
 		client.on(id, generateTask(url, id, body))
 		client.emit("createTask", taskObj)
-		pool.query(
-			"INSERT INTO scheduled_tasks (id, url, body, cron_string, running) VALUES ($1, $2, $3, $4, true)",
-			[id, url, JSON.stringify(body), cronString]
-		).catch(err => console.log("TASK INSERT ERROR", err))
 		res.send({
 			running: true
 		})
 	},
 
-	stopTask: (req, res) => {
+	stopTask: async (req, res) => {
 		const { id } = req.body
+		try {
+			await pool.query("UPDATE scheduled_tasks SET running=false WHERE id=$1", [id])
+		} catch (err) {
+			console.log("TASK UPDATE ERROR", err)
+			return res.status(500).send({ error: "Failed to update task in DB" })
+		}
 		client.emit("stopTask", id, tasks=>{
-			pool.query("UPDATE scheduled_tasks SET running=false WHERE id=$1", [id])
-				.catch(err => console.log("TASK UPDATE ERROR", err))
 			res.send({
 				stopped: !(tasks[id] && tasks[id].running)
 			})
 		})
 	},
 
-	destroyTask: (req, res) => {
+	destroyTask: async (req, res) => {
 		const { id } = req.body
+		try {
+			await pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
+		} catch (err) {
+			console.log("TASK DELETE ERROR", err)
+			return res.status(500).send({ error: "Failed to delete task from DB" })
+		}
 		client.off(id)
 		client.emit("destroyTask", id, tasks=>{
-			pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
-				.catch(err => console.log("TASK DELETE ERROR", err))
 			res.send({
 				destroyed: !(id in tasks)
 			})
@@ -170,8 +187,7 @@ module.exports = {
 			rows.forEach(({id, url, body, cron_string, running}) => {
 				client.off(id)
 				client.on(id, generateTask(url, id, body))
-				client.emit("createTask", {id, url, body, cronString: cron_string, running: true})
-				if (!running) client.emit("stopTask", id)
+				client.emit("createTask", {id, url, body, cronString: cron_string, running})
 			})
 		}
 		client.on("connect", register)

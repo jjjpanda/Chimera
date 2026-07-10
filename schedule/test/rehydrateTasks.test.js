@@ -41,8 +41,7 @@ describe("rehydrateTasks", () => {
 
 		expect(mockClient.off).toHaveBeenCalledWith("task-def")
 		expect(mockClient.on).toHaveBeenCalledWith("task-def", expect.any(Function))
-		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-def" }))
-		expect(mockClient.emit).toHaveBeenCalledWith("stopTask", "task-def")
+		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-def", running: false }))
 	})
 
 	test("defers rehydration until connect when not yet connected", async () => {
