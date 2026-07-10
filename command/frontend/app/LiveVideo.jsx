@@ -81,9 +81,9 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-3">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} title="Restart all camera streams">
-						<RefreshCw className="size-3.5" />
-						Restart streams
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
+						{state.restarting ? "Restarting…" : "Restart streams"}
 					</Button>
 				</div>
 				{state.videoList.map((video) => (
@@ -97,9 +97,9 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-2">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} title="Restart all camera streams">
-						<RefreshCw className="size-3.5" />
-						Restart streams
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
+						{state.restarting ? "Restarting…" : "Restart streams"}
 					</Button>
 				</div>
 				{videos.map((row, ri) => (

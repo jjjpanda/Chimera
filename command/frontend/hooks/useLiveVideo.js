@@ -46,6 +46,7 @@ const useLiveVideo = (cameras) => {
 	const seqRef = useRef(0)
 	const [state, setState] = useState({
 		loading: false,
+		restarting: false,
 		lastUpdated: moment().format("h:mm:ss a"),
 		videoList: []
 	})
@@ -53,9 +54,13 @@ const useLiveVideo = (cameras) => {
 	const refresh = () => listVideos(cameras, setState, seqRef)
 
 	const restartAll = () => {
-		if (!cameras.length) return
+		if (!cameras.length || state.restarting) return
+		setState((old) => ({ ...old, restarting: true }))
 		toast("Restarting livestreams…")
-		Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(refresh)
+		Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(() => {
+			setState((old) => ({ ...old, restarting: false }))
+			refresh()
+		})
 	}
 
 	useEffect(() => {
