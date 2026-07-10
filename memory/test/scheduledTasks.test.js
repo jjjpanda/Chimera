@@ -44,4 +44,19 @@ describe("memory scheduledTasks lifecycle", () => {
 		expect(fakeTask.stop).not.toHaveBeenCalled()
 		expect(configs[taskObject.id]).toBeUndefined()
 	})
+
+	test("createTask destroys the prior cron before replacing an existing id", () => {
+		tasks.createTask(taskObject)
+		const firstTask = fakeTask
+		const secondTask = { start: jest.fn(), stop: jest.fn(), destroy: jest.fn() }
+		cron.schedule.mockReturnValueOnce(secondTask)
+
+		tasks.createTask({ ...taskObject, cronString: "*/5 * * * *" })
+
+		expect(firstTask.destroy).toHaveBeenCalledTimes(1)
+		let configs
+		tasks.listTasks(c => { configs = c })
+		expect(configs[taskObject.id].cronString).toBe("*/5 * * * *")
+		expect(secondTask.start).toHaveBeenCalledTimes(1)
+	})
 })
