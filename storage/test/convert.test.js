@@ -2,7 +2,7 @@ const supertest = require("supertest")
 const app = require("../backend/storage.js")
 
 const moment = require("moment")
-var {generateID, fileName, parseFileName, validateDays}    = require("../backend/routes/lib/converter.js")
+var {generateID, fileName, parseFileName, validateDays, validateRequest}    = require("../backend/routes/lib/converter.js")
 const dateFormat = require("../backend/routes/lib/dateFormat.js")
 
 const fileList = [
@@ -161,6 +161,38 @@ describe("Convert Routes", () => {
 			expect(req.body.start).toBeUndefined()
 			expect(req.body.end).toBeUndefined()
 			expect(next).toHaveBeenCalled()
+		})
+	})
+
+	describe("validateRequest window", () => {
+		test("dateless request writes a default start/end back to req.body instead of leaving them undefined", () => {
+			const req = { body: { camera: 1 } }
+			const next = jest.fn()
+			validateRequest(req, {}, next)
+			expect(req.body.start).not.toBeUndefined()
+			expect(req.body.end).not.toBeUndefined()
+			expect(() => req.body.start.split("-")).not.toThrow()
+			expect(next).toHaveBeenCalled()
+		})
+	})
+
+	describe("/convert/createVideo with no dates", () => {
+		test("dateless request does not crash the storage process", (done) => {
+			supertest(app)
+				.post("/convert/createVideo")
+				.send({camera: 1})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200, done)
+		})
+	})
+
+	describe("/convert/createZip with no dates", () => {
+		test("dateless request does not crash the storage process", (done) => {
+			supertest(app)
+				.post("/convert/createZip")
+				.send({camera: 1})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200, done)
 		})
 	})
 

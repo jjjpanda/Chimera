@@ -92,7 +92,10 @@ module.exports = {
 		start = (start == undefined ? moment.utc().subtract(1, "week") : moment.utc(start, dateFormat)).format(dateFormat)
 
 		end = (end == undefined ? moment.utc() : moment.utc(end, dateFormat)).format(dateFormat)
-        
+
+		req.body.start = start
+		req.body.end = end
+
 		if(camera == undefined){
 			res.status(400).send({
 				error: true,
