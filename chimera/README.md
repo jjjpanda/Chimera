@@ -5,7 +5,7 @@ One-shot scripts that run before any service starts: validate config, prepare th
 ---
 # Boot chain
 
-[entrypoint.sh](entrypoint.sh), the container entrypoint — runs in order, aborts on first failure (`set -e`):
+[entrypoint.sh](../entrypoint.sh), the container entrypoint — runs in order, aborts on first failure (`set -e`):
 
 1. `mkdir -p ./.well-known/acme-challenge` — ACME dir the [gateway](../gateway) serves for TLS.
 2. `validateEnvVars.js` — fail-fast env validation.
@@ -28,7 +28,7 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 
 Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once — idempotent (existing table → `42P07`, treated as success; indexes use `IF NOT EXISTS`). Any other error exits `1`.
 
-Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Plus timestamp indexes on `frame_files`, `objects_detected`, `task_runs`.
+Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Plus four indexes: timestamp indexes on `frame_files`, `objects_detected`, `task_runs`, and one on `sessions(username)`.
 
 ---
 # preflight.js — `npm run preflight`
