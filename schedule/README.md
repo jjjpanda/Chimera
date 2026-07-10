@@ -5,7 +5,7 @@ Cron tasks for the other services: each tick fires an authenticated HTTP call to
 ---
 # API
 
-Session-guarded (`authorize`) except `/schedule/health`; start/stop/destroy also require admin (`requireAdmin`):
+Session-guarded (`authorize`) except `/schedule/health`; every task route also requires admin (`requireAdmin`) — only the memory-socket health-check doesn't:
 
 - schedule, list, stop, destroy cron tasks
 - read run history from `task_runs` (per task or all, newest first)

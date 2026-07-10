@@ -2,7 +2,7 @@
 
 Shared helpers every service imports (`require("lib")`, a `file:../lib` dep); loads `.env`. Not a server.
 
-`index.js` exports all of these (CommonJS); `module.js` re-exports only `formatBytes` (ESM).
+Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-exports only `formatBytes` (ESM).
 
 ---
 # Exports
@@ -15,16 +15,18 @@ Shared helpers every service imports (`require("lib")`, a `file:../lib` dep); lo
 - `helmetOptions` — CSP for `helmet`.
 
 **Server & runtime**
-- `handleServerStart` / `handleSecureServerStart` — start HTTP / HTTPS listeners (TLS paths from `certPaths`).
-- `certPaths` — resolves TLS key/cert from `gateway_HOST` under `/etc/letsencrypt/live/`.
+- `handleServerStart` / `handleSecureServerStart` — start HTTP / HTTPS listeners (TLS paths from `certPaths`, an internal helper not exported from `index.js`).
 - `watchCertRenewal` — cert/key mtime poll periodically; `pm2.restart("gateway")` in the early AM UTC window after the certbot sidecar renews.
 - `pruneInterval` — run a SQL prune on a 12h timer.
+- `createPool` — `pg.Pool` factory with a labeled `error` logger.
 - `isPrimeInstance` — true on the single/prime pm2 instance.
 - `subprocess` — pm2 helpers (`checkProcess`, `restart`, …).
+- `schedulableUrls` — routes `scheduler_AUTH` may call without a session.
 
 **Cameras & alerts**
-- `loadCameras` — motion + camera confs → `{id, name, rtsp_url, full_url}` (re-read on every call; rejects on I/O failure so callers can tell "unreadable" from "no cameras"; `loadCamerasSync` is the sync variant and still returns `[]`).
+- `loadCameras` — motion + camera confs → `{id, name, rtsp_url, full_url}` (re-read on every call; rejects on I/O failure so callers can tell "unreadable" from "no cameras"; `loadCamerasSync` (sync, still returns `[]`) lives in `utils/loadCameras.js` but isn't exported from `index.js`).
 - `cameraConfFiles` — conf paths declaring a given `camera_id` (rejects on I/O failure, same contract as `loadCameras`).
+- `cameraConfDir` — resolves the `camera_dir` referenced by `storage_MOTION_CONF_FILEPATH`.
 - `webhookAlert` — POST to the alert webhook (`alert_URL` / `admin_alert_URL`).
 - `alertTime` — `moment-timezone` helper in `alert_TZ`.
 
@@ -33,6 +35,7 @@ Shared helpers every service imports (`require("lib")`, a `file:../lib` dep); lo
 - `randomID` — `nanoid` generator.
 - `password` — shared password-policy JSON.
 - `jsonFileHanding` — JSON read/write/validate (key spelled `jsonFileHanding`).
+- `mapLimit` — run an async fn over items with bounded concurrency.
 
 ---
 # Consumers & config
