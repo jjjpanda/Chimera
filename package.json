@@ -22,7 +22,7 @@
     "prepare:database": "node chimera/prepareDatabase.js",
     "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
     "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
-    "clean": "rimraf --glob **/log **/feed **/shared **/eslint **/coverage **/node_modules **/package-lock.json **/npm-shrinkwrap.json",
+    "clean": "rimraf --glob '**/log' '**/eslint' '**/coverage' '**/node_modules' '**/package-lock.json' '**/npm-shrinkwrap.json'",
     "test": "jest",
     "e2e:install": "npm run e2e:install --workspace=command",
     "e2e:command": "npm run e2e --workspace=command",
@@ -54,7 +54,7 @@
     "object": "file:./object",
     "pg": "^8.11.0",
     "pm2": "^7.0.3",
-    "rimraf": "^6.1.3",
+    "rimraf": "6.1.3",
     "schedule": "file:./schedule",
     "storage": "file:./storage"
   },

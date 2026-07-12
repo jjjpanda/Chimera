@@ -6,7 +6,7 @@
     "test": "jest --verbose"
   },
   "dependencies": {
-    "axios": "^1.17.0",
+    "axios": "^1.7.0",
     "cookie-parser": "^1.4.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
@@ -15,7 +15,7 @@
     "lib": "file:../lib",
     "memory": "file:../memory",
     "node-cron": "^4.5.0",
-    "pg": "^8.11.0"
+    "pg": "^8.21.0"
   },
   "peerDependencies": {
     "jest": "^29.0.0",
