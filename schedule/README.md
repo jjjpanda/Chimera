@@ -18,7 +18,7 @@ New tasks need a whitelisted `url` and a JSON-string body. Protected tasks (the 
 
 - Runs under pm2 when `schedule_ON=true`; [gateway](../gateway) proxies when `schedule_PROXY_ON=true`.
 - Crons POST to `${gateway_HOST}${url}` with `scheduler_AUTH` in `Authorization`. [lib](../lib) accepts this token (instead of a session) only for `schedulableUrls`: `/convert/createVideo`, `/convert/createZip`, `/file/pathMetrics`, `/file/pathDelete`, `/file/pathClean`, `/file/pathAutoClean`.
-- Task configs persist to `scheduled_tasks`; timers live in the [memory](../memory) socket, shared across the cluster. On tick memory emits the task id and this service makes the call; on memory reconnect the crons are rehydrated from postgres.
+- Task configs and timers live in the [memory](../memory) socket, shared across the cluster; on tick memory emits the task id and this service makes the call.
 - Each fire writes a `task_runs` row and a webhook alert. The prime instance prunes rows older than 30 days.
 - If `storage_MAX_GB` is set, the prime instance registers a protected hourly `/file/pathAutoClean` task trimming oldest footage.
 

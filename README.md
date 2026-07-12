@@ -44,6 +44,6 @@ heartbeat              production only
 - Boot chain ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
 - Postgres runs as a side container ([docker-compose.yml](docker-compose.yml)); Chimera waits on its healthcheck.
 - TLS renewal (`certbot_ON=true`; disable for BYO certs / upstream TLS): a `certbot` side container issues + renews certs every 12h via HTTP-01 (needs `gateway_PORT=80` so the host publishes port 80) over the shared `acme-webroot` volume at the gateway's `/.well-known`; registers with no email (no LE expiry reminders) and POSTs `alert_URL` on failure. The gateway polls cert mtime and self-restarts (pm2) in the 3–4am UTC window to pick up new certs — first issuance restarts immediately.
-- `chimeraInstances`: `1` = single process; `>1`/`max` = cluster, which forces `memory_ON=true` so instances coordinate through the memory socket.
+- `chimeraInstances`: `1` = single process; `>1`, `max`, `0` and negatives = cluster (pm2 reads `0` as every CPU and `-n` as CPUs minus `n`), which forces `memory_ON=true` so instances coordinate through the memory socket. Any other value is rejected at boot.
 
-**Schema** ([prepareDatabase.js](chimera/prepareDatabase.js), created idempotently): `frame_files` / `frame_deletes` (storage) · `auth` / `sessions` (command) · `objects_detected` (object) · `task_runs` / `scheduled_tasks` (schedule). Full config in [env.example](env.example).
+**Schema** ([prepareDatabase.js](chimera/prepareDatabase.js), created idempotently): `frame_files` / `frame_deletes` (storage) · `auth` / `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Full config in [env.example](env.example).

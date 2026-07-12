@@ -14,7 +14,6 @@ if (instances !== "" && instances !== "max" && !/^-?\d+$/.test(instances)) {
 	console.log("chimeraInstances MUST BE AN INTEGER OR \"max\"")
 	allEnvPresent = false
 }
-if (multiInstance(instances)) process.env.memory_ON = "true"
 
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
@@ -96,18 +95,21 @@ schema.filter(v => /_URL$/.test(v.key)).forEach(v => confirmURL(v.key))
 schema.filter(v => /_FILEPATH$/.test(v.key) && v.key !== "storage_MOTION_CONF_FILEPATH").forEach(v => confirmPath(v.key))
 schema.filter(v => /_FOLDERPATH$/.test(v.key)).forEach(v => confirmPath(v.key, true))
 
+if (multiInstance(instances) && process.env.memory_ON !== "true") {
+	console.log("FORCING memory_ON=true — chimeraInstances asks for a cluster; instances coordinate through the memory socket")
+	process.env.memory_ON = "true"
+}
+
 if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
 }
 
 if (process.env.object_ON === "true" && process.env.livestream_ON !== "true") {
-	console.log("object_ON=true REQUIRES livestream_ON=true — object reads frames from the livestream HLS feed")
-	allEnvPresent = false
+	console.log("WARNING: object_ON=true but livestream_ON is not true — object reads frames from the livestream HLS feed; new scans will fail (existing detections and captures still serve)")
 }
 
 if (process.env.schedule_ON === "true" && process.env.memory_ON !== "true") {
-	console.log("schedule_ON=true REQUIRES memory_ON=true — all scheduled task state lives in the memory server")
-	allEnvPresent = false
+	console.log("WARNING: schedule_ON=true but memory_ON is not true — task configs and timers live in the memory server; /task start, list, stop and destroy will hang (/task/runs still serves)")
 }
 
 if(allEnvPresent){

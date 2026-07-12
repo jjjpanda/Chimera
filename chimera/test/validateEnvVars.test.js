@@ -108,27 +108,27 @@ describe("validateEnvVars certbot port warning", () => {
 })
 
 describe("validateEnvVars schedule/memory cross-check", () => {
-	test("blocks boot when schedule_ON=true and memory_ON is not true", () => {
+	test("warns but still boots when schedule_ON=true and memory_ON is not true", () => {
 		const res = run({ schedule_ON: "true", memory_ON: "false" })
-		expect(res.stdout).toContain("schedule_ON=true REQUIRES memory_ON=true")
-		expect(res.status).toBe(1)
+		expect(res.stdout).toContain("WARNING: schedule_ON=true but memory_ON is not true")
+		expect(res.status).toBe(0)
 	})
 
-	test("accepts schedule_ON=true with memory_ON=true", () => {
+	test("no warning when schedule_ON=true with memory_ON=true", () => {
 		const res = run({ schedule_ON: "true", memory_ON: "true" })
-		expect(res.stdout).not.toContain("schedule_ON=true REQUIRES memory_ON=true")
+		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
 		expect(res.status).toBe(0)
 	})
 
-	test("no complaint when schedule_ON is off", () => {
+	test("no warning when schedule_ON is off", () => {
 		const res = run({ schedule_ON: "false", memory_ON: "false" })
-		expect(res.stdout).not.toContain("schedule_ON=true REQUIRES memory_ON=true")
+		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
 		expect(res.status).toBe(0)
 	})
 
-	test("accepts schedule_ON=true with memory_ON=false when chimeraInstances forces cluster mode", () => {
+	test("no warning when memory_ON=false but chimeraInstances forces cluster mode", () => {
 		const res = run({ schedule_ON: "true", memory_ON: "false", chimeraInstances: "4" })
-		expect(res.stdout).not.toContain("schedule_ON=true REQUIRES memory_ON=true")
+		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
 		expect(res.status).toBe(0)
 	})
 
@@ -145,43 +145,69 @@ describe("validateEnvVars schedule/memory cross-check", () => {
 	})
 })
 
-describe("validateEnvVars object/livestream cross-check", () => {
-	test("blocks boot when object_ON=true and livestream_ON is not true", () => {
-		const res = run({ object_ON: "true", livestream_ON: "false" })
-		expect(res.stdout).toContain("object_ON=true REQUIRES livestream_ON=true")
-		expect(res.status).toBe(1)
-	})
-
-	test("accepts object_ON=true with livestream_ON=true", () => {
-		const res = run({ object_ON: "true", livestream_ON: "true" })
-		expect(res.stdout).not.toContain("object_ON=true REQUIRES livestream_ON=true")
+describe("validateEnvVars memory_ON cluster override", () => {
+	test("announces the override when a cluster overrules memory_ON=false", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "4" })
+		expect(res.stdout).toContain("FORCING memory_ON=true")
 		expect(res.status).toBe(0)
 	})
 
-	test("no complaint when object_ON is off", () => {
+	test("stays quiet when memory_ON is already true", () => {
+		const res = run({ memory_ON: "true", chimeraInstances: "4" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("the override does not mask an invalid memory_ON", () => {
+		const res = run({ memory_ON: "maybe", chimeraInstances: "4" })
+		expect(res.stdout).toContain("MUST BE true OR false: memory_ON")
+		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars object/livestream cross-check", () => {
+	test("warns but still boots when object_ON=true and livestream_ON is not true", () => {
+		const res = run({ object_ON: "true", livestream_ON: "false" })
+		expect(res.stdout).toContain("WARNING: object_ON=true but livestream_ON is not true")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when object_ON=true with livestream_ON=true", () => {
+		const res = run({ object_ON: "true", livestream_ON: "true" })
+		expect(res.stdout).not.toContain("WARNING: object_ON=true")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when object_ON is off", () => {
 		const res = run({ object_ON: "false", livestream_ON: "false" })
-		expect(res.stdout).not.toContain("object_ON=true REQUIRES livestream_ON=true")
+		expect(res.stdout).not.toContain("WARNING: object_ON=true")
 		expect(res.status).toBe(0)
 	})
 })
 
 describe("validateEnvVars chimeraInstances format", () => {
-	test("blocks boot when chimeraInstances is not an integer or \"max\"", () => {
-		const res = run({ chimeraInstances: "lots" })
+	test.each(["lots", "2.5", "4x"])("blocks boot on %s", (val) => {
+		const res = run({ chimeraInstances: val })
 		expect(res.stdout).toContain("chimeraInstances MUST BE AN INTEGER OR \"max\"")
 		expect(res.status).toBe(1)
 	})
 
-	test("accepts an integer", () => {
-		const res = run({ chimeraInstances: "4" })
+	test("blocks boot when chimeraInstances is blank", () => {
+		const res = run({ chimeraInstances: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR chimeraInstances")
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["1", "4", "max", "0", "-1"])("accepts %s", (val) => {
+		const res = run({ chimeraInstances: val })
 		expect(res.stdout).not.toContain("chimeraInstances MUST BE AN INTEGER OR")
 		expect(res.status).toBe(0)
 	})
 
-	test("accepts \"max\"", () => {
-		const res = run({ chimeraInstances: "max" })
-		expect(res.stdout).not.toContain("chimeraInstances MUST BE AN INTEGER OR")
-		expect(res.status).toBe(0)
+	test.each(["max", "0", "-1", "4"])("%s forces a cluster, so memory vars stay required", (val) => {
+		const res = run({ chimeraInstances: val, memory_ON: "false", memory_PORT: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR memory_PORT")
+		expect(res.status).toBe(1)
 	})
 })
 

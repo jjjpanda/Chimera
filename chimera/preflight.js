@@ -60,10 +60,7 @@ const varProblem = (v, val) => {
 const getCamDir = () => {
 	if (fs.existsSync(MOTION)) {
 		const conf = parseConf(fs.readFileSync(MOTION, "utf8"))
-		if (conf.camera_dir) {
-			const dir = path.isAbsolute(conf.camera_dir) ? conf.camera_dir : path.resolve(ROOT, conf.camera_dir)
-			if (fs.existsSync(dir)) return dir
-		}
+		if (conf.camera_dir && !path.isAbsolute(conf.camera_dir)) return path.resolve(ROOT, conf.camera_dir)
 	}
 	return CAM_DIR
 }

@@ -5,11 +5,11 @@ const isDev = process.env.NODE_ENV == "development"
 
 const isMultiInstance = require("./lib/utils/multiInstance.js")
 
-const requested = process.env.chimeraInstances
+const requested = (process.env.chimeraInstances || "").trim()
 const multiInstance = isMultiInstance(requested)
 
 if (multiInstance && process.env.memory_ON !== "true") {
-	console.warn("Forcing memory_ON=true because chimeraInstances > 1 or max")
+	console.warn("Forcing memory_ON=true because chimeraInstances asks for a cluster")
 	process.env.memory_ON = "true"
 }
 
