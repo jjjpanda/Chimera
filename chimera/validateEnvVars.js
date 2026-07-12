@@ -11,8 +11,8 @@ const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
 const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 
 const instances = (process.env.chimeraInstances || "").trim()
-if (instances !== "" && instances !== "max" && !/^-?\d+$/.test(instances)) {
-	console.log("chimeraInstances MUST BE AN INTEGER OR \"max\"")
+if (instances !== "" && instances !== "max" && (!/^-?\d+$/.test(instances) || parseInt(instances) < -1)) {
+	console.log("chimeraInstances MUST BE \"max\", -1, OR AN INTEGER >= 0 — pm2 only runs cluster_mode for those; anything below -1 forks N processes that all bind the same port")
 	allEnvPresent = false
 }
 

@@ -28,7 +28,7 @@ describe("pm2.config cluster gate", () => {
 		expect(appNamed(config, "command").instances).toBe(chimeraInstances)
 	})
 
-	test.each(["1", "", "lots"])("chimeraInstances=%s stays single instance with memory off", (chimeraInstances) => {
+	test.each(["1", "", "lots", "-2"])("chimeraInstances=%s stays single instance with memory off", (chimeraInstances) => {
 		const config = load({ chimeraInstances, memory_ON: "false" })
 		expect(appNamed(config, "memory")).toBeUndefined()
 		expect(appNamed(config, "command").instances).toBeUndefined()

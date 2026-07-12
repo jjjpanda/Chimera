@@ -186,9 +186,9 @@ describe("validateEnvVars object/livestream cross-check", () => {
 })
 
 describe("validateEnvVars chimeraInstances format", () => {
-	test.each(["lots", "2.5", "4x"])("blocks boot on %s", (val) => {
+	test.each(["lots", "2.5", "4x", "-2", "-8"])("blocks boot on %s", (val) => {
 		const res = run({ chimeraInstances: val })
-		expect(res.stdout).toContain("chimeraInstances MUST BE AN INTEGER OR \"max\"")
+		expect(res.stdout).toContain("chimeraInstances MUST BE")
 		expect(res.status).toBe(1)
 	})
 
@@ -200,7 +200,7 @@ describe("validateEnvVars chimeraInstances format", () => {
 
 	test.each(["1", "4", "max", "0", "-1"])("accepts %s", (val) => {
 		const res = run({ chimeraInstances: val })
-		expect(res.stdout).not.toContain("chimeraInstances MUST BE AN INTEGER OR")
+		expect(res.stdout).not.toContain("chimeraInstances MUST BE")
 		expect(res.status).toBe(0)
 	})
 
