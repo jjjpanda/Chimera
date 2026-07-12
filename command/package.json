@@ -21,7 +21,6 @@
     "cronstrue": "^1.122.0",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
-    "file-saver": "^2.0.5",
     "heartbeat": "jjjpanda/heartbeat#v1.4.1",
     "helmet": "^8.0.0",
     "hls.js": "^1.5.18",

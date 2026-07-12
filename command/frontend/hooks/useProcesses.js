@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react"
-import useCamDateNumInfo from "./useCamDateNumInfo.js"
-import useScheduler from "./useScheduler"
-import useCameras from "./useCameras.js"
 import moment from "moment"
-import { request, jsonProcessing, downloadProcessing } from "../js/request.js"
+import { request, jsonProcessing } from "../js/request.js"
 import toast from "../js/toast.js"
 
 const listProcesses = (setState) => {
@@ -22,18 +19,6 @@ const listProcesses = (setState) => {
 				loading: false
 			}))
 		})
-	})
-}
-
-const processBody = (state, cameras, useDays = false) => {
-	const id = cameras[state.camera]?.id
-	return JSON.stringify({
-		camera: String(id),
-		...(useDays ? { days: state.days } : {}),
-		start: moment(state.startDate).utc().format("YYYYMMDD-HHmmss"),
-		end: moment(state.endDate).utc().format("YYYYMMDD-HHmmss"),
-		skip: state.number,
-		save: !state.download
 	})
 }
 
@@ -64,58 +49,8 @@ const deleteProcessGenerator = (setState) => (id) => {
 	})
 }
 
-const useProcesses = (settings = {}) => {
-	const [cameras] = useCameras()
-	const [scheduleTask] = useScheduler()
-	const [state, setState] = useCamDateNumInfo({
-		download: false,
-		numberType: "speed",
-		processList: []
-	})
-
-	const [dialog, setDialog] = useState({
-		open: false,
-		processType: null,
-		days: false
-	})
-
-	const onChange = (patch) => setState((s) => ({ ...s, ...patch }))
-
-	const createProcessFn = (type) => {
-		if (cameras[state.camera]?.id == null) return toast("No camera selected")
-		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		const body = processBody(state, cameras, false)
-		setDialog({ open: false, processType: null, days: false })
-		if (state.download) {
-			const remove = toast("Generating", 0)
-			request(url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body
-			}, (prom) => {
-				downloadProcessing(prom, () => remove())
-			})
-		} else {
-			request(url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body
-			}, (prom) => {
-				jsonProcessing(prom, () => {
-					setTimeout(() => listProcesses(setState), 1500)
-				})
-			})
-		}
-	}
-
-	const scheduleProcessFn = (type, cronString) => {
-		if (cameras[state.camera]?.id == null) return toast("No camera selected")
-		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		const body = processBody(state, cameras, true)
-		scheduleTask(url, body, cronString, () => {
-			setDialog({ open: false, processType: null, days: false })
-		})
-	}
+const useProcesses = () => {
+	const [state, setState] = useState({ processList: [], loading: true })
 
 	useEffect(() => {
 		listProcesses(setState)
@@ -124,12 +59,7 @@ const useProcesses = (settings = {}) => {
 	return [
 		state,
 		cancelProcessGenerator(setState),
-		deleteProcessGenerator(setState),
-		createProcessFn,
-		scheduleProcessFn,
-		dialog,
-		setDialog,
-		onChange
+		deleteProcessGenerator(setState)
 	]
 }
 

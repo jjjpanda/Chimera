@@ -1,6 +1,3 @@
-import { saveAs } from "file-saver"
-import toast from "./toast.js"
-
 const request = (url, opt, callback) => {
 	return callback(fetch(url, opt))
 }
@@ -29,34 +26,4 @@ const jsonProcessing = (prom, callback) => {
 		.catch(() => callback(undefined))
 }
 
-const downloadProcessing = (prom, callback) => {
-	prom.then(resp => resp.blob()).then(blob => {
-		const fr = new FileReader()
-		fr.onload = () => {
-			let res
-			try {
-				res = JSON.parse(fr.result)
-			} catch (e) {
-				res = undefined
-			}
-
-			if (res !== undefined) {
-				if (res.frameLimitMet) {
-					toast("Size Limit Met")
-				} else if (res.url === undefined) {
-					toast("No Frames")
-				}
-				setTimeout(() => callback && callback(), 2500)
-			} else {
-				saveAs(blob)
-				if (callback) callback()
-			}
-		}
-		fr.readAsText(blob)
-	}).catch(() => {
-		toast("Download Failed")
-		if (callback) callback()
-	})
-}
-
-export { request, authPromiseHandler, statusProcessing, jsonProcessing, downloadProcessing }
+export { request, authPromiseHandler, statusProcessing, jsonProcessing }
