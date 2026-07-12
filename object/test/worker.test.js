@@ -1,6 +1,6 @@
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => Promise.resolve([])), mapLimit: require("../../lib/utils/mapLimit.js") }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => Promise.resolve([])), mapLimit: require("../../lib/utils/mapLimit.js"), webhookAlert: jest.fn() }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
-jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })), promises: { readdir: jest.fn(() => Promise.resolve([])), stat: jest.fn(() => Promise.resolve({ mtimeMs: 0 })), unlink: jest.fn(() => Promise.resolve()) } }))
+jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })), promises: { readdir: jest.fn(() => Promise.resolve([])), stat: jest.fn(() => Promise.resolve({ mtimeMs: 0 })), unlink: jest.fn(() => Promise.resolve()), writeFile: jest.fn(() => Promise.resolve()) } }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))
 jest.mock("../backend/lib/webhook.js", () => jest.fn())
 jest.mock("../backend/lib/detector.js", () => ({ INPUT: 4, detect: jest.fn() }))
@@ -11,7 +11,7 @@ const fs = require("fs")
 const pool = require("../backend/lib/pool.js")
 const sendWebhook = require("../backend/lib/webhook.js")
 const detector = require("../backend/lib/detector.js")
-const { loadCameras } = require("lib")
+const { loadCameras, webhookAlert } = require("lib")
 const worker = require("../backend/lib/worker.js")
 
 const SIZE = detector.INPUT * detector.INPUT
@@ -33,6 +33,7 @@ beforeEach(() => {
 	delete process.env.object_ALERT_ON
 	execFile.mockImplementation((file, args, opts, cb) => cb(null))
 	fs.readFileSync.mockImplementation((p) => String(p).endsWith(".raw") ? makeRaw() : Buffer.from("jpeg"))
+	fs.promises.writeFile.mockResolvedValue()
 	pool.query.mockResolvedValue({})
 	sendWebhook.mockResolvedValue()
 })
@@ -137,6 +138,32 @@ describe("scan", () => {
 		expect(worker.getStatus()[3].error).toBeNull()
 	})
 
+	test("still alerts when the capture write fails, but persists nothing and raises an admin alert", async () => {
+		fs.promises.writeFile.mockRejectedValueOnce(new Error("ENOSPC"))
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.scan(4)
+		expect(pool.query).not.toHaveBeenCalled()
+		expect(sendWebhook).toHaveBeenCalledWith(
+			"http://hook.test",
+			expect.stringContaining("person (90%)"),
+			expect.any(Buffer)
+		)
+		expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("ENOSPC"), "admin")
+	})
+
+	test("only raises one admin alert until a capture write succeeds again", async () => {
+		fs.promises.writeFile.mockRejectedValue(new Error("ENOSPC"))
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.scan(4)
+		await worker.scan(4)
+		expect(webhookAlert).toHaveBeenCalledTimes(1)
+		fs.promises.writeFile.mockResolvedValue()
+		await worker.scan(4)
+		fs.promises.writeFile.mockRejectedValue(new Error("ENOSPC"))
+		await worker.scan(4)
+		expect(webhookAlert).toHaveBeenCalledTimes(2)
+	})
+
 	test("object_ALERT_ON=false suppresses the webhook but still inserts", async () => {
 		process.env.object_ALERT_ON = "false"
 		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
@@ -146,11 +173,47 @@ describe("scan", () => {
 		delete process.env.object_ALERT_ON
 	})
 
-	test("records ffmpeg failure in status and rejects", async () => {
+	test("records ffmpeg failure in a tracked camera's status and rejects", async () => {
+		detector.detect.mockResolvedValue([])
+		await worker.scan(4)
+		detector.detect.mockClear()
 		execFile.mockImplementation((file, args, opts, cb) => cb(new Error("ffmpeg boom")))
 		await expect(worker.scan(4)).rejects.toThrow("ffmpeg boom")
 		expect(detector.detect).not.toHaveBeenCalled()
 		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
+	})
+
+	test("a scan still in flight when the workers stop persists nothing", async () => {
+		let release
+		execFile.mockImplementation((file, args, opts, cb) => { release = cb })
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+
+		const scanning = worker.scan(1)
+		for (let i = 0; i < 10; i++) await Promise.resolve()
+		worker.stopWorkers()
+		release(null)
+		await scanning
+
+		expect(fs.promises.writeFile).not.toHaveBeenCalled()
+		expect(pool.query).not.toHaveBeenCalled()
+		expect(sendWebhook).not.toHaveBeenCalled()
+	})
+
+	test("a scan whose camera is stopped during the capture write inserts nothing and sends no webhook", async () => {
+		let release
+		fs.promises.writeFile.mockImplementation(() => new Promise((r) => { release = r }))
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+
+		const scanning = worker.scan(1)
+		for (let i = 0; i < 10; i++) await Promise.resolve()
+		expect(release).toEqual(expect.any(Function))
+		worker.stopWorkers()
+		release()
+		await scanning
+
+		expect(fs.promises.writeFile).toHaveBeenCalledTimes(1)
+		expect(pool.query).not.toHaveBeenCalled()
+		expect(sendWebhook).not.toHaveBeenCalled()
 	})
 
 	test("scanning an unknown camera id throws distinguishably and leaves no status entry behind", async () => {
@@ -174,7 +237,7 @@ describe("scan", () => {
 })
 
 describe("startWorkers / stopWorkers", () => {
-	const tick = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
+	const tick = async () => { for (let i = 0; i < 25; i++) await Promise.resolve() }
 
 	beforeEach(() => {
 		jest.useFakeTimers()
@@ -315,6 +378,27 @@ describe("startWorkers / stopWorkers", () => {
 		expect(jest.getTimerCount()).toBe(4)
 		worker.stopWorkers()
 		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("a camera deleted from disk persists nothing on its next scan, even while the camera cache still lists it", async () => {
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.startWorkers()
+		await tick()
+
+		fs.promises.writeFile.mockClear()
+		pool.query.mockClear()
+		sendWebhook.mockClear()
+
+		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
+		jest.advanceTimersByTime(worker.getConfig().intervalMs)
+		await tick()
+
+		const written = fs.promises.writeFile.mock.calls.map((c) => path.basename(String(c[0])))
+		expect(written).toEqual([expect.stringMatching(/^1-\d+\.jpg$/)])
+		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(pool.query.mock.calls[0][1][0]).toBe(1)
+		expect(sendWebhook).toHaveBeenCalledTimes(1)
+		expect(sendWebhook.mock.calls[0][1]).toContain("Camera 1")
 	})
 
 	test("a camera added while running gets a worker without a restart", async () => {
