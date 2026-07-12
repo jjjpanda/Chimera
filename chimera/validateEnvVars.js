@@ -1,13 +1,21 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, multiInstance } = require("./preflight.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
 const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
+
+const instances = (process.env.chimeraInstances || "").trim()
+if (instances !== "" && instances !== "max" && !/^-?\d+$/.test(instances)) {
+	console.log("chimeraInstances MUST BE AN INTEGER OR \"max\"")
+	allEnvPresent = false
+}
+if (multiInstance(instances)) process.env.memory_ON = "true"
+
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
@@ -90,6 +98,16 @@ schema.filter(v => /_FOLDERPATH$/.test(v.key)).forEach(v => confirmPath(v.key, t
 
 if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
+}
+
+if (process.env.object_ON === "true" && process.env.livestream_ON !== "true") {
+	console.log("object_ON=true REQUIRES livestream_ON=true — object reads frames from the livestream HLS feed")
+	allEnvPresent = false
+}
+
+if (process.env.schedule_ON === "true" && process.env.memory_ON !== "true") {
+	console.log("schedule_ON=true REQUIRES memory_ON=true — all scheduled task state lives in the memory server")
+	allEnvPresent = false
 }
 
 if(allEnvPresent){

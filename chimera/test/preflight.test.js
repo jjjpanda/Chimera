@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, multiInstance } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -172,5 +172,25 @@ describe("isServiceOff (prefix mapping)", () => {
 	test("livestream_FOLDERPATH follows livestream service", () => {
 		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
+	})
+
+	test("memory vars follow memory service when single-instance", () => {
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "1" }), "memory_HOST")).toBe(true)
+		expect(isServiceOff(lines({ memory_ON: "true", chimeraInstances: "1" }), "memory_HOST")).toBe(false)
+	})
+
+	test("memory vars required despite memory_ON=false when chimeraInstances forces cluster mode", () => {
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "4" }), "memory_HOST")).toBe(false)
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "max" }), "memory_AUTH_TOKEN")).toBe(false)
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "0" }), "memory_PORT")).toBe(false)
+	})
+})
+
+describe("multiInstance", () => {
+	test.each([
+		["max", true], ["0", true], ["-1", true], ["4", true],
+		["1", false], ["", false], [undefined, false]
+	])("%s -> %s", (val, expected) => {
+		expect(multiInstance(val)).toBe(expected)
 	})
 })

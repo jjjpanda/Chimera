@@ -2,6 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
 const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
+const multiInstance = require("../lib/utils/multiInstance.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -59,7 +60,10 @@ const varProblem = (v, val) => {
 const getCamDir = () => {
 	if (fs.existsSync(MOTION)) {
 		const conf = parseConf(fs.readFileSync(MOTION, "utf8"))
-		if (conf.camera_dir && !path.isAbsolute(conf.camera_dir)) return path.resolve(ROOT, conf.camera_dir)
+		if (conf.camera_dir) {
+			const dir = path.isAbsolute(conf.camera_dir) ? conf.camera_dir : path.resolve(ROOT, conf.camera_dir)
+			if (fs.existsSync(dir)) return dir
+		}
 	}
 	return CAM_DIR
 }
@@ -101,6 +105,7 @@ const isServiceOff = (lines, key) => {
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
+	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
 }
 
@@ -220,4 +225,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, multiInstance }
