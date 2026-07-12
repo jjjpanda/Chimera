@@ -1,8 +1,18 @@
 var express    = require("express")
 const path = require("path")
 const { subprocess } = require("lib")
+const memory = require("memory")
 
 const app = express.Router()
+
+const restartAttempts = memory.loginAttempts()
+const restartLimiter = (req, res, next) => {
+	const key = `${req.ip || ""}:${req.path}`
+	restartAttempts.loginReserve(key, 20, 60 * 1000, (blocked) => {
+		if(blocked) return res.status(429).send({})
+		next()
+	})
+}
 
 subprocess.checkProcess("live_stream_cam", () => {
 	console.log("▶ Livestream process detected ✅")
@@ -21,14 +31,14 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
-app.post("/restart", (req, res, next) => {
+app.post("/restart", restartLimiter, (req, res, next) => {
 	const {camera} = req.body
-	if(camera){
-		req.processName = `live_stream_cam_${camera}`
-		next()
+	if(!/^\d+$/.test(String(camera))){
+		res.status(400).send({})
 	}
 	else{
-		res.status(400).send({})
+		req.processName = `live_stream_cam_${camera}`
+		next()
 	}
 }, subprocess.restart)
 
