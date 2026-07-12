@@ -19,6 +19,11 @@ if (instances !== "" && !validInstances(instances)) {
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
+	if (varName === "scheduler_AUTH" && varName in process.env && process.env[varName].trim() === "") {
+		console.log("EMPTY SECRET — scheduler_AUTH must not be blank when set:", varName)
+		allEnvPresent = false
+		return false
+	}
 	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return true
 	const val = process.env[varName]
 	if (val == null || val.trim() === "") {
