@@ -64,6 +64,7 @@ describe("varProblem", () => {
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
+	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -93,6 +94,21 @@ describe("varProblem", () => {
 
 	test("string: set to non-placeholder → null", () => {
 		expect(varProblem(strVar, "mysecret")).toBeNull()
+	})
+
+	test("chimeraInstances: values pm2 cannot cluster → error", () => {
+		expect(varProblem(instancesVar, "lots")).toBeTruthy()
+		expect(varProblem(instancesVar, "-2")).toBeTruthy()
+		expect(varProblem(instancesVar, "4x")).toBeTruthy()
+		expect(varProblem(instancesVar, "1.5")).toBeTruthy()
+	})
+
+	test("chimeraInstances: values pm2 accepts → null", () => {
+		expect(varProblem(instancesVar, "max")).toBeNull()
+		expect(varProblem(instancesVar, "-1")).toBeNull()
+		expect(varProblem(instancesVar, "0")).toBeNull()
+		expect(varProblem(instancesVar, "1")).toBeNull()
+		expect(varProblem(instancesVar, "4")).toBeNull()
 	})
 })
 

@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
 const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
-const { multiInstance } = require("../lib/utils/multiInstance.js")
+const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -51,6 +51,7 @@ const seedEnv = () => fs.writeFileSync(ENV,
 const varProblem = (v, val) => {
 	const blank = val === undefined || val === "" || val === v.placeholder
 	if (blank) return v.optional ? null : "required, not set"
+	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
 	if (t === "port" && !/^\d+$/.test(val)) return `must be a number (got "${val}")`
