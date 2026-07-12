@@ -102,6 +102,10 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
+			if(!save){
+				if(!res.headersSent) res.status(500).end()
+				else res.destroy(err)
+			}
 			fs.unlink(txtPath, () => {
 				if(save && !cancelled){
 					webhookAlert(`Your video (${rand}) could not be completed.`)

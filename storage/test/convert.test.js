@@ -347,7 +347,7 @@ describe("Convert Routes", () => {
 
 		test("alerts exactly once when the output stream errors and dedups repeats", () => {
 			lib.webhookAlert.mockClear()
-			const output = Object.assign(new EventEmitter(), { destroy: jest.fn() })
+			const output = new EventEmitter()
 			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })

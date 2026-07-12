@@ -177,7 +177,7 @@ module.exports = {
 				const gone = batch.filter((row, i) => removed[i])
 				batch.forEach((row, i) => { if (!removed[i]) stuck.push(row.id) })
 
-				if (gone.length === 0) break
+				if (gone.length === 0) continue
 				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
 				gone.forEach(row => { freed += parseInt(row.size) || 0 })
 				deleted += gone.length

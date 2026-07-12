@@ -195,9 +195,16 @@ module.exports = {
 			rows.forEach(({id, url, body, cron_string, running}) => {
 				client.emit("createTask", {id, url, body, cronString: cron_string, running})
 			})
-			client.emit("listTask", (tasks) => {
+			client.emit("listTask", async (tasks) => {
+				let current
+				try {
+					({ rows: current } = await pool.query("SELECT * FROM scheduled_tasks"))
+				} catch (e) {
+					console.log("TASK RECONCILE ERROR", e)
+					return
+				}
 				Object.entries(tasks)
-					.filter(([id, task]) => id.includes("task") && !task.protected && !rows.some(row => row.id === id))
+					.filter(([id, task]) => id.includes("task") && !task.protected && !current.some(row => row.id === id))
 					.forEach(([id]) => {
 						console.log("TASK RECONCILE, DESTROYING ORPHAN", id)
 						client.emit("destroyTask", id, () => {})
