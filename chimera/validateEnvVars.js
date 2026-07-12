@@ -19,8 +19,8 @@ if (instances !== "" && !validInstances(instances)) {
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
-	if (varName === "scheduler_AUTH" && varName in process.env && process.env[varName].trim() === "") {
-		console.log("EMPTY SECRET — scheduler_AUTH must not be blank when set:", varName)
+	if (isSecret(varName) && varName in process.env && process.env[varName].trim() === "") {
+		console.log("EMPTY SECRET — must not be blank when set:", varName)
 		allEnvPresent = false
 		return false
 	}
