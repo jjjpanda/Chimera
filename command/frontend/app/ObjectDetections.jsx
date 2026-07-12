@@ -159,7 +159,7 @@ const ObjectDetectionsFull = () => {
 	const groups = useMemo(() => groupDetections(detections), [detections])
 
 	const [searchParams] = useSearchParams()
-	const cameras = status?.cameras ? Object.entries(status.cameras) : []
+	const cameras = useMemo(() => status?.cameras ? Object.entries(status.cameras) : [], [status?.cameras])
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [previewHeight, setPreviewHeight] = useState(200)
@@ -182,8 +182,8 @@ const ObjectDetectionsFull = () => {
 		if (selectedCam != null || cameras.length === 0) return
 		const camParam = searchParams.get("camera")
 		const match = camParam != null && cameras.find(([c]) => String(c) === String(camParam))
-		setSelectedCam(match ? match[0] : null)
-	}, [cameras])
+		setSelectedCam(match ? match[0] : cameras[0][0])
+	}, [cameras, searchParams, selectedCam])
 
 	const camGroups = useMemo(() =>
 		groups.filter(g => String(g.camera) === String(selectedCam)).reverse(),
@@ -211,6 +211,9 @@ const ObjectDetectionsFull = () => {
 		setScrubIdx(Math.round(pct * Math.max(0, camGroups.length - 1)))
 	}
 
+	const endDragRef = useRef(null)
+	useEffect(() => () => endDragRef.current?.(), [])
+
 	const startDrag = (e) => {
 		e.preventDefault()
 		seekTo(e.clientX)
@@ -218,7 +221,10 @@ const ObjectDetectionsFull = () => {
 		const up = () => {
 			window.removeEventListener("pointermove", move)
 			window.removeEventListener("pointerup", up)
+			endDragRef.current = null
 		}
+		endDragRef.current?.()
+		endDragRef.current = up
 		window.addEventListener("pointermove", move)
 		window.addEventListener("pointerup", up)
 	}
@@ -253,9 +259,9 @@ const ObjectDetectionsFull = () => {
 				</div>
 			)}
 			<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-				<div className="absolute right-2 z-10 bg-background">
-					<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+				<div className="absolute right-2 z-10 bg-bg">
+					<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 				</div>
 			</div>
 

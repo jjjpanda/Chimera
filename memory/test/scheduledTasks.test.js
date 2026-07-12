@@ -4,7 +4,7 @@ beforeEach(() => {
 	jest.resetModules()
 	taskObject = { id: "t1", cronString: "* * * * *", running: true }
 	fakeTask = { start: jest.fn(), stop: jest.fn(), destroy: jest.fn() }
-	jest.doMock("node-cron", () => ({ createTask: jest.fn(() => fakeTask) }))
+	jest.doMock("node-cron", () => ({ createTask: jest.fn(() => fakeTask), validate: jest.fn(() => true) }))
 	cron = require("node-cron")
 	makeScheduledTasks = require("../lib/scheduledTasks.js")
 	io = { emit: jest.fn() }
@@ -12,12 +12,27 @@ beforeEach(() => {
 })
 
 describe("memory scheduledTasks lifecycle", () => {
-	test("createTask schedules, starts, and emits the task id on tick", () => {
+	test("createTask schedules, starts, and broadcasts the live task config on tick", () => {
 		tasks.createTask(taskObject)
 		expect(cron.createTask).toHaveBeenCalledWith(taskObject.cronString, expect.any(Function))
 		expect(fakeTask.start).toHaveBeenCalledTimes(1)
+
+		const updatedTask = { ...taskObject, body: "NEW" }
+		tasks.createTask(updatedTask)
+
 		cron.createTask.mock.calls[0][1]()
-		expect(io.emit).toHaveBeenCalledWith(taskObject.id)
+		expect(io.emit).toHaveBeenCalledWith("runTask", updatedTask)
+	})
+
+	test("createTask skips a task with an invalid cron string", () => {
+		cron.validate.mockReturnValueOnce(false)
+		let ack
+		tasks.createTask({ ...taskObject, cronString: "not a cron" }, a => { ack = a })
+		expect(cron.createTask).not.toHaveBeenCalled()
+		expect(ack).toEqual({ error: "invalid cron" })
+		let configs
+		tasks.listTasks(c => { configs = c })
+		expect(configs[taskObject.id]).toBeUndefined()
 	})
 
 	test("createTask does not start the cron when running is false", () => {

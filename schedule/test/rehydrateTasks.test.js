@@ -27,7 +27,7 @@ describe("rehydrateTasks", () => {
 		expect(mockClient.on).toHaveBeenCalledWith("connect", expect.any(Function))
 	})
 
-	test("re-attaches listeners and recreates crons for every persisted task when already connected", async () => {
+	test("recreates crons for every persisted task when already connected", async () => {
 		mockedPool.query.mockResolvedValueOnce({ rows: [
 			{ id: "task-abc", url: "/file/pathClean", body: {}, cron_string: "*/10 * * * *", running: true },
 			{ id: "task-def", url: "/file/pathClean", body: {}, cron_string: "*/5 * * * *", running: false }
@@ -35,12 +35,7 @@ describe("rehydrateTasks", () => {
 		mockClient.connected = true
 		await rehydrateTasks()
 
-		expect(mockClient.off).toHaveBeenCalledWith("task-abc")
-		expect(mockClient.on).toHaveBeenCalledWith("task-abc", expect.any(Function))
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-abc", running: true }))
-
-		expect(mockClient.off).toHaveBeenCalledWith("task-def")
-		expect(mockClient.on).toHaveBeenCalledWith("task-def", expect.any(Function))
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-def", running: false }))
 	})
 

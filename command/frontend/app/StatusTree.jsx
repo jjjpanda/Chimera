@@ -13,7 +13,7 @@ const StatusDot = ({ status }) => (
 	)} />
 )
 
-const services = ["command", "schedule", "storage", "motion", "database", "livestream", "memory"]
+const services = ["command", "schedule", "storage", "motion", "database", "livestream", "object", "memory"]
 
 const Status = () => {
 	const [status] = useChimeraStatus()

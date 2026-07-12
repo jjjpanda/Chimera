@@ -31,16 +31,16 @@ const listTasks = (setState) => {
 	})
 }
 
-const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
+const afterRequestCallbackGenerator = (setKey) => (prom) => {
 	jsonProcessing(prom, (data) => {
 		setTimeout(() => {
-			setKey(key+1) 
+			setKey(k => k + 1)
 		}, 1500)
 	})
 }
 
-const restartTasksGenerator = (key, setKey) => (id) => {
-	request("/task/start", {
+const taskActionGenerator = (url) => (setKey) => (id) => {
+	request(url, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -48,32 +48,12 @@ const restartTasksGenerator = (key, setKey) => (id) => {
 		body: JSON.stringify({
 			id
 		})
-	}, afterRequestCallbackGenerator(key, setKey))
+	}, afterRequestCallbackGenerator(setKey))
 }
 
-const stopTasksGenerator = (key, setKey) => (id) => {
-	request("/task/stop", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
-
-const deleteTasksGenerator = (key, setKey) => (id) => {
-	request("/task/destroy", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
+const restartTasksGenerator = taskActionGenerator("/task/start")
+const stopTasksGenerator = taskActionGenerator("/task/stop")
+const deleteTasksGenerator = taskActionGenerator("/task/destroy")
 
 const useTasks = () => {
 	const [state, setState] = useState({
@@ -91,9 +71,9 @@ const useTasks = () => {
 
 	return [
 		state,
-		restartTasksGenerator(key, setKey),
-		stopTasksGenerator(key, setKey),
-		deleteTasksGenerator(key, setKey),
+		restartTasksGenerator(setKey),
+		stopTasksGenerator(setKey),
+		deleteTasksGenerator(setKey),
 		reload
 	]
 }

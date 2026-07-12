@@ -10,8 +10,12 @@ import { Button } from "../components/ui/button"
 import { RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 
+const MAX_FATAL_RETRIES = 3
+
 const HlsPlayer = ({ src, className }) => {
 	const videoRef = useRef(null)
+	const [attempt, setAttempt] = useState(0)
+	const [lost, setLost] = useState(false)
 	const [unsupported] = useState(
 		() => !Hls.isSupported() && !document.createElement("video").canPlayType("application/vnd.apple.mpegurl")
 	)
@@ -19,10 +23,14 @@ const HlsPlayer = ({ src, className }) => {
 	useEffect(() => {
 		const video = videoRef.current
 		if (!video || !src) return
+		setLost(false)
 
 		if (video.canPlayType("application/vnd.apple.mpegurl")) {
+			const onError = () => setLost(true)
+			video.addEventListener("error", onError)
 			video.src = src
 			return () => {
+				video.removeEventListener("error", onError)
 				video.pause()
 				video.removeAttribute("src")
 				video.load()
@@ -31,22 +39,46 @@ const HlsPlayer = ({ src, className }) => {
 
 		if (Hls.isSupported()) {
 			const hls = new Hls()
+			let networkRetries = 0
+			let mediaRetries = 0
+			const reset = () => {
+				networkRetries = 0
+				mediaRetries = 0
+			}
+			hls.on(Hls.Events.MANIFEST_PARSED, reset)
+			hls.on(Hls.Events.FRAG_BUFFERED, reset)
 			hls.on(Hls.Events.ERROR, (_, data) => {
 				if (!data.fatal) return
-				if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
-				else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError()
-				else hls.destroy()
+				if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries++ < MAX_FATAL_RETRIES) hls.startLoad()
+				else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetries++ < MAX_FATAL_RETRIES) hls.recoverMediaError()
+				else {
+					hls.destroy()
+					setLost(true)
+				}
 			})
 			hls.loadSource(src)
 			hls.attachMedia(video)
 			return () => hls.destroy()
 		}
-	}, [src])
+	}, [src, attempt])
 
 	if (unsupported)
-		return <div className={cn(className, "flex items-center justify-center text-sm text-muted-foreground")}>HLS not supported</div>
+		return <div className={cn(className, "flex items-center justify-center text-sm text-muted")}>HLS not supported</div>
 
-	return <video ref={videoRef} controls playsInline className={className} />
+	return (
+		<>
+			<video ref={videoRef} controls playsInline className={className} />
+			{lost && (
+				<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-sm text-white">
+					<span>Stream lost</span>
+					<Button variant="secondary" size="sm" className="gap-1.5 text-xs" onClick={() => setAttempt(a => a + 1)}>
+						<RefreshCw className="size-3.5" />
+						Retry
+					</Button>
+				</div>
+			)}
+		</>
+	)
 }
 
 const Feed = ({ video, hideLabel }) => (
@@ -66,7 +98,10 @@ const LiveVideo = (props) => {
 	const [state, refresh, restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
 	const [activeTab, setActiveTab] = useState("0")
+	const [reloadKey, setReloadKey] = useState(0)
 	const squarify = useSquarifyVideos()
+
+	const restartStreams = () => restart().then(() => setReloadKey(k => k + 1))
 
 	useEffect(() => {
 		setVideos(props.grid ? squarify(state.videoList) : state.videoList)
@@ -81,13 +116,13 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-3">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restartStreams} disabled={state.restarting} title="Restart all camera streams">
 						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
 						{state.restarting ? "Restarting…" : "Restart streams"}
 					</Button>
 				</div>
 				{state.videoList.map((video) => (
-					<Feed key={video.url} video={video} />
+					<Feed key={`${video.url}-${reloadKey}`} video={video} />
 				))}
 			</div>
 		)
@@ -97,7 +132,7 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-2">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restartStreams} disabled={state.restarting} title="Restart all camera streams">
 						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
 						{state.restarting ? "Restarting…" : "Restart streams"}
 					</Button>
@@ -106,7 +141,7 @@ const LiveVideo = (props) => {
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
 						{row.map((video) =>
 							video ? (
-								<Feed key={video.url} video={video} />
+								<Feed key={`${video.url}-${reloadKey}`} video={video} />
 							) : null
 						)}
 					</div>

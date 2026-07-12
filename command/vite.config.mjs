@@ -35,6 +35,7 @@ return {
 			"/authorization": gatewayTarget,
 			"/cameras": gatewayTarget,
 			"/command/health": gatewayTarget,
+			"/schedule/health": gatewayTarget,
 			"/convert": gatewayTarget,
 			"/file": gatewayTarget,
 			"/motion": gatewayTarget,
