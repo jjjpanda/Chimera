@@ -8,6 +8,7 @@ const app = express.Router()
 const restartAttempts = memory.loginAttempts()
 const restartLimiter = (req, res, next) => {
 	const key = `${req.ip || ""}:${req.path}`
+	// store is per-worker in-process, so effective limit is 20 × pm2 instance count, not a global 20
 	restartAttempts.loginReserve(key, 20, 60 * 1000, (blocked) => {
 		if(blocked) return res.status(429).send({})
 		next()
