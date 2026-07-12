@@ -1,7 +1,8 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, multiInstance } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
+const multiInstance = require("../lib/utils/multiInstance.js")
 
 let allEnvPresent = true
 const schema = parseSchema()

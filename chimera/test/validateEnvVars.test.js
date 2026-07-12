@@ -10,7 +10,7 @@ const BASE = { ...CI_ENV, storage_FOLDERPATH: os.tmpdir(), livestream_FOLDERPATH
 
 const run = (overrides) => spawnSync(process.execPath, [SCRIPT], {
 	cwd: os.tmpdir(),
-	env: { ...process.env, ...BASE, ...overrides },
+	env: { ...BASE, ...overrides },
 	encoding: "utf8"
 })
 

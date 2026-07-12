@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, multiInstance } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -184,14 +184,5 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "max" }), "memory_AUTH_TOKEN")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "0" }), "memory_PORT")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "-1" }), "memory_PORT")).toBe(false)
-	})
-})
-
-describe("multiInstance", () => {
-	test.each([
-		["max", true], ["0", true], ["-1", true], ["4", true], [" 3 ", true],
-		["1", false], ["", false], [undefined, false], ["lots", false], ["2.5", false]
-	])("%s -> %s", (val, expected) => {
-		expect(multiInstance(val)).toBe(expected)
 	})
 })

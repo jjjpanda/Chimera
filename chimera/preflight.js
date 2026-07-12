@@ -222,4 +222,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, multiInstance }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }
