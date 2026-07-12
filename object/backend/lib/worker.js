@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance, loadCameras, mapLimit } = require("lib")
+const { isPrimeInstance, loadCameras, mapLimit, webhookAlert } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -14,8 +14,8 @@ const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? p
 const PRUNE_CONCURRENCY = 32
 const CAMERA_TTL_MS = 30000
 const TEMP_STALE_MS = 60000
-fs.mkdirSync(TEMP_DIR, { recursive: true })
-fs.mkdirSync(CAPTURES_DIR, { recursive: true })
+try { fs.mkdirSync(TEMP_DIR, { recursive: true }) } catch (e) { console.error("❌ Failed to create object temp directory:", e.message) }
+try { fs.mkdirSync(CAPTURES_DIR, { recursive: true }) } catch (e) { console.error("❌ Failed to create object captures directory:", e.message) }
 
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
 
@@ -137,10 +137,22 @@ const toTensor = (raw) => {
 
 const roundTo = (val, sig) => Math.round(val * 10 ** sig) / 10 ** sig
 
+let captureWriteFailing = false
+
 const handleDetections = async (camera, detections, jpeg) => {
 	const image = `${camera}-${Date.now()}.jpg`
-	try { fs.writeFileSync(path.join(CAPTURES_DIR, image), jpeg) } catch (e) {}
-	const persistable = detections.filter((d) => Array.isArray(d.box))
+	const stored = await fs.promises.writeFile(path.join(CAPTURES_DIR, image), jpeg)
+		.then(() => true)
+		.catch((e) => {
+			console.log("OBJECT CAPTURE WRITE ERROR", e.message)
+			if (!captureWriteFailing) {
+				captureWriteFailing = true
+				webhookAlert(`⚠️ Object capture write to ${CAPTURES_DIR} failed (${e.message}) — detections are still being alerted but no longer recorded. Check disk space.`, "admin")
+			}
+			return false
+		})
+	if (stored) captureWriteFailing = false
+	const persistable = stored ? detections.filter((d) => Array.isArray(d.box)) : []
 	if (persistable.length) {
 		const values = []
 		const rows = persistable.map((d, i) => {
@@ -158,7 +170,7 @@ const handleDetections = async (camera, detections, jpeg) => {
 	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
 }
 
-const scan = async (id) => {
+const scan = async (id, era = epoch) => {
 	try {
 		const list = await cameras()
 		const cam = list.find(c => c.id === id)
@@ -167,10 +179,13 @@ const scan = async (id) => {
 			err.code = "UNKNOWN_CAMERA"
 			throw err
 		}
-		const st = status[id] || (status[id] = {})
 		const { jpeg, raw } = await extractFrame(cam.id)
 		const all = await detector.detect(toTensor(raw), config.confidence)
 		const detections = all.filter((d) => config.classes.includes(d.class))
+
+		if (era !== epoch || (_cameras && !_cameras.some(c => c.id === id))) return detections
+
+		const st = status[id] || (status[id] = {})
 		st.lastRun = new Date().toISOString()
 		st.error = null
 		if (detections.length) {
@@ -179,7 +194,7 @@ const scan = async (id) => {
 		}
 		return detections
 	} catch (e) {
-		if (status[id]) status[id].error = e.message
+		if (e.code !== "UNKNOWN_CAMERA" && status[id]) status[id].error = e.message
 		throw e
 	}
 }
@@ -187,7 +202,7 @@ const scan = async (id) => {
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		await scan(id).catch(() => {})
+		await scan(id, era).catch(() => {})
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
 	}
@@ -229,6 +244,7 @@ const stopWorkers = () => {
 	epoch++
 	_cameras = null
 	_camerasAt = 0
+	captureWriteFailing = false
 	clearInterval(pruneTimer)
 	pruneTimer = null
 	clearInterval(reconcileTimer)
