@@ -7,6 +7,8 @@ const { loadCameras, webhookAlert, mapLimit } = require("lib")
 const pool = require("../../lib/pool")
 const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
 
+const MAX_STUCK_BATCHES = 3
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
@@ -153,6 +155,7 @@ module.exports = {
 			let freed = 0
 			let deleted = 0
 			const stuck = []
+			let stuckBatches = 0
 			let page = []
 			let cursor = 0
 
@@ -183,7 +186,11 @@ module.exports = {
 				const gone = batch.filter((row, i) => removed[i])
 				batch.forEach((row, i) => { if (!removed[i]) stuck.push(row.id) })
 
-				if (gone.length === 0) continue
+				if (gone.length === 0) {
+					if (++stuckBatches >= MAX_STUCK_BATCHES) break
+					continue
+				}
+				stuckBatches = 0
 				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
 				gone.forEach(row => { freed += parseInt(row.size) || 0 })
 				deleted += gone.length

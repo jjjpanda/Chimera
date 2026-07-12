@@ -57,4 +57,13 @@ describe("registerTaskRunner", () => {
 			["task-abc", "/file/pathClean"]
 		)
 	})
+
+	test("refuses a url memory broadcast that is not schedulable", async () => {
+		const { webhookAlert } = require("lib")
+		runner()({ id: "task-evil", url: "/auth/createUser", body: {} })
+		await new Promise(process.nextTick)
+
+		expect(mockPost).not.toHaveBeenCalled()
+		expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("not schedulable"))
+	})
 })

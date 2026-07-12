@@ -223,6 +223,10 @@ const validateRequestURL = (url) => {
 }
 
 const runTask = ({ id, url, body }) => {
+	if(!validateRequestURL(url)){
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror url is not schedulable`)
+		return
+	}
 	console.log(id, " | CRON: ", url)
 	axios.post(`${gatewayHost()}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }

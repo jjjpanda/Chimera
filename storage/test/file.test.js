@@ -420,6 +420,28 @@ describe("File Routes", () => {
 				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("could not unlink 2 frame file(s)"), "admin")
 			})
 
+			test("gives up paging once nothing can be unlinked instead of walking the whole table", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				let id = 0
+				query.mockImplementation((sql) => {
+					if (sql.startsWith("SELECT COALESCE")) return Promise.resolve({ rows: [{ total: "1800000000" }] })
+					if (sql.startsWith("SELECT id")) {
+						if (id >= 20) return Promise.resolve({ rows: [] })
+						id++
+						return Promise.resolve({ rows: [{ id, camera: "1", name: `f${id}.jpg`, size: "100000000" }] })
+					}
+					return Promise.resolve({ rows: [] })
+				})
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(3)
+			})
+
 			test("skips a fully stuck batch and frees the frames behind it", async () => {
 				process.env.storage_MAX_GB = "1"
 				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
