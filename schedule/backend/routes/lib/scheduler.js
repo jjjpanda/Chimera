@@ -168,7 +168,7 @@ module.exports = {
 		if (!maxGb) return
 		const id = "task-auto-cleanup"
 		const register = () => {
-			client.timeout(2000).emit("destroyTask", id, () => {
+			client.emit("destroyTask", id, () => {
 				client.emit("createTask", {
 					id,
 					url: "/file/pathAutoClean",
@@ -194,6 +194,14 @@ module.exports = {
 			}
 			rows.forEach(({id, url, body, cron_string, running}) => {
 				client.emit("createTask", {id, url, body, cronString: cron_string, running})
+			})
+			client.emit("listTask", (tasks) => {
+				Object.entries(tasks)
+					.filter(([id, task]) => id.includes("task") && !task.protected && !rows.some(row => row.id === id))
+					.forEach(([id]) => {
+						console.log("TASK RECONCILE, DESTROYING ORPHAN", id)
+						client.emit("destroyTask", id, () => {})
+					})
 			})
 		}
 		client.on("connect", register)

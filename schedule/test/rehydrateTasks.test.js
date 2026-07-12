@@ -61,4 +61,26 @@ describe("rehydrateTasks", () => {
 		expect(mockClient.emit).not.toHaveBeenCalled()
 		logSpy.mockRestore()
 	})
+
+	test("destroys a memory task whose row is gone, sparing live and protected tasks", async () => {
+		const logSpy = jest.spyOn(console, "log").mockImplementation(() => {})
+		mockedPool.query.mockResolvedValueOnce({ rows: [
+			{ id: "task-abc", url: "/file/pathClean", body: {}, cron_string: "*/10 * * * *", running: true }
+		] })
+		mockClient.emit.mockImplementation((event, callback) => {
+			if (event == "listTask") callback({
+				"task-abc": { protected: false },
+				"task-ghost": { protected: false },
+				"task-auto-cleanup": { protected: true }
+			})
+		})
+		mockClient.connected = true
+		await rehydrateTasks()
+
+		const destroyed = mockClient.emit.mock.calls.filter(([event]) => event == "destroyTask").map(([, id]) => id)
+		expect(destroyed).toEqual(["task-ghost"])
+
+		mockClient.emit.mockReset()
+		logSpy.mockRestore()
+	})
 })

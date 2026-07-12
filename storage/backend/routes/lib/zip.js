@@ -45,6 +45,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 		if(save){
 			const zipPath = path.join(imgDir, fileName(camera, start, end, rand, "zip"))
 			const txtPath = path.join(imgDir, `zip_${rand}.txt`)
+			var output = fs.createWriteStream(zipPath)
 			let cancelled = false
 			let alerted = false
 			const alertFailure = () => {
@@ -53,8 +54,28 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				webhookAlert(`Your zip (${rand}) could not be completed.`)
 			}
 
+			output.on("error", (err) => {
+				cancelled = true
+				console.log("ZIP OUTPUT ERROR: " + err.message)
+				fs.unlink(txtPath, () => {})
+				fs.unlink(zipPath, () => {})
+				alertFailure()
+			})
+
 			console.log("SENDING START ALERT")
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
+
+			output.on("close", () => {
+				fs.unlink(txtPath, () => {
+					if(cancelled){
+						fs.unlink(zipPath, () => {})
+					}
+					else{
+						console.log("SENDING END ALERT")
+						webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+					}
+				})
+			})
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
@@ -68,43 +89,19 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			fs.writeFile(txtPath, "progress", (err) => {
 				if(err) console.log("ZIP LOCK WRITE ERROR: " + err.message)
+			})
 
-				var output = fs.createWriteStream(zipPath)
+			archive.pipe(output)
 
-				output.on("error", (err) => {
-					cancelled = true
-					console.log("ZIP OUTPUT ERROR: " + err.message)
-					fs.unlink(txtPath, () => {})
-					fs.unlink(zipPath, () => {})
-					alertFailure()
-				})
+			client.emit("saveProcessEnder", rand, () => {
+				cancelled = true
+				archive.abort()
+			})
 
-				output.on("close", () => {
-					fs.unlink(txtPath, () => {
-						if(cancelled){
-							fs.unlink(zipPath, () => {})
-						}
-						else{
-							console.log("SENDING END ALERT")
-							webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
-						}
-					})
-				})
-
-				archive.pipe(output)
-
-				client.emit("saveProcessEnder", rand, () => {
-					cancelled = true
-					archive.abort()
-				})
-
-				res.send({
-					id: rand,
-					frameLimitMet: req.body.frameLimitMet,
-					url: `/shared/captures/${fileName(camera, start, end, rand, "zip")}`
-				})
-
-				archive.finalize()
+			res.send({
+				id: rand,
+				frameLimitMet: req.body.frameLimitMet,
+				url: `/shared/captures/${fileName(camera, start, end, rand, "zip")}`
 			})
 		}
 		else{
@@ -115,8 +112,9 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			})
 			res.attachment(fileName(camera, start, end, rand, "zip"))
 			archive.pipe(res, {end: true})
-			archive.finalize()
 		}
+
+		archive.finalize()
 	}
 
 }
