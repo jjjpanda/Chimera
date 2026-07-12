@@ -117,7 +117,7 @@ module.exports = {
 	validateID: (req, res, next) => {
 		const { id } = req.body
 
-		if(typeof id !== "string" || !id.trim() || id.includes("/") || id.includes("\\") || id.includes("..")){
+		if(typeof id !== "string" || !/^[A-Za-z0-9._-]+$/.test(id)){
 			res.status(400).send({
 				error: true,
 				msg: "no id"
