@@ -1,8 +1,9 @@
 const mockClient = {
+	timeout: jest.fn(() => mockClient),
 	emit: jest.fn((event, ...args) => {
 		if(event == "destroyTask"){
 			const ack = args[args.length - 1]
-			if(typeof ack == "function") ack()
+			if(typeof ack == "function") ack(null)
 		}
 	}),
 	on: jest.fn(),
@@ -39,8 +40,6 @@ describe("autoRegisterCleanup", () => {
 		mockClient.connected = true
 		autoRegisterCleanup()
 		expect(mockClient.emit).toHaveBeenCalledWith("destroyTask", "task-auto-cleanup", expect.any(Function))
-		expect(mockClient.off).toHaveBeenCalledWith("task-auto-cleanup")
-		expect(mockClient.on).toHaveBeenCalledWith("task-auto-cleanup", expect.any(Function))
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", {
 			id: "task-auto-cleanup",
 			url: "/file/pathAutoClean",
@@ -61,6 +60,5 @@ describe("autoRegisterCleanup", () => {
 		const onConnect = mockClient.on.mock.calls.find(([event]) => event == "connect")[1]
 		onConnect()
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-auto-cleanup" }))
-		expect(mockClient.on).toHaveBeenCalledWith("task-auto-cleanup", expect.any(Function))
 	})
 })

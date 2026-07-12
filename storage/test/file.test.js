@@ -375,6 +375,98 @@ describe("File Routes", () => {
 				}
 			})
 
+			test("keeps freeing space, deleting rows only for the frames it actually unlinked", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 3, camera: "2", name: "d.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
+
+				const deletes = query.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
+				expect(deletes).toEqual([[[2]], [[3]]])
+				expect(query.mock.calls[3][1]).toEqual([[1]])
+			})
+
+			test("alerts when every frame is stuck", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "b.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query).toHaveBeenCalledTimes(3)
+				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("could not unlink 2 frame file(s)"), "admin")
+			})
+
+			test("gives up paging once nothing can be unlinked instead of walking the whole table", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				let id = 0
+				query.mockImplementation((sql) => {
+					if (sql.startsWith("SELECT COALESCE")) return Promise.resolve({ rows: [{ total: "1800000000" }] })
+					if (sql.startsWith("SELECT id")) {
+						if (id >= 20) return Promise.resolve({ rows: [] })
+						id++
+						return Promise.resolve({ rows: [{ id, camera: "1", name: `f${id}.jpg`, size: "100000000" }] })
+					}
+					return Promise.resolve({ rows: [] })
+				})
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(3)
+			})
+
+			test("skips a fully stuck batch and frees the frames behind it", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "stuck-b.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 3, camera: "2", name: "c.jpg", size: "600000000" },
+						{ id: 4, camera: "2", name: "d.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
+
+				const deletes = query.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
+				expect(deletes).toEqual([[[3, 4]]])
+				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
+			})
+
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
 				query.mockRejectedValueOnce(new Error("db error"))

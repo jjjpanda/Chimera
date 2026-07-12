@@ -9,7 +9,10 @@ module.exports = (io) => ({
 		scheduledTaskConfigs[taskObject.id] = taskObject
 		scheduledTask[taskObject.id] = cron.createTask(
 			taskObject.cronString,
-			() => io.emit(taskObject.id)
+			() => {
+				const config = scheduledTaskConfigs[taskObject.id]
+				if (config) io.emit("runTask", config)
+			}
 		)
 		if (taskObject.running) scheduledTask[taskObject.id].start()
 	},

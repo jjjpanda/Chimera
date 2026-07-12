@@ -841,12 +841,12 @@ const ClipMakerFull = () => {
 						})}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
 						</div>
-						<div className="absolute right-2 z-10 bg-background">
-							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+						<div className="absolute right-2 z-10 bg-bg">
+							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 						</div>
 					</div>
 				</>
@@ -864,12 +864,12 @@ const ClipMakerFull = () => {
 						)}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
 						</div>
-						<div className="absolute right-2 z-10 bg-background">
-							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+						<div className="absolute right-2 z-10 bg-bg">
+							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 						</div>
 					</div>
 				</>
@@ -1019,7 +1019,7 @@ const ClipMakerFull = () => {
 					<div className="flex flex-col gap-1">
 						<Label>Time Range</Label>
 						<div className="flex items-center gap-2 justify-end flex-wrap">
-							<span className="text-xs text-muted-foreground/50">preset</span>
+							<span className="text-xs text-muted/50">preset</span>
 							<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
 								<X className="size-3" />
 							</Button>

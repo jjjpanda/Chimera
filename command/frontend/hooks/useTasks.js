@@ -34,7 +34,7 @@ const listTasks = (setState) => {
 const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
 	jsonProcessing(prom, (data) => {
 		setTimeout(() => {
-			setKey(key+1) 
+			setKey(k => k + 1)
 		}, 1500)
 	})
 }

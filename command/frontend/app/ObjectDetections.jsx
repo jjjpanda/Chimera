@@ -253,9 +253,9 @@ const ObjectDetectionsFull = () => {
 				</div>
 			)}
 			<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-				<div className="absolute right-2 z-10 bg-background">
-					<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+				<div className="absolute right-2 z-10 bg-bg">
+					<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 				</div>
 			</div>
 

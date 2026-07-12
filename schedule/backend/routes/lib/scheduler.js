@@ -2,15 +2,20 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls, gatewayHost } = require("lib")
 const pool = require("../../lib/pool")
 
 const client = require("memory").client("TASK SCHEDULER")
 
+const withTasks = (res, handler) => client.timeout(2000).emit("listTask", (err, tasks) => {
+	if (err) return res.status(503).send({ error: "memory unavailable" })
+	handler(tasks)
+})
+
 module.exports = {
 	validateStartableTask: (req, res, next) => {
 		const { url, body, id, cronString } = req.body
-		client.emit("listTask", async tasks => {
+		withTasks(res, async tasks => {
 			if(isValidId(id, tasks, true)){
 				try {
 					await pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
@@ -18,7 +23,8 @@ module.exports = {
 					console.log("TASK UPDATE ERROR", err)
 					return res.status(500).send({ error: "Failed to update task in DB" })
 				}
-				client.emit("startTask", id, (scheduledTasks) => {
+				client.timeout(2000).emit("startTask", id, (err, scheduledTasks) => {
+					if (err) return res.status(503).send({ error: "memory unavailable" })
 					res.send({
 						running: scheduledTasks[id]?.running ?? false
 					})
@@ -55,7 +61,7 @@ module.exports = {
 
 	validateId: (req, res, next) => {
 		const { id } = req.body
-		client.emit("listTask", (tasks) => {
+		withTasks(res, (tasks) => {
 			if(isValidId(id, tasks) && !(tasks[id] && tasks[id].protected)){
 				next()
 			}
@@ -80,12 +86,10 @@ module.exports = {
 			console.log("TASK INSERT ERROR", err)
 			return res.status(500).send({ error: "Failed to insert task into DB" })
 		}
-		let taskObj = {
+		client.emit("createTask", {
 			id, url, body, cronString,
 			running: true
-		}
-		client.on(id, generateTask(url, id, body))
-		client.emit("createTask", taskObj)
+		})
 		res.send({
 			running: true
 		})
@@ -99,7 +103,8 @@ module.exports = {
 			console.log("TASK UPDATE ERROR", err)
 			return res.status(500).send({ error: "Failed to update task in DB" })
 		}
-		client.emit("stopTask", id, tasks=>{
+		client.timeout(2000).emit("stopTask", id, (err, tasks) => {
+			if (err) return res.status(503).send({ error: "memory unavailable" })
 			res.send({
 				stopped: !(tasks[id] && tasks[id].running)
 			})
@@ -114,8 +119,8 @@ module.exports = {
 			console.log("TASK DELETE ERROR", err)
 			return res.status(500).send({ error: "Failed to delete task from DB" })
 		}
-		client.off(id)
-		client.emit("destroyTask", id, tasks=>{
+		client.timeout(2000).emit("destroyTask", id, (err, tasks) => {
+			if (err) return res.status(503).send({ error: "memory unavailable" })
 			res.send({
 				destroyed: !(id in tasks)
 			})
@@ -123,7 +128,7 @@ module.exports = {
 	},
 
 	taskList: (req, res, next) => {
-		client.emit("listTask", tasks => {
+		withTasks(res, tasks => {
 			req.body.list = Object.entries(tasks).filter(([id, entry]) => {
 				return id && entry && id.includes("task")
 			}).map(([id, {url, cronString, body, running, protected: isProtected}]) => {
@@ -153,14 +158,17 @@ module.exports = {
 		}
 	},
 
+	registerTaskRunner: () => {
+		client.off("runTask")
+		client.on("runTask", runTask)
+	},
+
 	autoRegisterCleanup: () => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		if (!maxGb) return
 		const id = "task-auto-cleanup"
 		const register = () => {
 			client.emit("destroyTask", id, () => {
-				client.off(id)
-				client.on(id, generateTask("/file/pathAutoClean", id, {}))
 				client.emit("createTask", {
 					id,
 					url: "/file/pathAutoClean",
@@ -185,9 +193,22 @@ module.exports = {
 				return
 			}
 			rows.forEach(({id, url, body, cron_string, running}) => {
-				client.off(id)
-				client.on(id, generateTask(url, id, body))
 				client.emit("createTask", {id, url, body, cronString: cron_string, running})
+			})
+			client.emit("listTask", async (tasks) => {
+				let current
+				try {
+					({ rows: current } = await pool.query("SELECT * FROM scheduled_tasks"))
+				} catch (e) {
+					console.log("TASK RECONCILE ERROR", e)
+					return
+				}
+				Object.entries(tasks)
+					.filter(([id, task]) => id.includes("task") && !task.protected && !current.some(row => row.id === id))
+					.forEach(([id]) => {
+						console.log("TASK RECONCILE, DESTROYING ORPHAN", id)
+						client.emit("destroyTask", id, () => {})
+					})
 			})
 		}
 		client.on("connect", register)
@@ -201,9 +222,13 @@ const validateRequestURL = (url) => {
 	return schedulableUrls.includes(url)
 }
 
-const generateTask = (url, id, body) => () => {
+const runTask = ({ id, url, body }) => {
+	if(!validateRequestURL(url)){
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror url is not schedulable`)
+		return
+	}
 	console.log(id, " | CRON: ", url)
-	axios.post(`${process.env.gateway_HOST}${url}`, body, {
+	axios.post(`${gatewayHost()}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)

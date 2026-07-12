@@ -1,6 +1,8 @@
 require("dotenv").config()
+const { gatewayHost } = require("lib")
 
-const baseUrl = process.env.gateway_HOST
+const baseUrl = gatewayHost()
+
 module.exports = {
 	checkUrl: {
 		command: `${baseUrl}/command/health`,

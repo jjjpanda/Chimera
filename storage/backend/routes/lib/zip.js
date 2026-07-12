@@ -7,7 +7,7 @@ const {
 	filterList,
 	fileName,
 }              = require("./converter.js")
-const {webhookAlert, alertTime} = require("lib")
+const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 const client = require("memory").client("ZIP PROCESS")
 
@@ -72,7 +72,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 					}
 					else{
 						console.log("SENDING END ALERT")
-						webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
+						webhookAlert(`Your zip archive (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "zip")}`)
 					}
 				})
 			})
@@ -105,6 +105,8 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 		else{
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
+				if(!res.headersSent) return res.status(500).end()
+				res.destroy(err)
 			})
 			res.attachment(fileName(camera, start, end, rand, "zip"))
 			archive.pipe(res, {end: true})

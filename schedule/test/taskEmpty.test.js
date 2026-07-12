@@ -6,9 +6,10 @@ jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
 	client: (name) => ({
+		timeout() { return this },
 		emit: (event, ...args) => {
 			if(event == "listTask"){
-				args[0]({})
+				args[0](null, {})
 			}
 			else if(event == "createTask"){
 				//do nothing

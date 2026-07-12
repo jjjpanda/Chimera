@@ -7,6 +7,8 @@ const { loadCameras, webhookAlert, mapLimit } = require("lib")
 const pool = require("../../lib/pool")
 const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
 
+const MAX_STUCK_BATCHES = 3
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
@@ -152,29 +154,51 @@ module.exports = {
 
 			let freed = 0
 			let deleted = 0
+			const stuck = []
+			let stuckBatches = 0
+			let page = []
+			let cursor = 0
 
 			while (freed < toFree) {
-				const { rows } = await pool.query(
-					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
-				)
-				if (rows.length === 0) break
-
-				const batch = []
-				for (const row of rows) {
-					if (freed >= toFree) break
-					batch.push(row)
-					freed += parseInt(row.size) || 0
+				if (cursor >= page.length) {
+					const { rows } = await pool.query(
+						"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
+						[stuck]
+					)
+					if (rows.length === 0) break
+					page = rows
+					cursor = 0
 				}
 
-				await mapLimit(batch, FS_CONCURRENCY, row =>
-					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name)).catch(() => {})
-				)
-				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
-				deleted += batch.length
+				let planned = freed
+				const batch = []
+				while (cursor < page.length && planned < toFree) {
+					const row = page[cursor++]
+					batch.push(row)
+					planned += parseInt(row.size) || 0
+				}
 
-				if (batch.length < rows.length) break
+				const removed = await mapLimit(batch, FS_CONCURRENCY, row =>
+					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name))
+						.then(() => true)
+						.catch((e) => e.code === "ENOENT")
+				)
+				const gone = batch.filter((row, i) => removed[i])
+				batch.forEach((row, i) => { if (!removed[i]) stuck.push(row.id) })
+
+				if (gone.length === 0) {
+					if (++stuckBatches >= MAX_STUCK_BATCHES) break
+					continue
+				}
+				stuckBatches = 0
+				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
+				gone.forEach(row => { freed += parseInt(row.size) || 0 })
+				deleted += gone.length
 			}
 
+			if (stuck.length) {
+				webhookAlert(`⚠️ Storage auto-clean could not unlink ${stuck.length} frame file(s); their rows were left intact. Check permissions on ${CAPTURES_DIR}.`, "admin")
+			}
 			if (deleted === 0) return res.send({ cleaned: false })
 			res.send({ cleaned: true, deleted })
 		} catch (err) {

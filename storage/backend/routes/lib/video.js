@@ -9,7 +9,7 @@ const {
 	filterList,
 	fileName,
 }              = require("./converter.js")
-const {webhookAlert, alertTime} = require("lib")
+const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
@@ -61,6 +61,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
 		webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+		fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {})
 		res.send({ id: rand, url: undefined })
 	}
 	else {
@@ -94,13 +95,17 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.stop()
 				fs.unlink(txtPath, () => {
 					if(save){
-						webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
+						webhookAlert(`Your video (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
 					}
 				})
 			})
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
+			if(!save){
+				if(!res.headersSent) res.status(500).end()
+				else res.destroy(err)
+			}
 			fs.unlink(txtPath, () => {
 				if(save && !cancelled){
 					webhookAlert(`Your video (${rand}) could not be completed.`)

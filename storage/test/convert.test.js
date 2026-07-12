@@ -369,13 +369,29 @@ describe("Convert Routes", () => {
 		const { EventEmitter } = require("events")
 		const { zip } = require("../backend/routes/lib/zip.js")
 
-		test("registers an archive error listener so an fs error does not crash storage", () => {
+		test("sends a 500 on archive error when nothing has been written yet", () => {
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
-			const res = { attachment: jest.fn(), send: jest.fn() }
+			const end = jest.fn()
+			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: false, status: jest.fn(() => ({ end })) }
 
 			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
 
 			expect(() => archive.emit("error", new Error("EPIPE"))).not.toThrow()
+			expect(res.status).toHaveBeenCalledWith(500)
+			expect(end).toHaveBeenCalled()
+			expect(res.destroy).not.toHaveBeenCalled()
+		})
+
+		test("destroys the response on archive error once headers are already sent so the client does not hang", () => {
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: true, status: jest.fn() }
+			const err = new Error("EPIPE")
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
+
+			expect(() => archive.emit("error", err)).not.toThrow()
+			expect(res.destroy).toHaveBeenCalledWith(err)
+			expect(res.status).not.toHaveBeenCalled()
 		})
 	})
 

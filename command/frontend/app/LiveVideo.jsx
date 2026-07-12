@@ -44,7 +44,7 @@ const HlsPlayer = ({ src, className }) => {
 	}, [src])
 
 	if (unsupported)
-		return <div className={cn(className, "flex items-center justify-center text-sm text-muted-foreground")}>HLS not supported</div>
+		return <div className={cn(className, "flex items-center justify-center text-sm text-muted")}>HLS not supported</div>
 
 	return <video ref={videoRef} controls playsInline className={className} />
 }

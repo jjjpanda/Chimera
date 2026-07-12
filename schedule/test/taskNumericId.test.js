@@ -6,9 +6,10 @@ jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
 	client: () => ({
+		timeout() { return this },
 		emit: (event, ...args) => {
 			if(event == "listTask"){
-				args[0]({
+				args[0](null, {
 					taskid1: {id: "taskid1", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: true}
 				})
 			}

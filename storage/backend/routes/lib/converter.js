@@ -2,7 +2,7 @@ var fs         = require("fs")
 var path       = require("path")
 var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
-var {randomID}    = require("lib")
+var {randomID, gatewayHost}    = require("lib")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
@@ -47,7 +47,7 @@ module.exports = {
 		if (fileInfo.length < 5) return { error: true }
 		const id = fileInfo[4].split(".")[0]
 		return {
-			link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
+			link: `${gatewayHost()}/shared/captures/${fileName}`,
 			type: fileInfo[4].split(".")[1],
 			id,
 			requested: `${id.split("-")[1]}-${id.split("-")[2]}`,

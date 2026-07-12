@@ -27,7 +27,7 @@ describe("rehydrateTasks", () => {
 		expect(mockClient.on).toHaveBeenCalledWith("connect", expect.any(Function))
 	})
 
-	test("re-attaches listeners and recreates crons for every persisted task when already connected", async () => {
+	test("recreates crons for every persisted task when already connected", async () => {
 		mockedPool.query.mockResolvedValueOnce({ rows: [
 			{ id: "task-abc", url: "/file/pathClean", body: {}, cron_string: "*/10 * * * *", running: true },
 			{ id: "task-def", url: "/file/pathClean", body: {}, cron_string: "*/5 * * * *", running: false }
@@ -35,12 +35,7 @@ describe("rehydrateTasks", () => {
 		mockClient.connected = true
 		await rehydrateTasks()
 
-		expect(mockClient.off).toHaveBeenCalledWith("task-abc")
-		expect(mockClient.on).toHaveBeenCalledWith("task-abc", expect.any(Function))
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-abc", running: true }))
-
-		expect(mockClient.off).toHaveBeenCalledWith("task-def")
-		expect(mockClient.on).toHaveBeenCalledWith("task-def", expect.any(Function))
 		expect(mockClient.emit).toHaveBeenCalledWith("createTask", expect.objectContaining({ id: "task-def", running: false }))
 	})
 
@@ -64,6 +59,73 @@ describe("rehydrateTasks", () => {
 		await rehydrateTasks()
 		expect(logSpy).toHaveBeenCalledWith("TASK REHYDRATE ERROR", expect.any(Error))
 		expect(mockClient.emit).not.toHaveBeenCalled()
+		logSpy.mockRestore()
+	})
+
+	test("destroys a memory task whose row is gone, sparing live and protected tasks", async () => {
+		const logSpy = jest.spyOn(console, "log").mockImplementation(() => {})
+		const rows = [
+			{ id: "task-abc", url: "/file/pathClean", body: {}, cron_string: "*/10 * * * *", running: true }
+		]
+		mockedPool.query
+			.mockResolvedValueOnce({ rows })
+			.mockResolvedValueOnce({ rows })
+		mockClient.emit.mockImplementation((event, callback) => {
+			if (event == "listTask") callback({
+				"task-abc": { protected: false },
+				"task-ghost": { protected: false },
+				"task-auto-cleanup": { protected: true }
+			})
+		})
+		mockClient.connected = true
+		await rehydrateTasks()
+		await new Promise(resolve => setImmediate(resolve))
+
+		const destroyed = mockClient.emit.mock.calls.filter(([event]) => event == "destroyTask").map(([, id]) => id)
+		expect(destroyed).toEqual(["task-ghost"])
+
+		mockClient.emit.mockReset()
+		logSpy.mockRestore()
+	})
+
+	test("spares a task inserted after the initial snapshot was taken", async () => {
+		const existing = { id: "task-abc", url: "/file/pathClean", body: {}, cron_string: "*/10 * * * *", running: true }
+		const inserted = { id: "task-new", url: "/file/pathClean", body: {}, cron_string: "*/5 * * * *", running: true }
+		mockedPool.query
+			.mockResolvedValueOnce({ rows: [existing] })
+			.mockResolvedValueOnce({ rows: [existing, inserted] })
+		mockClient.emit.mockImplementation((event, callback) => {
+			if (event == "listTask") callback({
+				"task-abc": { protected: false },
+				"task-new": { protected: false }
+			})
+		})
+		mockClient.connected = true
+		await rehydrateTasks()
+		await new Promise(resolve => setImmediate(resolve))
+
+		const destroyed = mockClient.emit.mock.calls.filter(([event]) => event == "destroyTask").map(([, id]) => id)
+		expect(destroyed).toEqual([])
+
+		mockClient.emit.mockReset()
+	})
+
+	test("logs and reaps nothing when the reconcile query fails", async () => {
+		const logSpy = jest.spyOn(console, "log").mockImplementation(() => {})
+		mockedPool.query
+			.mockResolvedValueOnce({ rows: [] })
+			.mockRejectedValueOnce(new Error("db down"))
+		mockClient.emit.mockImplementation((event, callback) => {
+			if (event == "listTask") callback({ "task-ghost": { protected: false } })
+		})
+		mockClient.connected = true
+		await rehydrateTasks()
+		await new Promise(resolve => setImmediate(resolve))
+
+		expect(logSpy).toHaveBeenCalledWith("TASK RECONCILE ERROR", expect.any(Error))
+		expect(mockClient.emit.mock.calls.filter(([event]) => event == "destroyTask")).toEqual([])
+
+		mockClient.emit.mockReset()
 		logSpy.mockRestore()
 	})
 })
