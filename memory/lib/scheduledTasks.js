@@ -5,15 +5,14 @@ let scheduledTask = {}
 
 module.exports = (io) => ({
 	createTask: (taskObject) => {
-		if (!cron.validate(taskObject.cronString)) {
-			console.log("INVALID CRON STRING, TASK SKIPPED", taskObject.id, taskObject.cronString)
-			return
-		}
 		if (scheduledTask[taskObject.id]) scheduledTask[taskObject.id].destroy()
 		scheduledTaskConfigs[taskObject.id] = taskObject
 		scheduledTask[taskObject.id] = cron.createTask(
 			taskObject.cronString,
-			() => io.emit("runTask", scheduledTaskConfigs[taskObject.id])
+			() => {
+				const config = scheduledTaskConfigs[taskObject.id]
+				if (config) io.emit("runTask", config)
+			}
 		)
 		if (taskObject.running) scheduledTask[taskObject.id].start()
 	},

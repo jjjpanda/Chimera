@@ -4,21 +4,18 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: () => {
-		const c = {
-			timeout: () => c,
-			emit: (event, ...args) => {
-				if(event == "listTask"){
-					args[0](null, {
-						taskid1: {id: "taskid1", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: false}
-					})
-				}
-			},
-			on: () => {},
-			off: () => {}
-		}
-		return c
-	},
+	client: () => ({
+		timeout() { return this },
+		emit: (event, ...args) => {
+			if(event == "listTask"){
+				args[0](null, {
+					taskid1: {id: "taskid1", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: false}
+				})
+			}
+		},
+		on: () => {},
+		off: () => {}
+	}),
 	server: () => {}
 }))
 

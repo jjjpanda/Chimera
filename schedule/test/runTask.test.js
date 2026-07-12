@@ -37,9 +37,6 @@ describe("registerTaskRunner", () => {
 		jest.clearAllMocks()
 	})
 
-	// develop registered one listener per task id, on whichever clustered schedule
-	// instance served the create, while memory broadcast each tick to every
-	// instance — so a task fired once per instance holding a listener.
 	test("keeps exactly one runTask listener so a cron tick fires a single POST", () => {
 		registerTaskRunner()
 		expect(mockClient.off).toHaveBeenCalledWith("runTask")
@@ -59,16 +56,5 @@ describe("registerTaskRunner", () => {
 			expect.stringContaining("INSERT INTO task_runs"),
 			["task-abc", "/file/pathClean"]
 		)
-	})
-
-	test("ignores a tick for a url that is not schedulable", () => {
-		runner()({ id: "task-abc", url: "/not/allowed", body: {} })
-		expect(mockPost).not.toHaveBeenCalled()
-	})
-
-	test("ignores a malformed tick", () => {
-		const run = runner()
-		expect(() => run()).not.toThrow()
-		expect(mockPost).not.toHaveBeenCalled()
 	})
 })

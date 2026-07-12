@@ -153,18 +153,24 @@ module.exports = {
 			let freed = 0
 			let deleted = 0
 			const stuck = []
+			let page = []
+			let cursor = 0
 
 			while (freed < toFree) {
-				const { rows } = await pool.query(
-					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
-					[stuck]
-				)
-				if (rows.length === 0) break
+				if (cursor >= page.length) {
+					const { rows } = await pool.query(
+						"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
+						[stuck]
+					)
+					if (rows.length === 0) break
+					page = rows
+					cursor = 0
+				}
 
 				let planned = freed
 				const batch = []
-				for (const row of rows) {
-					if (planned >= toFree) break
+				while (cursor < page.length && planned < toFree) {
+					const row = page[cursor++]
 					batch.push(row)
 					planned += parseInt(row.size) || 0
 				}

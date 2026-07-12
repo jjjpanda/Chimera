@@ -5,27 +5,24 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: (name) => {
-		const c = {
-			timeout: () => c,
-			emit: (event, ...args) => {
-				if(event == "listTask"){
-					args[0](null, {})
-				}
-				else if(event == "createTask"){
-					//do nothing
-				}
-				else if(event == "savePassword"){
-					args[1]()
-				}
-				else if(event == "verifyPassword"){
-					args[1](false)
-				}
-			},
-			on: () => {}
-		}
-		return c
-	},
+	client: (name) => ({
+		timeout() { return this },
+		emit: (event, ...args) => {
+			if(event == "listTask"){
+				args[0](null, {})
+			}
+			else if(event == "createTask"){
+				//do nothing
+			}
+			else if(event == "savePassword"){
+				args[1]()
+			}
+			else if(event == "verifyPassword"){
+				args[1](false)
+			}
+		},
+		on: () => {}
+	}),
 	server: () => {}
 }))
 

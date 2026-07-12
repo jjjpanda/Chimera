@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls, isPrimeInstance } = require("lib")
+const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls } = require("lib")
 const helmet = require("helmet")
 const memory = require("memory")
 const pool = require("./lib/pool")
@@ -33,7 +33,7 @@ const fs = require("fs")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
 try { fs.mkdirSync(imgDir, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
-if (isPrimeInstance) fs.readdir(imgDir, (err, files) => {
+fs.readdir(imgDir, (err, files) => {
 	if (!err) {
 		const orphans = []
 		files.forEach(file => {

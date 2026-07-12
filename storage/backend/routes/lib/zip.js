@@ -87,9 +87,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 				})
 			})
 
-			fs.writeFile(txtPath, "progress", (err) => {
-				if(err) console.log("ZIP LOCK WRITE ERROR: " + err.message)
-			})
+			fs.writeFile(txtPath, "progress", () => {})
 
 			archive.pipe(output)
 
