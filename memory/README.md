@@ -1,6 +1,6 @@
 # Memory <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-[Socket.IO](https://socket.io) server sharing in-process state across a pm2 cluster (`chimeraInstances > 1`). Nothing persists.
+[Socket.IO](https://socket.io) server sharing in-process state across a pm2 cluster (`chimeraInstances` = `max`, `0`, `-1`, or any integer > 1). Nothing persists.
 
 ---
 # Runtime

@@ -3,7 +3,7 @@ const path = require("path")
 
 const isDev = process.env.NODE_ENV == "development"
 
-const isMultiInstance = require("./lib/utils/multiInstance.js")
+const { multiInstance: isMultiInstance } = require("./lib/utils/multiInstance.js")
 
 const requested = (process.env.chimeraInstances || "").trim()
 const multiInstance = isMultiInstance(requested)

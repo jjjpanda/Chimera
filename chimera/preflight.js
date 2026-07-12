@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
 const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
-const multiInstance = require("../lib/utils/multiInstance.js")
+const { multiInstance } = require("../lib/utils/multiInstance.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")

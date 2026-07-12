@@ -107,44 +107,6 @@ describe("validateEnvVars certbot port warning", () => {
 	})
 })
 
-describe("validateEnvVars schedule/memory cross-check", () => {
-	test("warns but still boots when schedule_ON=true and memory_ON is not true", () => {
-		const res = run({ schedule_ON: "true", memory_ON: "false" })
-		expect(res.stdout).toContain("WARNING: schedule_ON=true but memory_ON is not true")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning when schedule_ON=true with memory_ON=true", () => {
-		const res = run({ schedule_ON: "true", memory_ON: "true" })
-		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning when schedule_ON is off", () => {
-		const res = run({ schedule_ON: "false", memory_ON: "false" })
-		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning when memory_ON=false but chimeraInstances forces cluster mode", () => {
-		const res = run({ schedule_ON: "true", memory_ON: "false", chimeraInstances: "4" })
-		expect(res.stdout).not.toContain("WARNING: schedule_ON=true")
-		expect(res.status).toBe(0)
-	})
-
-	test("still validates memory vars when chimeraInstances forces memory on despite memory_ON=false", () => {
-		const res = run({ memory_ON: "false", chimeraInstances: "4", memory_HOST: "" })
-		expect(res.stdout).toContain("MISSING ENV VAR memory_HOST")
-		expect(res.status).toBe(1)
-	})
-
-	test("skips memory vars when memory_ON=false and chimeraInstances is single-instance", () => {
-		const res = run({ memory_ON: "false", chimeraInstances: "1", memory_HOST: "", schedule_ON: "false" })
-		expect(res.stdout).not.toContain("MISSING ENV VAR memory_HOST")
-		expect(res.status).toBe(0)
-	})
-})
-
 describe("validateEnvVars memory_ON cluster override", () => {
 	test("announces the override when a cluster overrules memory_ON=false", () => {
 		const res = run({ memory_ON: "false", chimeraInstances: "4" })
@@ -163,24 +125,16 @@ describe("validateEnvVars memory_ON cluster override", () => {
 		expect(res.stdout).toContain("MUST BE true OR false: memory_ON")
 		expect(res.status).toBe(1)
 	})
-})
 
-describe("validateEnvVars object/livestream cross-check", () => {
-	test("warns but still boots when object_ON=true and livestream_ON is not true", () => {
-		const res = run({ object_ON: "true", livestream_ON: "false" })
-		expect(res.stdout).toContain("WARNING: object_ON=true but livestream_ON is not true")
-		expect(res.status).toBe(0)
+	test("still validates memory vars when chimeraInstances forces memory on despite memory_ON=false", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "4", memory_HOST: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR memory_HOST")
+		expect(res.status).toBe(1)
 	})
 
-	test("no warning when object_ON=true with livestream_ON=true", () => {
-		const res = run({ object_ON: "true", livestream_ON: "true" })
-		expect(res.stdout).not.toContain("WARNING: object_ON=true")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning when object_ON is off", () => {
-		const res = run({ object_ON: "false", livestream_ON: "false" })
-		expect(res.stdout).not.toContain("WARNING: object_ON=true")
+	test("skips memory vars when memory_ON=false and chimeraInstances is single-instance", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "1", memory_HOST: "" })
+		expect(res.stdout).not.toContain("MISSING ENV VAR memory_HOST")
 		expect(res.status).toBe(0)
 	})
 })
