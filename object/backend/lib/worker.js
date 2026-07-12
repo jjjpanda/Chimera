@@ -203,10 +203,15 @@ const scan = async (id, era = epoch) => {
 	}
 }
 
+const timeout = (ms) => new Promise((_, reject) => {
+	setTimeout(() => reject(new Error("scan timeout")), ms).unref()
+})
+
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		await scan(id, era).catch(() => {})
+		// cap a scan so a hung query (e.g. detection INSERT) can't stop the loop from re-arming
+		await Promise.race([scan(id, era), timeout(config.intervalMs * 6)]).catch(() => {})
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
 	}
