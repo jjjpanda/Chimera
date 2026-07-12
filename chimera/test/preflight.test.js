@@ -64,6 +64,7 @@ describe("varProblem", () => {
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
+	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -93,6 +94,21 @@ describe("varProblem", () => {
 
 	test("string: set to non-placeholder → null", () => {
 		expect(varProblem(strVar, "mysecret")).toBeNull()
+	})
+
+	test("chimeraInstances: values pm2 cannot cluster → error", () => {
+		expect(varProblem(instancesVar, "lots")).toBeTruthy()
+		expect(varProblem(instancesVar, "-2")).toBeTruthy()
+		expect(varProblem(instancesVar, "4x")).toBeTruthy()
+		expect(varProblem(instancesVar, "1.5")).toBeTruthy()
+	})
+
+	test("chimeraInstances: values pm2 accepts → null", () => {
+		expect(varProblem(instancesVar, "max")).toBeNull()
+		expect(varProblem(instancesVar, "-1")).toBeNull()
+		expect(varProblem(instancesVar, "0")).toBeNull()
+		expect(varProblem(instancesVar, "1")).toBeNull()
+		expect(varProblem(instancesVar, "4")).toBeNull()
 	})
 })
 
@@ -172,5 +188,17 @@ describe("isServiceOff (prefix mapping)", () => {
 	test("livestream_FOLDERPATH follows livestream service", () => {
 		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
+	})
+
+	test("memory vars follow memory service when single-instance", () => {
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "1" }), "memory_HOST")).toBe(true)
+		expect(isServiceOff(lines({ memory_ON: "true", chimeraInstances: "1" }), "memory_HOST")).toBe(false)
+	})
+
+	test("memory vars required despite memory_ON=false when chimeraInstances forces cluster mode", () => {
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "4" }), "memory_HOST")).toBe(false)
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "max" }), "memory_AUTH_TOKEN")).toBe(false)
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "0" }), "memory_PORT")).toBe(false)
+		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "-1" }), "memory_PORT")).toBe(false)
 	})
 })

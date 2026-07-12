@@ -2,12 +2,20 @@ require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
 const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
+const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
 const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
+
+const instances = (process.env.chimeraInstances || "").trim()
+if (instances !== "" && !validInstances(instances)) {
+	console.log("chimeraInstances MUST BE \"max\", -1, OR AN INTEGER >= 0 — pm2 only runs cluster_mode for those; anything below -1 forks N processes that all bind the same port")
+	allEnvPresent = false
+}
+
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const checkVar = (varName) => {
@@ -87,6 +95,11 @@ schema.filter(v => /_URL$/.test(v.key)).forEach(v => confirmURL(v.key))
 // storage_MOTION_CONF_FILEPATH intentionally skips the filesystem path check
 schema.filter(v => /_FILEPATH$/.test(v.key) && v.key !== "storage_MOTION_CONF_FILEPATH").forEach(v => confirmPath(v.key))
 schema.filter(v => /_FOLDERPATH$/.test(v.key)).forEach(v => confirmPath(v.key, true))
+
+if (multiInstance(instances) && process.env.memory_ON !== "true") {
+	console.log("FORCING memory_ON=true — chimeraInstances asks for a cluster; instances coordinate through the memory socket")
+	process.env.memory_ON = "true"
+}
 
 if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
