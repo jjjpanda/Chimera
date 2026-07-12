@@ -1,13 +1,15 @@
 module.exports = {
 	"ignorePatterns": [
-		"command/frontend/js/lib/*", 
-		"command/dist/app.js", 
+		"command/frontend/js/lib/*",
+		"command/dist/app.js",
+		"command/dist",
 		"node_modules"
 	],
 	"env": {
 		"browser": true,
 		"es2021": true,
-		"node": true
+		"node": true,
+		"jest": true
 	},
 	"extends": [
 		"eslint:recommended",
@@ -39,6 +41,10 @@ module.exports = {
 		"semi": [
 			"error",
 			"never"
-		]
+		],
+		"react/prop-types": "warn",
+		"no-unused-vars": "warn",
+		"no-empty": "warn",
+		"react/no-unescaped-entities": "warn"
 	}
 }
