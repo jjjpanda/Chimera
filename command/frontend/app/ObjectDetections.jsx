@@ -159,7 +159,7 @@ const ObjectDetectionsFull = () => {
 	const groups = useMemo(() => groupDetections(detections), [detections])
 
 	const [searchParams] = useSearchParams()
-	const cameras = useMemo(() => status?.cameras ? Object.entries(status.cameras) : [], [status?.cameras])
+	const cameras = status?.cameras ? Object.entries(status.cameras) : []
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [previewHeight, setPreviewHeight] = useState(200)
@@ -182,8 +182,8 @@ const ObjectDetectionsFull = () => {
 		if (selectedCam != null || cameras.length === 0) return
 		const camParam = searchParams.get("camera")
 		const match = camParam != null && cameras.find(([c]) => String(c) === String(camParam))
-		setSelectedCam(match ? match[0] : cameras[0][0])
-	}, [cameras, searchParams, selectedCam])
+		setSelectedCam(match ? match[0] : null)
+	}, [cameras])
 
 	const camGroups = useMemo(() =>
 		groups.filter(g => String(g.camera) === String(selectedCam)).reverse(),
@@ -211,9 +211,6 @@ const ObjectDetectionsFull = () => {
 		setScrubIdx(Math.round(pct * Math.max(0, camGroups.length - 1)))
 	}
 
-	const endDragRef = useRef(null)
-	useEffect(() => () => endDragRef.current?.(), [])
-
 	const startDrag = (e) => {
 		e.preventDefault()
 		seekTo(e.clientX)
@@ -221,10 +218,7 @@ const ObjectDetectionsFull = () => {
 		const up = () => {
 			window.removeEventListener("pointermove", move)
 			window.removeEventListener("pointerup", up)
-			endDragRef.current = null
 		}
-		endDragRef.current?.()
-		endDragRef.current = up
 		window.addEventListener("pointermove", move)
 		window.addEventListener("pointerup", up)
 	}

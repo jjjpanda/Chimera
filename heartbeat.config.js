@@ -1,14 +1,16 @@
 require("dotenv").config()
+const { gatewayHost } = require("lib")
 
-const baseUrl = process.env.gateway_HOST
+const baseUrl = gatewayHost()
+const services = ["command", "livestream", "object", "schedule", "storage"]
+
 module.exports = {
-	checkUrl: {
-		command: `${baseUrl}/command/health`,
-		livestream: `${baseUrl}/livestream/health`,
-		object: `${baseUrl}/object/health`,
-		schedule: `${baseUrl}/schedule/health`,
-		storage: `${baseUrl}/storage/health`
-	},
+	checkUrl: services.reduce((urls, service) => {
+		if(process.env[`${service}_PROXY_ON`] == "true"){
+			urls[service] = `${baseUrl}/${service}/health`
+		}
+		return urls
+	}, {}),
 	webhookUrl: process.env.alert_URL,
 	cronString: "*/10 * * * *",
 	consoleOutput: true

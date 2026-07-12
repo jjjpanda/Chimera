@@ -30,16 +30,16 @@ app.use("/file", require("./routes/file.js"))
 app.use("/shared", express.static(path.join(process.env.storage_FOLDERPATH, "shared")))
 
 const fs = require("fs")
-const { CAPTURES_DIR } = require("./lib/fsUsage")
+const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
-try { fs.mkdirSync(CAPTURES_DIR, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
-if (isPrimeInstance) fs.readdir(CAPTURES_DIR, (err, files) => {
+try { fs.mkdirSync(imgDir, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
+if (isPrimeInstance) fs.readdir(imgDir, (err, files) => {
 	if (!err) {
 		const orphans = []
 		files.forEach(file => {
 			const match = file.match(/^(mp4|zip)_(.+)\.txt$/)
 			if (match) {
-				const lockPath = path.join(CAPTURES_DIR, file)
+				const lockPath = path.join(imgDir, file)
 				let stat
 				try { stat = fs.statSync(lockPath) } catch { return }
 				if (Date.now() - stat.mtimeMs < ORPHAN_AGE_MS) return
@@ -50,7 +50,7 @@ if (isPrimeInstance) fs.readdir(CAPTURES_DIR, (err, files) => {
 		files.forEach(file => {
 			orphans.forEach(({ type, id }) => {
 				if (file.startsWith("output_") && file.endsWith(`_${id}.${type}`)) {
-					fs.unlink(path.join(CAPTURES_DIR, file), () => {})
+					fs.unlink(path.join(imgDir, file), () => {})
 				}
 			})
 		})

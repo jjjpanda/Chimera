@@ -1,4 +1,10 @@
+const timeoutEmit = jest.fn((event, ...args) => {
+	const ack = args[args.length - 1]
+	setImmediate(() => ack(new Error("operation has timed out")))
+})
+
 const mockClient = {
+	timeout: jest.fn(() => ({ emit: timeoutEmit })),
 	emit: jest.fn(),
 	on: jest.fn(),
 	off: jest.fn(),
@@ -16,8 +22,8 @@ jest.mock("memory", () => ({
 const supertest = require("supertest")
 const app = require("../backend/schedule.js")
 
-// Memory never acks. On develop these routes hung forever: socket.io acks have no
-// timeout, so the response was never sent and the ack callback leaked.
+// Memory never acks. On develop these routes hung forever: the emits carried no
+// ack timeout, so the response was never sent and the ack callback leaked.
 describe("Task Routes when memory never acks", () => {
 	afterEach(() => {
 		jest.clearAllMocks()
@@ -37,16 +43,10 @@ describe("Task Routes when memory never acks", () => {
 		expect(res.status).toBe(503)
 	})
 
-	test("the emit is left buffered, so socket.io still delivers it once memory is back", async () => {
+	test("asks memory through socket.io's own ack timeout rather than a bare emit", async () => {
 		await supertest(app).get("/task/list").set("Cookie", "validCookie")
-		expect(mockClient.emit).toHaveBeenCalledWith("listTask", expect.any(Function))
-	})
-
-	test("an ack arriving after the timeout does not send a second response", async () => {
-		const res = await supertest(app).get("/task/list").set("Cookie", "validCookie")
-		expect(res.status).toBe(503)
-
-		const lateAck = mockClient.emit.mock.calls.find(([event]) => event == "listTask")[1]
-		expect(() => lateAck({})).not.toThrow()
+		expect(mockClient.timeout).toHaveBeenCalledWith(2000)
+		expect(timeoutEmit).toHaveBeenCalledWith("listTask", expect.any(Function))
+		expect(mockClient.emit).not.toHaveBeenCalled()
 	})
 })

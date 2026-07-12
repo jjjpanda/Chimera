@@ -2,11 +2,11 @@ var express    = require("express")
 
 const app = express.Router()
 
-const { ask } = require("./lib/scheduler.js")
+const client = require("memory").client("MEMORY-HEALTH")
 
 app.get("/status", (req, res) => {
-	ask("callback")((result) => {
-		if (result === null) return res.status(503).send({ error: "memory unavailable" })
+	client.timeout(2000).emit("callback", (err) => {
+		if (err) return res.status(503).send({ error: "memory unavailable" })
 		res.send({})
 	})
 })

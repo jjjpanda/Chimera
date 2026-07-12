@@ -15,7 +15,6 @@ import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
 import { detectGrayPad } from "../js/letterbox.js"
-import applyDatePart from "../js/datePart.js"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -47,11 +46,9 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 	const trackRef = useRef(null)
 	const scrubIdxRef = useRef(scrubIdx)
 	const trimRangeRef = useRef(trimRange)
-	const endDragRef = useRef(null)
 
 	useEffect(() => { scrubIdxRef.current = scrubIdx }, [scrubIdx])
 	useEffect(() => { trimRangeRef.current = trimRange }, [trimRange])
-	useEffect(() => () => endDragRef.current?.(), [])
 
 	const getPct = (clientX) => {
 		const rect = trackRef.current?.getBoundingClientRect()
@@ -117,10 +114,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 		const up = () => {
 			window.removeEventListener("pointermove", move)
 			window.removeEventListener("pointerup", up)
-			endDragRef.current = null
 		}
-		endDragRef.current?.()
-		endDragRef.current = up
 		window.addEventListener("pointermove", move)
 		window.addEventListener("pointerup", up)
 	}
@@ -292,13 +286,18 @@ const ClipMakerFull = () => {
 	useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
 	useEffect(() => {
+		if (!multiCam && camera != null && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
+	}, [cameras])
+
+	useEffect(() => {
 		if (multiCam || cameras.length === 0 || camera != null) return
 		const camParam = searchParams.get("camera")
-		const matchIdx = camParam != null ? cameras.findIndex(c => String(c.id) === String(camParam)) : -1
-		const idx = matchIdx >= 0 ? matchIdx : 0
+		if (camParam == null) return
+		const idx = cameras.findIndex(c => String(c.id) === String(camParam))
+		if (idx < 0) return
 		setCamera(idx)
 		loadPreview(undefined, undefined, idx)
-	}, [cameras, searchParams, camera, multiCam])
+	}, [cameras])
 
 	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
 
@@ -569,14 +568,12 @@ const ClipMakerFull = () => {
 	const activeFrameCount = multiCam ? multiFrameCount : frames.length
 
 	const toggleMultiCam = () => {
-		loadSeq.current++
 		setMultiCam(m => !m)
 		setSelectedCams([])
 		setCamStates({})
 		multiImageCache.current = {}
 		setFrames([])
 		setImagesLoaded(0)
-		setFetching(false)
 		setDetections([])
 		setLoadedParams(null)
 		setTrimRange([0, 100])
@@ -632,7 +629,7 @@ const ClipMakerFull = () => {
 			headers: { "Content-Type": "application/json" },
 			body: framesBody(camId, start, end)
 		}, prom => jsonProcessing(prom, data => {
-			if (seq !== loadSeq.current) return
+			if (seq !== loadSeq.current) return setFetching(false)
 			setFrames(data?.list ?? [])
 			setScrubIdx(0)
 			setFetching(false)
@@ -751,7 +748,17 @@ const ClipMakerFull = () => {
 	const setDatePart = (setter, part, val) => {
 		setPendingPreset(null)
 		setSavedDates(null)
-		setter(prev => applyDatePart(prev, part, val) ?? prev)
+		setter(prev => {
+			const next = prev.clone()
+			if (part === "date") {
+				const [y, m, d] = val.split("-")
+				next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
+			} else {
+				const [h, min, sec] = val.split(":")
+				next.hour(parseInt(h)).minute(parseInt(min)).second(sec ? parseInt(sec) : 0)
+			}
+			return next
+		})
 	}
 
 	const startResizeDrag = (e) => {

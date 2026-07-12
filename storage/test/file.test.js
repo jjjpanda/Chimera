@@ -375,6 +375,51 @@ describe("File Routes", () => {
 				}
 			})
 
+			test("keeps freeing space, deleting rows only for the frames it actually unlinked", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 3, camera: "2", name: "d.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
+
+				const deletes = query.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
+				expect(deletes).toEqual([[[2]], [[3]]])
+				expect(query.mock.calls[3][1]).toEqual([[1]])
+			})
+
+			test("alerts when every frame is stuck", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "b.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query).toHaveBeenCalledTimes(2)
+				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("could not unlink 2 frame file(s)"), "admin")
+			})
+
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
 				query.mockRejectedValueOnce(new Error("db error"))

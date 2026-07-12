@@ -7,34 +7,12 @@ const pool = require("../../lib/pool")
 
 const client = require("memory").client("TASK SCHEDULER")
 
-const ACK_TIMEOUT_MS = 2000
-
-// Answers with null if memory does not ack in time, so a request never hangs.
-// The emit itself is left buffered rather than cancelled, so socket.io still
-// delivers it on reconnect and the DB stays the source of truth.
-const ask = (event, ...args) => (callback) => {
-	let answered = false
-	const answer = (result) => {
-		if (answered) return
-		answered = true
-		clearTimeout(timer)
-		callback(result)
-	}
-	const timer = setTimeout(() => {
-		console.log("MEMORY ACK TIMEOUT", event)
-		answer(null)
-	}, ACK_TIMEOUT_MS)
-	client.emit(event, ...args, answer)
-}
-
-const withTasks = (res, handler) => ask("listTask")((tasks) => {
-	if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+const withTasks = (res, handler) => client.timeout(2000).emit("listTask", (err, tasks) => {
+	if (err) return res.status(503).send({ error: "memory unavailable" })
 	handler(tasks)
 })
 
 module.exports = {
-	ask,
-
 	validateStartableTask: (req, res, next) => {
 		const { url, body, id, cronString } = req.body
 		withTasks(res, async tasks => {
@@ -45,8 +23,8 @@ module.exports = {
 					console.log("TASK UPDATE ERROR", err)
 					return res.status(500).send({ error: "Failed to update task in DB" })
 				}
-				ask("startTask", id)((scheduledTasks) => {
-					if (!scheduledTasks) return res.status(503).send({ error: "memory unavailable" })
+				client.timeout(2000).emit("startTask", id, (err, scheduledTasks) => {
+					if (err) return res.status(503).send({ error: "memory unavailable" })
 					res.send({
 						running: scheduledTasks[id]?.running ?? false
 					})
@@ -125,8 +103,8 @@ module.exports = {
 			console.log("TASK UPDATE ERROR", err)
 			return res.status(500).send({ error: "Failed to update task in DB" })
 		}
-		ask("stopTask", id)(tasks => {
-			if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+		client.timeout(2000).emit("stopTask", id, (err, tasks) => {
+			if (err) return res.status(503).send({ error: "memory unavailable" })
 			res.send({
 				stopped: !(tasks[id] && tasks[id].running)
 			})
@@ -141,8 +119,8 @@ module.exports = {
 			console.log("TASK DELETE ERROR", err)
 			return res.status(500).send({ error: "Failed to delete task from DB" })
 		}
-		ask("destroyTask", id)(tasks => {
-			if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+		client.timeout(2000).emit("destroyTask", id, (err, tasks) => {
+			if (err) return res.status(503).send({ error: "memory unavailable" })
 			res.send({
 				destroyed: !(id in tasks)
 			})
@@ -190,7 +168,7 @@ module.exports = {
 		if (!maxGb) return
 		const id = "task-auto-cleanup"
 		const register = () => {
-			ask("destroyTask", id)(() => {
+			client.timeout(2000).emit("destroyTask", id, () => {
 				client.emit("createTask", {
 					id,
 					url: "/file/pathAutoClean",
@@ -230,7 +208,11 @@ const validateRequestURL = (url) => {
 }
 
 const runTask = ({ id, url, body } = {}) => {
-	if(!validateRequestURL(url)) return
+	if(!validateRequestURL(url)){
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror url is not schedulable`)
+		console.log(`TASK URL NOT SCHEDULABLE | ${id} | ${url}`)
+		return
+	}
 	console.log(id, " | CRON: ", url)
 	axios.post(`${gatewayHost()}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }

@@ -67,14 +67,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			})
 
 			fs.writeFile(txtPath, "progress", (err) => {
-				if(err){
-					console.log("ZIP LOCK WRITE ERROR: " + err.message)
-					cancelled = true
-					archive.abort()
-					fs.unlink(txtPath, () => {})
-					alertFailure()
-					return res.send({error: true})
-				}
+				if(err) console.log("ZIP LOCK WRITE ERROR: " + err.message)
 
 				var output = fs.createWriteStream(zipPath)
 

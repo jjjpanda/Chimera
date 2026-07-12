@@ -26,10 +26,8 @@ describe("memory scheduledTasks lifecycle", () => {
 
 	test("createTask skips a task with an invalid cron string", () => {
 		cron.validate.mockReturnValueOnce(false)
-		let ack
-		tasks.createTask({ ...taskObject, cronString: "not a cron" }, a => { ack = a })
+		tasks.createTask({ ...taskObject, cronString: "not a cron" })
 		expect(cron.createTask).not.toHaveBeenCalled()
-		expect(ack).toEqual({ error: "invalid cron" })
 		let configs
 		tasks.listTasks(c => { configs = c })
 		expect(configs[taskObject.id]).toBeUndefined()

@@ -7,18 +7,22 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: () => ({
-		emit: (event, ...args) => {
-			if(event == "listTask"){
-				args[0]({ "task-auto-cleanup": protectedTask })
-			}
-			else if(event == "stopTask" || event == "destroyTask"){
-				args[1]({ "task-auto-cleanup": protectedTask })
-			}
-		},
-		on: () => {},
-		off: () => {}
-	}),
+	client: () => {
+		const c = {
+			timeout: () => c,
+			emit: (event, ...args) => {
+				if(event == "listTask"){
+					args[0](null, { "task-auto-cleanup": protectedTask })
+				}
+				else if(event == "stopTask" || event == "destroyTask"){
+					args[1](null, { "task-auto-cleanup": protectedTask })
+				}
+			},
+			on: () => {},
+			off: () => {}
+		}
+		return c
+	},
 	server: () => {}
 }))
 

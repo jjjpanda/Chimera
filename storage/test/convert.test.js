@@ -401,23 +401,27 @@ describe("Convert Routes", () => {
 			expect(calls[0][0]).toBe("writeFile")
 		})
 
-		test("aborts the zip when the lock file cannot be written so auto-clean cannot prune an untracked artifact", (done) => {
+		test("still builds the zip when the lock file cannot be written", (done) => {
 			lib.webhookAlert.mockClear()
-			const writeStreamSpy = jest.spyOn(fs, "createWriteStream")
+			const output = Object.assign(new EventEmitter(), { destroy: jest.fn() })
+			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => {
 				setImmediate(() => cb(new Error("EACCES: permission denied")))
 			})
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
 
 			const res = { send: (body) => {
-				expect(body).toEqual({error: true})
-				expect(writeStreamSpy).not.toHaveBeenCalled()
-				expect(archive.finalize).not.toHaveBeenCalled()
-				expect(archive.abort).toHaveBeenCalled()
-				expect(lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))).toHaveLength(1)
-				writeStreamSpy.mockRestore()
-				writeFileSpy.mockRestore()
-				done()
+				expect(body.url).toMatch(/\.zip$/)
+				expect(writeStreamSpy).toHaveBeenCalled()
+				expect(archive.pipe).toHaveBeenCalledWith(output)
+				expect(archive.abort).not.toHaveBeenCalled()
+				expect(lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))).toHaveLength(0)
+				setImmediate(() => {
+					expect(archive.finalize).toHaveBeenCalled()
+					writeStreamSpy.mockRestore()
+					writeFileSpy.mockRestore()
+					done()
+				})
 			} }
 
 			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, res)
@@ -425,6 +429,8 @@ describe("Convert Routes", () => {
 
 		test("handles an archive error after a failed lock write instead of crashing the process", (done) => {
 			lib.webhookAlert.mockClear()
+			const output = Object.assign(new EventEmitter(), { destroy: jest.fn() })
+			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => {
 				setImmediate(() => cb(new Error("EACCES: permission denied")))
 			})
@@ -434,6 +440,7 @@ describe("Convert Routes", () => {
 				expect(archive.listenerCount("error")).toBe(1)
 				expect(() => archive.emit("error", new Error("ENOENT: frame vanished mid-zip"))).not.toThrow()
 				expect(lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))).toHaveLength(1)
+				writeStreamSpy.mockRestore()
 				writeFileSpy.mockRestore()
 				done()
 			} }

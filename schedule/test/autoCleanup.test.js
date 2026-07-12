@@ -1,8 +1,9 @@
 const mockClient = {
+	timeout: jest.fn(() => mockClient),
 	emit: jest.fn((event, ...args) => {
 		if(event == "destroyTask"){
 			const ack = args[args.length - 1]
-			if(typeof ack == "function") ack()
+			if(typeof ack == "function") ack(null)
 		}
 	}),
 	on: jest.fn(),
