@@ -199,6 +199,23 @@ describe("scan", () => {
 		expect(sendWebhook).not.toHaveBeenCalled()
 	})
 
+	test("a scan whose camera is stopped during the capture write inserts nothing and sends no webhook", async () => {
+		let release
+		fs.promises.writeFile.mockImplementation(() => new Promise((r) => { release = r }))
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+
+		const scanning = worker.scan(1)
+		for (let i = 0; i < 10; i++) await Promise.resolve()
+		expect(release).toEqual(expect.any(Function))
+		worker.stopWorkers()
+		release()
+		await scanning
+
+		expect(fs.promises.writeFile).toHaveBeenCalledTimes(1)
+		expect(pool.query).not.toHaveBeenCalled()
+		expect(sendWebhook).not.toHaveBeenCalled()
+	})
+
 	test("scanning an unknown camera id throws distinguishably and leaves no status entry behind", async () => {
 		const err = await worker.scan(999).catch((e) => e)
 		expect(err).toBeInstanceOf(Error)
@@ -220,7 +237,7 @@ describe("scan", () => {
 })
 
 describe("startWorkers / stopWorkers", () => {
-	const tick = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
+	const tick = async () => { for (let i = 0; i < 25; i++) await Promise.resolve() }
 
 	beforeEach(() => {
 		jest.useFakeTimers()
@@ -363,28 +380,25 @@ describe("startWorkers / stopWorkers", () => {
 		expect(jest.getTimerCount()).toBe(0)
 	})
 
-	test("a scan in flight when its camera is removed leaves no status entry behind", async () => {
-		let hung = null
-		execFile.mockImplementation((file, args, opts, cb) => {
-			const feed = String(args[args.indexOf("-i") + 1]).replace(/\\/g, "/")
-			if (feed.endsWith("feed/2/video.m3u8") && !hung) hung = cb
-			else cb(null)
-		})
+	test("a camera deleted from disk persists nothing on its next scan, even while the camera cache still lists it", async () => {
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
 		await worker.startWorkers()
 		await tick()
-		expect(hung).toEqual(expect.any(Function))
+
+		fs.promises.writeFile.mockClear()
+		pool.query.mockClear()
+		sendWebhook.mockClear()
 
 		loadCameras.mockResolvedValue([{ id: 1, name: "a" }])
-		jest.advanceTimersByTime(30000)
-		await tick()
-		expect(worker.getStatus()[2]).toBeUndefined()
-
-		hung(new Error("feed gone"))
+		jest.advanceTimersByTime(worker.getConfig().intervalMs)
 		await tick()
 
-		expect(worker.getStatus()[2]).toBeUndefined()
-		expect(Object.keys(worker.getStatus())).toEqual(["1"])
-		expect(jest.getTimerCount()).toBe(3)
+		const written = fs.promises.writeFile.mock.calls.map((c) => path.basename(String(c[0])))
+		expect(written).toEqual([expect.stringMatching(/^1-\d+\.jpg$/)])
+		expect(pool.query).toHaveBeenCalledTimes(1)
+		expect(pool.query.mock.calls[0][1][0]).toBe(1)
+		expect(sendWebhook).toHaveBeenCalledTimes(1)
+		expect(sendWebhook.mock.calls[0][1]).toContain("Camera 1")
 	})
 
 	test("a camera added while running gets a worker without a restart", async () => {

@@ -14,7 +14,7 @@ const PRUNE_INTERVAL_MS = parseInt(process.env.object_PRUNE_INTERVAL_MS) > 0 ? p
 const PRUNE_CONCURRENCY = 32
 const CAMERA_TTL_MS = 30000
 const TEMP_STALE_MS = 60000
-try { fs.mkdirSync(TEMP_DIR, { recursive: true }) } catch (e) { console.error("❌ Failed to create object temp directory:", e.message) }
+fs.mkdirSync(TEMP_DIR, { recursive: true })
 try { fs.mkdirSync(CAPTURES_DIR, { recursive: true }) } catch (e) { console.error("❌ Failed to create object captures directory:", e.message) }
 
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
@@ -89,6 +89,8 @@ const cameras = async (reload = false) => {
 	return _cameras
 }
 
+const gone = (id, era) => era !== epoch || !_cameras || !_cameras.some((c) => c.id === id)
+
 const feedPath = (feed) => path.join(process.env.livestream_FOLDERPATH || "", "feed", String(feed), "video.m3u8")
 
 let scanSeq = 0
@@ -139,7 +141,7 @@ const roundTo = (val, sig) => Math.round(val * 10 ** sig) / 10 ** sig
 
 let captureWriteFailing = false
 
-const handleDetections = async (camera, detections, jpeg) => {
+const handleDetections = async (camera, detections, jpeg, era) => {
 	const image = `${camera}-${Date.now()}.jpg`
 	const stored = await fs.promises.writeFile(path.join(CAPTURES_DIR, image), jpeg)
 		.then(() => true)
@@ -152,6 +154,7 @@ const handleDetections = async (camera, detections, jpeg) => {
 			return false
 		})
 	if (stored) captureWriteFailing = false
+	if (gone(camera, era)) return
 	const persistable = stored ? detections.filter((d) => Array.isArray(d.box)) : []
 	if (persistable.length) {
 		const values = []
@@ -183,18 +186,19 @@ const scan = async (id, era = epoch) => {
 		const all = await detector.detect(toTensor(raw), config.confidence)
 		const detections = all.filter((d) => config.classes.includes(d.class))
 
-		if (era !== epoch || (_cameras && !_cameras.some(c => c.id === id))) return detections
+		if (detections.length && era === epoch) await cameras(true).catch(() => {})
+		if (gone(id, era)) return detections
 
 		const st = status[id] || (status[id] = {})
 		st.lastRun = new Date().toISOString()
 		st.error = null
 		if (detections.length) {
 			st.lastDetection = { time: st.lastRun, detections }
-			await handleDetections(id, detections, jpeg)
+			await handleDetections(id, detections, jpeg, era)
 		}
 		return detections
 	} catch (e) {
-		if (e.code !== "UNKNOWN_CAMERA" && status[id]) status[id].error = e.message
+		if (status[id]) status[id].error = e.message
 		throw e
 	}
 }
