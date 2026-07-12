@@ -69,13 +69,18 @@ const parse = (output, confidence) => {
 	const data = output.data
 	const numChannels = output.dims[2]
 	const numClasses = numChannels - 5
-	const size = sizeFromAnchors(output.dims[1])
+	const anchors = output.dims[1]
+	const size = sizeFromAnchors(anchors)
 	const boxes = []
 	let i = 0
 	for (const stride of STRIDES) {
 		const grid = Math.round(size / stride)
 		for (let gy = 0; gy < grid; gy++) {
 			for (let gx = 0; gx < grid; gx++, i++) {
+				if (i >= anchors) {
+					console.warn(`🔍 Grid/anchor mismatch: expected ${anchors} anchors for input size ${size}, truncating at ${i}`)
+					return nms(boxes)
+				}
 				const o = i * numChannels
 				const obj = data[o + 4]
 				if (obj < confidence) continue

@@ -2,23 +2,54 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls, gatewayHost } = require("lib")
 const pool = require("../../lib/pool")
 
 const client = require("memory").client("TASK SCHEDULER")
 
+const ACK_TIMEOUT_MS = 2000
+const REHYDRATE_RETRY_MS = 2000
+const REHYDRATE_MAX_RETRY_MS = 60000
+
+const ask = (event, ...args) => (callback) =>
+	client.timeout(ACK_TIMEOUT_MS).emit(event, ...args, (err, result) => {
+		if (err) {
+			console.log("MEMORY ACK TIMEOUT", event)
+			return callback(null)
+		}
+		callback(result)
+	})
+
+const withTasks = (res, handler) => ask("listTask")((tasks) => {
+	if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+	handler(tasks)
+})
+
 module.exports = {
+	ask,
+
 	validateStartableTask: (req, res, next) => {
 		const { url, body, id, cronString } = req.body
-		client.emit("listTask", async tasks => {
-			if(isValidId(id, tasks, true)){
-				try {
-					await pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
-				} catch (err) {
-					console.log("TASK UPDATE ERROR", err)
-					return res.status(500).send({ error: "Failed to update task in DB" })
-				}
-				client.emit("startTask", id, (scheduledTasks) => {
+		withTasks(res, async (tasks) => {
+			if(tasks[id] && tasks[id].disabled){
+				res.status(400).send({
+					error: "task disabled"
+				})
+			}
+			else if(isValidId(id, tasks, true)){
+				ask("startTask", id)(async (scheduledTasks) => {
+					if (!scheduledTasks) {
+						client.emit("stopTask", id)
+						return res.status(503).send({ error: "memory unavailable" })
+					}
+					try {
+						await pool.query("UPDATE scheduled_tasks SET running=true WHERE id=$1", [id])
+					} catch (err) {
+						console.log("TASK UPDATE ERROR", err)
+						client.emit("stopTask", id)
+						webhookAlert(`⚠️ Failed to mark task ${id} as running in DB after starting its cron — cron stopped again from memory config; the task is not scheduled.`, "admin")
+						return res.status(500).send({ error: "Failed to update task in DB" })
+					}
 					res.send({
 						running: scheduledTasks[id]?.running ?? false
 					})
@@ -55,8 +86,9 @@ module.exports = {
 
 	validateId: (req, res, next) => {
 		const { id } = req.body
-		client.emit("listTask", (tasks) => {
+		withTasks(res, (tasks) => {
 			if(isValidId(id, tasks) && !(tasks[id] && tasks[id].protected)){
+				req.body.task = tasks[id]
 				next()
 			}
 			else{
@@ -80,42 +112,57 @@ module.exports = {
 			console.log("TASK INSERT ERROR", err)
 			return res.status(500).send({ error: "Failed to insert task into DB" })
 		}
-		let taskObj = {
-			id, url, body, cronString,
-			running: true
-		}
-		client.on(id, generateTask(url, id, body))
-		client.emit("createTask", taskObj)
-		res.send({
-			running: true
+		ask("createTask", { id, url, body, cronString, running: true })(async (tasks) => {
+			if (tasks?.error) {
+				await pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
+					.catch(err => console.log("TASK DELETE ERROR", err))
+				return res.status(400).send({ error: tasks.error })
+			}
+			if (!tasks) {
+				await pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
+					.catch(err => console.log("TASK DELETE ERROR", err))
+				client.emit("destroyTask", id)
+				webhookAlert(`⚠️ Failed to register task ${id} with memory after inserting it into the DB — the row was rolled back; the task is not scheduled.`, "admin")
+				return res.status(503).send({ error: "memory unavailable" })
+			}
+			res.send({
+				running: tasks[id]?.running ?? false
+			})
 		})
 	},
 
-	stopTask: async (req, res) => {
-		const { id } = req.body
-		try {
-			await pool.query("UPDATE scheduled_tasks SET running=false WHERE id=$1", [id])
-		} catch (err) {
-			console.log("TASK UPDATE ERROR", err)
-			return res.status(500).send({ error: "Failed to update task in DB" })
-		}
-		client.emit("stopTask", id, tasks=>{
+	stopTask: (req, res) => {
+		const { id, task } = req.body
+		ask("stopTask", id)(async (tasks) => {
+			if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+			try {
+				await pool.query("UPDATE scheduled_tasks SET running=false WHERE id=$1", [id])
+			} catch (err) {
+				console.log("TASK UPDATE ERROR", err)
+				if (task?.running) {
+					client.emit("startTask", id)
+					webhookAlert(`⚠️ Failed to mark task ${id} as stopped in DB after stopping its cron — cron restarted from memory config; the task is still scheduled.`, "admin")
+				}
+				return res.status(500).send({ error: "Failed to update task in DB" })
+			}
 			res.send({
 				stopped: !(tasks[id] && tasks[id].running)
 			})
 		})
 	},
 
-	destroyTask: async (req, res) => {
-		const { id } = req.body
-		try {
-			await pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
-		} catch (err) {
-			console.log("TASK DELETE ERROR", err)
-			return res.status(500).send({ error: "Failed to delete task from DB" })
-		}
-		client.off(id)
-		client.emit("destroyTask", id, tasks=>{
+	destroyTask: (req, res) => {
+		const { id, task } = req.body
+		ask("destroyTask", id)(async (tasks) => {
+			if (!tasks) return res.status(503).send({ error: "memory unavailable" })
+			try {
+				await pool.query("DELETE FROM scheduled_tasks WHERE id=$1", [id])
+			} catch (err) {
+				console.log("TASK DELETE ERROR", err)
+				if (task) client.emit("createTask", task)
+				webhookAlert(`⚠️ Failed to delete task ${id} from DB after destroying its cron — cron re-registered from memory config; the task is still scheduled.`, "admin")
+				return res.status(500).send({ error: "Failed to delete task from DB" })
+			}
 			res.send({
 				destroyed: !(id in tasks)
 			})
@@ -123,12 +170,12 @@ module.exports = {
 	},
 
 	taskList: (req, res, next) => {
-		client.emit("listTask", tasks => {
+		withTasks(res, tasks => {
 			req.body.list = Object.entries(tasks).filter(([id, entry]) => {
 				return id && entry && id.includes("task")
-			}).map(([id, {url, cronString, body, running, protected: isProtected}]) => {
+			}).map(([id, {url, cronString, body, running, protected: isProtected, disabled}]) => {
 				return {
-					id, url, cronString, body, running, protected: isProtected
+					id, url, cronString, body, running, protected: isProtected, disabled
 				}
 			})
 			next()
@@ -153,14 +200,17 @@ module.exports = {
 		}
 	},
 
+	registerTaskRunner: () => {
+		client.off("runTask")
+		client.on("runTask", runTask)
+	},
+
 	autoRegisterCleanup: () => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
-		if (!maxGb) return
+		if (!maxGb || process.env.storage_ON !== "true") return
 		const id = "task-auto-cleanup"
 		const register = () => {
-			client.emit("destroyTask", id, () => {
-				client.off(id)
-				client.on(id, generateTask("/file/pathAutoClean", id, {}))
+			ask("destroyTask", id)(() => {
 				client.emit("createTask", {
 					id,
 					url: "/file/pathAutoClean",
@@ -176,19 +226,47 @@ module.exports = {
 	},
 
 	rehydrateTasks: () => {
+		let retryMs = REHYDRATE_RETRY_MS
+		let retryTimer = null
+		let inFlight = false
+		const alerted = new Set()
 		const register = async () => {
-			let rows
+			if (inFlight) return
+			inFlight = true
 			try {
-				({ rows } = await pool.query("SELECT * FROM scheduled_tasks"))
-			} catch (e) {
-				console.log("TASK REHYDRATE ERROR", e)
-				return
+				let rows
+				try {
+					({ rows } = await pool.query("SELECT * FROM scheduled_tasks"))
+				} catch (e) {
+					console.log("TASK REHYDRATE ERROR", e)
+					clearTimeout(retryTimer)
+					retryTimer = setTimeout(() => register(), retryMs)
+					if (retryTimer.unref) retryTimer.unref()
+					retryMs = Math.min(retryMs * 2, REHYDRATE_MAX_RETRY_MS)
+					return
+				}
+				clearTimeout(retryTimer)
+				retryMs = REHYDRATE_RETRY_MS
+				const invalid = rows.filter((row) => !isSchedulable(row))
+				if (invalid.length) {
+					const unalerted = invalid.map(({id}) => id).filter((id) => !alerted.has(id))
+					if (unalerted.length) {
+						console.log("TASK REHYDRATE: disabling tasks with an invalid cron string or non-schedulable url", unalerted)
+						webhookAlert(`⚠️ Disabling ${unalerted.length} scheduled task(s) with an invalid cron string or non-schedulable url on rehydrate — they are kept and listed as disabled but will never run; delete them or recreate them with a valid cron string and a schedulable url: ${unalerted.join(", ")}`, "admin")
+						unalerted.forEach((id) => alerted.add(id))
+					}
+					await pool.query("UPDATE scheduled_tasks SET running=false WHERE id = ANY($1::text[])", [invalid.map(({id}) => id)])
+						.catch(err => console.log("TASK UPDATE ERROR", err))
+				}
+				rows.filter(isSchedulable).forEach(({id, url, body, cron_string, running}) => {
+					client.emit("createTask", {id, url, body, cronString: cron_string, running})
+				})
+				invalid.forEach(({id, url, body, cron_string}) => {
+					client.emit("createTask", {id, url, body, cronString: cron_string, running: false, disabled: true})
+				})
+			} finally {
+				inFlight = false
 			}
-			rows.forEach(({id, url, body, cron_string, running}) => {
-				client.off(id)
-				client.on(id, generateTask(url, id, body))
-				client.emit("createTask", {id, url, body, cronString: cron_string, running})
-			})
 		}
 		client.on("connect", register)
 		if (client.connected) return register()
@@ -201,9 +279,12 @@ const validateRequestURL = (url) => {
 	return schedulableUrls.includes(url)
 }
 
-const generateTask = (url, id, body) => () => {
+const isSchedulable = ({ cron_string, url }) => cron.validate(cron_string) && validateRequestURL(url)
+
+const runTask = ({ id, url, body } = {}) => {
+	if(!url || !schedulableUrls.includes(url)) return
 	console.log(id, " | CRON: ", url)
-	axios.post(`${process.env.gateway_HOST}${url}`, body, {
+	axios.post(`${gatewayHost()}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)

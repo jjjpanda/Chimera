@@ -148,7 +148,7 @@ describe("Events Routes", () => {
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
-			expect(query).toHaveBeenCalledWith("DELETE FROM objects_detected WHERE camera = $1", ["1"])
+			expect(query).toHaveBeenCalledWith("WITH frames AS (DELETE FROM frame_files WHERE camera = $1) DELETE FROM objects_detected WHERE camera = $1", ["1"])
 			const unlinked = fs.promises.unlink.mock.calls.map((c) => c[0])
 			expect(unlinked).toHaveLength(2)
 			expect(unlinked.some((p) => p.endsWith("1-100.jpg"))).toBe(true)

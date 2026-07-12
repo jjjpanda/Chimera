@@ -32,10 +32,12 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 
 **Utilities**
 - `formatBytes` — human-readable byte sizes.
+- `timingSafeCompare` — constant-time string comparison.
 - `randomID` — `nanoid` generator.
 - `password` — shared password-policy JSON.
 - `jsonFileHanding` — JSON read/write/validate (key spelled `jsonFileHanding`).
 - `mapLimit` — run an async fn over items with bounded concurrency.
+- `multiInstance` — true when `chimeraInstances` requests more than one pm2 instance (`"max"`, `0`, `-1`, `>1`).
 
 ---
 # Consumers & config

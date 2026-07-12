@@ -1,40 +1,28 @@
 import React, { useState } from "react"
 import useProcesses from "../hooks/useProcesses.js"
 import { useRole } from "./AuthContext.jsx"
-import CameraDateNumberPicker from "./CameraDateNumberPicker.jsx"
-import Scheduler from "./Scheduler.jsx"
 
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Badge } from "../components/ui/badge"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-	DialogFooter,
-	DialogTrigger
+	DialogFooter
 } from "../components/ui/dialog"
-import { Label } from "../components/ui/label"
-import { XCircle, Trash2, Plus, Download } from "lucide-react"
+import { XCircle, Trash2, Download } from "lucide-react"
 import { cn } from "../lib/utils"
 import NavigateToRoute from "./NavigateToRoute"
 
 import moment from "moment"
 
 const ProcessList = (props) => {
-	const [state, cancelProcess, deleteProcess, createProcessFn, scheduleProcessFn, dialog, setDialog, onChange] =
-		useProcesses({ mobile: props.mobile })
+	const [state, cancelProcess, deleteProcess] = useProcesses()
 	const role = useRole()
 
 	const [confirmDialog, setConfirmDialog] = useState({ open: false, process: null })
-
-	const openCreate = (processType, days) =>
-		setDialog({ open: true, processType, days })
-
-	const closeCreate = () =>
-		setDialog({ open: false, processType: null, days: false })
 
 	const handleConfirm = () => {
 		const p = confirmDialog.process
@@ -87,17 +75,19 @@ const ProcessList = (props) => {
 								<video src={process.link ? new URL(process.link, window.location.origin).pathname : undefined} type="video/mp4" controls className="w-32 rounded" />
 							)}
 							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									disabled={process.running}
-									asChild
-								>
-									<a href={process.link} download>
+								{process.running ? (
+									<Button variant="outline" size="sm" disabled>
 										<Download className="mr-1.5 size-3.5" />
 										Download
-									</a>
-								</Button>
+									</Button>
+								) : (
+									<Button variant="outline" size="sm" asChild>
+										<a href={process.link} download>
+											<Download className="mr-1.5 size-3.5" />
+											Download
+										</a>
+									</Button>
+								)}
 								{role === "admin" && (
 									<Button
 										variant="outline"
@@ -115,75 +105,7 @@ const ProcessList = (props) => {
 						</div>
 					)
 				})}
-
-				{props.showFooter && role === "admin" && (
-					<div className="flex flex-wrap gap-2 pt-2">
-						{[
-							{ label: "Video", type: "video", days: false },
-							{ label: "Zip", type: "zip", days: false },
-							{ label: "Scheduled Video", type: "video", days: true },
-							{ label: "Scheduled Zip", type: "zip", days: true }
-						].map(({ label, type, days }) => (
-							<Button
-								key={label}
-								variant="outline"
-								size="sm"
-								onClick={() => openCreate(type, days)}
-							>
-								<Plus className="mr-1.5 size-3.5" />
-								{label}
-							</Button>
-						))}
-					</div>
-				)}
 			</CardContent>
-
-			<Dialog open={dialog.open} onOpenChange={(open) => !open && closeCreate()}>
-				<DialogContent className="max-w-md">
-					<DialogHeader>
-						<DialogTitle>
-							{dialog.days ? "Schedule" : "Create"} a {dialog.processType}
-						</DialogTitle>
-					</DialogHeader>
-					<div className="flex flex-col gap-4">
-						<CameraDateNumberPicker
-							camera={state.camera}
-							{...(dialog.days
-								? { days: state.days }
-								: { startDate: state.startDate, endDate: state.endDate }
-							)}
-							number={state.number}
-							numberType={state.numberType}
-							loading={state.disabled}
-							onChange={onChange}
-							mobile={props.mobile}
-						/>
-						<div className="flex items-center gap-2">
-							<input
-								id="download-toggle"
-								type="checkbox"
-								checked={state.download}
-								onChange={(e) => onChange({ download: e.target.checked })}
-								className="accent-accent"
-							/>
-							<Label htmlFor="download-toggle">Download directly</Label>
-						</div>
-						{dialog.days ? (
-							<Scheduler
-								url={dialog.processType === "video" ? "/convert/createVideo" : "/convert/createZip"}
-								onEnter={(url, cronString) => scheduleProcessFn(dialog.processType, cronString)}
-							/>
-						) : (
-							<DialogFooter>
-								<Button variant="outline" onClick={closeCreate}>Cancel</Button>
-								<Button onClick={() => createProcessFn(dialog.processType)}>
-									Create
-								</Button>
-							</DialogFooter>
-						)}
-					</div>
-				</DialogContent>
-			</Dialog>
 
 			<Dialog
 				open={confirmDialog.open}

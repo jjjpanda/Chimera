@@ -66,6 +66,12 @@ const nextRunSeconds = (cronString) => {
 	}
 }
 
+const DisabledBadge = () => (
+	<Badge className="shrink-0 bg-danger text-white text-xs" title="Invalid cron string or non-schedulable url — this task will never run. Delete it and recreate it.">
+		disabled
+	</Badge>
+)
+
 const DeleteTaskDialog = ({ target, label, truncate = false, onClose, onConfirm }) => (
 	<Dialog open={!!target} onOpenChange={open => !open && onClose()}>
 		<DialogContent className="max-w-sm">
@@ -104,11 +110,12 @@ const ScheduleDashboardMini = ({ withButton }) => {
 							<p className="truncate text-sm text-primary">{item.url}</p>
 							<p className="text-xs text-muted">{humanCron(item.cronString)}</p>
 						</div>
+						{item.disabled && <DisabledBadge />}
 						{isAdmin && (
 							<div className="flex shrink-0 items-center gap-2">
 								<Switch
 									checked={item.running}
-									disabled={busyId === item.id || item.protected}
+									disabled={busyId === item.id || item.protected || item.disabled}
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
 								{!item.protected && (
@@ -159,7 +166,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
-	const [{ runs, loading: runsLoading }, refreshRuns] = useTaskRuns()
+	const [{ runs, loading: runsLoading }, reloadRuns] = useTaskRuns()
 	const [busyId, setBusyId] = useState(null)
 	useEffect(() => { setBusyId(null) }, [processList])
 
@@ -185,6 +192,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 		scheduleTask(url, JSON.stringify(body), cronString, () => {
 			setSchedulerKey(k => k + 1)
 			reloadTasks()
+			reloadRuns()
 		})
 	}
 
@@ -217,11 +225,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 											<p className="truncate text-xs text-muted">{humanCron(task.cronString)}</p>
 											<p className="truncate text-xs text-muted">{taskSummary(task, cameras)}</p>
 										</div>
+										{task.disabled && <DisabledBadge />}
 										{isAdmin && (
 											<div className="flex shrink-0 items-center gap-2">
 												<Switch
 													checked={task.running}
-													disabled={busyId === task.id || task.protected}
+													disabled={busyId === task.id || task.protected || task.disabled}
 													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
@@ -248,7 +257,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 									<TableBody>
 										{processList.map((task) => (
 											<TableRow key={task.id} className="border-border">
-												<TableCell className="text-primary font-mono text-sm">{task.id}</TableCell>
+												<TableCell className="text-primary font-mono text-sm">
+													<div className="flex items-center gap-2">
+														{task.id}
+														{task.disabled && <DisabledBadge />}
+													</div>
+												</TableCell>
 												<TableCell className="text-primary text-sm max-w-40 truncate" title={humanCron(task.cronString)}>
 													{humanCron(task.cronString)}
 												</TableCell>
@@ -260,7 +274,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 														<div className="flex justify-end items-center gap-2">
 															<Switch
 																checked={task.running}
-																disabled={busyId === task.id || task.protected}
+																disabled={busyId === task.id || task.protected || task.disabled}
 																onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 															/>
 															{!task.protected && (

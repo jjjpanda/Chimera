@@ -15,6 +15,7 @@ import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
 import { detectGrayPad } from "../js/letterbox.js"
+import applyDatePart from "../js/datePart.js"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -46,9 +47,11 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 	const trackRef = useRef(null)
 	const scrubIdxRef = useRef(scrubIdx)
 	const trimRangeRef = useRef(trimRange)
+	const endDragRef = useRef(null)
 
 	useEffect(() => { scrubIdxRef.current = scrubIdx }, [scrubIdx])
 	useEffect(() => { trimRangeRef.current = trimRange }, [trimRange])
+	useEffect(() => () => endDragRef.current?.(), [])
 
 	const getPct = (clientX) => {
 		const rect = trackRef.current?.getBoundingClientRect()
@@ -114,7 +117,10 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 		const up = () => {
 			window.removeEventListener("pointermove", move)
 			window.removeEventListener("pointerup", up)
+			endDragRef.current = null
 		}
+		endDragRef.current?.()
+		endDragRef.current = up
 		window.addEventListener("pointermove", move)
 		window.addEventListener("pointerup", up)
 	}
@@ -286,18 +292,13 @@ const ClipMakerFull = () => {
 	useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
 	useEffect(() => {
-		if (!multiCam && camera != null && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
-	}, [cameras])
-
-	useEffect(() => {
 		if (multiCam || cameras.length === 0 || camera != null) return
 		const camParam = searchParams.get("camera")
-		if (camParam == null) return
-		const idx = cameras.findIndex(c => String(c.id) === String(camParam))
-		if (idx < 0) return
+		const matchIdx = camParam != null ? cameras.findIndex(c => String(c.id) === String(camParam)) : -1
+		const idx = matchIdx >= 0 ? matchIdx : 0
 		setCamera(idx)
 		loadPreview(undefined, undefined, idx)
-	}, [cameras])
+	}, [cameras, searchParams, camera, multiCam])
 
 	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
 
@@ -568,12 +569,14 @@ const ClipMakerFull = () => {
 	const activeFrameCount = multiCam ? multiFrameCount : frames.length
 
 	const toggleMultiCam = () => {
+		loadSeq.current++
 		setMultiCam(m => !m)
 		setSelectedCams([])
 		setCamStates({})
 		multiImageCache.current = {}
 		setFrames([])
 		setImagesLoaded(0)
+		setFetching(false)
 		setDetections([])
 		setLoadedParams(null)
 		setTrimRange([0, 100])
@@ -629,7 +632,7 @@ const ClipMakerFull = () => {
 			headers: { "Content-Type": "application/json" },
 			body: framesBody(camId, start, end)
 		}, prom => jsonProcessing(prom, data => {
-			if (seq !== loadSeq.current) return setFetching(false)
+			if (seq !== loadSeq.current) return
 			setFrames(data?.list ?? [])
 			setScrubIdx(0)
 			setFetching(false)
@@ -748,17 +751,7 @@ const ClipMakerFull = () => {
 	const setDatePart = (setter, part, val) => {
 		setPendingPreset(null)
 		setSavedDates(null)
-		setter(prev => {
-			const next = prev.clone()
-			if (part === "date") {
-				const [y, m, d] = val.split("-")
-				next.year(parseInt(y)).month(parseInt(m) - 1).date(parseInt(d))
-			} else {
-				const [h, min, sec] = val.split(":")
-				next.hour(parseInt(h)).minute(parseInt(min)).second(sec ? parseInt(sec) : 0)
-			}
-			return next
-		})
+		setter(prev => applyDatePart(prev, part, val) ?? prev)
 	}
 
 	const startResizeDrag = (e) => {
@@ -841,12 +834,12 @@ const ClipMakerFull = () => {
 						})}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
 						</div>
-						<div className="absolute right-2 z-10 bg-background">
-							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+						<div className="absolute right-2 z-10 bg-bg">
+							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 						</div>
 					</div>
 				</>
@@ -864,12 +857,12 @@ const ClipMakerFull = () => {
 						)}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted-foreground/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-background pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted-foreground/30 group-hover:bg-muted-foreground/50 transition-colors" />
+						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
+						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
+							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
 						</div>
-						<div className="absolute right-2 z-10 bg-background">
-							<ArrowUpDown className="size-3 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors" />
+						<div className="absolute right-2 z-10 bg-bg">
+							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
 						</div>
 					</div>
 				</>
@@ -1019,7 +1012,7 @@ const ClipMakerFull = () => {
 					<div className="flex flex-col gap-1">
 						<Label>Time Range</Label>
 						<div className="flex items-center gap-2 justify-end flex-wrap">
-							<span className="text-xs text-muted-foreground/50">preset</span>
+							<span className="text-xs text-muted/50">preset</span>
 							<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
 								<X className="size-3" />
 							</Button>

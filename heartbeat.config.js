@@ -1,14 +1,16 @@
 require("dotenv").config()
+const { gatewayHost } = require("lib")
+const { enabledServices } = require("./lib/utils/heartbeatServices")
 
-const baseUrl = process.env.gateway_HOST
+const baseUrl = gatewayHost()
+const enabled = enabledServices()
+
+const checkUrl = Object.fromEntries(
+	enabled.map(name => [name, `${baseUrl}/${name}/health`])
+)
+
 module.exports = {
-	checkUrl: {
-		command: `${baseUrl}/command/health`,
-		livestream: `${baseUrl}/livestream/health`,
-		object: `${baseUrl}/object/health`,
-		schedule: `${baseUrl}/schedule/health`,
-		storage: `${baseUrl}/storage/health`
-	},
+	checkUrl,
 	webhookUrl: process.env.alert_URL,
 	cronString: "*/10 * * * *",
 	consoleOutput: true

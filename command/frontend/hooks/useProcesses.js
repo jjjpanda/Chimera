@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react"
-import useCamDateNumInfo from "./useCamDateNumInfo.js"
-import useScheduler from "./useScheduler"
-import useCameras from "./useCameras.js"
+import { useEffect, useRef, useState } from "react"
 import moment from "moment"
-import { request, jsonProcessing, downloadProcessing } from "../js/request.js"
+import { request, jsonProcessing } from "../js/request.js"
 import toast from "../js/toast.js"
 
-const listProcesses = (setState) => {
-	setState((s) => ({ ...s, processList: [], loading: true }))
+const POLL_MS = 5000
+
+const listProcesses = (setState, seqRef, silent = false) => {
+	const seq = ++seqRef.current
+	if (!silent) setState((s) => ({ ...s, processList: [], loading: true }))
 	request("/convert/listProcess", {
 		method: "GET",
 		headers: { "Content-Type": "application/json" }
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			if (seq !== seqRef.current) return
 			setState((s) => ({
 				...s,
 				processList: [...(data?.list ?? []).sort((a, b) =>
@@ -25,31 +26,19 @@ const listProcesses = (setState) => {
 	})
 }
 
-const processBody = (state, cameras, useDays = false) => {
-	const id = cameras[state.camera]?.id
-	return JSON.stringify({
-		camera: String(id),
-		...(useDays ? { days: state.days } : {}),
-		start: moment(state.startDate).utc().format("YYYYMMDD-HHmmss"),
-		end: moment(state.endDate).utc().format("YYYYMMDD-HHmmss"),
-		skip: state.number,
-		save: !state.download
-	})
-}
-
-const cancelProcessGenerator = (setState) => (id) => {
+const cancelProcessGenerator = (setState, seqRef) => (id) => {
 	request("/convert/cancelProcess", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ id })
 	}, (prom) => {
 		jsonProcessing(prom, () => {
-			setTimeout(() => listProcesses(setState), 1500)
+			setTimeout(() => listProcesses(setState, seqRef, true), 1500)
 		})
 	})
 }
 
-const deleteProcessGenerator = (setState) => (id) => {
+const deleteProcessGenerator = (setState, seqRef) => (id) => {
 	const remove = toast("Attempting Delete…", 0)
 	request("/convert/deleteProcess", {
 		method: "POST",
@@ -59,77 +48,27 @@ const deleteProcessGenerator = (setState) => (id) => {
 		jsonProcessing(prom, (data) => {
 			remove()
 			toast(data?.deleted ? "Files Deleted" : "None Deleted")
-			setTimeout(() => listProcesses(setState), 1500)
+			setTimeout(() => listProcesses(setState, seqRef, true), 1500)
 		})
 	})
 }
 
-const useProcesses = (settings = {}) => {
-	const [cameras] = useCameras()
-	const [scheduleTask] = useScheduler()
-	const [state, setState] = useCamDateNumInfo({
-		download: false,
-		numberType: "speed",
-		processList: []
-	})
-
-	const [dialog, setDialog] = useState({
-		open: false,
-		processType: null,
-		days: false
-	})
-
-	const onChange = (patch) => setState((s) => ({ ...s, ...patch }))
-
-	const createProcessFn = (type) => {
-		if (cameras[state.camera]?.id == null) return toast("No camera selected")
-		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		const body = processBody(state, cameras, false)
-		setDialog({ open: false, processType: null, days: false })
-		if (state.download) {
-			const remove = toast("Generating", 0)
-			request(url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body
-			}, (prom) => {
-				downloadProcessing(prom, () => remove())
-			})
-		} else {
-			request(url, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body
-			}, (prom) => {
-				jsonProcessing(prom, () => {
-					setTimeout(() => listProcesses(setState), 1500)
-				})
-			})
-		}
-	}
-
-	const scheduleProcessFn = (type, cronString) => {
-		if (cameras[state.camera]?.id == null) return toast("No camera selected")
-		const url = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		const body = processBody(state, cameras, true)
-		scheduleTask(url, body, cronString, () => {
-			setDialog({ open: false, processType: null, days: false })
-		})
-	}
+const useProcesses = () => {
+	const [state, setState] = useState({ processList: [], loading: true })
+	const seqRef = useRef(0)
 
 	useEffect(() => {
-		listProcesses(setState)
+		listProcesses(setState, seqRef)
+		const timer = setInterval(() => {
+			if (!document.hidden) listProcesses(setState, seqRef, true)
+		}, POLL_MS)
+		return () => clearInterval(timer)
 	}, [])
 
 	return [
 		state,
-		cancelProcessGenerator(setState),
-		deleteProcessGenerator(setState),
-		createProcessFn,
-		scheduleProcessFn,
-		dialog,
-		setDialog,
-		onChange
+		cancelProcessGenerator(setState, seqRef),
+		deleteProcessGenerator(setState, seqRef)
 	]
 }
 

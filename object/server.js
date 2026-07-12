@@ -14,6 +14,7 @@ module.exports = {
 			worker.stopWorkers()
 		}
 		if (process.env.object_ON === "true") {
+			process.on("SIGINT", worker.stopWorkers)
 			return handleServerStart(app, process.env.object_PORT, successCallback, failureCallback)
 		} else {
 			failureCallback()

@@ -54,10 +54,10 @@ const useLiveVideo = (cameras) => {
 	const refresh = () => listVideos(cameras, setState, seqRef)
 
 	const restartAll = () => {
-		if (!cameras.length || state.restarting) return
+		if (!cameras.length || state.restarting) return Promise.resolve()
 		setState((old) => ({ ...old, restarting: true }))
 		toast("Restarting livestreams…")
-		Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(() => {
+		return Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(() => {
 			setState((old) => ({ ...old, restarting: false }))
 			refresh()
 		})

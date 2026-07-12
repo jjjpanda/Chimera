@@ -353,26 +353,229 @@ describe("File Routes", () => {
 				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
 			})
 
-			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
+			test("prunes regenerable exports instead of frames when non-frame artifacts dominate", async () => {
 				process.env.storage_MAX_GB = "1"
+				// DB says total frame size is only 500MB; captures hold 2GB of exports
 				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
 					Promise.resolve(String(p).endsWith("captures")
-						? [{ name: "big.mp4", isFile: () => true }]
+						? [
+							{ name: "output_1_start_end_old.mp4", isFile: () => true },
+							{ name: "output_1_start_end_new.zip", isFile: () => true }
+						]
 						: []))
-				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 2000000000 })
+				const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) =>
+					Promise.resolve({ size: 1000000000, mtimeMs: String(p).includes("old") ? 1 : 2 }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 0, exports: 2 })
+					expect(unlinkSpy).toHaveBeenCalledTimes(2)
+					expect(unlinkSpy.mock.calls.map(([p]) => path.basename(p))).toEqual([
+						"output_1_start_end_old.mp4",
+						"output_1_start_end_new.zip"
+					])
+					expect(query).toHaveBeenCalledTimes(1)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("skips an export whose stat fails instead of deleting it for free as the oldest, zero-byte candidate", async () => {
+				process.env.storage_MAX_GB = "1"
+				// 500MB frames + a 1.5GB export = 2GB used, target 900MB, deficit 1.1GB
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+					Promise.resolve(String(p).endsWith("captures")
+						? [
+							{ name: "output_1_start_end_ghost.mp4", isFile: () => true },
+							{ name: "output_1_start_end_real.mp4", isFile: () => true }
+						]
+						: []))
+				const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) =>
+					String(p).includes("ghost")
+						? Promise.reject(new Error("ENOENT"))
+						: Promise.resolve({ size: 1500000000, mtimeMs: 2 }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 0, exports: 1 })
+					expect(unlinkSpy.mock.calls.map(([p]) => path.basename(p))).toEqual([
+						"output_1_start_end_real.mp4"
+					])
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("frees the deficit from oldest exports and leaves frames intact", async () => {
+				process.env.storage_MAX_GB = "1"
+				// 500MB frames + 1.5GB exports = 2GB used, target 900MB, deficit 1.1GB
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+					Promise.resolve(String(p).endsWith("captures")
+						? [
+							{ name: "output_1_start_end_new.mp4", isFile: () => true },
+							{ name: "output_1_start_end_old.mp4", isFile: () => true },
+							{ name: "output_1_start_end_mid.mp4", isFile: () => true }
+						]
+						: []))
+				const age = { old: 1, mid: 2, new: 3 }
+				const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) => {
+					const key = Object.keys(age).find((k) => String(p).includes(`_${k}.`))
+					return Promise.resolve({ size: 500000000, mtimeMs: age[key] })
+				})
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 0, exports: 3 })
+					expect(unlinkSpy.mock.calls.map(([p]) => path.basename(p))).toEqual([
+						"output_1_start_end_old.mp4",
+						"output_1_start_end_mid.mp4",
+						"output_1_start_end_new.mp4"
+					])
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("skips exports that are still being generated and leaves frames intact", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+					Promise.resolve(String(p).endsWith("captures")
+						? [
+							{ name: "output_1_start_end_busy.mp4", isFile: () => true },
+							{ name: "mp4_busy.txt", isFile: () => true }
+						]
+						: []))
+				const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) =>
+					Promise.resolve({ size: String(p).endsWith(".txt") ? 0 : 2000000000, mtimeMs: 1 }))
 				try {
 					const res = await supertest(app)
 						.post("/file/pathAutoClean")
 						.set("Cookie", cookieWithBearerToken)
 					expect(res.status).toBe(200)
 					expect(res.body).toEqual({ cleaned: false })
-					expect(query).toHaveBeenCalledTimes(1)
 					expect(unlinkSpy).not.toHaveBeenCalled()
+					expect(query).toHaveBeenCalledTimes(1)
+					expect(webhookAlert).toHaveBeenCalledWith(
+						expect.stringContaining("non-frame artifacts"), "admin"
+					)
 				} finally {
 					readdir.mockRestore()
 					stat.mockRestore()
 				}
+			})
+
+			test("still honours a lock file whose stat fails instead of deleting the export it is guarding mid-write", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
+					Promise.resolve(String(p).endsWith("captures")
+						? [
+							{ name: "output_1_start_end_busy.zip", isFile: () => true },
+							{ name: "zip_busy.txt", isFile: () => true }
+						]
+						: []))
+				const stat = jest.spyOn(fs.promises, "stat").mockImplementation((p) =>
+					String(p).endsWith(".txt")
+						? Promise.reject(Object.assign(new Error("too many open files"), { code: "EMFILE" }))
+						: Promise.resolve({ size: 2000000000, mtimeMs: 1 }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+					expect(unlinkSpy).not.toHaveBeenCalled()
+					expect(webhookAlert).toHaveBeenCalledWith(
+						expect.stringContaining("non-frame artifacts"), "admin"
+					)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("gives up after repeated fully-failed batches instead of looping forever", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				const rows = (...ids) => ({ rows: ids.map(id => ({ id, camera: "1", name: `${id}.jpg`, size: "600000000" })) })
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve(rows(1, 2, 3)))
+					.mockImplementationOnce(() => Promise.resolve(rows(4, 5, 6)))
+					.mockImplementationOnce(() => Promise.resolve(rows(7, 8, 9)))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(query).toHaveBeenCalledTimes(4)
+				expect(unlinkSpy).toHaveBeenCalledTimes(6)
+				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("auto-clean gave up"), "admin")
+			})
+
+			test("alerts when every frame is stuck and the table runs out before the batch limit", async () => {
+				process.env.storage_MAX_GB = "1"
+				const { webhookAlert } = require("lib")
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockRejectedValue(eacces)
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "b.jpg", size: "600000000" },
+						{ id: 3, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 3, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: false })
+				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("auto-clean gave up"), "admin")
+			})
+
+			test("keeps freeing space when an entire batch is unremovable", async () => {
+				process.env.storage_MAX_GB = "1"
+				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
+				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
+				query
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "stuck-b.jpg", size: "600000000" },
+						{ id: 3, camera: "1", name: "c.jpg", size: "600000000" }
+					] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 3, camera: "1", name: "c.jpg", size: "600000000" },
+						{ id: 4, camera: "2", name: "d.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
+				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
+				expect(query.mock.calls[3][1]).toEqual([[3, 4]])
 			})
 
 			test("returns 500 on db error", async () => {

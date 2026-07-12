@@ -5,16 +5,16 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: () => ({
-		emit: (event, ...args) => {
-			if(event == "listTask"){
-				args[0]({
-					taskid1: {id: "taskid1", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: true}
-				})
-			}
-		},
-		on: () => {},
-		off: () => {}
+	client: () => require("./mockClient.js")((event, ...args) => {
+		if(event == "listTask"){
+			args[0]({
+				taskid1: {id: "taskid1", url: "/task/url", cronString: "*/10 * * * *", body: {}, running: true}
+			})
+		}
+		else if(event == "createTask"){
+			const [task, ack] = args
+			if(typeof ack == "function") ack({ [task.id]: task })
+		}
 	}),
 	server: () => {}
 }))

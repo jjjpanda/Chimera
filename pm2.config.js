@@ -3,12 +3,17 @@ const path = require("path")
 
 const isDev = process.env.NODE_ENV == "development"
 
-if ((Number(process.env.chimeraInstances) > 1 || process.env.chimeraInstances === "max") && process.env.memory_ON !== "true") {
+const isMultiInstance = require("./lib/utils/multiInstance.js")
+
+const requested = process.env.chimeraInstances
+const multiInstance = isMultiInstance(requested)
+
+if (multiInstance && process.env.memory_ON !== "true") {
 	console.warn("Forcing memory_ON=true because chimeraInstances > 1 or max")
 	process.env.memory_ON = "true"
 }
 
-const scaled = process.env.chimeraInstances == 1 ? undefined : process.env.chimeraInstances
+const scaled = multiInstance ? requested : undefined
 const baseEnv = { NODE_ENV: process.env.NODE_ENV, memory_ON: process.env.memory_ON }
 const ignore_watch = ["shared", "feed", "objectTemp", "objectCaptures", "object/backend/model", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"]
 
@@ -39,12 +44,15 @@ for (const { name, instances } of services) {
 }
 
 if(!isDev){
-	config.apps.push({
-		script: "npx heartbeat",
-		name: "heartbeat",
-		log: "./log/heartbeat.log",
-		log_date_format:"YYYY-MM-DD HH:mm:ss"
-	})
+	const { enabledServices } = require("./lib/utils/heartbeatServices")
+	if (enabledServices().length > 0) {
+		config.apps.push({
+			script: "npx heartbeat",
+			name: "heartbeat",
+			log: "./log/heartbeat.log",
+			log_date_format:"YYYY-MM-DD HH:mm:ss"
+		})
+	}
 }
 
 if(process.env.storage_ON === "true"){

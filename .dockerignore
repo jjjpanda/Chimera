@@ -1,6 +1,9 @@
 **/node_modules/
+.git/
+coverage/
 feed/
 log/
+*.log
 .env
 *.md
 motion.conf

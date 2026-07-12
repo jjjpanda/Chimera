@@ -6,20 +6,18 @@ var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
 const { requireAdmin } = auth
 
 const pool = require("../lib/pool")
-const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../lib/fsUsage")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFiles, dirFileBytes } = require("../lib/fsUsage")
 
 const app = express.Router()
 
 const captureBreakdown = async (frameBytes) => {
 	let videos = 0, zips = 0, other = 0
-	const entries = await fs.promises.readdir(CAPTURES_DIR, { withFileTypes: true }).catch(() => [])
-	const files = entries.filter((entry) => entry.isFile())
-	await mapLimit(files, FS_CONCURRENCY, async (entry) => {
-		const { size } = await fs.promises.stat(path.join(CAPTURES_DIR, entry.name)).catch(() => ({ size: 0 }))
-		if (entry.name.endsWith(".mp4")) videos += size
-		else if (entry.name.endsWith(".zip")) zips += size
+	for (const { name, size } of await dirFiles(CAPTURES_DIR)) {
+		if (size == null) continue
+		if (name.endsWith(".mp4")) videos += size
+		else if (name.endsWith(".zip")) zips += size
 		else other += size
-	})
+	}
 	const objects = await dirFileBytes(OBJECT_CAPTURES_DIR)
 	return { frames: frameBytes, videos, zips, objects, other }
 }
@@ -110,8 +108,10 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 			FS_CONCURRENCY,
 			(f) => fs.promises.unlink(path.join(OBJECT_CAPTURES_DIR, f)).catch(() => {})
 		)
-		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
-		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
+		await pool.query(
+			"WITH frames AS (DELETE FROM frame_files WHERE camera = $1) DELETE FROM objects_detected WHERE camera = $1",
+			[id]
+		)
 		for (const file of confFiles) {
 			await fs.promises.unlink(file).catch((e) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)

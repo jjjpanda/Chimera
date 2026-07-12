@@ -4,14 +4,23 @@ let scheduledTaskConfigs = {}
 let scheduledTask = {}
 
 module.exports = (io) => ({
-	createTask: (taskObject) => {
+	createTask: (taskObject, callback=()=>{}) => {
+		const disabled = !!taskObject.disabled
+		if (!disabled && !cron.validate(taskObject.cronString)) {
+			console.log("INVALID CRON STRING, TASK SKIPPED", taskObject.id, taskObject.cronString)
+			return callback({ error: "invalid cron" })
+		}
 		if (scheduledTask[taskObject.id]) scheduledTask[taskObject.id].destroy()
-		scheduledTaskConfigs[taskObject.id] = taskObject
-		scheduledTask[taskObject.id] = cron.createTask(
-			taskObject.cronString,
-			() => io.emit(taskObject.id)
-		)
-		if (taskObject.running) scheduledTask[taskObject.id].start()
+		delete scheduledTask[taskObject.id]
+		scheduledTaskConfigs[taskObject.id] = disabled ? { ...taskObject, running: false } : taskObject
+		if (!disabled) {
+			scheduledTask[taskObject.id] = cron.createTask(
+				taskObject.cronString,
+				() => io.emit("runTask", scheduledTaskConfigs[taskObject.id])
+			)
+			if (taskObject.running) scheduledTask[taskObject.id].start()
+		}
+		callback(scheduledTaskConfigs)
 	},
 
 	startTask: (id, callback=()=>{}) => {

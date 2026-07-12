@@ -347,7 +347,7 @@ describe("Convert Routes", () => {
 
 		test("alerts exactly once when the output stream errors and dedups repeats", () => {
 			lib.webhookAlert.mockClear()
-			const output = new EventEmitter()
+			const output = Object.assign(new EventEmitter(), { destroy: jest.fn() })
 			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
@@ -365,17 +365,112 @@ describe("Convert Routes", () => {
 		})
 	})
 
+	describe("zip save-path lock ordering", () => {
+		const { EventEmitter } = require("events")
+		const fs = require("fs")
+		const lib = require("lib")
+		const { zip } = require("../backend/routes/lib/zip.js")
+
+		test("writes the lock file before the zip artifact is opened so auto-clean cannot prune it mid-write", (done) => {
+			const calls = []
+			const output = Object.assign(new EventEmitter(), { destroy: jest.fn() })
+			const writeStreamSpy = jest.spyOn(fs, "createWriteStream").mockImplementation((p) => {
+				calls.push(["createWriteStream", p])
+				return output
+			})
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => {
+				calls.push(["writeFile", p])
+				setImmediate(cb)
+			})
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+
+			const res = { send: () => {
+				expect(calls.map(([fn]) => fn)).toEqual(["writeFile", "createWriteStream"])
+				const [, txtPath] = calls[0]
+				const [, zipPath] = calls[1]
+				expect(txtPath).toMatch(/zip_.+\.txt$/)
+				expect(zipPath).toMatch(/\.zip$/)
+				writeStreamSpy.mockRestore()
+				writeFileSpy.mockRestore()
+				done()
+			} }
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, res)
+
+			expect(calls).toHaveLength(1)
+			expect(calls[0][0]).toBe("writeFile")
+		})
+
+		test("aborts the zip when the lock file cannot be written so auto-clean cannot prune an untracked artifact", (done) => {
+			lib.webhookAlert.mockClear()
+			const writeStreamSpy = jest.spyOn(fs, "createWriteStream")
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => {
+				setImmediate(() => cb(new Error("EACCES: permission denied")))
+			})
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+
+			const res = { send: (body) => {
+				expect(body).toEqual({error: true})
+				expect(writeStreamSpy).not.toHaveBeenCalled()
+				expect(archive.finalize).not.toHaveBeenCalled()
+				expect(archive.abort).toHaveBeenCalled()
+				expect(lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))).toHaveLength(1)
+				writeStreamSpy.mockRestore()
+				writeFileSpy.mockRestore()
+				done()
+			} }
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, res)
+		})
+
+		test("handles an archive error after a failed lock write instead of crashing the process", (done) => {
+			lib.webhookAlert.mockClear()
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => {
+				setImmediate(() => cb(new Error("EACCES: permission denied")))
+			})
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+
+			const res = { send: () => {
+				expect(archive.listenerCount("error")).toBe(1)
+				expect(() => archive.emit("error", new Error("ENOENT: frame vanished mid-zip"))).not.toThrow()
+				expect(lib.webhookAlert.mock.calls.filter(c => /could not be completed/.test(c[0]))).toHaveLength(1)
+				writeFileSpy.mockRestore()
+				done()
+			} }
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, res)
+
+			expect(archive.listenerCount("error")).toBe(1)
+		})
+	})
+
 	describe("zip streaming (non-save) branch error handling", () => {
 		const { EventEmitter } = require("events")
 		const { zip } = require("../backend/routes/lib/zip.js")
 
-		test("registers an archive error listener so an fs error does not crash storage", () => {
+		test("sends a 500 on archive error when nothing has been written yet", () => {
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
-			const res = { attachment: jest.fn(), send: jest.fn() }
+			const end = jest.fn()
+			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: false, status: jest.fn(() => ({ end })) }
 
 			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
 
 			expect(() => archive.emit("error", new Error("EPIPE"))).not.toThrow()
+			expect(res.status).toHaveBeenCalledWith(500)
+			expect(end).toHaveBeenCalled()
+			expect(res.destroy).not.toHaveBeenCalled()
+		})
+
+		test("destroys the response on archive error once headers are already sent so the client does not hang", () => {
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: true, status: jest.fn() }
+			const err = new Error("EPIPE")
+
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
+
+			expect(() => archive.emit("error", err)).not.toThrow()
+			expect(res.destroy).toHaveBeenCalledWith(err)
+			expect(res.status).not.toHaveBeenCalled()
 		})
 	})
 

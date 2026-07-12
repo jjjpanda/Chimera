@@ -5,7 +5,11 @@ const moment = require("moment")
 const { loadCameras, webhookAlert, mapLimit } = require("lib")
 
 const pool = require("../../lib/pool")
-const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFiles, dirFileBytes } = require("../../lib/fsUsage")
+
+const MAX_FAILED_BATCHES = 3
+const MAX_STUCK_IDS = 50000
+const LOCK_NAME = /^(?:mp4|zip)_(.+)\.txt$/
 
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
@@ -137,46 +141,73 @@ module.exports = {
 			)
 			const frameTotal = parseInt(frameTotalRows[0].total) || 0
 
-			const nonFrameBytes = await dirFileBytes(CAPTURES_DIR)
+			const captureFiles = await dirFiles(CAPTURES_DIR)
+			const nonFrameBytes = captureFiles.reduce((sum, { size }) => sum + (size || 0), 0)
 			const usedObjectBytes = await dirFileBytes(OBJECT_CAPTURES_DIR)
 			const totalUsedBytes = frameTotal + nonFrameBytes + usedObjectBytes
 
 			const targetBytes = maxGb * 0.9 * 1e9
 			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
 
-			const toFree = totalUsedBytes - targetBytes
+			let toFree = totalUsedBytes - targetBytes
+			let prunedExports = 0
+
 			if (toFree >= frameTotal) {
-				webhookAlert(`⚠️ Storage over ${maxGb}GB cap but non-frame artifacts (videos/zips) dominate — deleting all frames would not reach target, so auto-clean was skipped.`, "admin")
-				return res.send({ cleaned: false })
+				const pruned = await pruneExports(captureFiles, toFree)
+				toFree -= pruned.freed
+				prunedExports = pruned.count
+				if (toFree > 0 && toFree >= frameTotal) {
+					webhookAlert(`⚠️ Storage over ${maxGb}GB cap and non-frame artifacts (videos/zips) still dominate after removing ${prunedExports} regenerable export(s) — deleting every frame would not reach target, so frames were left intact. Free space manually.`, "admin")
+					return res.send(prunedExports ? { cleaned: true, exports: prunedExports } : { cleaned: false })
+				}
 			}
 
 			let freed = 0
 			let deleted = 0
+			let failedBatches = 0
+			const stuck = []
 
 			while (freed < toFree) {
 				const { rows } = await pool.query(
-					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 ORDER BY timestamp ASC LIMIT 10000"
+					"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
+					[[...stuck]]
 				)
 				if (rows.length === 0) break
 
+				let planned = freed
 				const batch = []
 				for (const row of rows) {
-					if (freed >= toFree) break
+					if (planned >= toFree) break
 					batch.push(row)
-					freed += parseInt(row.size) || 0
+					planned += parseInt(row.size) || 0
 				}
 
-				await mapLimit(batch, FS_CONCURRENCY, row =>
-					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name)).catch(() => {})
+				const removed = await mapLimit(batch, FS_CONCURRENCY, row =>
+					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name))
+						.then(() => true)
+						.catch((e) => e.code === "ENOENT")
 				)
-				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [batch.map(r => r.id)])
-				deleted += batch.length
-
-				if (batch.length < rows.length) break
+				batch.forEach((row, i) => { if (!removed[i]) stuck.push(row.id) })
+				const gone = batch.filter((row, i) => removed[i])
+				if (gone.length) {
+					failedBatches = 0
+					await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
+					gone.forEach(row => { freed += parseInt(row.size) || 0 })
+					deleted += gone.length
+				}
+				if (stuck.length >= MAX_STUCK_IDS) {
+					webhookAlert(`⚠️ auto-clean: ${stuck.length} stuck files — aborting to avoid unbounded query growth. Check permissions on ${CAPTURES_DIR}.`, "admin")
+					break
+				}
+				if (gone.length === 0 && ++failedBatches >= MAX_FAILED_BATCHES) break
 			}
 
-			if (deleted === 0) return res.send({ cleaned: false })
-			res.send({ cleaned: true, deleted })
+			if (stuck.length) console.log(`STORAGE AUTOCLEAN: ${stuck.length} frame(s) could not be unlinked; rows left intact`)
+			if (freed < toFree && stuck.length) {
+				webhookAlert(`⚠️ Storage over ${maxGb}GB cap but ${stuck.length} frame file(s) could not be unlinked — auto-clean gave up short of target and disk usage will keep growing. Check permissions on ${CAPTURES_DIR}.`, "admin")
+			}
+			if (deleted === 0 && prunedExports === 0) return res.send({ cleaned: false })
+			res.send(prunedExports ? { cleaned: true, deleted, exports: prunedExports } : { cleaned: true, deleted })
 		} catch (err) {
 			res.status(500).send({ error: "cleanup failed" })
 		}
@@ -200,6 +231,31 @@ module.exports = {
 			res.status(500).send({ error: true })
 		})
 	}
+}
+
+const pruneExports = async (captureFiles, toFree) => {
+	const locked = new Set(captureFiles.map(({ name }) => name.match(LOCK_NAME)).filter(Boolean).map(([, id]) => id))
+	const candidates = captureFiles.filter(({ name, size }) => {
+		if (size == null) return false
+		const parts = name.split("_")
+		if (parts[0] !== "output" || parts.length < 5) return false
+		const [id, type] = parts[4].split(".")
+		return (type === "mp4" || type === "zip") && !locked.has(id)
+	}).sort((a, b) => a.mtimeMs - b.mtimeMs)
+
+	const doomed = []
+	let planned = 0
+	for (const file of candidates) {
+		if (planned >= toFree) break
+		doomed.push(file)
+		planned += file.size
+	}
+
+	const removed = await mapLimit(doomed, FS_CONCURRENCY, ({ name }) =>
+		fs.promises.unlink(path.join(CAPTURES_DIR, name)).then(() => true).catch((e) => e.code === "ENOENT")
+	)
+	const gone = doomed.filter((file, i) => removed[i])
+	return { freed: gone.reduce((sum, { size }) => sum + size, 0), count: gone.length }
 }
 
 const queryForMetric = (camera, metric) => {

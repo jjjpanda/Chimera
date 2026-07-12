@@ -4,7 +4,7 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: () => ({ emit: () => {}, on: () => {}, off: () => {} }),
+	client: () => require("./mockClient.js")(),
 	server: () => {}
 }))
 

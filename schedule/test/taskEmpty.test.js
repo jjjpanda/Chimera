@@ -5,22 +5,20 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: (name) => ({
-		emit: (event, ...args) => {
-			if(event == "listTask"){
-				args[0]({})
-			}
-			else if(event == "createTask"){
-				//do nothing
-			}
-			else if(event == "savePassword"){
-				args[1]()
-			}
-			else if(event == "verifyPassword"){
-				args[1](false)
-			}
-		},
-		on: () => {}
+	client: () => require("./mockClient.js")((event, ...args) => {
+		if(event == "listTask"){
+			args[0]({})
+		}
+		else if(event == "createTask"){
+			const [task, ack] = args
+			if(typeof ack == "function") ack({ [task.id]: task })
+		}
+		else if(event == "savePassword"){
+			args[1]()
+		}
+		else if(event == "verifyPassword"){
+			args[1](false)
+		}
 	}),
 	server: () => {}
 }))

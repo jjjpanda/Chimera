@@ -28,7 +28,7 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 
 Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once — idempotent (existing table → `42P07`, treated as success; indexes use `IF NOT EXISTS`). Any other error exits `1`.
 
-Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Plus four indexes: timestamp indexes on `frame_files`, `objects_detected`, `task_runs`, and one on `sessions(username)`.
+Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs`, `scheduled_tasks` (schedule). Plus four indexes: composite `(camera, timestamp)` on `frame_files` and `objects_detected`, `task_runs(ran_at)`, and `sessions(username)`.
 
 ---
 # preflight.js — `npm run preflight`
