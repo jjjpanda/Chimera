@@ -67,5 +67,48 @@ describe("Livestream Routes", () => {
 				.send({})
 				.expect(400, done)
 		})
+
+		test("restarts a numeric camera", (done) => {
+			supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "userCookie")
+				.set("X-Forwarded-For", "10.0.0.1")
+				.send({ camera: 1 })
+				.expect(200, done)
+		})
+
+		test("rejects a camera that is not a plain number", async () => {
+			for(const camera of ["abc", "1 all", "../1", "1e3", "1".repeat(11)]){
+				await supertest(app)
+					.post("/livestream/restart")
+					.set("Cookie", "validCookie")
+					.set("X-Forwarded-For", "10.0.0.2")
+					.send({ camera })
+					.expect(400)
+			}
+		})
+
+		test("rate limits restarts per ip", async () => {
+			for(let i = 0; i < 20; i++){
+				await supertest(app)
+					.post("/livestream/restart")
+					.set("Cookie", "validCookie")
+					.set("X-Forwarded-For", "10.0.0.3")
+					.send({ camera: 1 })
+					.expect(200)
+			}
+			await supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.0.3")
+				.send({ camera: 1 })
+				.expect(429)
+			await supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.0.4")
+				.send({ camera: 1 })
+				.expect(200)
+		})
 	})
 })

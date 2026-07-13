@@ -7,5 +7,9 @@ module.exports = {
 				unstable_restarts: 0
 			}
 		})))
+	},
+
+	restart: (processName, callback) => {
+		callback(null, { name: processName })
 	}
 }
