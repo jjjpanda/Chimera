@@ -15,11 +15,11 @@ describe("Livestream restart cap under cluster mode", () => {
 		process.env = originalEnv
 	})
 
-	test("divides the per-worker restart budget by the instance count", async () => {
+	test("keeps the 20/min cap regardless of the configured instance count", async () => {
 		const supertest = require("supertest")
 		const app = require("../backend/livestream.js")
 
-		for(let i = 0; i < 5; i++){
+		for(let i = 0; i < 20; i++){
 			await supertest(app)
 				.post("/livestream/restart")
 				.set("Cookie", "validCookie")

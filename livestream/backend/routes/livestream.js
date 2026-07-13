@@ -2,15 +2,26 @@ var express    = require("express")
 const path = require("path")
 const { subprocess } = require("lib")
 const memory = require("memory")
-const { instanceCount } = require("../../../lib/utils/multiInstance.js")
 
 const app = express.Router()
 
-const restartAttempts = memory.loginAttempts()
-const restartMax = Math.max(1, Math.ceil(20 / instanceCount(process.env.chimeraInstances)))
+const RESTART_MAX = 20
+const RESTART_WINDOW = 60 * 1000
+const sharedAttempts = process.env.memory_ON == "true"
+const restartClient = sharedAttempts ? memory.client("LIVESTREAM_RESTART") : null
+const localAttempts = memory.loginAttempts()
+
+const reserveRestart = (key, cb) => {
+	if (!sharedAttempts || !restartClient.connected) return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
+	restartClient.timeout(1000).emit("loginReserve", key, RESTART_MAX, RESTART_WINDOW, (err, blocked) => {
+		if (err) return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
+		cb(blocked)
+	})
+}
+
 const restartLimiter = (req, res, next) => {
 	const key = `${req.ip || ""}:${req.path}`
-	restartAttempts.loginReserve(key, restartMax, 60 * 1000, (blocked) => {
+	reserveRestart(key, (blocked) => {
 		if(blocked) return res.status(429).send({})
 		next()
 	})
