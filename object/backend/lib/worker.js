@@ -75,6 +75,7 @@ const config = {
 
 const status = {}
 const timers = {}
+const inFlight = new Set()
 let pruneTimer = null
 let reconcileTimer = null
 let epoch = 0
@@ -210,8 +211,12 @@ const timeout = (ms) => new Promise((_, reject) => {
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		// cap a scan so a hung query (e.g. detection INSERT) can't stop the loop from re-arming
-		await Promise.race([scan(id, era), timeout(config.intervalMs * 6)]).catch(() => {})
+		// cap a scan so a hung query can't stall the loop, and skip re-launching while the prior scan is still outstanding so a permanent hang can't pile up concurrent scans
+		if (!inFlight.has(id)) {
+			inFlight.add(id)
+			const done = scan(id, era).finally(() => inFlight.delete(id))
+			await Promise.race([done, timeout(config.intervalMs * 6)]).catch(() => {})
+		}
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
 	}
