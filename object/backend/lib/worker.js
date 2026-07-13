@@ -75,7 +75,7 @@ const config = {
 
 const status = {}
 const timers = {}
-const inFlight = new Set()
+const inFlight = new WeakSet()
 let pruneTimer = null
 let reconcileTimer = null
 let epoch = 0
@@ -204,18 +204,28 @@ const scan = async (id, era = epoch) => {
 	}
 }
 
-const timeout = (ms) => new Promise((_, reject) => {
-	setTimeout(() => reject(new Error("scan timeout")), ms).unref()
-})
+const capped = async (promise, ms) => {
+	let timer
+	const cap = new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error("scan timeout")), ms)
+		timer.unref()
+	})
+	try {
+		return await Promise.race([promise, cap])
+	} finally {
+		clearTimeout(timer)
+	}
+}
 
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		// cap a scan so a hung query can't stall the loop, and skip re-launching while the prior scan is still outstanding so a permanent hang can't pile up concurrent scans
-		if (!inFlight.has(id)) {
-			inFlight.add(id)
-			const done = scan(id, era).finally(() => inFlight.delete(id))
-			await Promise.race([done, timeout(config.intervalMs * 6)]).catch(() => {})
+		if (!inFlight.has(st)) {
+			inFlight.add(st)
+			const done = scan(id, era).finally(() => inFlight.delete(st))
+			await capped(done, config.intervalMs * 6).catch((e) => {
+				if (status[id] === st) st.error = e.message
+			})
 		}
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
