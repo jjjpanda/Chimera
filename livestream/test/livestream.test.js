@@ -128,5 +128,47 @@ describe("Livestream Routes", () => {
 				.send({ camera: 1 })
 				.expect(200)
 		})
+
+		test("one camera's exhausted budget does not block the other cameras", async () => {
+			for(let i = 0; i < 20; i++){
+				await supertest(app)
+					.post("/livestream/restart")
+					.set("Cookie", "validCookie")
+					.set("X-Forwarded-For", "10.0.0.6")
+					.send({ camera: 1 })
+					.expect(200)
+			}
+			await supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.0.6")
+				.send({ camera: 1 })
+				.expect(429)
+			for(const camera of [2, 3]){
+				await supertest(app)
+					.post("/livestream/restart")
+					.set("Cookie", "validCookie")
+					.set("X-Forwarded-For", "10.0.0.6")
+					.send({ camera })
+					.expect(200)
+			}
+		})
+
+		test("an invalid camera is rejected before it can consume a budget", async () => {
+			for(let i = 0; i < 25; i++){
+				await supertest(app)
+					.post("/livestream/restart")
+					.set("Cookie", "validCookie")
+					.set("X-Forwarded-For", "10.0.0.7")
+					.send({ camera: "abc" })
+					.expect(400)
+			}
+			await supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.0.7")
+				.send({ camera: 1 })
+				.expect(200)
+		})
 	})
 })

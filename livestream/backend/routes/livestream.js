@@ -25,7 +25,7 @@ const reserveRestart = (key, cb) => {
 }
 
 const restartLimiter = (req, res, next) => {
-	const key = `${req.ip || ""}:${req.path}`
+	const key = `${req.ip || ""}:${req.path}:${req.body.camera}`
 	reserveRestart(key, (blocked) => {
 		if(blocked) return res.status(429).send({})
 		next()
@@ -52,7 +52,7 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
-app.post("/restart", restartLimiter, (req, res, next) => {
+app.post("/restart", (req, res, next) => {
 	const {camera} = req.body
 	if(!isCameraId(camera)){
 		res.status(400).send({})
@@ -61,7 +61,7 @@ app.post("/restart", restartLimiter, (req, res, next) => {
 		req.processName = `live_stream_cam_${camera}`
 		next()
 	}
-}, subprocess.restart)
+}, restartLimiter, subprocess.restart)
 
 app.use("/feed", express.static(path.join(process.env.livestream_FOLDERPATH, "feed")))
 
