@@ -78,14 +78,14 @@ const parse = (output, confidence) => {
 			for (let gx = 0; gx < grid; gx++, i++) {
 				const o = i * numChannels
 				const obj = data[o + 4]
-				if (obj < confidence) continue
+				if (!(obj >= confidence)) continue
 				let best = 0, bestScore = 0
 				for (let c = 0; c < numClasses; c++) {
 					const score = data[o + 5 + c]
 					if (score > bestScore) { bestScore = score; best = c }
 				}
 				const score = obj * bestScore
-				if (score < confidence) continue
+				if (!(score >= confidence)) continue
 				const cx = (data[o] + gx) * stride
 				const cy = (data[o + 1] + gy) * stride
 				const w = Math.exp(data[o + 2]) * stride
