@@ -1,0 +1,37 @@
+jest.mock("lib")
+jest.mock("pm2")
+jest.mock("memory")
+jest.mock("axios")
+
+describe("Livestream restart cap under cluster mode", () => {
+	const originalEnv = process.env
+
+	beforeEach(() => {
+		jest.resetModules()
+		process.env = { ...originalEnv, chimeraInstances: "4" }
+	})
+
+	afterAll(() => {
+		process.env = originalEnv
+	})
+
+	test("divides the per-worker restart budget by the instance count", async () => {
+		const supertest = require("supertest")
+		const app = require("../backend/livestream.js")
+
+		for(let i = 0; i < 5; i++){
+			await supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.1.1")
+				.send({ camera: 1 })
+				.expect(200)
+		}
+		await supertest(app)
+			.post("/livestream/restart")
+			.set("Cookie", "validCookie")
+			.set("X-Forwarded-For", "10.0.1.1")
+			.send({ camera: 1 })
+			.expect(429)
+	})
+})
