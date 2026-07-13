@@ -2,7 +2,7 @@ const loginAttempts = require("../../memory/lib/loginAttempts.js")
 const loginStore = loginAttempts()
 
 module.exports = {
-	client: (name) => {
+	client: () => {
 		const sock = {
 			emit: (event, ...args) => {
 				if(event == "savePassword"){

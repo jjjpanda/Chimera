@@ -2,7 +2,7 @@ const supertest = require("supertest")
 const app = require("../backend/storage.js")
 
 const moment = require("moment")
-var {generateID, fileName, parseFileName, validateDays, validateRequest}    = require("../backend/routes/lib/converter.js")
+var {parseFileName, validateDays, validateRequest}    = require("../backend/routes/lib/converter.js")
 const dateFormat = require("../backend/routes/lib/dateFormat.js")
 
 const fileList = [

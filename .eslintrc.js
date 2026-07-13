@@ -1,7 +1,8 @@
 module.exports = {
 	"ignorePatterns": [
-		"command/frontend/js/lib/*", 
-		"command/dist/app.js", 
+		"command/frontend/js/lib/*",
+		"command/dist",
+		"coverage",
 		"node_modules"
 	],
 	"env": {
@@ -9,6 +10,20 @@ module.exports = {
 		"es2021": true,
 		"node": true
 	},
+	"overrides": [
+		{
+			"files": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**", "**/__mocks__/**", "**/jest.config.js"],
+			"env": {
+				"jest": true
+			}
+		},
+		{
+			"files": ["command/frontend/components/ui/**"],
+			"rules": {
+				"react/prop-types": "off"
+			}
+		}
+	],
 	"extends": [
 		"eslint:recommended",
 		"plugin:react/recommended"
@@ -23,6 +38,11 @@ module.exports = {
 	"plugins": [
 		"react"
 	],
+	"settings": {
+		"react": {
+			"version": "detect"
+		}
+	},
 	"rules": {
 		"indent": [
 			"error",
@@ -39,6 +59,10 @@ module.exports = {
 		"semi": [
 			"error",
 			"never"
-		]
+		],
+		"react/prop-types": "warn",
+		"no-unused-vars": ["error", { "args": "after-used", "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+		"no-empty": "warn",
+		"react/no-unescaped-entities": "warn"
 	}
 }

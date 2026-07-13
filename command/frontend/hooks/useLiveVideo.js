@@ -21,7 +21,7 @@ const listVideos = (cameras, setState, seqRef) => {
 				...old,
 				loading: false,
 				lastUpdated: moment().format("h:mm:ss a"),
-				videoList: nums.map((num, idx) => {
+				videoList: nums.map((num) => {
 					const cam = cameras.find((c) => c.id === num)
 					return {
 						camera: cam ? cam.name : `Camera ${num}`,

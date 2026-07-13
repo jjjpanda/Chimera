@@ -1,5 +1,5 @@
 module.exports = {
-	client: (name) => ({
+	client: () => ({
 		emit: (event, ...args) => {
 			if(event == "savePassword"){
 				args[1]()
