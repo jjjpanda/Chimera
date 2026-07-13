@@ -241,6 +241,15 @@ describe("Convert Routes", () => {
 				.expect(200, { running: false, id }, done)
 		})
 
+		test("check status of a process whose id contains parentheses", (done) => {
+			const id = "vid(eo)1-20210301-235959"
+			supertest(app)
+				.post("/convert/statusProcess")
+				.send({id})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200, { running: false, id }, done)
+		})
+
 		test("check status with no id", (done) => {
 			supertest(app)
 				.post("/convert/statusProcess")
@@ -253,6 +262,14 @@ describe("Convert Routes", () => {
 			supertest(app)
 				.post("/convert/statusProcess")
 				.send({id: "../bruh"})
+				.set("Cookie", cookieWithBearerToken)
+				.expect(400, { error: true, msg: "no id" }, done)
+		})
+
+		test("rejects an id with a null byte", (done) => {
+			supertest(app)
+				.post("/convert/statusProcess")
+				.send({id: "video1\u0000-20210301-235959"})
 				.set("Cookie", cookieWithBearerToken)
 				.expect(400, { error: true, msg: "no id" }, done)
 		})
