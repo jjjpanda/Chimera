@@ -7,9 +7,16 @@ module.exports = {
 	"env": {
 		"browser": true,
 		"es2021": true,
-		"node": true,
-		"jest": true
+		"node": true
 	},
+	"overrides": [
+		{
+			"files": ["**/*.test.js", "**/__mocks__/**", "**/jest.config.js"],
+			"env": {
+				"jest": true
+			}
+		}
+	],
 	"extends": [
 		"eslint:recommended",
 		"plugin:react/recommended"
@@ -47,7 +54,7 @@ module.exports = {
 			"never"
 		],
 		"react/prop-types": "warn",
-		"no-unused-vars": ["error", { "args": "none", "varsIgnorePattern": "^_" }],
+		"no-unused-vars": ["error", { "args": "after-used", "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
 		"no-empty": "warn",
 		"react/no-unescaped-entities": "warn"
 	}

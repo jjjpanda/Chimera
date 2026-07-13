@@ -84,7 +84,7 @@ const Stats = () => {
 							<span className="text-[10px] text-muted w-14 shrink-0">by camera</span>
 							<div className="flex h-3 flex-1 overflow-hidden rounded-full">
 								{usage.cameras.length > 0
-									? usage.cameras.map((cam, i) => (
+									? usage.cameras.map((cam) => (
 										<div key={cam.id} style={{ flex: `0 0 ${(Math.max(cam.used_gb, 0.001) / totalCamGb * 100).toFixed(3)}%`, backgroundColor: camColor.get(cam.id) }} />
 									))
 									: <div className="flex-1 rounded-full bg-border" />
@@ -213,7 +213,7 @@ const Stats = () => {
 					</CardHeader>
 					<CardContent className="p-0 pb-2">
 						<div className="flex flex-col divide-y divide-border overflow-y-auto max-h-96">
-							{sortedCameras.map((cam, i) => (
+							{sortedCameras.map((cam) => (
 								<div key={cam.id} className="flex flex-col gap-1.5 px-4 py-3">
 									<div className="flex items-center gap-3">
 										<div className="size-3 rounded-full shrink-0" style={{ backgroundColor: camColor.get(cam.id) }} />

@@ -1,5 +1,5 @@
 module.exports = {
-	client: (name) => {
+	client: () => {
 		const c = {
 			timeout: () => c,
 			emit: (event, ...args) => {
