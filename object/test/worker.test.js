@@ -239,6 +239,16 @@ describe("scan", () => {
 describe("startWorkers / stopWorkers", () => {
 	const tick = async () => { for (let i = 0; i < 25; i++) await Promise.resolve() }
 
+	const feedOf = (args) => String(args[args.indexOf("-i") + 1]).replace(/\\/g, "/")
+	const scansOf = (feed) => execFile.mock.calls.filter((c) => feedOf(c[1]).endsWith(`feed/${feed}/video.m3u8`)).length
+	const hangFeed = (feed) => {
+		let held = null
+		execFile.mockImplementation((file, args, opts, cb) => {
+			if (feedOf(args).endsWith(`feed/${feed}/video.m3u8`) && !held) held = cb
+			else cb(null)
+		})
+	}
+
 	beforeEach(() => {
 		jest.useFakeTimers()
 		execFile.mockClear()
@@ -378,6 +388,42 @@ describe("startWorkers / stopWorkers", () => {
 		expect(jest.getTimerCount()).toBe(4)
 		worker.stopWorkers()
 		expect(jest.getTimerCount()).toBe(0)
+	})
+
+	test("a hung scan is capped and not relaunched, and does not stall the other cameras", async () => {
+		hangFeed(2)
+		await worker.startWorkers()
+		await tick()
+		expect(scansOf(1)).toBe(1)
+		expect(scansOf(2)).toBe(1)
+
+		for (let i = 0; i < 6; i++) {
+			jest.advanceTimersByTime(worker.getConfig().intervalMs)
+			await tick()
+		}
+
+		expect(scansOf(1)).toBe(7)
+		expect(scansOf(2)).toBe(1)
+		expect(worker.getStatus()[2].error).toBe("scan timeout")
+		expect(worker.getStatus()[1].error).toBeNull()
+		expect(jest.getTimerCount()).toBe(4)
+	})
+
+	test("a permanently hung scan does not wedge its camera across a restart", async () => {
+		hangFeed(2)
+		await worker.startWorkers()
+		await tick()
+		for (let i = 0; i < 6; i++) {
+			jest.advanceTimersByTime(worker.getConfig().intervalMs)
+			await tick()
+		}
+		expect(scansOf(2)).toBe(1)
+
+		await worker.startWorkers()
+		await tick()
+
+		expect(scansOf(2)).toBe(2)
+		expect(worker.getStatus()[2].error).toBeNull()
 	})
 
 	test("a camera deleted from disk persists nothing on its next scan, even while the camera cache still lists it", async () => {

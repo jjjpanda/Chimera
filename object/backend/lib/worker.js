@@ -75,6 +75,7 @@ const config = {
 
 const status = {}
 const timers = {}
+const inFlight = new WeakSet()
 let pruneTimer = null
 let reconcileTimer = null
 let epoch = 0
@@ -203,10 +204,29 @@ const scan = async (id, era = epoch) => {
 	}
 }
 
+const capped = async (promise, ms) => {
+	let timer
+	const cap = new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error("scan timeout")), ms)
+		timer.unref()
+	})
+	try {
+		return await Promise.race([promise, cap])
+	} finally {
+		clearTimeout(timer)
+	}
+}
+
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		await scan(id, era).catch(() => {})
+		if (!inFlight.has(st)) {
+			inFlight.add(st)
+			const done = scan(id, era).finally(() => inFlight.delete(st))
+			await capped(done, config.intervalMs * 6).catch((e) => {
+				if (status[id] === st) st.error = e.message
+			})
+		}
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
 	}
