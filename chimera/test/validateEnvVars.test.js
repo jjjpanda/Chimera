@@ -26,6 +26,24 @@ describe("validateEnvVars against the CI env file", () => {
 		expect(res.stdout).toContain("MISSING ENV VAR setup_TOKEN")
 		expect(res.status).toBe(1)
 	})
+
+	test("blocks boot when scheduler_AUTH is blank while the schedule service is on", () => {
+		const res = run({ schedule_ON: "true", scheduler_AUTH: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR scheduler_AUTH")
+		expect(res.status).toBe(1)
+	})
+
+	test("allows a blank scheduler_AUTH when the schedule service is off — preflight seeds it blank", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("allows a blank memory_AUTH_TOKEN when the memory service is off", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "1", memory_AUTH_TOKEN: "" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars placeholder-secret gate", () => {
