@@ -19,6 +19,8 @@ try { fs.mkdirSync(CAPTURES_DIR, { recursive: true }) } catch (e) { console.erro
 
 const confTier = (conf) => conf == null ? 0 : conf < 0.6 ? 1 : conf < 0.7 ? 2 : conf < 0.8 ? 3 : conf < 0.9 ? 4 : 5
 
+const inFlightCaptures = new Set()
+
 const sweepTemp = async () => {
 	const names = await fs.promises.readdir(TEMP_DIR).catch(() => [])
 	const cutoff = Date.now() - TEMP_STALE_MS
@@ -40,7 +42,7 @@ const pruneCaptures = async () => {
 	const stats = await mapLimit(names, PRUNE_CONCURRENCY, async (f) => {
 		try { return { f, t: (await fs.promises.stat(path.join(CAPTURES_DIR, f))).mtimeMs } } catch (e) { return null }
 	})
-	const files = stats.filter(Boolean)
+	const files = stats.filter((s) => s && !inFlightCaptures.has(s.f))
 	if (files.length <= MAX_CAPTURES) return
 
 	const { rows } = await pool.query(
@@ -75,6 +77,7 @@ const config = {
 
 const status = {}
 const timers = {}
+const inFlight = new WeakSet()
 let pruneTimer = null
 let reconcileTimer = null
 let epoch = 0
@@ -143,30 +146,35 @@ let captureWriteFailing = false
 
 const handleDetections = async (camera, detections, jpeg, era) => {
 	const image = `${camera}-${Date.now()}.jpg`
-	const stored = await fs.promises.writeFile(path.join(CAPTURES_DIR, image), jpeg)
-		.then(() => true)
-		.catch((e) => {
-			console.log("OBJECT CAPTURE WRITE ERROR", e.message)
-			if (!captureWriteFailing) {
-				captureWriteFailing = true
-				webhookAlert(`⚠️ Object capture write to ${CAPTURES_DIR} failed (${e.message}) — detections are still being alerted but no longer recorded. Check disk space.`, "admin")
-			}
-			return false
-		})
-	if (stored) captureWriteFailing = false
-	if (gone(camera, era)) return
-	const persistable = stored ? detections.filter((d) => Array.isArray(d.box)) : []
-	if (persistable.length) {
-		const values = []
-		const rows = persistable.map((d, i) => {
-			const p = i * 5
-			values.push(camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image)
-			return `($${p + 1}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`
-		})
-		await pool.query(
-			`INSERT INTO objects_detected(camera, type, confidence, box, image) VALUES ${rows.join(", ")}`,
-			values
-		).catch((e) => console.log("OBJECT INSERT ERROR", e.message))
+	inFlightCaptures.add(image)
+	try {
+		const stored = await fs.promises.writeFile(path.join(CAPTURES_DIR, image), jpeg)
+			.then(() => true)
+			.catch((e) => {
+				console.log("OBJECT CAPTURE WRITE ERROR", e.message)
+				if (!captureWriteFailing) {
+					captureWriteFailing = true
+					webhookAlert(`⚠️ Object capture write to ${CAPTURES_DIR} failed (${e.message}) — detections are still being alerted but no longer recorded. Check disk space.`, "admin")
+				}
+				return false
+			})
+		if (stored) captureWriteFailing = false
+		if (gone(camera, era)) return
+		const persistable = stored ? detections.filter((d) => Array.isArray(d.box)) : []
+		if (persistable.length) {
+			const values = []
+			const rows = persistable.map((d, i) => {
+				const p = i * 5
+				values.push(camera, d.class, roundTo(d.score, 6), JSON.stringify(d.box.map((n) => roundTo(n, 1))), image)
+				return `($${p + 1}, $${p + 2}, $${p + 3}, $${p + 4}, $${p + 5})`
+			})
+			await pool.query(
+				`INSERT INTO objects_detected(camera, type, confidence, box, image) VALUES ${rows.join(", ")}`,
+				values
+			).catch((e) => console.log("OBJECT INSERT ERROR", e.message))
+		}
+	} finally {
+		inFlightCaptures.delete(image)
 	}
 	if (process.env.object_ALERT_ON === "false") return
 	const summary = detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(", ")
@@ -203,10 +211,29 @@ const scan = async (id, era = epoch) => {
 	}
 }
 
+const capped = async (promise, ms) => {
+	let timer
+	const cap = new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error("scan timeout")), ms)
+		timer.unref()
+	})
+	try {
+		return await Promise.race([promise, cap])
+	} finally {
+		clearTimeout(timer)
+	}
+}
+
 const startLoop = (id, era) => {
 	const st = status[id]
 	const loop = async () => {
-		await scan(id, era).catch(() => {})
+		if (!inFlight.has(st)) {
+			inFlight.add(st)
+			const done = scan(id, era).finally(() => inFlight.delete(st))
+			await capped(done, config.intervalMs * 6).catch((e) => {
+				if (status[id] === st) st.error = e.message
+			})
+		}
 		if (era !== epoch || status[id] !== st || !st.running) return
 		timers[id] = setTimeout(loop, config.intervalMs)
 	}

@@ -6,7 +6,7 @@ const sharedStore = () => {
 }
 
 module.exports = {
-	client: (name) => {
+	client: () => {
 		const sock = {
 			emit: (event, ...args) => {
 				if(event == "savePassword"){

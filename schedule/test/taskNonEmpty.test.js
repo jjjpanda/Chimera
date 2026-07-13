@@ -5,7 +5,7 @@ jest.mock("lib")
 jest.mock("axios")
 jest.mock("pg")
 jest.mock("memory", () => ({
-	client: (name) => ({
+	client: () => ({
 		timeout() { return this },
 		emit: (event, ...args) => {
 			if(event == "listTask"){

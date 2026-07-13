@@ -62,7 +62,7 @@ const Feed = ({ video, hideLabel }) => (
 )
 
 const LiveVideo = (props) => {
-	const [cameras, camsLoading] = useCameras()
+	const [cameras] = useCameras()
 	const [state, refresh, restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
 	const [activeTab, setActiveTab] = useState("0")
