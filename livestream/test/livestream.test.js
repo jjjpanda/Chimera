@@ -42,6 +42,15 @@ describe("Livestream Routes", () => {
 				.set("Cookie", cookieWithMockedBearerToken)
 				.expect(204, {}, done)
 		})
+
+		test("rejects a status camera that is not a plain number", async () => {
+			for(const camera of ["abc", "1 all", "../1", "1e3", "1".repeat(11)]){
+				await supertest(app)
+					.get(`/livestream/status?camera=${encodeURIComponent(camera)}`)
+					.set("Cookie", cookieWithMockedBearerToken)
+					.expect(400)
+			}
+		})
 	})
 
 	describe("POST /restart", () => {
@@ -75,6 +84,15 @@ describe("Livestream Routes", () => {
 				.set("X-Forwarded-For", "10.0.0.1")
 				.send({ camera: 1 })
 				.expect(200, done)
+		})
+
+		test("reports a failed restart instead of a phantom success", (done) => {
+			supertest(app)
+				.post("/livestream/restart")
+				.set("Cookie", "validCookie")
+				.set("X-Forwarded-For", "10.0.0.5")
+				.send({ camera: 9999999999 })
+				.expect(500, done)
 		})
 
 		test("rejects a camera that is not a plain number", async () => {

@@ -11,10 +11,15 @@ const sharedAttempts = process.env.memory_ON == "true"
 const restartClient = sharedAttempts ? memory.client("LIVESTREAM_RESTART") : null
 const localAttempts = memory.loginAttempts()
 
+const isCameraId = (camera) => /^\d{1,10}$/.test(String(camera))
+
 const reserveRestart = (key, cb) => {
 	if (!sharedAttempts || !restartClient.connected) return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
 	restartClient.timeout(1000).emit("loginReserve", key, RESTART_MAX, RESTART_WINDOW, (err, blocked) => {
-		if (err) return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
+		if (err) {
+			restartClient.emit("loginRelease", key)
+			return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
+		}
 		cb(blocked)
 	})
 }
@@ -35,18 +40,21 @@ subprocess.checkProcess("live_stream_cam", () => {
 
 app.get("/status", (req, res, next) => {
 	const {camera} = req.query
-	if(camera){
-		req.processName = `live_stream_cam_${camera}`
+	if(!camera){
+		req.processName = "live_stream_cam"
+	}
+	else if(!isCameraId(camera)){
+		return res.status(400).send({})
 	}
 	else{
-		req.processName = "live_stream_cam"
+		req.processName = `live_stream_cam_${camera}`
 	}
 	next()
 }, subprocess.processListMiddleware)
 
 app.post("/restart", restartLimiter, (req, res, next) => {
 	const {camera} = req.body
-	if(!/^\d{1,10}$/.test(String(camera))){
+	if(!isCameraId(camera)){
 		res.status(400).send({})
 	}
 	else{
