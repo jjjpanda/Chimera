@@ -16,13 +16,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --chown=node:node --from=builder /app ./
 
-# node is the non-root user shipped in the base image; the gateway binds 80/443,
-# so the setcap above lets it hold those privileged ports without root.
-# Volume mount points must exist and be node-owned so the named volumes
-# (storage captures, acme-webroot) inherit non-root ownership and stay writable.
 RUN chmod +x entrypoint.sh \
     && mkdir -p /mnt/storage /app/.well-known \
-    && chown node:node /mnt/storage /app/.well-known
+    && chown node:node /app /mnt/storage /app/.well-known
 
 USER node
 
