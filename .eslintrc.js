@@ -2,6 +2,7 @@ module.exports = {
 	"ignorePatterns": [
 		"command/frontend/js/lib/*",
 		"command/dist",
+		"coverage",
 		"node_modules"
 	],
 	"env": {

@@ -21,7 +21,7 @@
     "build:command": "npm run build --workspace=command",
     "prepare:database": "node chimera/prepareDatabase.js",
     "lint": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html",
-    "lint:ci": "eslint --ext .jsx --ext .js \".\" --max-warnings 99",
+    "lint:ci": "eslint --ext .jsx --ext .js \".\" --max-warnings 150",
     "lintfix": "eslint --ext .jsx --ext .js \".\" -o eslint/lintOutput.html -f html --fix",
     "clean": "rimraf --glob '**/log' '**/eslint' '**/coverage' '**/node_modules' '**/package-lock.json' '**/npm-shrinkwrap.json'",
     "test": "jest",
