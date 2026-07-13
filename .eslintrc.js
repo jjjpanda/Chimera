@@ -1,7 +1,6 @@
 module.exports = {
 	"ignorePatterns": [
 		"command/frontend/js/lib/*",
-		"command/dist/app.js",
 		"command/dist",
 		"node_modules"
 	],
@@ -43,7 +42,7 @@ module.exports = {
 			"never"
 		],
 		"react/prop-types": "warn",
-		"no-unused-vars": "warn",
+		"no-unused-vars": ["error", { "args": "none", "varsIgnorePattern": "^_" }],
 		"no-empty": "warn",
 		"react/no-unescaped-entities": "warn"
 	}

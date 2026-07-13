@@ -1,5 +1,3 @@
-const fs = require("fs")
-
 jest.mock("lib")
 jest.mock("memory")
 jest.mock("pm2")
