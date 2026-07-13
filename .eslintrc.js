@@ -11,9 +11,15 @@ module.exports = {
 	},
 	"overrides": [
 		{
-			"files": ["**/*.test.js", "**/__mocks__/**", "**/jest.config.js"],
+			"files": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**", "**/__mocks__/**", "**/jest.config.js"],
 			"env": {
 				"jest": true
+			}
+		},
+		{
+			"files": ["command/frontend/components/ui/**"],
+			"rules": {
+				"react/prop-types": "off"
 			}
 		}
 	],
