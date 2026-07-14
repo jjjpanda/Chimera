@@ -81,7 +81,7 @@ describe("File Routes", () => {
 
 		test("maps per-camera size and count metrics", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			query.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -91,7 +91,7 @@ describe("File Routes", () => {
 
 		test("returns 500 when a metric query fails instead of hanging", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			query.mockRejectedValueOnce(new Error("db error"))
+			bulkQuery.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -106,17 +106,17 @@ describe("File Routes", () => {
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-			expect(query).not.toHaveBeenCalled()
+			expect(bulkQuery).not.toHaveBeenCalled()
 		})
 
-		test("aggregates on the request pool, so a page load fails fast instead of queueing behind a bulk delete", async () => {
+		test("scans the whole table on the bulk pool, since only the scheduler calls this and no page load is waiting on it", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 			await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
-			expect(query.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
-			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(bulkQuery.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
+			expect(query).not.toHaveBeenCalled()
 		})
 	})
 

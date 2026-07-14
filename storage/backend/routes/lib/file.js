@@ -212,7 +212,7 @@ module.exports = {
 		const cameras = await camerasOrFail(res)
 		if (!cameras) return
 
-		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
+		bulkPool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
 			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))
 			const metrics = { size: {}, count: {} }
 			cameras.forEach(({ id, name }) => {
