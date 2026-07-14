@@ -210,7 +210,7 @@ module.exports = {
 		const cameras = await camerasOrFail(res)
 		if (!cameras) return
 
-		bulkPool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
+		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
 			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))
 			const metrics = { size: {}, count: {} }
 			cameras.forEach(({ id, name }) => {
@@ -253,7 +253,7 @@ const queryForDailyStats = (cameras) => {
 
 const queryForGroupedStats = (cameras) => {
 	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)
-	return bulkPool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
+	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {

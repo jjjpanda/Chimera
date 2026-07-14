@@ -24,7 +24,10 @@ const fs = require("fs")
 const pm2 = require("pm2")
 const app = require("../backend/storage.js")
 
-const [requestPool, bulkPool] = require("pg").__pools
+const BULK_TIMEOUT_MS = 300000
+const pools = require("pg").__pools
+const requestPool = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
+const bulkPool = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
 const { query } = requestPool
 const { query: bulkQuery, release } = bulkPool
 
@@ -162,7 +165,7 @@ describe("Events Routes", () => {
 				"COMMIT"
 			])
 			expect(fs.promises.rm.mock.invocationCallOrder[0]).toBeLessThan(bulkQuery.mock.invocationCallOrder[0])
-			expect(release).toHaveBeenCalledWith()
+			expect(release).toHaveBeenCalledWith(undefined)
 		})
 
 		test("runs the deletes on the bulk pool, whose budget outlasts the request pool's", async () => {
@@ -174,9 +177,8 @@ describe("Events Routes", () => {
 			expect(bulkPool.config.query_timeout).toBeGreaterThan(bulkPool.config.statement_timeout)
 		})
 
-		test("gives up on an unreachable database as fast as the request pool does", () => {
-			expect(bulkPool.config.connectionTimeoutMillis).toBe(requestPool.config.connectionTimeoutMillis)
-			expect(bulkPool.config.max).toBeGreaterThan(2)
+		test("waits out a saturated bulk pool instead of failing the checkout pg bounds with connectionTimeoutMillis", () => {
+			expect(bulkPool.config.connectionTimeoutMillis).toBeGreaterThan(bulkPool.config.statement_timeout)
 		})
 
 		test("keeps the rows when the captures directory cannot be removed, so the frames stay accounted for", async () => {
@@ -294,15 +296,15 @@ describe("Events Routes", () => {
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(query).not.toHaveBeenCalled()
 		})
 
-		test("aggregates the full table on the bulk pool, so it outlives the request budget", async () => {
+		test("aggregates on the request pool, so a slow page load fails fast instead of queueing behind a bulk delete", async () => {
 			await supertest(app)
 				.get("/usage")
 				.set("Cookie", "validCookie")
-			expect(bulkQuery.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
-			expect(query).not.toHaveBeenCalled()
+			expect(query.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
+			expect(bulkQuery).not.toHaveBeenCalled()
 		})
 
 		test("includes a per-category byte breakdown", async () => {
@@ -316,7 +318,7 @@ describe("Events Routes", () => {
 		})
 
 		test("sources frame bytes from the DB, independent of top-level mp4/zip/other files", async () => {
-			bulkQuery.mockResolvedValueOnce({ rows: [{ camera: "1", count: "3", bytes: "500000000" }] })
+			query.mockResolvedValueOnce({ rows: [{ camera: "1", count: "3", bytes: "500000000" }] })
 			readdirSpy.mockImplementation((p) => Promise.resolve(String(p).endsWith("objectCaptures") ? [] : [
 				{ name: "clip.mp4", isFile: () => true },
 				{ name: "bundle.zip", isFile: () => true },
@@ -337,7 +339,7 @@ describe("Events Routes", () => {
 
 		test("aggregates per-camera stats when cameras are configured", async () => {
 			lib.loadCameras.mockResolvedValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
-			bulkQuery.mockResolvedValueOnce({ rows: [
+			query.mockResolvedValueOnce({ rows: [
 				{ camera: "1", count: "3", bytes: "500000000" },
 				{ camera: "2", count: "2", bytes: "250000000" }
 			] })
@@ -352,7 +354,7 @@ describe("Events Routes", () => {
 		})
 
 		test("returns 500 on db error", async () => {
-			bulkQuery.mockRejectedValueOnce(new Error("db error"))
+			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.get("/usage")
 				.set("Cookie", "validCookie")

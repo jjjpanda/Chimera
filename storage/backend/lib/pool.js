@@ -6,6 +6,7 @@ module.exports = {
 	pool: createPool("STORAGE POOL ERROR"),
 	bulkPool: createPool("STORAGE BULK POOL ERROR", {
 		max: 5,
+		connectionTimeoutMillis: BULK_TIMEOUT_MS + 1000,
 		statement_timeout: BULK_TIMEOUT_MS,
 		query_timeout: BULK_TIMEOUT_MS + 1000
 	})

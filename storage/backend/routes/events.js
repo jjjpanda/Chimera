@@ -69,7 +69,7 @@ app.get("/usage", async (req, res) => {
 		const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 		const cameras = await loadCameras()
 
-		const { rows: statRows } = await bulkPool.query(
+		const { rows: statRows } = await pool.query(
 			"SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS bytes FROM frame_files GROUP BY camera"
 		)
 		const countByCamera = new Map(statRows.map(r => [String(r.camera), parseInt(r.count) || 0]))

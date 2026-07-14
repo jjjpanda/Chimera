@@ -9,11 +9,11 @@ jest.mock("pm2")
 jest.mock("axios")
 jest.mock("pg", () => {
 	const pools = []
-	const Pool = jest.fn(() => {
+	const Pool = jest.fn((config) => {
 		const query = jest.fn((sql) =>
 			Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
 		)
-		const pool = { query, connect: jest.fn(), on: jest.fn() }
+		const pool = { config, query, connect: jest.fn(), on: jest.fn() }
 		pools.push(pool)
 		return pool
 	})
@@ -23,7 +23,11 @@ jest.mock("pg", () => {
 const app = require("../backend/storage.js")
 const fs = require("fs")
 const path = require("path")
-const [{ query }, { query: bulkQuery }] = require("pg").__pools
+
+const BULK_TIMEOUT_MS = 300000
+const pools = require("pg").__pools
+const { query } = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
+const { query: bulkQuery } = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
 
 describe("File Routes", () => {
 	let cookieWithBearerToken = "validCookie"
@@ -39,17 +43,17 @@ describe("File Routes", () => {
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(query).not.toHaveBeenCalled()
 		})
 
-		test("rolls up the whole unbounded history on the bulk pool, so it outlives the request budget", async () => {
+		test("rolls up history on the request pool, so a page load fails fast instead of queueing behind a bulk delete", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 			await supertest(app)
 				.get("/file/pathStats")
 				.set("Cookie", cookieWithBearerToken)
-			expect(bulkQuery.mock.calls[0][0]).toMatch(/date_trunc\('hour', timestamp\).+FROM frame_files GROUP BY 1/)
-			expect(query).not.toHaveBeenCalled()
+			expect(query.mock.calls[0][0]).toMatch(/date_trunc\('hour', timestamp\).+FROM frame_files GROUP BY 1/)
+			expect(bulkQuery).not.toHaveBeenCalled()
 		})
 	})
 
@@ -67,7 +71,7 @@ describe("File Routes", () => {
 
 		test("maps per-camera size and count metrics", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -77,7 +81,7 @@ describe("File Routes", () => {
 
 		test("returns 500 when a metric query fails instead of hanging", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			bulkQuery.mockRejectedValueOnce(new Error("db error"))
+			query.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -92,17 +96,17 @@ describe("File Routes", () => {
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(query).not.toHaveBeenCalled()
 		})
 
-		test("aggregates the full table on the bulk pool, so it outlives the request budget", async () => {
+		test("aggregates on the request pool, so a page load fails fast instead of queueing behind a bulk delete", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 			await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
-			expect(bulkQuery.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
-			expect(query).not.toHaveBeenCalled()
+			expect(query.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
+			expect(bulkQuery).not.toHaveBeenCalled()
 		})
 	})
 
