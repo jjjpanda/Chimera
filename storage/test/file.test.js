@@ -24,7 +24,7 @@ const app = require("../backend/storage.js")
 const fs = require("fs")
 const path = require("path")
 
-const BULK_TIMEOUT_MS = 300000
+const { BULK_TIMEOUT_MS } = require("../backend/lib/pool.js")
 const pools = require("pg").__pools
 const { query } = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
 const { query: bulkQuery } = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
@@ -52,8 +52,18 @@ describe("File Routes", () => {
 			await supertest(app)
 				.get("/file/pathStats")
 				.set("Cookie", cookieWithBearerToken)
-			expect(query.mock.calls[0][0]).toMatch(/date_trunc\('hour', timestamp\).+FROM frame_files GROUP BY 1/)
+			expect(query.mock.calls[0][0]).toMatch(/date_trunc\('hour', timestamp\).+FROM frame_files WHERE .+GROUP BY 1/)
 			expect(bulkQuery).not.toHaveBeenCalled()
+		})
+
+		test("bounds the rollup, but wider than the Stats page's 30-day view, which floors its cutoff to local midnight", async () => {
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.get("/file/pathStats")
+				.set("Cookie", cookieWithBearerToken)
+			const [, days] = query.mock.calls[0][0].match(/WHERE timestamp >= NOW\(\) - INTERVAL '(\d+) days'/)
+			expect(parseInt(days)).toBeGreaterThan(30)
 		})
 	})
 

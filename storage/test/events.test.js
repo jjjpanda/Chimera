@@ -5,13 +5,15 @@ jest.mock("fs")
 jest.mock("memory")
 jest.mock("pm2")
 jest.mock("pg", () => {
+	const { EventEmitter } = require("events")
 	const pools = []
 	const Pool = jest.fn((config) => {
 		const query = jest.fn((sql) =>
 			Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
 		)
 		const release = jest.fn()
-		const pool = { config, query, release, connect: jest.fn(() => Promise.resolve({ query, release })), on: jest.fn() }
+		const client = Object.assign(new EventEmitter(), { query, release })
+		const pool = { config, query, release, client, connect: jest.fn(() => Promise.resolve(client)), on: jest.fn() }
 		pools.push(pool)
 		return pool
 	})
@@ -24,7 +26,7 @@ const fs = require("fs")
 const pm2 = require("pm2")
 const app = require("../backend/storage.js")
 
-const BULK_TIMEOUT_MS = 300000
+const { BULK_TIMEOUT_MS } = require("../backend/lib/pool.js")
 const pools = require("pg").__pools
 const requestPool = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
 const bulkPool = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
@@ -177,8 +179,9 @@ describe("Events Routes", () => {
 			expect(bulkPool.config.query_timeout).toBeGreaterThan(bulkPool.config.statement_timeout)
 		})
 
-		test("waits out a saturated bulk pool instead of failing the checkout pg bounds with connectionTimeoutMillis", () => {
-			expect(bulkPool.config.connectionTimeoutMillis).toBeGreaterThan(bulkPool.config.statement_timeout)
+		test("gives up on a saturated bulk pool long before the query budget, so a request cannot hang for the whole delete window", () => {
+			expect(bulkPool.config.connectionTimeoutMillis).toBeLessThan(bulkPool.config.statement_timeout)
+			expect(bulkPool.config.connectionTimeoutMillis).toBeLessThanOrEqual(requestPool.config.statement_timeout)
 		})
 
 		test("keeps the rows when the captures directory cannot be removed, so the frames stay accounted for", async () => {

@@ -9,6 +9,10 @@ const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = requ
 
 const MAX_STUCK_BATCHES = 3
 
+// Stats.jsx asks for at most 30 days but floors its cutoff to local midnight, so it
+// needs up to a day more than 30x24h; pad it or the leftmost bucket renders undercounted
+const STATS_WINDOW_DAYS = 32
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
@@ -253,7 +257,7 @@ const queryForDailyStats = (cameras) => {
 
 const queryForGroupedStats = (cameras) => {
 	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)
-	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
+	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files WHERE timestamp >= NOW() - INTERVAL '${STATS_WINDOW_DAYS} days' GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {
