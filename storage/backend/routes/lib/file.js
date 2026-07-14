@@ -9,8 +9,6 @@ const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = requ
 
 const MAX_STUCK_BATCHES = 3
 
-// Stats.jsx asks for at most 30 days but floors its cutoff to local midnight, so it
-// needs up to a day more than 30x24h; pad it or the leftmost bucket renders undercounted
 const STATS_WINDOW_DAYS = 32
 
 const camerasOrFail = (res) => loadCameras().catch(() => {
