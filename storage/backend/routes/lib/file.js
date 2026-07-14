@@ -4,7 +4,7 @@ const rimraf = require("rimraf")
 const moment = require("moment")
 const { loadCameras, webhookAlert, mapLimit } = require("lib")
 
-const pool = require("../../lib/pool")
+const { pool, bulkPool } = require("../../lib/pool")
 const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
 
 const MAX_STUCK_BATCHES = 3
@@ -134,7 +134,7 @@ module.exports = {
 			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
 			if (!maxGb) return res.send({ skipped: true })
 
-			const { rows: frameTotalRows } = await pool.query(
+			const { rows: frameTotalRows } = await bulkPool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
 			)
 			const frameTotal = parseInt(frameTotalRows[0].total) || 0
@@ -161,7 +161,7 @@ module.exports = {
 
 			while (freed < toFree) {
 				if (cursor >= page.length) {
-					const { rows } = await pool.query(
+					const { rows } = await bulkPool.query(
 						"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
 						[stuck]
 					)
@@ -191,7 +191,7 @@ module.exports = {
 					continue
 				}
 				stuckBatches = 0
-				await pool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
+				await bulkPool.query("DELETE FROM frame_files WHERE id = ANY($1::int[])", [gone.map(r => r.id)])
 				gone.forEach(row => { freed += parseInt(row.size) || 0 })
 				deleted += gone.length
 			}
@@ -210,7 +210,7 @@ module.exports = {
 		const cameras = await camerasOrFail(res)
 		if (!cameras) return
 
-		pool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
+		bulkPool.query("SELECT camera, COUNT(*) AS count, COALESCE(SUM(size), 0) AS size FROM frame_files GROUP BY camera").then(({ rows }) => {
 			const byCamera = new Map(rows.map((r) => [String(r.camera), r]))
 			const metrics = { size: {}, count: {} }
 			cameras.forEach(({ id, name }) => {
@@ -233,12 +233,12 @@ const queryForMetric = (camera, metric) => {
 const queryToDeleteAndRecord = (camera, deleting, before="") => {
 	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
 	if (deleting == "files") {
-		return pool.query(
+		return bulkPool.query(
 			"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 AND timestamp<=($2::timestamp AT TIME ZONE 'UTC') RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($3::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;",
 			[camera, before, now]
 		)
 	}
-	return pool.query(
+	return bulkPool.query(
 		"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($2::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted) SELECT name FROM deleted;",
 		[camera, now]
 	)
@@ -253,7 +253,7 @@ const queryForDailyStats = (cameras) => {
 
 const queryForGroupedStats = (cameras) => {
 	const arrayOfColumns = cameras.map(({ id, name }) => `SUM(CASE WHEN camera=${id} THEN size ELSE 0 END) as "${escapeIdent(name)}"`)
-	return pool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
+	return bulkPool.query(`SELECT date_trunc('hour', timestamp) as timestamp,${arrayOfColumns.join(",")} FROM frame_files GROUP BY 1 ORDER BY 1 ASC;`)
 }
 
 const extractValueForMetric = (metric) => (values) => {

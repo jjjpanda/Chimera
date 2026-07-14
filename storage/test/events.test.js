@@ -5,18 +5,28 @@ jest.mock("fs")
 jest.mock("memory")
 jest.mock("pm2")
 jest.mock("pg", () => {
-	const query = jest.fn((sql) =>
-		Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
-	)
-	return { Pool: jest.fn(() => ({ query, on: jest.fn() })), __query: query }
+	const pools = []
+	const Pool = jest.fn((config) => {
+		const query = jest.fn((sql) =>
+			Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
+		)
+		const release = jest.fn()
+		const pool = { config, query, release, connect: jest.fn(() => Promise.resolve({ query, release })), on: jest.fn() }
+		pools.push(pool)
+		return pool
+	})
+	return { Pool, __pools: pools }
 })
 
 const supertest = require("supertest")
 const lib = require("lib")
-const { __query: query } = require("pg")
 const fs = require("fs")
 const pm2 = require("pm2")
 const app = require("../backend/storage.js")
+
+const [requestPool, bulkPool] = require("pg").__pools
+const { query } = requestPool
+const { query: bulkQuery, release } = bulkPool
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
 
@@ -26,7 +36,6 @@ beforeEach(() => {
 
 afterEach(() => {
 	lib.auth.authorize.mockImplementation(defaultAuthorize)
-	query.mockClear()
 })
 
 describe("Events Routes", () => {
@@ -128,7 +137,7 @@ describe("Events Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 			expect(fs.promises.rm).not.toHaveBeenCalled()
-			expect(query).not.toHaveBeenCalled()
+			expect(bulkQuery).not.toHaveBeenCalled()
 		})
 
 		test("removes the camera's .conf (matched by camera_id, any filename) so it does not resurrect on reload", async () => {
@@ -142,13 +151,75 @@ describe("Events Routes", () => {
 			expect(unlinked).toContain("/etc/motion/cameraconf/frontdoor.conf")
 		})
 
+		test("deletes both row sets in one transaction and holds no client across the filesystem work", async () => {
+			await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(bulkQuery.mock.calls.map((c) => c[0])).toEqual([
+				"BEGIN",
+				"DELETE FROM frame_files WHERE camera = $1",
+				"DELETE FROM objects_detected WHERE camera = $1",
+				"COMMIT"
+			])
+			expect(fs.promises.rm.mock.invocationCallOrder[0]).toBeLessThan(bulkQuery.mock.invocationCallOrder[0])
+			expect(release).toHaveBeenCalledWith()
+		})
+
+		test("runs the deletes on the bulk pool, whose budget outlasts the request pool's", async () => {
+			await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(query).not.toHaveBeenCalled()
+			expect(bulkPool.config.statement_timeout).toBeGreaterThan(requestPool.config.statement_timeout)
+			expect(bulkPool.config.query_timeout).toBeGreaterThan(bulkPool.config.statement_timeout)
+		})
+
+		test("gives up on an unreachable database as fast as the request pool does", () => {
+			expect(bulkPool.config.connectionTimeoutMillis).toBe(requestPool.config.connectionTimeoutMillis)
+			expect(bulkPool.config.max).toBeGreaterThan(2)
+		})
+
+		test("keeps the rows when the captures directory cannot be removed, so the frames stay accounted for", async () => {
+			fs.promises.rm.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(pm2.restart).not.toHaveBeenCalled()
+		})
+
+		test("rolls the row deletes back when a delete fails", async () => {
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			const sql = bulkQuery.mock.calls.map(([c]) => typeof c === "string" ? c : c.text)
+			expect(sql).toContain("ROLLBACK")
+			expect(sql).not.toContain("COMMIT")
+			expect(release).toHaveBeenCalledWith(undefined)
+		})
+
+		test("discards the client when the rollback itself fails", async () => {
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
+				.mockImplementationOnce(() => Promise.reject(new Error("connection terminated")))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			expect(release).toHaveBeenCalledWith(expect.any(Error))
+		})
+
 		test("clears objects_detected rows and prefixed objectCaptures files", async () => {
 			fs.promises.readdir.mockResolvedValueOnce(["1-100.jpg", "1-200.jpg", "12-300.jpg", "2-400.jpg"])
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(200)
-			expect(query).toHaveBeenCalledWith("DELETE FROM objects_detected WHERE camera = $1", ["1"])
+			expect(bulkQuery).toHaveBeenCalledWith("DELETE FROM objects_detected WHERE camera = $1", ["1"])
 			const unlinked = fs.promises.unlink.mock.calls.map((c) => c[0])
 			expect(unlinked).toHaveLength(2)
 			expect(unlinked.some((p) => p.endsWith("1-100.jpg"))).toBe(true)
@@ -223,6 +294,14 @@ describe("Events Routes", () => {
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
+			expect(bulkQuery).not.toHaveBeenCalled()
+		})
+
+		test("aggregates the full table on the bulk pool, so it outlives the request budget", async () => {
+			await supertest(app)
+				.get("/usage")
+				.set("Cookie", "validCookie")
+			expect(bulkQuery.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
 			expect(query).not.toHaveBeenCalled()
 		})
 
@@ -237,7 +316,7 @@ describe("Events Routes", () => {
 		})
 
 		test("sources frame bytes from the DB, independent of top-level mp4/zip/other files", async () => {
-			query.mockResolvedValueOnce({ rows: [{ camera: "1", count: "3", bytes: "500000000" }] })
+			bulkQuery.mockResolvedValueOnce({ rows: [{ camera: "1", count: "3", bytes: "500000000" }] })
 			readdirSpy.mockImplementation((p) => Promise.resolve(String(p).endsWith("objectCaptures") ? [] : [
 				{ name: "clip.mp4", isFile: () => true },
 				{ name: "bundle.zip", isFile: () => true },
@@ -258,7 +337,7 @@ describe("Events Routes", () => {
 
 		test("aggregates per-camera stats when cameras are configured", async () => {
 			lib.loadCameras.mockResolvedValueOnce([{ id: 1, name: "Front" }, { id: 2, name: "Back" }])
-			query.mockResolvedValueOnce({ rows: [
+			bulkQuery.mockResolvedValueOnce({ rows: [
 				{ camera: "1", count: "3", bytes: "500000000" },
 				{ camera: "2", count: "2", bytes: "250000000" }
 			] })
@@ -273,7 +352,7 @@ describe("Events Routes", () => {
 		})
 
 		test("returns 500 on db error", async () => {
-			query.mockRejectedValueOnce(new Error("db error"))
+			bulkQuery.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.get("/usage")
 				.set("Cookie", "validCookie")

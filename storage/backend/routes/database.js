@@ -2,7 +2,7 @@ var express    = require("express")
 
 const app = express.Router()
 
-const pool = require("../lib/pool")
+const { pool } = require("../lib/pool")
 
 const queryForHealth = () => {
 	return pool.query("SELECT 2 + 2;")
