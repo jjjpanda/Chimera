@@ -164,7 +164,6 @@ const runInteractive = async () => {
 		if (!p) continue
 		console.log(`\n  ${v.key} ${BAD} ${p}`)
 		if (v.desc) console.log(`    ${v.desc}`)
-		const t = typeOf(v.key, v.placeholder)
 		let val
 		do {
 			val = await ask(`    ${v.key} = `)

@@ -21,7 +21,7 @@ const listVideos = (cameras, setState, seqRef) => {
 				...old,
 				loading: false,
 				lastUpdated: moment().format("h:mm:ss a"),
-				videoList: nums.map((num, idx) => {
+				videoList: nums.map((num) => {
 					const cam = cameras.find((c) => c.id === num)
 					return {
 						camera: cam ? cam.name : `Camera ${num}`,
@@ -40,7 +40,7 @@ const attemptRestart = (camera) =>
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({ camera }),
 		mode: "cors"
-	}, (prom) => prom)
+	}, (prom) => prom.then((res) => res.ok).catch(() => false))
 
 const useLiveVideo = (cameras) => {
 	const seqRef = useRef(0)
@@ -57,7 +57,9 @@ const useLiveVideo = (cameras) => {
 		if (!cameras.length || state.restarting) return
 		setState((old) => ({ ...old, restarting: true }))
 		toast("Restarting livestreams…")
-		Promise.allSettled(cameras.map((cam) => attemptRestart(cam.id))).then(() => {
+		Promise.all(cameras.map((cam) => attemptRestart(cam.id))).then((results) => {
+			const failed = results.filter((ok) => !ok).length
+			if (failed) toast(`${failed} camera${failed === 1 ? "" : "s"} could not be restarted`)
 			setState((old) => ({ ...old, restarting: false }))
 			refresh()
 		})

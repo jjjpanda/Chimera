@@ -17,7 +17,7 @@ app.get("/status", (req, res) => {
 		else{
 			res.status(204).send({})
 		}
-	}).catch(err => {
+	}).catch(() => {
 		res.status(204).send({})
 	})
 })

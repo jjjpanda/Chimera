@@ -44,7 +44,7 @@ module.exports = {
 			.then(extractedValue => {
 				res.send({[metric]: extractedValue})
 			})
-			.catch(err => {
+			.catch(() => {
 				res.status(400).send({error: true})
 			})
 	},
