@@ -145,35 +145,39 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when username or password is missing", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin" })
+				.send({ username: "admin", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body.error).toBe(true)
 		})
 
 		test("returns 400 for username containing slash", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "bad/admin", password: "password123" })
+				.send({ username: "bad/admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "short" })
+				.send({ username: "admin", password: "short", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 500 when the transaction throws a generic error", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const errSpy = jest.spyOn(console, "error").mockImplementation(() => {})
 			mockedPool.query.mockRejectedValueOnce(new Error("db down"))
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123" })
+				.send({ username: "admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 			expect(errSpy).toHaveBeenCalled()
