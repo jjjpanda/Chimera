@@ -37,8 +37,9 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const rateLimit = ({ windowMs, max }) => {
+const rateLimit = ({ windowMs, max, keyFn }) => {
 	const local = memory.loginAttempts()
+	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
 	const reserveLocal = (key, cb) =>
 		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
 	const reserve = (key, cb) => {
@@ -52,7 +53,7 @@ const rateLimit = ({ windowMs, max }) => {
 		})
 	}
 	return (req, res, next) => {
-		const key = `${req.ip || ""}:${req.path}`
+		const key = getKey(req)
 		reserve(key, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
 			res.on("finish", () => {
@@ -64,6 +65,7 @@ const rateLimit = ({ windowMs, max }) => {
 }
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
 
 app.get("/status", async (req, res) => {
 	try {
@@ -104,7 +106,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	}
 })
 
-app.post("/login", validateBody, loginLimiter, passwordCheck, login)
+app.post("/login", validateBody, loginLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
