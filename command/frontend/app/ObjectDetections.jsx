@@ -10,8 +10,7 @@ import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
 import { detectGrayPad } from "../js/letterbox.js"
-
-const STROKE = "#34d399"
+import DetectionOverlay from "../components/DetectionOverlay.jsx"
 
 const cameraName = (status, n) => status?.cameraNames?.[n] || `Camera ${n}`
 
@@ -27,7 +26,7 @@ const groupDetections = (detections) => {
 
 const DetectionImage = ({ image, boxes, cover = false, height }) => {
 	const [dims, setDims] = useState({ w: 416, h: 416 })
-	const [pad, setPad] = useState({ top: 0, bot: 0 })
+	const [pad, setPad] = useState({ top: 0, bot: 0, left: 0, right: 0 })
 
 	const handleLoad = (e) => {
 		const img = e.target
@@ -35,8 +34,8 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 		setPad(detectGrayPad(img))
 	}
 
+	const contentW = dims.w - pad.left - pad.right
 	const contentH = dims.h - pad.top - pad.bot
-	const svgViewBox = `0 ${pad.top} ${dims.w} ${contentH}`
 
 	if (cover) {
 		return (
@@ -47,23 +46,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 					className="absolute inset-0 w-full h-full object-cover object-top"
 					onLoad={handleLoad}
 				/>
-				<svg
-					className="pointer-events-none absolute inset-0 w-full h-full"
-					viewBox={svgViewBox}
-					preserveAspectRatio="xMidYMin slice"
-				>
-					{boxes.map((d, i) => (
-						<g key={i}>
-							<rect x={d.box[0]} y={d.box[1]} width={d.box[2]} height={d.box[3]}
-								fill="none" stroke={STROKE} strokeWidth={2} rx={2} />
-							<text x={d.box[0] + 3} y={Math.max(pad.top + 12, d.box[1] - 4)}
-								fontSize={13} fill={STROKE}
-								style={{ paintOrder: "stroke", stroke: "#000", strokeWidth: 3, fontWeight: 600 }}>
-								{`${d.type} ${Math.round(d.confidence * 100)}%`}
-							</text>
-						</g>
-					))}
-				</svg>
+				<DetectionOverlay boxes={boxes} dims={dims} pad={pad} fit="xMidYMin slice" />
 			</div>
 		)
 	}
@@ -72,34 +55,23 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 		<div
 			className="relative w-full overflow-hidden rounded-md bg-surface-raised"
 			style={{
-				aspectRatio: `${dims.w} / ${contentH}`,
-				...(height != null ? { maxHeight: height, maxWidth: contentH > 0 ? height * dims.w / contentH : undefined, margin: "0 auto" } : {})
+				aspectRatio: `${contentW} / ${contentH}`,
+				...(height != null ? { maxHeight: height, maxWidth: contentH > 0 ? height * contentW / contentH : undefined, margin: "0 auto" } : {})
 			}}
 		>
 			<img
 				src={`/object/captures/${image}`}
 				alt="detection"
-				className="absolute w-full h-auto"
-				style={pad.top > 0 ? { top: `-${(pad.top / contentH) * 100}%` } : { top: 0 }}
+				className="absolute"
+				style={{
+					width: `${(dims.w / contentW) * 100}%`,
+					height: "auto",
+					left: pad.left > 0 ? `-${(pad.left / contentW) * 100}%` : 0,
+					top: pad.top > 0 ? `-${(pad.top / contentH) * 100}%` : 0
+				}}
 				onLoad={handleLoad}
 			/>
-			<svg
-				className="pointer-events-none absolute inset-0 w-full h-full"
-				viewBox={svgViewBox}
-				preserveAspectRatio="none"
-			>
-				{boxes.map((d, i) => (
-					<g key={i}>
-						<rect x={d.box[0]} y={d.box[1]} width={d.box[2]} height={d.box[3]}
-							fill="none" stroke={STROKE} strokeWidth={2} rx={2} />
-						<text x={d.box[0] + 3} y={Math.max(pad.top + 12, d.box[1] - 4)}
-							fontSize={13} fill={STROKE}
-							style={{ paintOrder: "stroke", stroke: "#000", strokeWidth: 3, fontWeight: 600 }}>
-							{`${d.type} ${Math.round(d.confidence * 100)}%`}
-						</text>
-					</g>
-				))}
-			</svg>
+			<DetectionOverlay boxes={boxes} dims={dims} pad={pad} fit="none" />
 		</div>
 	)
 }

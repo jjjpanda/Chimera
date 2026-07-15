@@ -14,6 +14,7 @@ import { Progress } from "../components/ui/progress"
 import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
 import { detectGrayPad } from "../js/letterbox.js"
+import DetectionOverlay from "../components/DetectionOverlay.jsx"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -264,6 +265,7 @@ const ClipMakerFull = () => {
 	const [showBoxes, setShowBoxes] = useState(false)
 	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
 	const [previewHeight, setPreviewHeight] = useState(240)
+	const [previewDims, setPreviewDims] = useState(null) // {w,h} natural size of the current single-cam frame
 
 	const canvasRef = useRef(null)
 	const imageCache = useRef({})
@@ -387,38 +389,9 @@ const ClipMakerFull = () => {
 			canvas.width = img.naturalWidth
 			canvas.height = img.naturalHeight
 		}
-		const ctx = canvas.getContext("2d")
-		ctx.drawImage(img, 0, 0)
-		if (showBoxes && boxesForScrub.length) {
-			const pad = contentPad[boxesForScrub[0].camera]
-			const uniform = Math.max(canvas.width, canvas.height) / DETECT_INPUT
-			const sx = pad ? canvas.width / (DETECT_INPUT - pad.left - pad.right) : uniform
-			const sy = pad ? canvas.height / (DETECT_INPUT - pad.top - pad.bot) : uniform
-			const ox = pad ? pad.left : 0
-			const oy = pad ? pad.top : 0
-			const font = Math.max(12, Math.round(canvas.width / 50))
-			ctx.lineWidth = Math.max(2, canvas.width / 320)
-			ctx.strokeStyle = "#34d399"
-			ctx.fillStyle = "#34d399"
-			ctx.font = `600 ${font}px sans-serif`
-			ctx.textBaseline = "bottom"
-			for (const d of boxesForScrub) {
-				const x = (d.box[0] - ox) * sx
-				const y = (d.box[1] - oy) * sy
-				const w = d.box[2] * sx
-				const h = d.box[3] * sy
-				ctx.strokeRect(x, y, w, h)
-				const label = `${d.type} ${Math.round(d.confidence * 100)}%`
-				const ly = Math.max(font + 2, y - 3)
-				ctx.save()
-				ctx.lineWidth = 3
-				ctx.strokeStyle = "#000"
-				ctx.strokeText(label, x + 3, ly)
-				ctx.fillText(label, x + 3, ly)
-				ctx.restore()
-			}
-		}
-	}, [scrubIdx, frames, imagesLoaded, showBoxes, boxesForScrub, contentPad])
+		setPreviewDims(d => d && d.w === img.naturalWidth && d.h === img.naturalHeight ? d : { w: img.naturalWidth, h: img.naturalHeight })
+		canvas.getContext("2d").drawImage(img, 0, 0)
+	}, [scrubIdx, frames, imagesLoaded])
 
 	const multiAllFrames = useMemo(() =>
 		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames])) : {},
@@ -861,15 +834,28 @@ const ClipMakerFull = () => {
 				</>
 			) : (
 				<>
-					<div className="relative bg-black w-full flex items-center justify-center" style={{ height: previewHeight }}>
+					<div className="relative bg-black w-full grid place-items-center overflow-hidden" style={{ height: previewHeight, gridTemplate: "100% / 100%" }}>
 						<canvas
 							ref={canvasRef}
 							width={640}
 							height={360}
+							className="[grid-area:1/1]"
 							style={{ display: frames.length > 0 ? "block" : "none", maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
 						/>
+						{frames.length > 0 && previewDims && showBoxes && boxesForScrub.length > 0 && contentPad[boxesForScrub[0].camera] && (
+							<DetectionOverlay
+								boxes={boxesForScrub}
+								dims={{ w: DETECT_INPUT, h: DETECT_INPUT }}
+								pad={contentPad[boxesForScrub[0].camera]}
+								fit="none"
+								className="pointer-events-none [grid-area:1/1]"
+								style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
+								width={previewDims.w}
+								height={previewDims.h}
+							/>
+						)}
 						{frames.length === 0 && (
-							<ImageOff className="h-10 w-10 opacity-40 text-muted" />
+							<ImageOff className="h-10 w-10 opacity-40 text-muted [grid-area:1/1]" />
 						)}
 					</div>
 					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
