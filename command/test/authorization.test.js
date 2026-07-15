@@ -284,6 +284,27 @@ describe("Authorization Routes", () => {
 		})
 	})
 
+	describe("CSRF protection on cookie-authed routes", () => {
+		const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
+
+		test("rejects a cross-site POST with 403", async () => {
+			const res = await supertest(app)
+				.post("/authorization/verify")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.set("Sec-Fetch-Site", "cross-site")
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: "forbidden" })
+		})
+
+		test("allows a same-origin POST", async () => {
+			const res = await supertest(app)
+				.post("/authorization/verify")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.set("Sec-Fetch-Site", "same-origin")
+			expect(res.status).toBe(200)
+		})
+	})
+
 	describe("PUT /authorization/theme", () => {
 		test("returns 401 with no token", async () => {
 			const res = await supertest(app).put("/authorization/theme").send({ theme: "light" })
