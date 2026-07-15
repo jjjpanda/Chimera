@@ -56,6 +56,11 @@ const createVideoList = (camera, start, end, skip, callback) => {
 	})
 }
 
+const clampFPS = (fps) => {
+	fps = Number(fps)
+	return Number.isFinite(fps) ? Math.min(Math.max(fps, 1), 60) : 20
+}
+
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
@@ -143,11 +148,13 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 }
 
 module.exports = {
+	clampFPS,
+
 	createVideo: (req, res) => {
 		//console.log(req)
 		let { camera, start, end, save, fps, skip } = req.body
 
-		fps = fps == undefined ? 20 : fps
+		fps = clampFPS(fps)
 
 		skip = skip == undefined ? 1 : skip
 
