@@ -4,6 +4,8 @@ services:
     env_file: .env
     environment:
       TZ: UTC
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=80
     ports:
       - "${gateway_PORT}:${gateway_PORT}"
       - "${gateway_PORT_SECURE:-443}:${gateway_PORT_SECURE:-443}"
