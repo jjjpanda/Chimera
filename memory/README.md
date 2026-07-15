@@ -17,7 +17,7 @@ Factories in [lib/](lib), wired to socket events by [socket.js](socket.js):
 - **loginAttempts** — shared login rate limiter (tumbling window); command falls back to a local copy when `memory_ON` is off.
 - **scheduledTasks** — `node-cron` registry; on fire, emits the task id to every instance ([schedule](../schedule)).
 - **converterProcesses** — cancel handles for in-flight mp4/zip jobs ([storage](../storage)).
-- **sessionSync** — broadcasts `sessionInvalidate`, `sessionInvalidateUser`, `sessionInvalidateAll` so every `AUTH` client's session cache stays in sync.
+- **sessionSync** — broadcasts `sessionInvalidate`, `sessionInvalidateUser`, `sessionInvalidateAll` so every `AUTH` client's session cache stays in sync. Immediate cross-process/cross-service revocation requires `memory_ON=true`; with it off, `invalidateSession`/`invalidateUser` only clear the calling process's cache, and other workers and services keep serving a revoked session from their own cache for up to `SESSION_CACHE_MS` (5s, [../lib/utils/auth.js](../lib/utils/auth.js)) until TTL expiry (bounded, fails closed).
 
 Built-in events: `log`, `callback` (schedule's `MEMORY-HEALTH` check), `disconnect`.
 
