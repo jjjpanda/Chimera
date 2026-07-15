@@ -2,7 +2,7 @@ const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { randomUUID } = require("crypto")
-const { createPool } = require("lib")
+const { createPool, withTransaction } = require("lib")
 
 const pool = createPool("COMMAND POOL ERROR")
 
@@ -16,24 +16,9 @@ class HttpError extends Error {
 	}
 }
 
-const withTransaction = async (fn) => {
-	const client = await pool.connect()
-	try {
-		await client.query("BEGIN")
-		const result = await fn(client)
-		await client.query("COMMIT")
-		return result
-	} catch (e) {
-		await client.query("ROLLBACK").catch(() => {})
-		throw e
-	} finally {
-		client.release()
-	}
-}
-
 module.exports = {
 	pool,
-	withTransaction,
+	withTransaction: (fn) => withTransaction(pool, fn),
 	HttpError,
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body

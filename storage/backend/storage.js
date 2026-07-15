@@ -3,7 +3,7 @@ var express    = require("express")
 const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls } = require("lib")
 const helmet = require("helmet")
 const memory = require("memory")
-const pool = require("./lib/pool")
+const { pool } = require("./lib/pool")
 
 var app = express()
 

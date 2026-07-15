@@ -18,7 +18,8 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 - `handleServerStart` / `handleSecureServerStart` — start HTTP / HTTPS listeners (TLS paths from `certPaths`, an internal helper not exported from `index.js`).
 - `watchCertRenewal` — cert/key mtime poll periodically; `pm2.restart("gateway")` in the early AM UTC window after the certbot sidecar renews.
 - `pruneInterval` — run a SQL prune on a 12h timer.
-- `createPool` — `pg.Pool` factory with a labeled `error` logger.
+- `createPool` — `pg.Pool` factory with a labeled `error` logger; bounds connect/query/idle timeouts and keeps sockets alive. Takes an optional overrides object for long-running workloads — but **do not raise `connectionTimeoutMillis` to match a long query budget**: pg reuses that knob both to wait for a free client and to establish new connections, so raising it can hang every caller if postgres accepts TCP but never completes startup.
+- `withTransaction` — runs `fn(client)` in a `BEGIN`/`COMMIT`/`ROLLBACK` on a pooled client, discarding the client if rollback itself fails. Also swallows the client's `error` events for the checkout duration — `pg-pool` drops its own error listener while a client is checked out, so a socket death mid-transaction would otherwise crash the process as an unhandled error. Prefer this over a bare `pool.connect()` for anything holding a client.
 - `isPrimeInstance` — true on the single/prime pm2 instance.
 - `subprocess` — pm2 helpers (`checkProcess`, `restart`, …).
 - `schedulableUrls` — routes `scheduler_AUTH` may call without a session.

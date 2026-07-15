@@ -6,6 +6,7 @@ const pool = new Pool({
 	database: process.env.database_NAME,
 	password: process.env.database_PASSWORD,
 	port: process.env.database_PORT,
+	connectionTimeoutMillis: 5000,
 })
 
 const creationTasks = [
@@ -40,6 +41,10 @@ const creationTasks = [
 	{
 		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
 		description: "frame files (camera, timestamp) index"
+	},
+	{
+		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_timestamp ON frame_files(timestamp);",
+		description: "frame files (timestamp) index"
 	},
 	{
 		query: "CREATE INDEX IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",

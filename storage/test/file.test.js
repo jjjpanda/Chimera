@@ -8,16 +8,26 @@ jest.mock("memory")
 jest.mock("pm2")
 jest.mock("axios")
 jest.mock("pg", () => {
-	const query = jest.fn((sql) =>
-		Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
-	)
-	return { Pool: jest.fn(() => ({ query, on: jest.fn() })), __query: query }
+	const pools = []
+	const Pool = jest.fn((config) => {
+		const query = jest.fn((sql) =>
+			Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
+		)
+		const pool = { config, query, connect: jest.fn(), on: jest.fn() }
+		pools.push(pool)
+		return pool
+	})
+	return { Pool, __pools: pools }
 })
 
 const app = require("../backend/storage.js")
 const fs = require("fs")
 const path = require("path")
-const { __query: query } = require("pg")
+
+const { BULK_TIMEOUT_MS } = require("../backend/lib/pool.js")
+const pools = require("pg").__pools
+const { query } = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
+const { query: bulkQuery } = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
 
 describe("File Routes", () => {
 	let cookieWithBearerToken = "validCookie"
@@ -35,6 +45,26 @@ describe("File Routes", () => {
 			expect(res.body).toEqual({ error: true })
 			expect(query).not.toHaveBeenCalled()
 		})
+
+		test("rolls up history on the request pool, so a page load fails fast instead of queueing behind a bulk delete", async () => {
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.get("/file/pathStats")
+				.set("Cookie", cookieWithBearerToken)
+			expect(query.mock.calls[0][0]).toMatch(/date_trunc\('hour', timestamp\).+FROM frame_files WHERE .+GROUP BY 1/)
+			expect(bulkQuery).not.toHaveBeenCalled()
+		})
+
+		test("bounds the rollup, but wider than the Stats page's 30-day view, which floors its cutoff to local midnight", async () => {
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
+			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.get("/file/pathStats")
+				.set("Cookie", cookieWithBearerToken)
+			const [, days] = query.mock.calls[0][0].match(/WHERE timestamp >= NOW\(\) - INTERVAL '(\d+) days'/)
+			expect(parseInt(days)).toBeGreaterThan(30)
+		})
 	})
 
 	describe("/file/pathSize", () => {
@@ -51,7 +81,7 @@ describe("File Routes", () => {
 
 		test("maps per-camera size and count metrics", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			query.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ camera: "1", count: "7", size: "500" }] }))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -61,7 +91,7 @@ describe("File Routes", () => {
 
 		test("returns 500 when a metric query fails instead of hanging", async () => {
 			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
-			query.mockRejectedValueOnce(new Error("db error"))
+			bulkQuery.mockRejectedValueOnce(new Error("db error"))
 			const res = await supertest(app)
 				.post("/file/pathMetrics")
 				.set("Cookie", cookieWithBearerToken)
@@ -76,6 +106,16 @@ describe("File Routes", () => {
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
+			expect(bulkQuery).not.toHaveBeenCalled()
+		})
+
+		test("scans the whole table on the bulk pool, since only the scheduler calls this and no page load is waiting on it", async () => {
+			loadCameras.mockResolvedValue([{ id: 1, name: "cam1" }])
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.post("/file/pathMetrics")
+				.set("Cookie", cookieWithBearerToken)
+			expect(bulkQuery.mock.calls[0][0]).toMatch(/SUM\(size\).+FROM frame_files GROUP BY camera/)
 			expect(query).not.toHaveBeenCalled()
 		})
 	})
@@ -144,13 +184,23 @@ describe("File Routes", () => {
 		})
 
 		test("reports deleted:false when the database delete matched no rows", async () => {
-			query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 			const res = await supertest(app)
 				.post("/file/pathDelete")
 				.send({ camera: 1 })
 				.set("Cookie", cookieWithBearerToken)
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ deleted: false })
+		})
+
+		test("wipes the camera's rows on the bulk pool, so a large camera outlives the request budget", async () => {
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.post("/file/pathDelete")
+				.send({ camera: 1 })
+				.set("Cookie", cookieWithBearerToken)
+			expect(bulkQuery.mock.calls[0][0]).toMatch(/DELETE FROM frame_files WHERE camera=\$1 RETURNING/)
+			expect(query).not.toHaveBeenCalled()
 		})
 	})
 
@@ -178,7 +228,7 @@ describe("File Routes", () => {
 			afterEach(() => { unlinkSpy.mockRestore() })
 
 			test("deletes the exact filenames returned from the database", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -191,13 +241,23 @@ describe("File Routes", () => {
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
 			})
 
-			test("builds the delete cutoff and recorded timestamp in UTC regardless of session timezone", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			test("prunes on the bulk pool, so a long backlog outlives the request budget", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 				await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
 					.set("Cookie", cookieWithBearerToken)
-				const [sql, values] = query.mock.calls[0]
+				expect(bulkQuery).toHaveBeenCalledTimes(1)
+				expect(query).not.toHaveBeenCalled()
+			})
+
+			test("builds the delete cutoff and recorded timestamp in UTC regardless of session timezone", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				const [sql, values] = bulkQuery.mock.calls[0]
 				expect(sql).toMatch(/AND timestamp<=\(\$2::timestamp AT TIME ZONE 'UTC'\)/)
 				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$3::timestamp AT TIME ZONE 'UTC'\)/)
 				expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
@@ -205,7 +265,7 @@ describe("File Routes", () => {
 			})
 
 			test("skips null filenames without throwing", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -218,7 +278,7 @@ describe("File Routes", () => {
 			})
 
 			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
 				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
@@ -237,7 +297,7 @@ describe("File Routes", () => {
 			})
 
 			test("sweeps orphans past the cutoff even when the database delete matched no rows", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["20200101-000000-00.jpg", "20991231-235959-00.jpg"])
@@ -253,7 +313,7 @@ describe("File Routes", () => {
 			})
 
 			test("reports deleted:false when an unlink fails but the DB rows were removed", async () => {
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
 				unlinkSpy.mockRejectedValueOnce(new Error("EACCES"))
 				const res = await supertest(app)
 					.post("/file/pathClean")
@@ -264,7 +324,7 @@ describe("File Routes", () => {
 			})
 
 			test("returns 500 when the deletion query fails", async () => {
-				query.mockRejectedValueOnce(new Error("db error"))
+				bulkQuery.mockRejectedValueOnce(new Error("db error"))
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -281,7 +341,7 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ error: "number of days not provided" })
-				expect(query).not.toHaveBeenCalled()
+				expect(bulkQuery).not.toHaveBeenCalled()
 				expect(unlinkSpy).not.toHaveBeenCalled()
 			})
 		})
@@ -320,23 +380,23 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ skipped: true })
-				expect(query).not.toHaveBeenCalled()
+				expect(bulkQuery).not.toHaveBeenCalled()
 			})
 
 			test("reports cleaned:false when usage is under target", async () => {
 				process.env.storage_MAX_GB = "10"
-				query.mockResolvedValueOnce({ rows: [{ total: "1000000" }] })
+				bulkQuery.mockResolvedValueOnce({ rows: [{ total: "1000000" }] })
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: false })
-				expect(query).toHaveBeenCalledTimes(1)
+				expect(bulkQuery).toHaveBeenCalledTimes(1)
 			})
 
 			test("deletes oldest frames until under target when over limit", async () => {
 				process.env.storage_MAX_GB = "1"
-				query
+				bulkQuery
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
 						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
@@ -349,13 +409,14 @@ describe("File Routes", () => {
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
-				expect(query).toHaveBeenCalledTimes(3)
-				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
+				expect(bulkQuery).toHaveBeenCalledTimes(3)
+				expect(bulkQuery.mock.calls[2][1]).toEqual([[1, 2]])
+				expect(query).not.toHaveBeenCalled()
 			})
 
 			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
 				process.env.storage_MAX_GB = "1"
-				query.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
 					Promise.resolve(String(p).endsWith("captures")
 						? [{ name: "big.mp4", isFile: () => true }]
@@ -367,7 +428,7 @@ describe("File Routes", () => {
 						.set("Cookie", cookieWithBearerToken)
 					expect(res.status).toBe(200)
 					expect(res.body).toEqual({ cleaned: false })
-					expect(query).toHaveBeenCalledTimes(1)
+					expect(bulkQuery).toHaveBeenCalledTimes(1)
 					expect(unlinkSpy).not.toHaveBeenCalled()
 				} finally {
 					readdir.mockRestore()
@@ -379,7 +440,7 @@ describe("File Routes", () => {
 				process.env.storage_MAX_GB = "1"
 				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
 				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
-				query
+				bulkQuery
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
 						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
@@ -395,9 +456,9 @@ describe("File Routes", () => {
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 
-				const deletes = query.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
+				const deletes = bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
 				expect(deletes).toEqual([[[2]], [[3]]])
-				expect(query.mock.calls[3][1]).toEqual([[1]])
+				expect(bulkQuery.mock.calls[3][1]).toEqual([[1]])
 			})
 
 			test("alerts when every frame is stuck", async () => {
@@ -405,7 +466,7 @@ describe("File Routes", () => {
 				const { webhookAlert } = require("lib")
 				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
 				unlinkSpy.mockRejectedValue(eacces)
-				query
+				bulkQuery
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
 						{ id: 1, camera: "1", name: "a.jpg", size: "600000000" },
@@ -416,7 +477,7 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: false })
-				expect(query).toHaveBeenCalledTimes(3)
+				expect(bulkQuery).toHaveBeenCalledTimes(3)
 				expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("could not unlink 2 frame file(s)"), "admin")
 			})
 
@@ -425,7 +486,7 @@ describe("File Routes", () => {
 				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
 				unlinkSpy.mockRejectedValue(eacces)
 				let id = 0
-				query.mockImplementation((sql) => {
+				bulkQuery.mockImplementation((sql) => {
 					if (sql.startsWith("SELECT COALESCE")) return Promise.resolve({ rows: [{ total: "1800000000" }] })
 					if (sql.startsWith("SELECT id")) {
 						if (id >= 20) return Promise.resolve({ rows: [] })
@@ -439,14 +500,14 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: false })
-				expect(query.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(3)
+				expect(bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(3)
 			})
 
 			test("skips a fully stuck batch and frees the frames behind it", async () => {
 				process.env.storage_MAX_GB = "1"
 				const eacces = Object.assign(new Error("read-only"), { code: "EACCES" })
 				unlinkSpy.mockImplementation((p) => String(p).includes("stuck") ? Promise.reject(eacces) : Promise.resolve(undefined))
-				query
+				bulkQuery
 					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
 					.mockImplementationOnce(() => Promise.resolve({ rows: [
 						{ id: 1, camera: "1", name: "stuck-a.jpg", size: "600000000" },
@@ -462,14 +523,14 @@ describe("File Routes", () => {
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ cleaned: true, deleted: 2 })
 
-				const deletes = query.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
+				const deletes = bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("DELETE")).map(([, params]) => params)
 				expect(deletes).toEqual([[[3, 4]]])
-				expect(query.mock.calls[2][1]).toEqual([[1, 2]])
+				expect(bulkQuery.mock.calls[2][1]).toEqual([[1, 2]])
 			})
 
 			test("returns 500 on db error", async () => {
 				process.env.storage_MAX_GB = "1"
-				query.mockRejectedValueOnce(new Error("db error"))
+				bulkQuery.mockRejectedValueOnce(new Error("db error"))
 				const res = await supertest(app)
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)

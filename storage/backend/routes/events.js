@@ -2,10 +2,10 @@ var express = require("express")
 var path = require("path")
 var fs = require("fs")
 var pm2 = require("pm2")
-var { auth, loadCameras, cameraConfFiles, mapLimit } = require("lib")
+var { auth, loadCameras, cameraConfFiles, mapLimit, withTransaction } = require("lib")
 const { requireAdmin } = auth
 
-const pool = require("../lib/pool")
+const { pool, bulkPool } = require("../lib/pool")
 const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../lib/fsUsage")
 
 const app = express.Router()
@@ -110,8 +110,10 @@ app.delete("/camera/:id", requireAdmin, async (req, res) => {
 			FS_CONCURRENCY,
 			(f) => fs.promises.unlink(path.join(OBJECT_CAPTURES_DIR, f)).catch(() => {})
 		)
-		await pool.query("DELETE FROM frame_files WHERE camera = $1", [id])
-		await pool.query("DELETE FROM objects_detected WHERE camera = $1", [id])
+		await withTransaction(bulkPool, async (client) => {
+			await client.query("DELETE FROM frame_files WHERE camera = $1", [id])
+			await client.query("DELETE FROM objects_detected WHERE camera = $1", [id])
+		})
 		for (const file of confFiles) {
 			await fs.promises.unlink(file).catch((e) => {
 				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
