@@ -834,6 +834,18 @@ describe("Authorization Routes", () => {
 			}
 			expect(res.status).toBe(400)
 		})
+
+		test("locks a single account across distinct IPs", async () => {
+			let res
+			for (let i = 0; i < 11; i++) {
+				res = await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `198.51.100.${100 + i}`)
+					.send({ username: "lockme", password: "wrongpassword" })
+			}
+			expect(res.status).toBe(429)
+			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+		})
 	})
 
 	describe("rateLimit (shared memory instance)", () => {
