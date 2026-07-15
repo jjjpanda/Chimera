@@ -15,9 +15,9 @@ grant_gateway_read() {
 if [ -n "$DOMAIN" ]; then
 	echo ready > /webroot/.well-known/acme-challenge/probe
 	tries=0
-	until curl -fsS "http://chimera:$gateway_PORT/.well-known/acme-challenge/probe" 2>/dev/null | grep -q ready; do
+	until curl -fsS "http://$DOMAIN/.well-known/acme-challenge/probe" 2>/dev/null | grep -q ready; do
 		tries=$((tries+1))
-		if [ "$tries" -ge 120 ]; then echo "gateway not serving /.well-known after ~10m; proceeding"; break; fi
+		if [ "$tries" -ge 120 ]; then echo "$DOMAIN:80/.well-known not reachable after ~10m; proceeding"; break; fi
 		sleep 5
 	done
 fi
