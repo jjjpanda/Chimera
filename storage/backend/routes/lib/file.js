@@ -181,7 +181,7 @@ module.exports = {
 				}
 
 				const removed = await mapLimit(batch, FS_CONCURRENCY, row =>
-					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), row.name))
+					fs.promises.unlink(path.join(CAPTURES_DIR, row.camera.toString(), path.basename(row.name)))
 						.then(() => true)
 						.catch((e) => e.code === "ENOENT")
 				)
