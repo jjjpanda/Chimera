@@ -726,6 +726,8 @@ const ClipMakerFull = () => {
 		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
 		setSubmitting(true)
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
+		const total = selectedCams.length
+		let done = 0, failed = 0
 		selectedCams.forEach(idx => {
 			const camId = cameras[idx].id
 			setMultiGenerating(g => ({ ...g, [camId]: type }))
@@ -735,13 +737,21 @@ const ClipMakerFull = () => {
 				body: createBody(camId, type)
 			}, prom => jsonProcessing(prom, data => {
 				setMultiGenerating(g => ({ ...g, [camId]: null }))
+				done++
 				if (!data || data.error || !data.url) {
+					failed++
 					toast(`Failed: ${cameras.find(c => c.id === camId)?.name ?? camId}`)
+				}
+				if (done < total) return
+				if (failed === total) {
+					setSubmitting(false)
+					toast("Generation failed")
+				} else {
+					toast(`${type === "video" ? "Videos" : "Archives"} queued`)
+					navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 				}
 			}))
 		})
-		toast(`${type === "video" ? "Videos" : "Archives"} queued`)
-		navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 	}
 
 	const setDatePart = (setter, part, val) => {
@@ -971,7 +981,7 @@ const ClipMakerFull = () => {
 											</Button>
 										)
 									})}
-									<Button size="sm" variant="ghost" className="h-7 px-2" onClick={toggleMultiCam}>
+									<Button size="sm" variant="ghost" className="h-7 px-2" aria-label="Switch to single camera" onClick={toggleMultiCam}>
 										<RectangleHorizontal className="size-3" />
 									</Button>
 								</div>
@@ -987,7 +997,7 @@ const ClipMakerFull = () => {
 									</SelectContent>
 								</Select>
 								{isDesktop && (
-									<Button size="icon" variant="ghost" className="shrink-0 size-9" onClick={toggleMultiCam}>
+									<Button size="icon" variant="ghost" className="shrink-0 size-9" aria-label="Switch to multi-camera" onClick={toggleMultiCam}>
 										<LayoutGrid className="size-4" />
 									</Button>
 								)}
