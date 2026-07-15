@@ -37,25 +37,29 @@ describe("Authorization Routes", () => {
 	})
 
 	describe("POST /authorization/setup", () => {
-		test("returns 200 on first-time setup", async () => {
+		test("returns 200 on first-time setup with a valid setup_TOKEN", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const spy = jest.spyOn(auth, "invalidateUser")
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // no admin exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123" })
+				.send({ username: "admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(spy).toHaveBeenCalled()
 		})
 
-		test("returns 403 when table already has a row", async () => {
-			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
-			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
-			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // INSERT
+		test("refuses setup when setup_TOKEN is not configured", async () => {
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
 		test("allows admin recovery with a valid setup_TOKEN when no admin exists", async () => {
