@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useRole } from "./AuthContext"
-import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, ArrowUpDown, Save, SkipBack, ScanEye } from "lucide-react"
+import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, Save, SkipBack, ScanEye } from "lucide-react"
 import { useMediaQuery } from "react-responsive"
 import useCameras from "../hooks/useCameras"
-import { Card } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
@@ -15,6 +14,10 @@ import { Switch } from "../components/ui/switch"
 import { request, jsonProcessing } from "../js/request"
 import { detectGrayPad } from "../js/letterbox.js"
 import DetectionOverlay from "../components/DetectionOverlay.jsx"
+import ResizeHandle from "../components/ResizeHandle.jsx"
+import CameraGridMini from "../components/CameraGridMini.jsx"
+import usePreviewHeight from "../hooks/usePreviewHeight"
+import { padSlots } from "../js/grid.js"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -199,40 +202,19 @@ const ClipMakerMini = () => {
 		})
 	}, [cameras])
 
-	const camSlots = cameras.slice(0, 4)
-	const slots = [0, 1, 2, 3].map(i => camSlots[i] ?? null)
+	const slots = padSlots(cameras.slice(0, 4))
 
 	return (
-		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={() => navigate("/clip")}>
-			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
-				{slots.map((cam, i) => (
-					<div
-						key={i}
-						onClick={cam ? (e) => { e.stopPropagation(); navigate(`/clip?camera=${cam.id}`) } : undefined}
-						className={`relative overflow-hidden ${cam ? "bg-black" : "bg-muted/20"}`}
-					>
-						{cam && snapshots[cam.id] && (
-							<img src={snapshots[cam.id]} className="w-full h-full object-cover" alt={cam.name} />
-						)}
-						{cam && !snapshots[cam.id] && (
-							<div className="absolute inset-0 flex items-center justify-center">
-								<ImageOff className="size-5 opacity-30 text-muted" />
-							</div>
-						)}
-						{cam && (
-							<div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
-								<span className="bg-accent/85 text-accent-foreground text-xs font-medium px-3 py-0.5 rounded-full">
-									{cam.name}
-								</span>
-							</div>
-						)}
-					</div>
-				))}
-				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground" onClick={(e) => { e.stopPropagation(); navigate("/clip") }}>
-					<Rewind className="size-6" />
-				</div>
-			</div>
-		</Card>
+		<CameraGridMini
+			slots={slots}
+			onActivate={() => navigate("/clip")}
+			onCellClick={cam => navigate(`/clip?camera=${cam.id}`)}
+			cellLabel={cam => cam.name}
+			centerIcon={<Rewind className="size-6" />}
+			renderCell={cam => snapshots[cam.id]
+				? <img src={snapshots[cam.id]} className="w-full h-full object-cover" alt={cam.name} />
+				: <div className="absolute inset-0 flex items-center justify-center"><ImageOff className="size-5 opacity-30 text-muted" /></div>}
+		/>
 	)
 }
 
@@ -264,7 +246,6 @@ const ClipMakerFull = () => {
 	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
 	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
-	const [previewHeight, setPreviewHeight] = useState(240)
 	const [previewDims, setPreviewDims] = useState(null) // {w,h} natural size of the current single-cam frame
 
 	const canvasRef = useRef(null)
@@ -447,6 +428,7 @@ const ClipMakerFull = () => {
 	}, [multiCam, camStates])
 
 	const multiRows = selectedCams.length > 0 ? Math.ceil(selectedCams.length / 2) : 2
+	const [previewHeight, , startResizeDrag] = usePreviewHeight(240, { rows: multiCam ? multiRows : 1 })
 
 	useEffect(() => {
 		if (!multiCam) return
@@ -743,22 +725,6 @@ const ClipMakerFull = () => {
 		})
 	}
 
-	const startResizeDrag = (e) => {
-		e.preventDefault()
-		const el = e.currentTarget
-		el.setPointerCapture(e.pointerId)
-		const startY = e.clientY
-		const startH = previewHeight
-		const maxH = Math.min(window.innerWidth * 9/16, window.innerHeight * 2/3) / (multiCam ? multiRows : 1)
-		const move = (ev) => setPreviewHeight(clamp(startH + ev.clientY - startY, 80, maxH))
-		const up = () => {
-			el.removeEventListener("pointermove", move)
-			el.removeEventListener("pointerup", up)
-		}
-		el.addEventListener("pointermove", move)
-		el.addEventListener("pointerup", up)
-	}
-
 	const stopLoading = () => {
 		if (multiCam) {
 			setCamStates(s => Object.fromEntries(Object.entries(s).map(([id, state]) =>
@@ -822,15 +788,7 @@ const ClipMakerFull = () => {
 							)
 						})}
 					</div>
-					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
-						</div>
-						<div className="absolute right-2 z-10 bg-bg">
-							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
-						</div>
-					</div>
+					<ResizeHandle onPointerDown={startResizeDrag} />
 				</>
 			) : (
 				<>
@@ -858,15 +816,7 @@ const ClipMakerFull = () => {
 							<ImageOff className="h-10 w-10 opacity-40 text-muted [grid-area:1/1]" />
 						)}
 					</div>
-					<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-						<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
-						<div className="absolute left-3 z-10 bg-bg pl-0.5 pr-1">
-							<div className="w-8 h-0.5 rounded-full bg-muted/30 group-hover:bg-muted/50 transition-colors" />
-						</div>
-						<div className="absolute right-2 z-10 bg-bg">
-							<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
-						</div>
-					</div>
+					<ResizeHandle onPointerDown={startResizeDrag} />
 				</>
 			)}
 

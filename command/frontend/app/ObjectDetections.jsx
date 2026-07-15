@@ -1,16 +1,19 @@
 import React, { useMemo, useRef, useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import moment from "moment"
-import { RefreshCw, ScanEye, AlertCircle, ImageOff, ArrowUpDown } from "lucide-react"
+import { RefreshCw, ScanEye, AlertCircle, ImageOff } from "lucide-react"
 
 import useObjectDetections from "../hooks/useObjectDetections.js"
+import usePreviewHeight from "../hooks/usePreviewHeight"
 import { useRole } from "./AuthContext.jsx"
-import { Card } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
 import { detectGrayPad } from "../js/letterbox.js"
 import DetectionOverlay from "../components/DetectionOverlay.jsx"
+import ResizeHandle from "../components/ResizeHandle.jsx"
+import CameraGridMini from "../components/CameraGridMini.jsx"
+import { padSlots } from "../js/grid.js"
 
 const cameraName = (status, n) => status?.cameraNames?.[n] || `Camera ${n}`
 
@@ -90,38 +93,17 @@ const ObjectDetectionsMini = () => {
 		return result.slice(0, 4)
 	}, [groups])
 
-	const slots = [0, 1, 2, 3].map(i => lastPerCamera[i] ?? null)
+	const slots = padSlots(lastPerCamera)
 
 	return (
-		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={() => navigate("/objects")}>
-			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
-				{slots.map((g, i) => (
-					<div
-						key={i}
-						onClick={g ? (e) => { e.stopPropagation(); navigate(`/objects?camera=${g.camera}`) } : undefined}
-						className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}
-					>
-						{g ? (
-							<DetectionImage key={g.image} image={g.image} boxes={g.boxes} cover />
-						) : (
-							<div className="absolute inset-0 flex items-center justify-center">
-								<ImageOff className="size-5 opacity-30 text-muted" />
-							</div>
-						)}
-						{g && (
-							<div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
-								<span className="bg-accent/85 text-accent-foreground text-xs font-medium px-3 py-0.5 rounded-full">
-									{cameraName(status, g.camera)}
-								</span>
-							</div>
-						)}
-					</div>
-				))}
-				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground" onClick={(e) => { e.stopPropagation(); navigate("/objects") }}>
-					<ScanEye className="size-6" />
-				</div>
-			</div>
-		</Card>
+		<CameraGridMini
+			slots={slots}
+			onActivate={() => navigate("/objects")}
+			onCellClick={g => navigate(`/objects?camera=${g.camera}`)}
+			cellLabel={g => cameraName(status, g.camera)}
+			centerIcon={<ScanEye className="size-6" />}
+			renderCell={g => <DetectionImage key={g.image} image={g.image} boxes={g.boxes} cover />}
+		/>
 	)
 }
 
@@ -134,21 +116,8 @@ const ObjectDetectionsFull = () => {
 	const cameras = status?.cameras ? Object.entries(status.cameras) : []
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
-	const [previewHeight, setPreviewHeight] = useState(200)
+	const [previewHeight, , startResizeDrag] = usePreviewHeight(200)
 	const trackRef = useRef(null)
-
-	const startResizeDrag = (e) => {
-		e.preventDefault()
-		const el = e.currentTarget
-		el.setPointerCapture(e.pointerId)
-		const startY = e.clientY
-		const startH = previewHeight
-		const maxH = Math.min(window.innerWidth * 9 / 16, window.innerHeight * 2 / 3)
-		const move = (ev) => setPreviewHeight(Math.max(80, Math.min(maxH, startH + ev.clientY - startY)))
-		const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up) }
-		el.addEventListener("pointermove", move)
-		el.addEventListener("pointerup", up)
-	}
 
 	useEffect(() => {
 		if (selectedCam != null || cameras.length === 0) return
@@ -224,12 +193,7 @@ const ObjectDetectionsFull = () => {
 					<ImageOff className="size-8 opacity-20 text-muted" />
 				</div>
 			)}
-			<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
-				<div className="absolute right-2 z-10 bg-bg">
-					<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
-				</div>
-			</div>
+			<ResizeHandle onPointerDown={startResizeDrag} grip={false} />
 
 			{camGroups.length > 1 && (
 				<div className="px-8 pt-1 pb-0">
