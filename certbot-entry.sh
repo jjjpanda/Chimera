@@ -7,6 +7,11 @@ until apk add --no-cache curl; do sleep 5; done
 DOMAIN=$(echo "$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $1}' | awk -F: '{print $1}')
 mkdir -p /webroot/.well-known/acme-challenge
 
+grant_gateway_read() {
+	chgrp -R 1000 /etc/letsencrypt/live /etc/letsencrypt/archive 2>/dev/null || true
+	chmod -R g+rX /etc/letsencrypt/live /etc/letsencrypt/archive 2>/dev/null || true
+}
+
 if [ -n "$DOMAIN" ]; then
 	echo ready > /webroot/.well-known/acme-challenge/probe
 	tries=0
@@ -21,6 +26,7 @@ fails=0
 while true; do
 	if [ -n "$DOMAIN" ] && [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
 		if certbot certonly --webroot -w /webroot -d "$DOMAIN" --register-unsafely-without-email --agree-tos --non-interactive; then
+			grant_gateway_read
 			fails=0
 		else
 			fails=$((fails+1))
@@ -35,5 +41,6 @@ while true; do
 
 	certbot renew --webroot -w /webroot --quiet ||
 		curl -fsS -X POST -H "Content-Type: application/json" -d "{\"content\": \"⚠️ certbot renew failed on $(hostname)\"}" "$alert_URL"
+	grant_gateway_read
 	sleep 43200
 done
