@@ -63,7 +63,7 @@ const Feed = ({ video, hideLabel }) => (
 
 const LiveVideo = (props) => {
 	const [cameras] = useCameras()
-	const [state, refresh, restart] = useLiveVideo(cameras)
+	const [state, , restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
 	const [activeTab, setActiveTab] = useState("0")
 	const squarify = useSquarifyVideos()
@@ -120,8 +120,8 @@ const LiveVideo = (props) => {
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="text-sm">Live Video</CardTitle>
 				<div className="flex items-center gap-1">
-					<Button variant="ghost" size="icon" className="size-6" onClick={refresh}>
-						<RefreshCw className="size-3" />
+					<Button variant="ghost" size="icon" className="size-6" onClick={restart} disabled={state.restarting} title="Restart streams">
+						<RefreshCw className={cn("size-3", state.restarting && "animate-spin")} />
 					</Button>
 					<NavigateToRoute to="/live" />
 				</div>
