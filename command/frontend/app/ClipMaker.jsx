@@ -17,7 +17,8 @@ import DetectionOverlay from "../components/DetectionOverlay.jsx"
 import ResizeHandle from "../components/ResizeHandle.jsx"
 import CameraGridMini from "../components/CameraGridMini.jsx"
 import usePreviewHeight from "../hooks/usePreviewHeight"
-import { padSlots } from "../js/grid.js"
+import { padSlots, gridShape } from "../js/grid.js"
+import { nearestFrameIndex, frameSpacingMs, boxesForScrub, fuseMarkers } from "../js/detections.js"
 import toast from "../js/toast"
 import moment from "moment"
 
@@ -232,34 +233,109 @@ const ClipMakerFull = () => {
 	const [number, setNumber] = useState(10)
 	const [fps, setFps] = useState(20)
 	const [skip, setSkip] = useState(1)
-	const [frames, setFrames] = useState([])
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [trimRange, setTrimRange] = useState([0, 100])
 	const [trimming, setTrimming] = useState(false)
-	const [imagesLoaded, setImagesLoaded] = useState(0)
-	const [fetching, setFetching] = useState(false)
-	const [generating, setGenerating] = useState(null)
 	const [submitting, setSubmitting] = useState(false)
 	const [pendingPreset, setPendingPreset] = useState(null)
 	const [savedDates, setSavedDates] = useState(null)
 	const [loadedParams, setLoadedParams] = useState(null) // {start,end,number,cams} of the last load; current inputs diverging = stale
-	const [detections, setDetections] = useState([])
 	const [showBoxes, setShowBoxes] = useState(false)
-	const [contentPad, setContentPad] = useState({}) // { [camera]: {top,bot,left,right} } letterbox pad in 416-space
-	const [previewDims, setPreviewDims] = useState(null) // {w,h} natural size of the current single-cam frame
+	const [multiCam, setMultiCam] = useState(false) // UI layout only: selector style + labels; data is always cams[]
+	const [selectedCams, setSelectedCams] = useState([]) // camera indices, up to 4
 
-	const canvasRef = useRef(null)
-	const imageCache = useRef({})
-	const loadSeq = useRef(0)
+	// one entry per active camera; single-cam = length 1
+	const [cams, setCams] = useState([]) // { id, idx, name, frames, imagesLoaded, fetching, generating, detections, contentPad, dims }
+
+	const canvasRefs = useRef({})  // { [camId]: canvas element }
+	const imageCaches = useRef({}) // { [camId]: { [url]: Image } }
+	const loadGenRef = useRef({})  // { [camId]: generation } — cancels stale image settles
+	const padLoading = useRef({})  // { [camId]: bool } — a contentPad measure is in flight
+	const loadSeq = useRef(0)      // cancels stale network responses
 	const navTimer = useRef(null)
 
-	const [multiCam, setMultiCam] = useState(false)
-	const [selectedCams, setSelectedCams] = useState([]) // camera indices, up to 4
-	const [camStates, setCamStates] = useState({}) // { [camId]: { frames, imagesLoaded, fetching } }
-	const [multiGenerating, setMultiGenerating] = useState({})
-	const multiCanvasRefs = useRef({})
-	const multiImageCache = useRef({})
-	const multiLoadGenRef = useRef({})
+	const activeIdxs = multiCam ? selectedCams : (camera != null ? [camera] : [])
+
+	const timeline = useMemo(() => {
+		const views = cams.map(c => {
+			const timesMs = c.frames.map(u => { const t = parseFrameTime(u); return t ? t.valueOf() : null })
+			return { timesMs, tol: frameSpacingMs(timesMs) }
+		})
+		const frameCount = Math.max(0, ...cams.map(c => c.frames.length))
+		let refIdx = 0
+		cams.forEach((c, i) => { if (c.frames.length > (cams[refIdx]?.frames.length ?? 0)) refIdx = i })
+		return { views, frameCount, refTimesMs: views[refIdx]?.timesMs ?? [] }
+	}, [cams])
+	const { views: camViews, frameCount, refTimesMs } = timeline
+
+	const scrubMs = frameCount > 0
+		? (refTimesMs[scrubIdx] ?? lerp(startDate, endDate, frameCount > 1 ? scrubIdx / (frameCount - 1) : 0).valueOf())
+		: null
+
+	const timeAtPct = (p) => {
+		if (frameCount > 0) {
+			const t = refTimesMs[Math.round(p / 100 * (frameCount - 1))]
+			if (t != null) return moment(t)
+		}
+		return lerp(startDate, endDate, p / 100)
+	}
+	const trimStart = timeAtPct(trimRange[0])
+	const trimEnd = timeAtPct(trimRange[1])
+	const scrubTime = scrubMs != null ? moment(scrubMs) : null
+
+	const boxesForCam = (ci) => {
+		const c = cams[ci]
+		if (!showBoxes || !c || !c.detections.length || !c.frames.length) return []
+		const { timesMs, tol } = camViews[ci]
+		return boxesForScrub(c.detections, timesMs[nearestFrameIndex(timesMs, scrubMs)], tol)
+	}
+
+	const detectionMarkers = useMemo(() => {
+		if (frameCount === 0) return []
+		const pcts = []
+		cams.forEach((c, ci) => {
+			const { tol } = camViews[ci]
+			c.detections.forEach(d => {
+				const v = moment(d.timestamp).valueOf()
+				if (!Number.isFinite(v)) return
+				const idx = nearestFrameIndex(refTimesMs, v)
+				const ft = refTimesMs[idx]
+				if (ft == null || Math.abs(ft - v) > tol) return
+				pcts.push((idx / Math.max(1, frameCount - 1)) * 100)
+			})
+		})
+		pcts.sort((a, b) => a - b)
+		return fuseMarkers(pcts, FUSE_PCT)
+	}, [cams, camViews, refTimesMs, frameCount])
+
+	const anyFetching = cams.some(c => c.fetching)
+	const anyDownloading = cams.some(c => c.frames.length > 0 && c.imagesLoaded < c.frames.length)
+	const anyGenerating = cams.some(c => c.generating)
+	const hasLoadedFrames = cams.some(c => c.frames.length > 0)
+	const loading = anyFetching || anyDownloading
+	const stoppable = anyDownloading
+
+	const currentCamIds = activeIdxs.map(i => cameras[i]?.id).filter(id => id != null).sort()
+	const paramsStale = !!loadedParams && hasLoadedFrames && (
+		!startDate.isSame(loadedParams.start) ||
+		!endDate.isSame(loadedParams.end) ||
+		number !== loadedParams.number ||
+		currentCamIds.join(",") !== loadedParams.cams.join(",")
+	)
+	const canGenerate = !submitting && !paramsStale && !loading && !anyGenerating &&
+		startDate.isBefore(endDate) && activeIdxs.length > 0
+
+	const totalFrames = cams.reduce((a, c) => a + c.frames.length, 0)
+	const loadedFrames = cams.reduce((a, c) => a + c.imagesLoaded, 0)
+	const progress = totalFrames ? Math.round(100 * loadedFrames / totalFrames) : 0
+
+	const previewCells = cams.length
+		? cams
+		: activeIdxs.map(i => cameras[i]).filter(Boolean).map(cam =>
+			({ id: cam.id, name: cam.name, frames: [], imagesLoaded: 0, fetching: false, detections: [], contentPad: null, dims: null }))
+	const cells = previewCells.length ? previewCells : [null]
+	const { cols, rows } = gridShape(cells.length)
+	const [previewHeight, , startResizeDrag] = usePreviewHeight(240, { rows })
 
 	useEffect(() => {
 		if (!isDesktop && multiCam) toggleMultiCam()
@@ -268,7 +344,7 @@ const ClipMakerFull = () => {
 	useEffect(() => () => { if (navTimer.current) clearTimeout(navTimer.current) }, [])
 
 	useEffect(() => {
-		if (!multiCam && camera != null && cameras.length > 0 && frames.length === 0 && !fetching) loadPreview()
+		if (!multiCam && camera != null && cameras.length > 0 && cams.length === 0 && !anyFetching) loadPreview(undefined, undefined, [camera])
 	}, [cameras])
 
 	useEffect(() => {
@@ -278,257 +354,77 @@ const ClipMakerFull = () => {
 		const idx = cameras.findIndex(c => String(c.id) === String(camParam))
 		if (idx < 0) return
 		setCamera(idx)
-		loadPreview(undefined, undefined, idx)
+		loadPreview(undefined, undefined, [idx])
 	}, [cameras])
 
-	const frameTimes = useMemo(() => frames.map(parseFrameTime), [frames])
-
+	const framesKey = useMemo(() => cams.map(c => `${c.id}:${c.frames.join(",")}`).join("|"), [cams])
 	useEffect(() => {
-		const canvas = canvasRef.current
-		if (frames.length === 0) {
-			imageCache.current = {}
-			if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height)
-			return
-		}
 		const timers = []
-		const imgs = []
-		frames.forEach(url => {
-			if (imageCache.current[url]) return
-			const img = new Image()
-			let settled = false
-			let timer
-			const settle = () => {
-				if (settled) return
-				settled = true
-				clearTimeout(timer)
-				setImagesLoaded(n => n + 1)
-			}
-			img.onload = img.onerror = settle
-			timer = setTimeout(settle, 10000)
-			timers.push(timer)
-			imgs.push(img)
-			img.src = url
-			imageCache.current[url] = img
-		})
-		return () => {
-			timers.forEach(clearTimeout)
-			imgs.forEach(img => { img.onload = img.onerror = null })
-		}
-	}, [frames])
-
-	const detectionFrameIdx = useMemo(() => {
-		if (multiCam || detections.length === 0 || frames.length === 0) return []
-		const ftv = frameTimes.map(t => t ? t.valueOf() : null)
-		const valid = ftv.filter(v => v != null)
-		if (valid.length === 0) return detections.map(() => -1)
-		const uniqueValid = [...new Set(valid)]
-		const span = Math.max(...uniqueValid) - Math.min(...uniqueValid)
-		const tol = uniqueValid.length > 1 ? span / (uniqueValid.length - 1) : Infinity
-		return detections.map(d => {
-			const v = moment(d.timestamp).valueOf()
-			let idx = -1, diff = Infinity
-			ftv.forEach((tv, i) => {
-				if (tv == null) return
-				const dd = Math.abs(tv - v)
-				if (dd < diff) { diff = dd; idx = i }
-			})
-			return diff <= tol ? idx : -1
-		})
-	}, [multiCam, detections, frameTimes, frames.length])
-
-	const boxesForScrub = useMemo(() => {
-		if (multiCam || !showBoxes || detections.length === 0) return []
-		const here = detections.filter((_, i) => detectionFrameIdx[i] === scrubIdx)
-		if (here.length === 0) return []
-		const t = frameTimes[scrubIdx]?.valueOf()
-		let best = here[0], bd = Infinity
-		if (t != null) for (const d of here) {
-			const dd = Math.abs(moment(d.timestamp).valueOf() - t)
-			if (dd < bd) { bd = dd; best = d }
-		}
-		return here.filter(d => d.image === best.image)
-	}, [multiCam, showBoxes, detections, detectionFrameIdx, scrubIdx, frameTimes])
-
-	// detector letterboxes each camera's feed into a 416 square (top-left anchored); the feed
-	// aspect ratio sets the content region, which differs from the recorded frame's aspect. Measure
-	// it from a capture's gray padding (constant per camera) so boxes map per-axis, not uniformly.
-	useEffect(() => {
-		if (multiCam || detections.length === 0) return
-		const d = detections.find(d => d.image && d.camera != null)
-		if (!d || contentPad[d.camera]) return
-		const im = new Image()
-		im.onload = () => setContentPad(p => ({ ...p, [d.camera]: detectGrayPad(im) }))
-		im.src = `/object/captures/${d.image}`
-	}, [multiCam, detections, contentPad])
-
-	useEffect(() => {
-		const canvas = canvasRef.current
-		if (!canvas || frames.length === 0) return
-		const img = imageCache.current[frames[scrubIdx]]
-		if (!img?.complete || !img.naturalWidth) return
-		if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
-			canvas.width = img.naturalWidth
-			canvas.height = img.naturalHeight
-		}
-		setPreviewDims(d => d && d.w === img.naturalWidth && d.h === img.naturalHeight ? d : { w: img.naturalWidth, h: img.naturalHeight })
-		canvas.getContext("2d").drawImage(img, 0, 0)
-	}, [scrubIdx, frames, imagesLoaded])
-
-	const multiAllFrames = useMemo(() =>
-		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames])) : {},
-	[multiCam, camStates]
-	)
-
-	const multiFramesKey = useMemo(() =>
-		Object.entries(multiAllFrames).map(([id, f]) => `${id}:${f.join(",")}`).join("|"),
-	[multiAllFrames]
-	)
-
-	useEffect(() => {
-		if (!multiCam) return
-		const timers = []
-		Object.entries(multiAllFrames).forEach(([camId, camFrames]) => {
-			if (!multiImageCache.current[camId]) multiImageCache.current[camId] = {}
-			const newUrls = camFrames.filter(url => !multiImageCache.current[camId][url])
+		cams.forEach(c => {
+			const cache = imageCaches.current[c.id] || (imageCaches.current[c.id] = {})
+			const newUrls = c.frames.filter(u => !cache[u])
 			if (!newUrls.length) return
-			const gen = (multiLoadGenRef.current[camId] = (multiLoadGenRef.current[camId] || 0) + 1)
+			const gen = (loadGenRef.current[c.id] = (loadGenRef.current[c.id] || 0) + 1)
 			newUrls.forEach(url => {
 				const img = new Image()
-				let settled = false
-				let timer
+				let settled = false, timer
 				const settle = () => {
-					if (settled) return
-					if (multiLoadGenRef.current[camId] !== gen) return
+					if (settled || loadGenRef.current[c.id] !== gen) return
 					settled = true
 					clearTimeout(timer)
-					setCamStates(s => s[camId] ? ({
-						...s,
-						[camId]: { ...s[camId], imagesLoaded: (s[camId].imagesLoaded ?? 0) + 1 }
-					}) : s)
+					setCams(prev => prev.map(pc => pc.id === c.id ? { ...pc, imagesLoaded: pc.imagesLoaded + 1 } : pc))
 				}
 				img.onload = img.onerror = settle
 				timer = setTimeout(settle, 10000)
 				timers.push(timer)
 				img.src = url
-				multiImageCache.current[camId][url] = img
+				cache[url] = img
 			})
 		})
-		return () => { timers.forEach(clearTimeout) }
-	}, [multiCam, multiFramesKey])
+		return () => timers.forEach(clearTimeout)
+	}, [framesKey])
 
-	const multiFrameTimes = useMemo(() =>
-		multiCam ? Object.fromEntries(Object.entries(camStates).map(([id, s]) => [id, s.frames.map(parseFrameTime)])) : {},
-	[multiCam, camStates]
-	)
-
-	const multiFrameCount = useMemo(() => {
-		if (!multiCam) return 0
-		const counts = Object.values(camStates).map(s => s.frames.length).filter(n => n > 0)
-		return counts.length > 0 ? Math.max(...counts) : 0
-	}, [multiCam, camStates])
-
-	const multiRows = selectedCams.length > 0 ? Math.ceil(selectedCams.length / 2) : 2
-	const [previewHeight, , startResizeDrag] = usePreviewHeight(240, { rows: multiCam ? multiRows : 1 })
-
+	// measure each camera's letterbox pad once from a detection capture (constant per camera), so
+	// boxes map per-axis; the feed's aspect sets the content region and differs from the frame's.
 	useEffect(() => {
-		if (!multiCam) return
-		const pct = multiFrameCount > 1 ? scrubIdx / (multiFrameCount - 1) : 0
-		const currentTime = lerp(startDate, endDate, pct)
-		Object.entries(camStates).forEach(([camId, state]) => {
-			const canvas = multiCanvasRefs.current[camId]
-			if (!canvas || !state.frames.length) return
-			const times = multiFrameTimes[camId]
-			let bestIdx = 0
-			if (times?.length) {
-				let bestDiff = Infinity
-				times.forEach((t, i) => {
-					if (!t) return
-					const diff = Math.abs(t.valueOf() - currentTime.valueOf())
-					if (diff < bestDiff) { bestDiff = diff; bestIdx = i }
-				})
-			}
-			const img = multiImageCache.current[camId]?.[state.frames[bestIdx]]
+		cams.forEach(c => {
+			if (c.contentPad || padLoading.current[c.id] || !c.detections.length) return
+			const d = c.detections.find(d => d.image && d.camera != null)
+			if (!d) return
+			padLoading.current[c.id] = true
+			const im = new Image()
+			im.onload = () => { padLoading.current[c.id] = false; setCams(prev => prev.map(pc => pc.id === c.id ? { ...pc, contentPad: detectGrayPad(im) } : pc)) }
+			im.onerror = () => { padLoading.current[c.id] = false }
+			im.src = `/object/captures/${d.image}`
+		})
+	}, [cams])
+
+	// draw each camera's frame nearest the scrub time onto its canvas
+	useEffect(() => {
+		if (frameCount === 0) return
+		cams.forEach((c, ci) => {
+			const canvas = canvasRefs.current[c.id]
+			if (!canvas || !c.frames.length) return
+			const img = imageCaches.current[c.id]?.[c.frames[nearestFrameIndex(camViews[ci].timesMs, scrubMs)]]
 			if (!img?.complete || !img.naturalWidth) return
 			if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
 				canvas.width = img.naturalWidth
 				canvas.height = img.naturalHeight
 			}
+			if (c.dims?.w !== img.naturalWidth || c.dims?.h !== img.naturalHeight) {
+				setCams(prev => prev.map(pc => pc.id === c.id ? { ...pc, dims: { w: img.naturalWidth, h: img.naturalHeight } } : pc))
+			}
 			canvas.getContext("2d").drawImage(img, 0, 0)
 		})
-	}, [multiCam, scrubIdx, camStates, multiFrameCount, multiFrameTimes, startDate, endDate])
-
-	const frameTime = (idx) => {
-		if (frames.length === 0) return null
-		return frameTimes[idx] ?? lerp(startDate, endDate, idx / Math.max(1, frames.length - 1))
-	}
-
-	const trimStart = useMemo(() => {
-		const idx = Math.round(trimRange[0] / 100 * Math.max(0, frames.length - 1))
-		return frameTime(idx) ?? lerp(startDate, endDate, trimRange[0] / 100)
-	}, [startDate, endDate, trimRange, frames.length, frameTimes])
-
-	const trimEnd = useMemo(() => {
-		const idx = Math.round(trimRange[1] / 100 * Math.max(0, frames.length - 1))
-		return frameTime(idx) ?? lerp(startDate, endDate, trimRange[1] / 100)
-	}, [startDate, endDate, trimRange, frames.length, frameTimes])
-
-	const scrubTime = useMemo(() => frameTime(scrubIdx),
-		[frameTimes, scrubIdx, startDate, endDate, frames.length]
-	)
-
-	const detectionMarkers = useMemo(() => {
-		if (multiCam || frames.length === 0 || detectionFrameIdx.length === 0) return []
-		const pcts = detectionFrameIdx
-			.filter(idx => idx >= 0)
-			.map(idx => (idx / Math.max(1, frames.length - 1)) * 100)
-			.sort((a, b) => a - b)
-		const out = []
-		for (const p of pcts) {
-			const last = out[out.length - 1]
-			if (last && p - last.end <= FUSE_PCT) last.end = p
-			else out.push({ start: p, end: p })
-		}
-		return out
-	}, [multiCam, frames.length, detectionFrameIdx])
-
-	const multiAnyFetching = multiCam && Object.values(camStates).some(s => s.fetching)
-	const multiAnyDownloading = multiCam && Object.values(camStates).some(s => s.frames.length > 0 && s.imagesLoaded < s.frames.length)
-	const multiAnyGenerating = Object.values(multiGenerating).some(Boolean)
-
-	const downloadingImages = frames.length > 0 && imagesLoaded < frames.length
-	const loading   = multiCam ? (multiAnyFetching || multiAnyDownloading) : (fetching || downloadingImages)
-	const stoppable = multiCam ? multiAnyDownloading : downloadingImages
-
-	const hasLoadedFrames = multiCam ? Object.values(camStates).some(s => s.frames.length > 0) : frames.length > 0
-	const currentCamIds = multiCam
-		? selectedCams.map(i => cameras[i]?.id).filter(id => id != null).sort()
-		: (camera != null && cameras[camera] ? [cameras[camera].id] : [])
-	const paramsStale = !!loadedParams && hasLoadedFrames && (
-		!startDate.isSame(loadedParams.start) ||
-		!endDate.isSame(loadedParams.end) ||
-		number !== loadedParams.number ||
-		currentCamIds.join(",") !== loadedParams.cams.join(",")
-	)
-
-	const canGenerate = !submitting && !paramsStale && (multiCam
-		? (!multiAnyFetching && !multiAnyDownloading && !multiAnyGenerating && startDate.isBefore(endDate) && selectedCams.length > 0)
-		: (generating === null && !loading && startDate.isBefore(endDate) && camera != null))
-
-	const multiScrubTime = useMemo(() => {
-		if (!multiCam || multiFrameCount === 0) return null
-		return lerp(startDate, endDate, multiFrameCount > 1 ? scrubIdx / (multiFrameCount - 1) : 0)
-	}, [multiCam, scrubIdx, multiFrameCount, startDate, endDate])
-
-	const activeFrameCount = multiCam ? multiFrameCount : frames.length
+	}, [scrubIdx, cams, frameCount, camViews, scrubMs])
 
 	const toggleMultiCam = () => {
 		setMultiCam(m => !m)
 		setSelectedCams([])
-		setCamStates({})
-		multiImageCache.current = {}
-		setFrames([])
-		setImagesLoaded(0)
-		setDetections([])
+		setCams([])
+		imageCaches.current = {}
+		loadGenRef.current = {}
+		padLoading.current = {}
 		setLoadedParams(null)
 		setTrimRange([0, 100])
 		setTrimming(false)
@@ -545,7 +441,7 @@ const ClipMakerFull = () => {
 		request(`/object/detections?${qs}`, { cache: "no-store" }, prom =>
 			jsonProcessing(prom, data => {
 				if (seq !== loadSeq.current) return
-				setDetections(Array.isArray(data) ? data : [])
+				setCams(prev => prev.map(c => c.id === camId ? { ...c, detections: Array.isArray(data) ? data : [] } : c))
 			}))
 	}
 
@@ -564,53 +460,35 @@ const ClipMakerFull = () => {
 		...(type === "video" ? { fps, skip } : { skip })
 	})
 
-	const loadPreview = (overrideStart, overrideEnd, camIdx = camera) => {
+	const loadPreview = (overrideStart, overrideEnd, idxs = activeIdxs) => {
 		if (loading) return
-		if (cameras[camIdx]?.id == null) return toast("No camera selected")
+		const ids = idxs.map(i => cameras[i]?.id)
+		if (!ids.length || ids.some(id => id == null)) return toast("No camera selected")
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
-		setLoadedParams({ start, end, number, cams: [cameras[camIdx].id] })
-		setFetching(true)
-		setFrames([])
-		setImagesLoaded(0)
-		setTrimRange([0, 100])
-		setTrimming(false)
-		const camId = cameras[camIdx].id
-		const seq = ++loadSeq.current
-		loadDetections(camId, start, end, seq)
-		request("/convert/listFramesVideo", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: framesBody(camId, start, end)
-		}, prom => jsonProcessing(prom, data => {
-			if (seq !== loadSeq.current) return setFetching(false)
-			setFrames(data?.list ?? [])
-			setScrubIdx(0)
-			setFetching(false)
-		}))
-	}
-
-	const loadMultiPreview = (overrideStart, overrideEnd) => {
-		if (loading || !selectedCams.length) return
-		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
-		const start = moment(overrideStart ?? startDate)
-		const end   = moment(overrideEnd   ?? endDate)
-		setLoadedParams({ start, end, number, cams: selectedCams.map(idx => cameras[idx].id).sort() })
-		multiImageCache.current = {}
+		setLoadedParams({ start, end, number, cams: [...ids].sort() })
+		imageCaches.current = {}
+		loadGenRef.current = {}
+		padLoading.current = {}
 		setScrubIdx(0)
 		setTrimRange([0, 100])
 		setTrimming(false)
-		const camIds = selectedCams.map(idx => cameras[idx].id)
-		setCamStates(Object.fromEntries(camIds.map(id => [id, { frames: [], imagesLoaded: 0, fetching: true }])))
+		setCams(idxs.map(i => ({
+			id: cameras[i].id, idx: i, name: cameras[i].name,
+			frames: [], imagesLoaded: 0, fetching: true, generating: null,
+			detections: [], contentPad: null, dims: null
+		})))
 		const seq = ++loadSeq.current
-		camIds.forEach(camId => {
+		idxs.forEach(i => {
+			const camId = cameras[i].id
+			loadDetections(camId, start, end, seq)
 			request("/convert/listFramesVideo", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: framesBody(camId, start, end)
 			}, prom => jsonProcessing(prom, data => {
 				if (seq !== loadSeq.current) return
-				setCamStates(s => ({ ...s, [camId]: { frames: data?.list ?? [], imagesLoaded: 0, fetching: false } }))
+				setCams(prev => prev.map(c => c.id === camId ? { ...c, frames: data?.list ?? [], fetching: false } : c))
 			}))
 		})
 	}
@@ -625,8 +503,7 @@ const ClipMakerFull = () => {
 	const confirmPreset = () => {
 		setSavedDates(null)
 		setPendingPreset(null)
-		if (multiCam) loadMultiPreview()
-		else loadPreview()
+		loadPreview()
 	}
 
 	const cancelPreset = () => {
@@ -641,8 +518,7 @@ const ClipMakerFull = () => {
 	const zoomIn = () => {
 		setStartDate(trimStart)
 		setEndDate(trimEnd)
-		if (multiCam) loadMultiPreview(trimStart, trimEnd)
-		else loadPreview(trimStart, trimEnd)
+		loadPreview(trimStart, trimEnd)
 	}
 
 	const cancelTrim = () => {
@@ -652,57 +528,33 @@ const ClipMakerFull = () => {
 
 	const generate = (type) => {
 		if (!canGenerate) return
-		if (multiCam) { generateMulti(type); return }
-		if (cameras[camera]?.id == null) return toast("No camera selected")
+		const ids = activeIdxs.map(i => cameras[i]?.id)
+		if (!ids.length || ids.some(id => id == null)) return toast("No camera selected")
 		setSubmitting(true)
-		setGenerating(type)
-		const camId = cameras[camera].id
+		setCams(prev => prev.map(c => ids.includes(c.id) ? { ...c, generating: type } : c))
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		request(endpoint, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: createBody(camId, type)
-		}, prom => jsonProcessing(prom, data => {
-			setGenerating(null)
-			if (!data || data.error) {
-				setSubmitting(false)
-				toast("Generation failed")
-			} else if (!data.url) {
-				setSubmitting(false)
-				toast("No frames found")
-			} else {
-				toast(`${type === "video" ? "Video" : "Archive"} queued`)
-				navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
-			}
-		}))
-	}
-
-	const generateMulti = (type) => {
-		if (selectedCams.some(idx => cameras[idx]?.id == null)) return toast("No camera selected")
-		setSubmitting(true)
-		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
-		const total = selectedCams.length
-		let done = 0, failed = 0
-		selectedCams.forEach(idx => {
-			const camId = cameras[idx].id
-			setMultiGenerating(g => ({ ...g, [camId]: type }))
+		const total = ids.length
+		let done = 0, failed = 0, lastFail = null
+		ids.forEach(camId => {
 			request(endpoint, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: createBody(camId, type)
 			}, prom => jsonProcessing(prom, data => {
-				setMultiGenerating(g => ({ ...g, [camId]: null }))
+				setCams(prev => prev.map(c => c.id === camId ? { ...c, generating: null } : c))
 				done++
 				if (!data || data.error || !data.url) {
 					failed++
-					toast(`Failed: ${cameras.find(c => c.id === camId)?.name ?? camId}`)
+					lastFail = data
+					if (total > 1) toast(`Failed: ${cameras.find(c => c.id === camId)?.name ?? camId}`)
 				}
 				if (done < total) return
 				if (failed === total) {
 					setSubmitting(false)
-					toast("Generation failed")
+					toast(total === 1 && lastFail && !lastFail.error && !lastFail.url ? "No frames found" : "Generation failed")
 				} else {
-					toast(`${type === "video" ? "Videos" : "Archives"} queued`)
+					const noun = type === "video" ? "Video" : "Archive"
+					toast(`${total > 1 ? noun + "s" : noun} queued`)
 					navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 				}
 			}))
@@ -726,114 +578,84 @@ const ClipMakerFull = () => {
 	}
 
 	const stopLoading = () => {
-		if (multiCam) {
-			setCamStates(s => Object.fromEntries(Object.entries(s).map(([id, state]) =>
-				[id, { ...state, frames: [], imagesLoaded: 0 }]
-			)))
-			multiImageCache.current = {}
-		} else {
-			setFrames([])
-			setImagesLoaded(0)
-			setDetections([])
-		}
-	}
-
-	const multiProgress = () => {
-		const vals = Object.values(camStates)
-		const total = vals.reduce((a, s) => a + s.frames.length, 0)
-		const loaded = vals.reduce((a, s) => a + s.imagesLoaded, 0)
-		return total ? Math.round(100 * loaded / total) : 0
+		setCams(prev => prev.map(c => ({ ...c, frames: [], imagesLoaded: 0, dims: null })))
+		imageCaches.current = {}
+		loadGenRef.current = {}
 	}
 
 	return (
 		<div className="flex flex-col gap-0">
 			<h1 className="px-2 pt-2 pb-1.5 text-lg font-semibold">clip maker</h1>
 
-			{multiCam ? (
-				<>
-					<div className="relative w-full grid grid-cols-2 gap-px bg-border" style={{ height: previewHeight * multiRows }}>
-						{[0, 1, 2, 3].map(i => {
-							const camIdx = selectedCams[i]
-							const cam = camIdx !== undefined ? cameras[camIdx] : null
-							const camId = cam?.id
-							const state = camId ? camStates[camId] : null
-							return (
-								<div key={i} className={`relative overflow-hidden flex items-center justify-center ${cam ? "bg-black" : "bg-muted/10"}`}>
-									{camId && (
-										<canvas
-											ref={el => { if (el) multiCanvasRefs.current[camId] = el; else delete multiCanvasRefs.current[camId] }}
-											width={1920} height={1080}
-											style={{
-												display: state?.frames?.length > 0 ? "block" : "none",
-												maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto"
-											}}
+			<div
+				className="relative w-full grid gap-px bg-border overflow-hidden"
+				style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, height: previewHeight * rows }}
+			>
+				{cells.map((c, i) => {
+					const boxes = c ? boxesForCam(i) : []
+					return (
+						<div
+							key={c ? c.id : "empty"}
+							className="relative overflow-hidden grid place-items-center bg-black"
+							style={{ gridTemplate: "100% / 100%" }}
+						>
+							{c ? (
+								<>
+									<canvas
+										ref={el => { if (el) canvasRefs.current[c.id] = el; else delete canvasRefs.current[c.id] }}
+										width={640}
+										height={360}
+										className="[grid-area:1/1]"
+										style={{ display: c.frames.length > 0 ? "block" : "none", maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
+									/>
+									{showBoxes && c.contentPad && c.dims && boxes.length > 0 && (
+										<DetectionOverlay
+											boxes={boxes}
+											dims={{ w: DETECT_INPUT, h: DETECT_INPUT }}
+											pad={c.contentPad}
+											fit="none"
+											className="pointer-events-none [grid-area:1/1]"
+											style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
+											width={c.dims.w}
+											height={c.dims.h}
 										/>
 									)}
-									{!state?.frames?.length && (
-										<ImageOff className="size-4 opacity-20 text-muted" />
+									{c.frames.length === 0 && !c.fetching && (
+										<ImageOff className="h-10 w-10 opacity-40 text-muted [grid-area:1/1]" />
 									)}
-									{state?.fetching && (
+									{c.fetching && (
 										<div className="absolute inset-0 flex items-center justify-center bg-black/40">
 											<span className="text-xs text-muted">Loading…</span>
 										</div>
 									)}
-									{cam && (
+									{cells.length > 1 && (
 										<div className="absolute bottom-1 inset-x-0 flex justify-center pointer-events-none">
 											<span className="bg-accent/80 text-accent-foreground text-xs px-2 py-0.5 rounded-full">
-												{cam.name}
+												{c.name}
 											</span>
 										</div>
 									)}
-								</div>
-							)
-						})}
-					</div>
-					<ResizeHandle onPointerDown={startResizeDrag} />
-				</>
-			) : (
-				<>
-					<div className="relative bg-black w-full grid place-items-center overflow-hidden" style={{ height: previewHeight, gridTemplate: "100% / 100%" }}>
-						<canvas
-							ref={canvasRef}
-							width={640}
-							height={360}
-							className="[grid-area:1/1]"
-							style={{ display: frames.length > 0 ? "block" : "none", maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
-						/>
-						{frames.length > 0 && previewDims && showBoxes && boxesForScrub.length > 0 && contentPad[boxesForScrub[0].camera] && (
-							<DetectionOverlay
-								boxes={boxesForScrub}
-								dims={{ w: DETECT_INPUT, h: DETECT_INPUT }}
-								pad={contentPad[boxesForScrub[0].camera]}
-								fit="none"
-								className="pointer-events-none [grid-area:1/1]"
-								style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto" }}
-								width={previewDims.w}
-								height={previewDims.h}
-							/>
-						)}
-						{frames.length === 0 && (
-							<ImageOff className="h-10 w-10 opacity-40 text-muted [grid-area:1/1]" />
-						)}
-					</div>
-					<ResizeHandle onPointerDown={startResizeDrag} />
-				</>
-			)}
+								</>
+							) : (
+								<ImageOff className="h-10 w-10 opacity-40 text-muted [grid-area:1/1]" />
+							)}
+						</div>
+					)
+				})}
+			</div>
+			<ResizeHandle onPointerDown={startResizeDrag} />
 
 			<div className="flex flex-col px-8 py-1 gap-1">
 				{stoppable ? (
 					<div className="flex items-center gap-2">
-						<Progress
-							value={multiCam ? multiProgress() : Math.round(100 * imagesLoaded / frames.length)}
-							className="h-2 flex-1"
-						/>
+						<Progress value={progress} className="h-2 flex-1" />
 						<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={stopLoading}>
 							<Square className="h-4 w-4" />
 						</Button>
 					</div>
-				) : activeFrameCount > 0 ? (
+				) : frameCount > 0 ? (
 					<CompoundSlider
-						frameCount={activeFrameCount}
+						frameCount={frameCount}
 						scrubIdx={scrubIdx}
 						onScrubChange={setScrubIdx}
 						trimRange={trimRange}
@@ -849,11 +671,11 @@ const ClipMakerFull = () => {
 						<div className="text-xs text-muted">
 							{trimming ? (
 								<span>{trimStart.format("MM/DD HH:mm:ss")} → {trimEnd.format("MM/DD HH:mm:ss")}</span>
-							) : (scrubTime ?? multiScrubTime) ? (
-								<span>{(scrubTime ?? multiScrubTime).format("MM/DD HH:mm:ss")}</span>
+							) : scrubTime ? (
+								<span>{scrubTime.format("MM/DD HH:mm:ss")}</span>
 							) : null}
 						</div>
-						{activeFrameCount > 0 && (
+						{frameCount > 0 && (
 							trimming ? (
 								<div className="flex gap-1">
 									<Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={cancelTrim}>
@@ -866,7 +688,7 @@ const ClipMakerFull = () => {
 								</div>
 							) : (
 								<div className="flex items-center gap-2">
-									{!multiCam && detections.length > 0 && (
+									{cams.some(c => c.detections.length > 0) && (
 										<div
 											onClick={() => setShowBoxes(v => !v)}
 											className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted"
@@ -1058,14 +880,14 @@ const ClipMakerFull = () => {
 											disabled={!canGenerate}
 											onClick={() => generate("video")}
 										>
-											{generating === "video" ? "Generating…" : multiCam ? `Video ×${selectedCams.length}` : "Video"}
+											{anyGenerating ? "Generating…" : activeIdxs.length > 1 ? `Video ×${activeIdxs.length}` : "Video"}
 										</Button>
 										<Button
 											variant="outline"
 											disabled={!canGenerate}
 											onClick={() => generate("zip")}
 										>
-											{generating === "zip" ? "Generating…" : multiCam ? `Archive ×${selectedCams.length}` : "Archive"}
+											{anyGenerating ? "Generating…" : activeIdxs.length > 1 ? `Archive ×${activeIdxs.length}` : "Archive"}
 										</Button>
 									</div>
 								</div>
@@ -1075,11 +897,11 @@ const ClipMakerFull = () => {
 					<Button
 						variant="outline"
 						className={`flex-1 ${paramsStale ? "ring-1 ring-accent text-accent" : ""}`}
-						onClick={multiCam ? () => loadMultiPreview() : confirmPreset}
-						disabled={loading || (multiCam ? !selectedCams.length : camera == null)}
+						onClick={confirmPreset}
+						disabled={loading || activeIdxs.length === 0}
 					>
 						<SkipBack className="size-4" />
-						{(fetching || multiAnyFetching) ? "Fetching…" : (downloadingImages || multiAnyDownloading) ? "Loading…" : (frames.length > 0 || Object.values(camStates).some(s => s.frames.length > 0)) ? "Reload Images" : "Load Images"}
+						{anyFetching ? "Fetching…" : anyDownloading ? "Loading…" : hasLoadedFrames ? "Reload Images" : "Load Images"}
 					</Button>
 				</div>
 				{paramsStale && (
