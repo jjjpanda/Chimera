@@ -287,7 +287,7 @@ const ClipMakerFull = () => {
 		const c = cams[ci]
 		if (!showBoxes || !c || !c.detections.length || !c.frames.length) return []
 		const { timesMs, tol } = camViews[ci]
-		return boxesForScrub(c.detections, timesMs[nearestFrameIndex(timesMs, scrubMs)], tol)
+		return boxesForScrub(c.detections, timesMs, nearestFrameIndex(timesMs, scrubMs), tol)
 	}
 
 	const detectionMarkers = useMemo(() => {

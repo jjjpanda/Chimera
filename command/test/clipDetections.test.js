@@ -32,17 +32,23 @@ describe("frameSpacingMs", () => {
 describe("boxesForScrub", () => {
 	const det = (image, ms) => ({ image, timestamp: new Date(ms).toISOString(), box: [0, 0, 1, 1], type: "person", confidence: 0.9 })
 
-	test("returns boxes of the image nearest the frame, within tolerance", () => {
+	test("returns boxes of the image nearest the scrub frame, within tolerance", () => {
 		const dets = [det("a", 0), det("a", 10), det("b", 1000)]
-		expect(boxesForScrub(dets, 5, 100).map(d => d.image)).toEqual(["a", "a"])
+		expect(boxesForScrub(dets, [0, 1000], 0, 100).map(d => d.image)).toEqual(["a", "a"])
 	})
 
 	test("excludes detections beyond tolerance", () => {
-		expect(boxesForScrub([det("a", 0)], 1000, 100)).toEqual([])
+		expect(boxesForScrub([det("a", 0)], [1000], 0, 100)).toEqual([])
+	})
+
+	test("a detection only shows on its nearest frame, not adjacent ones", () => {
+		const dets = [det("a", 60)]
+		expect(boxesForScrub(dets, [0, 100, 200], 1, 100).map(d => d.image)).toEqual(["a"])
+		expect(boxesForScrub(dets, [0, 100, 200], 0, 100)).toEqual([])
 	})
 
 	test("a null frame time yields nothing", () => {
-		expect(boxesForScrub([det("a", 0)], null, 100)).toEqual([])
+		expect(boxesForScrub([det("a", 0)], [null, 100], 0, 100)).toEqual([])
 	})
 })
 

@@ -22,12 +22,13 @@ const frameSpacingMs = (timesMs) => {
 	return (Math.max(...valid) - Math.min(...valid)) / (valid.length - 1)
 }
 
-const boxesForScrub = (detections, frameMs, tol) => {
+const boxesForScrub = (detections, timesMs, scrubIdx, tol) => {
+	const frameMs = timesMs[scrubIdx]
 	if (frameMs == null) return []
 	const at = (d) => moment(d.timestamp).valueOf()
 	const here = detections.filter(d => {
 		const v = at(d)
-		return Number.isFinite(v) && Math.abs(v - frameMs) <= tol
+		return Number.isFinite(v) && nearestFrameIndex(timesMs, v) === scrubIdx && Math.abs(v - frameMs) <= tol
 	})
 	if (!here.length) return []
 	let best = here[0], bestDiff = Infinity
