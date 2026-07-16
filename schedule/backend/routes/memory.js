@@ -5,7 +5,8 @@ const app = express.Router()
 const client = require("memory").client("MEMORY-HEALTH")
 
 app.get("/status", (req, res) => {
-	client.emit("callback", () => {
+	client.timeout(2000).emit("callback", (err) => {
+		if (err) return res.status(503).send({ error: "memory unavailable" })
 		res.send({})
 	})
 })

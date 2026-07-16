@@ -5,28 +5,36 @@ let scheduledTask = {}
 
 module.exports = (io) => ({
 	createTask: (taskObject) => {
+		if (scheduledTask[taskObject.id]) scheduledTask[taskObject.id].destroy()
 		scheduledTaskConfigs[taskObject.id] = taskObject
-		scheduledTask[taskObject.id] = cron.schedule(
-			taskObject.cronString, 
-			() => io.emit(taskObject.id)
+		scheduledTask[taskObject.id] = cron.createTask(
+			taskObject.cronString,
+			() => {
+				const config = scheduledTaskConfigs[taskObject.id]
+				if (config) io.emit("runTask", config)
+			}
 		)
-		scheduledTask[taskObject.id].start()
+		if (taskObject.running) scheduledTask[taskObject.id].start()
 	},
 
 	startTask: (id, callback=()=>{}) => {
-		scheduledTask[id].start()
-		scheduledTaskConfigs[id].running = true
+		if (scheduledTask[id]) {
+			scheduledTask[id].start()
+			scheduledTaskConfigs[id].running = true
+		}
 		callback(scheduledTaskConfigs)
-	}, 
-    
+	},
+
 	stopTask: (id, callback=()=>{}) => {
-		scheduledTask[id].stop()
-		scheduledTaskConfigs[id].running = false
+		if (scheduledTask[id]) {
+			scheduledTask[id].stop()
+			scheduledTaskConfigs[id].running = false
+		}
 		callback(scheduledTaskConfigs)
 	},
 
 	destroyTask: (id, callback=()=>{}) => {
-		scheduledTask[id].stop()
+		if (scheduledTask[id]) scheduledTask[id].destroy()
 		delete scheduledTask[id]
 		delete scheduledTaskConfigs[id]
 		callback(scheduledTaskConfigs)

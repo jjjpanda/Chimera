@@ -1,0 +1,114 @@
+############################################################
+# motion.conf.example
+#
+# Copy to motion.conf, fill in your values. docker-compose.yml
+# bind-mounts this file plus ./cameraconf/ (see camera_dir
+# below) into the container.
+#
+# WARNING: motion.conf is gitignored. Docker WILL create a
+# directory at the bind-mount path if the file is missing,
+# breaking motion's -c flag. Always copy this file first.
+############################################################
+
+# Run in foreground (PM2 manages the process)
+daemon off
+
+# Logging — stdout is captured by PM2 into log/motion.pm2.log
+log_level 6
+
+############################################################
+# Storage
+#
+# target_dir must be storage_FOLDERPATH + "shared/captures"
+# so the storage backend can find files at
+# {storage_FOLDERPATH}/shared/captures/{camera_id}/...
+############################################################
+
+target_dir /mnt/storage/shared/captures
+
+############################################################
+# Image capture defaults (override per camera in camN.conf)
+############################################################
+
+width 1280
+height 720
+framerate 15
+
+picture_output on
+picture_quality 80
+picture_type jpeg
+
+movie_output off
+snapshot_interval 0
+timelapse_interval 0
+
+# Filename patterns — %t is the camera_id, so the same
+# pattern produces a per-camera subdirectory automatically.
+# Timestamps are wall-clock, so the container must run TZ=UTC (Docker enforces).
+picture_filename %t/%Y%m%d-%H%M%S-%q
+snapshot_filename %t/%Y%m%d-%H%M%S
+movie_filename video/%t/%Y%m%d-%H%M%S
+timelapse_filename timelapses/%t/%Y%m%d
+
+# On-image text overlays
+text_left CAMERA%t
+text_right %Y-%m-%d\n%T-%q
+
+############################################################
+# Motion detection
+############################################################
+
+threshold 1500
+noise_level 32
+despeckle_filter EedDl
+locate_motion_mode off
+minimum_motion_frames 1
+event_gap 60
+
+############################################################
+# Webcontrol / live stream — disabled (livestream service
+# handles RTSP→HLS via ffmpeg in pm2.config.js)
+############################################################
+
+webcontrol_port 0
+webcontrol_localhost off
+webcontrol_parms 0
+
+stream_port 0
+stream_localhost off
+stream_maxrate 2
+
+############################################################
+# Database sink — write a row per saved frame, including
+# file size.
+#
+# Motion's native sql_query can't capture file size (file
+# isn't flushed at INSERT time), so we shell out via
+# on_picture_save AFTER save and compute size with wc -c.
+#
+# Requires postgresql-client in the chimera image (already
+# installed via Dockerfile) and the database_* env vars from
+# .env (database_USER / database_PASSWORD / database_NAME).
+# Host is "postgres" — the compose service name; do NOT use
+# localhost (motion runs inside the chimera container).
+#
+# The storage backend reads frame_files (schema in
+# chimera/prepareDatabase.js).
+############################################################
+
+on_picture_save SZ=$(wc -c "%f" | head -n1 | awk '{print $1;}'); PGPASSWORD="$database_PASSWORD" psql -h postgres -U "$database_USER" -d "$database_NAME" -c "INSERT INTO frame_files(timestamp, camera, name, size) VALUES(now(), %t, '%Y%m%d-%H%M%S-%q.jpg', $SZ);"
+
+############################################################
+# Per-camera include directory
+#
+# Motion loads every *.conf in this directory as a separate
+# camera thread. These conf files are the source of truth for
+# camera id/name/url across all services. Create one per camera
+# in ./cameraconf/ — see cameraconf/camera.conf.example.
+# `npm run preflight` validates them before docker.
+#
+# docker-compose.yml bind-mounts the whole directory:
+#   - ./cameraconf:/etc/motion/cameraconf:ro
+############################################################
+
+camera_dir /etc/motion/cameraconf

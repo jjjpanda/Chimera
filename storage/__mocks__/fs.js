@@ -19,33 +19,35 @@ const fileList = [
 	"output_1_20210101-235959_20210201-235959_zip1-20210301-235959.zip",
 ]
 
-let fs = jest.requireActual("fs")
-fs.readFile = jest.fn().mockImplementation((filePath, callback) => {
-	callback(false, {})
-})
-fs.readdir = jest.fn().mockImplementation((filePath, callback) => {
-	if(filePath == imgDir || filePath == cameraDir){
-		callback(false, fileList)
-	}
-	else{
-		callback(true, [])
-	}
-})
-fs.stat = jest.fn().mockImplementation((filePath, callback) => {
-	if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
-		callback(false)
-	}
-	else{
-		callback(true)
-	}
-})
-fs.unlink = jest.fn().mockImplementation((filePath, callback) => {
-	if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
-		callback(false)
-	}
-	else{
-		callback(true)
-	}
-})
+const actual = jest.requireActual("fs")
 
-module.exports = fs
+module.exports = {
+	...actual,
+	readFile: jest.fn().mockImplementation((filePath, callback) => {
+		callback(false, {})
+	}),
+	readdir: jest.fn().mockImplementation((filePath, callback) => {
+		if(filePath == imgDir || filePath == cameraDir){
+			callback(false, fileList)
+		}
+		else{
+			callback(true, [])
+		}
+	}),
+	stat: jest.fn().mockImplementation((filePath, callback) => {
+		if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
+			callback(false, { size: 1024 })
+		}
+		else{
+			callback(true)
+		}
+	}),
+	unlink: jest.fn().mockImplementation((filePath, callback) => {
+		if(fileList.map(file => path.join(imgDir, file)).includes(filePath)){
+			callback(false)
+		}
+		else{
+			callback(true)
+		}
+	})
+}

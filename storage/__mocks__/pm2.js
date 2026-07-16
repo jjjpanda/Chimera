@@ -7,5 +7,6 @@ module.exports = {
 				unstable_restarts: 0
 			}
 		}])
-	}
+	},
+	restart: jest.fn((name, cb) => cb(null))
 }

@@ -2,57 +2,48 @@
 
 <img src="command/frontend/res/logo.png" alt="logo" width="100"/>
 
-Chimera is a microservices based security camera system for RTSP/IP cameras *(which kinda sorta only runs on linux)*
+Microservices security-camera system for RTSP/IP cameras.
 
-List of microservices: 
+**Services:** [command](command) · [livestream](livestream) · [schedule](schedule) · [storage](storage) · [gateway](gateway) · [memory](memory) · [object](object)
 
-1. [command](command)
-2. [livestream](livestream)
-3. [schedule](schedule)
-4. [storage](storage)
-5. [gateway](gateway)
-6. [memory](memory)
+**Shared:** [lib](lib) (utilities every service imports) · [chimera](chimera) (boot scripts: preflight wizard, env validation, schema creation)
 
-Massive Dependencies:
-1. [motion](https://github.com/Motion-Project/motion) - should be running on same machine as [storage](storage) server for optimal performance. See [storage](storage) as for why.
-2. [ffmpeg](https://ffmpeg.org) - should be installed on same machine as [livestream](livestream) and [storage](storage). 
-3. [heartbeat](https://github.com/jjjpanda/heartbeat) - used to confirm server is still up.
-4. [object](https://github.com/jjjpanda/object) - used to detect objects (still not implemented within start script).
-5. [postgres](https://www.postgresql.org) - the database
+**Bundled in the image:** [motion](https://github.com/Motion-Project/motion) (saves RTSP frames, with [storage](storage)) · [ffmpeg](https://ffmpeg.org) · [heartbeat](https://github.com/jjjpanda/heartbeat) · [postgres](https://www.postgresql.org) (own container)
 
-## Quick Start
+---
+# Quick start (Docker)
 
-### 1. Install motion, ffmpeg, and postgres
-```
-sudo apt-get install motion ffmpeg postgresql
-```
-
-*Or however you need to download it on your machine*
-
-Then, set up a conf for **motion** with all of your cameras. Then, set up **postgres** with a database, port, user, and password of your choosing. **Motion** will also need postgres details in it's conf as well. [*See storage for details.*](storage) 
-
-### 2. Create Environment Variables File
-
-Copy the example env into an .env dotfile:
-```
-cp env.example .env
-```
-
-Fill in the .env with all the info listed ( for optional fields, leave blank after the "=" ). 
-
-### 3. Run Setup
+Bare-metal is unsupported. The image bundles motion, ffmpeg, Node, and pm2, and pins `TZ=UTC` (required — non-UTC misaligns clips/zips/frames).
 
 ```
-npm run setup
+cp env.example .env          # fill in values; leave optional fields blank after =
+cp motion.conf.example motion.conf
+# add a cameraconf/camN.conf per camera (see cameraconf/camera.conf.example)
+npm run docker:build
+npm run docker:up
 ```
 
-### 4. Start Chimera
+- `npm run preflight` seeds and validates `.env` / `motion.conf` / `cameraconf/*.conf` before building; `docker:build`/`up` run it first, so a bad config blocks the build.
+- `docker:logs` tails · `docker:down` stops · `docker:rebuild` redeploys · `docker:delete` wipes volumes.
+- **First run:** no users exist — open the gateway and create the first admin from the setup screen (`POST /authorization/setup`, authorized with `setup_TOKEN`).
 
-If running all or more than one service(s)
+---
+# Architecture
+
+One pm2 process per enabled service, fronted by a Postgres side container. Each service is toggled by `<prefix>_ON`; off means pm2 never launches it.
+
+pm2 ([pm2.config.js](pm2.config.js)) — each app runs `<name>/start.js` as its own process (independent; pm2 restarts crashes per-process, no cross-service fatal chaining):
 ```
-npm start
+command · storage · livestream · schedule · object · gateway · memory   one process each, per <prefix>_ON
+motion                 storage_ON
+ffmpeg × N             one HLS transcoder per camera, livestream_ON
+heartbeat              production only
 ```
-If splitting services
-```
-npm run start:<service>
-```
+
+- `object` and `memory` are single-instance; the rest honor `chimeraInstances`. The gateway is the only public entrypoint — reverse-proxies every `<prefix>_PROXY_ON=true` service and terminates TLS.
+- Boot chain ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
+- Postgres runs as a side container ([docker-compose.yml](docker-compose.yml)); Chimera waits on its healthcheck.
+- TLS renewal (`certbot_ON=true`; disable for BYO certs / upstream TLS): a `certbot` side container issues + renews certs every 12h via HTTP-01 (needs `gateway_PORT=80` so the host publishes port 80) over the shared `acme-webroot` volume at the gateway's `/.well-known`; registers with no email (no LE expiry reminders) and POSTs `alert_URL` on failure. The gateway polls cert mtime and self-restarts (pm2) in the 3–4am UTC window to pick up new certs — first issuance restarts immediately.
+- `chimeraInstances`: `1` = single process; `>1`, `max`, `0` and `-1` = cluster (pm2 reads `0` as every CPU and `-1` as CPUs minus one), which forces `memory_ON=true` so instances coordinate through the memory socket. Any other value — including anything below `-1`, which pm2 would fork rather than cluster — is rejected at boot.
+
+**Schema** ([prepareDatabase.js](chimera/prepareDatabase.js), created idempotently): `frame_files` / `frame_deletes` (storage) · `auth` / `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Full config in [env.example](env.example).

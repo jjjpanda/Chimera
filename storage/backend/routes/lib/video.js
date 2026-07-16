@@ -1,8 +1,6 @@
 var ffmpeg     = require("fluent-ffmpeg")
-const slash    = require("./slash.js")
 var fs         = require("fs")
 var path       = require("path")
-var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 const cliProgress = require("cli-progress")
 const {
@@ -10,7 +8,7 @@ const {
 	filterList,
 	fileName,
 }              = require("./converter.js")
-const {webhookAlert} = require("lib")
+const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
@@ -58,23 +56,22 @@ const createVideoList = (camera, start, end, skip, callback) => {
 	})
 }
 
+const clampFPS = (fps) => {
+	fps = Number(fps)
+	return Number.isFinite(fps) ? Math.min(Math.max(fps, 1), 60) : 20
+}
+
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
-		if(save){
-			webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
-		}
-		else{
-			res.send({
-				id: rand,
-				url: undefined,
-			})
-		}
+		webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
+		fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {})
+		res.send({ id: rand, url: undefined })
 	}
 	else {
 		if(save){
 			console.log("SENDING START ALERT")
-			webhookAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${moment(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}\nEnd: ${moment(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a")}`)
+			webhookAlert(`Video Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 		}
 		else{
 			res.attachment(fileName(camera, start, end, rand, "mp4"))
@@ -84,6 +81,10 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			format: `Video Generation ID: ${rand} [{bar}] {percentage}% | Time Elapsed: {duration}s`,
 			noTTYOutput: true,
 		}, cliProgress.Presets.shades_classic)
+
+		const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
+		const mp4Path = path.join(imgDir, fileName(camera, start, end, rand, "mp4"))
+		let cancelled = false
 
 		let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
 			.inputFormat("concat") //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
@@ -96,25 +97,29 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 			.on("end", () => {
 				bar.stop()
-				fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
+				fs.unlink(txtPath, () => {
 					if(save){
-						webhookAlert(`Your video (${rand}) is finished. Download it at: ${process.env.gateway_HOST}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
+						webhookAlert(`Your video (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
 					}
 				})
 			})
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
-			fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {
-				if(save){
+			if(!save){
+				if(!res.headersSent) res.status(500).end()
+				else res.destroy(err)
+			}
+			fs.unlink(txtPath, () => {
+				if(save && !cancelled){
 					webhookAlert(`Your video (${rand}) could not be completed.`)
 				}
-				fs.unlink(path.join(imgDir, fileName(camera, start, end, rand, "mp4")))
+				fs.unlink(mp4Path, () => {})
 			})
 		})
 
 		client.emit("saveProcessEnder", rand, () => {
-			videoCreator.on("end", () => {})
+			cancelled = true
 			videoCreator.kill()
 		})
 
@@ -143,20 +148,23 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 }
 
 module.exports = {
+	clampFPS,
+
 	createVideo: (req, res) => {
 		//console.log(req)
 		let { camera, start, end, save, fps, skip } = req.body
 
-		fps = fps == undefined ? 20 : fps
+		fps = clampFPS(fps)
 
 		skip = skip == undefined ? 1 : skip
 
 		console.log(camera, start, end, fps)
-		createVideoList(camera, start, end, skip, (err, {rand, frames}) => {
+		createVideoList(camera, start, end, skip, (err, result) => {
 			if(err){
 				res.send({error: true})
 			}
 			else{
+				const {rand, frames} = result
 				if(save == undefined || save == true || save == "true"){
 					save = true
 				}

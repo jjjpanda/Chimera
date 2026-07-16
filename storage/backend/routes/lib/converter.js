@@ -2,13 +2,13 @@ var fs         = require("fs")
 var path       = require("path")
 var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
-var {randomID}    = require("lib")
+var {randomID, gatewayHost}    = require("lib")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 module.exports = {   
 	generateID: () => {
-		return randomID.generate() + "-" + moment().format(dateFormat)
+		return randomID.generate() + "-" + moment.utc().format(dateFormat)
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {
@@ -44,9 +44,10 @@ module.exports = {
 
 	parseFileName: (fileName) => {
 		const fileInfo = fileName.split("_")
+		if (fileInfo.length < 5) return { error: true }
 		const id = fileInfo[4].split(".")[0]
 		return {
-			link: `${process.env.gateway_HOST}/shared/captures/${fileName}`,
+			link: `${gatewayHost()}/shared/captures/${fileName}`,
 			type: fileInfo[4].split(".")[1],
 			id,
 			requested: `${id.split("-")[1]}-${id.split("-")[2]}`,
@@ -63,17 +64,24 @@ module.exports = {
 				callback(defaultName)
 			}
 			else{
-				const file = files.find(file => file.includes(id) && !file.includes(".txt"))
+				const file = files.find(file => {
+					if(file.includes(".txt")) return false
+					const parts = file.split("_")
+					return parts.length >= 5 && parts[4].split(".")[0] === id
+				})
 				callback(file ? file : defaultName)
 			}
 		})
 	},
 
 	validateDays: (req, res, next) => {
-		let { days } = req.body
-		if(days != undefined){
-			req.start = moment().subtract(days, "days")
-			req.end = moment()
+		const { days, hours } = req.body
+		if (hours != undefined) {
+			req.body.start = moment.utc().subtract(hours, "hours").format(dateFormat)
+			req.body.end = moment.utc().format(dateFormat)
+		} else if (days != undefined) {
+			req.body.start = moment.utc().subtract(days, "days").format(dateFormat)
+			req.body.end = moment.utc().format(dateFormat)
 		}
 		next()
 	},
@@ -81,26 +89,35 @@ module.exports = {
 	validateRequest: (req, res, next) => {
 		let { camera, start, end } = req.body
 
-		start = (start == undefined ? moment().subtract(1, "week") : moment(start, dateFormat)).format(dateFormat)
+		start = (start == undefined ? moment.utc().subtract(1, "week") : moment.utc(start, dateFormat)).format(dateFormat)
 
-		end = (end == undefined ? moment() : moment(end, dateFormat)).format(dateFormat)
-        
+		end = (end == undefined ? moment.utc() : moment.utc(end, dateFormat)).format(dateFormat)
+
+		req.body.start = start
+		req.body.end = end
+
 		if(camera == undefined){
 			res.status(400).send({
 				error: true,
 				msg: "no camera"
 			})
 		}
+		else if(!/^\d+$/.test(camera.toString())){
+			res.status(400).send({
+				error: true,
+				msg: "invalid camera"
+			})
+		}
 		else{
-			req.body.camera = camera.toString()
+			req.body.camera = String(parseInt(camera))
 			next()
 		}
 	},
 
 	validateID: (req, res, next) => {
 		const { id } = req.body
-        
-		if(id == undefined){
+
+		if(typeof id !== "string" || id.includes("..") || !/^[A-Za-z0-9._()-]+$/.test(id)){
 			res.status(400).send({
 				error: true,
 				msg: "no id"

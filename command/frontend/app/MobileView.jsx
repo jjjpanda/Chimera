@@ -1,40 +1,52 @@
 import React from "react"
+import { Navigate } from "react-router-dom"
+import { useRole } from "./AuthContext"
+import { adminRoutes } from "../js/routeIndexMapping"
 
 import LiveVideo from "./LiveVideo"
-import FileStatsPieChart from "./FileStatsPieChart.jsx"
-import FileStatsLineChart from "./FileStatsLineChart.jsx"
-import SummaryScrubber from "./SummaryScrubber"
-import TaskList from "./TaskList"
-import ProcessList from "./ProcessList"
-import StatusTree from "./StatusTree"
+import ClipMaker from "./ClipMaker"
+import RecordingsList from "./RecordingsList"
+import Stats from "./Stats.jsx"
+import StorageWidget from "./StorageWidget.jsx"
+import Status from "./StatusTree"
+import AdminPanel from "./AdminPanel"
+import ScheduleDashboard from "./ScheduleDashboard.jsx"
+import ObjectDetections from "./ObjectDetections.jsx"
+import ProcessList from "./ProcessList.jsx"
 
-const MobileView = (props) => {
-	const {index} = props
+const MobileView = ({ index }) => {
+	const role = useRole()
 
-	if(index == "route-1"){
-		return <LiveVideo list/>
-	}
-	else if(index == "route-2"){
-		return [<ProcessList showFooter mobile />, <TaskList />]
-	}
-	else if(index == "route-3"){
-		return <SummaryScrubber mobile />
-	}
-	else if(index == "route-4"){
-		return [
-			<div style={{height: "400px", display: "flex"}}>
-				<FileStatsPieChart mobile />
-			</div>,
-			<div style={{height: "400px", display: "flex"}}>
-				<FileStatsLineChart mobile />
+	if (adminRoutes.has(index) && role !== "admin") return <Navigate to="/" />
+
+	if (index === "route-1") return <ClipMaker />
+
+	if (index === "route-2") return <LiveVideo list />
+
+	if (index === "route-3") return <RecordingsList />
+
+	if (index === "route-4") return <Stats />
+
+	if (index === "route-5") return <ScheduleDashboard mobile />
+
+	if (index === "route-7") return <ObjectDetections mobile />
+
+	if (index === "route-6") return <AdminPanel />
+
+	return (
+		<div className="space-y-4">
+			<LiveVideo mobile />
+			<div className="grid grid-cols-1 gap-4 min-[500px]:grid-cols-2" style={{ gridAutoRows: "15rem" }}>
+				<ClipMaker mini />
+				<ObjectDetections mini />
 			</div>
-		]
-	}
-	return [      
-		<LiveVideo mobile />,
-		<SummaryScrubber numberOfFrames={10} withButton mobile/>,
-		<StatusTree />
-	]
+			<ProcessList mini />
+			<Status />
+			{role === "admin" && <AdminPanel withButton />}
+			{role === "admin" && <StorageWidget />}
+			{role === "admin" && <ScheduleDashboard mini withButton />}
+		</div>
+	)
 }
 
 export default MobileView

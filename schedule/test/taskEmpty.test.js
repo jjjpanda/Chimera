@@ -3,11 +3,13 @@ const app = require("../backend/schedule.js")
 
 jest.mock("lib")
 jest.mock("axios")
+jest.mock("pg")
 jest.mock("memory", () => ({
-	client: (name) => ({
+	client: () => ({
+		timeout() { return this },
 		emit: (event, ...args) => {
 			if(event == "listTask"){
-				args[0]({})
+				args[0](null, {})
 			}
 			else if(event == "createTask"){
 				//do nothing
@@ -28,6 +30,13 @@ describe("Task Routes with an Empty list", () => {
 	let cookieWithBearerToken = "validCookie"
 
 	describe("/task/list", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.get("/task/list")
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("List task", (done) => {
 			supertest(app)
 				.get("/task/list")
@@ -37,6 +46,21 @@ describe("Task Routes with an Empty list", () => {
 	})
     
 	describe("/task/start", () => {
+		test("returns 401 with no cookie", (done) => {
+			supertest(app)
+				.post("/task/start")
+				.send({url: "/convert/createVideo", body: JSON.stringify({}), cronString: "*/10 * * * *"})
+				.expect(401, done)
+		})
+
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/task/start")
+				.send({url: "/convert/createVideo", body: JSON.stringify({}), cronString: "*/10 * * * *"})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("Create task", (done) => {
 			supertest(app)
 				.post("/task/start")
@@ -87,6 +111,14 @@ describe("Task Routes with an Empty list", () => {
 	})
     
 	describe("/task/stop", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/task/stop")
+				.send({id: "literally any id"})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("Stop task that doesn't exist", (done) => {
 			supertest(app)
 				.post("/task/stop")
@@ -97,6 +129,14 @@ describe("Task Routes with an Empty list", () => {
 	})
 
 	describe("/task/destroy", () => {
+		test("returns 403 for non-admin", (done) => {
+			supertest(app)
+				.post("/task/destroy")
+				.send({id: "literally any id"})
+				.set("Cookie", "userCookie")
+				.expect(403, done)
+		})
+
 		test("Destroy task that doesn't exist", (done) => {
 			supertest(app)
 				.post("/task/destroy")

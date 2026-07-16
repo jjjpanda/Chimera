@@ -5,11 +5,20 @@ module.exports = {
 		"node_modules"
 	],
 	coverageProvider: "babel",
+	coverageReporters: [
+		"json",
+		"json-summary",
+		"lcov",
+		"text"
+	],
 	projects: [
-		"<rootDir>/command/jest.config.js", 
+		"<rootDir>/chimera/jest.config.js",
+		"<rootDir>/command/jest.config.js",
 		"<rootDir>/gateway/jest.config.js",
 		"<rootDir>/lib/jest.config.js",
 		"<rootDir>/livestream/jest.config.js",
+		"<rootDir>/memory/jest.config.js",
+		"<rootDir>/object/jest.config.js",
 		"<rootDir>/schedule/jest.config.js",
 		"<rootDir>/storage/jest.config.js"
 	]

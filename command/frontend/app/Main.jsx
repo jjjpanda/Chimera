@@ -1,19 +1,15 @@
 import React from "react"
 
-import { Layout } from "antd"
-const { Content } = Layout
 import SideMenu from "./SideMenu"
 import DesktopView from "./DesktopView"
 
-const Main = (props) => {
-	return (
-		<Layout style={{minHeight: "100vh"}}>
-			<SideMenu index={props.index}/>
-			<Content>
-				<DesktopView index={props.index} />
-			</Content>
-		</Layout>
-	)
-}
+const Main = ({ index }) => (
+	<div className="flex min-h-screen bg-bg">
+		<SideMenu index={index} />
+		<main className="min-w-0 flex-1 px-4 py-4">
+			<DesktopView index={index} />
+		</main>
+	</div>
+)
 
 export default Main

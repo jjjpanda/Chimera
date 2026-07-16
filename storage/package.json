@@ -2,29 +2,29 @@
   "name": "storage",
   "main": "server.js",
   "scripts": {
-    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:acme prepare:env prepare:database",
+    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:database",
     "start": "node start.js",
-    "test": "jest --verbose",
-    "prunewrap": "npm shrinkwrap"
+    "test": "jest --verbose"
   },
   "dependencies": {
     "archiver": "^4.0.2",
     "cli-progress": "^3.9.1",
     "cookie-parser": "^1.4.5",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
     "fluent-ffmpeg": "^2.1.2",
-    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
-    "helmet": "^4.6.0",
+    "heartbeat": "jjjpanda/heartbeat#v1.4.1",
+    "helmet": "^8.0.0",
     "lib": "file:../lib",
     "memory": "file:../memory",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
-    "pg": "^8.7.1",
+    "pg": "^8.11.0",
+    "pm2": "^7.0.3",
     "rimraf": "^3.0.2"
   },
   "peerDependencies": {
-    "jest": "^27.3.1",
+    "jest": "^29.0.0",
     "supertest": "^6.1.6"
   }
 }

@@ -1,0 +1,24 @@
+import { useState, useEffect } from "react"
+import { request, jsonProcessing } from "../js/request.js"
+
+const useTaskRuns = (taskId) => {
+	const [state, setState] = useState({ runs: [], loading: false })
+	const [key, setKey] = useState(1)
+
+	useEffect(() => {
+		setState(s => ({ ...s, loading: true }))
+		const url = taskId ? `/task/runs/${taskId}` : "/task/runs"
+		request(url, { method: "GET" }, (prom) => {
+			jsonProcessing(prom, (data) => {
+				setState({
+					runs: data?.runs ?? [],
+					loading: false
+				})
+			})
+		})
+	}, [key, taskId])
+
+	return [state, () => setKey(k => k + 1)]
+}
+
+export default useTaskRuns

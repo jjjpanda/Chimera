@@ -1,20 +1,26 @@
+const { EventEmitter } = require("events")
 const bcrypt = jest.requireActual("bcryptjs")
 const hashedMockedPassword = bcrypt.hashSync("mockedPassword", bcrypt.genSaltSync(10))
 
-const queryObject = {
-	query: (str, callback) => callback(null, {rows: [{hash: hashedMockedPassword}]})
-}
+const queryFn = jest.fn((query, paramsOrCallback, callback) => {
+	const str = typeof query === "string" ? query : query.text
+	const rows = str.includes("COUNT")
+		? [{ count: "0" }]
+		: [{ hash: hashedMockedPassword, role: "user", revoked: false }]
+	const result = { rows, rowCount: rows.length }
+	const cb = typeof paramsOrCallback === "function" ? paramsOrCallback : (typeof callback === "function" ? callback : null)
+	if (cb) cb(null, result)
+	return Promise.resolve(result)
+})
+
 const mockedPool = {
-	connect: () => {
-		return queryObject
-	},
-	...queryObject,
+	connect: jest.fn(() => Promise.resolve(Object.assign(new EventEmitter(), { query: queryFn, release: jest.fn() }))),
+	query: queryFn,
 	end: jest.fn(),
 	on: jest.fn()
 }
 
-const pg = {
-	Pool: jest.fn(() => mockedPool)
+module.exports = {
+	Pool: jest.fn(() => mockedPool),
+	mockedPool
 }
-
-module.exports = pg

@@ -1,58 +1,51 @@
 import {useEffect, useState} from "react"
 
-import Cookies from "js-cookie"
-import { request } from "../js/request.js"
+import { request, authPromiseHandler } from "../js/request.js"
 
 const timeout = 750
 
-const handleAuthResponse = (res) => {
-	return res.json()
-}
+const checkStatus = () =>
+	request("/authorization/status", { method: "GET" }, authPromiseHandler)
 
-const catchAuthError = (err)=> {
-	return {error: true}
-}
-
-const authPromiseHandler = (prom) => {
-	return prom.then(handleAuthResponse)
-		.catch(catchAuthError)
-}
-
-const attemptVerification = () => {
-	return request("/authorization/verify", {
+const attemptVerification = () =>
+	request("/authorization/verify", {
 		method: "POST",
-		headers: {
-			"Accept": "application/json",
-			"Content-Type": "application/json",
-		},
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 	}, authPromiseHandler)
-}
 
-const attemptLogin = (password, type) => {
-	const url = type == "password" ? "/authorization/login" : "/authorization/requestLink"
-	return request(url, {
+const attemptLogin = (username, password) =>
+	request("/authorization/login", {
 		method: "POST",
-		headers: {
-			"Accept": "application/json",
-			"Content-Type": "application/json",
-		},
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 		credentials: "include",
-		body: JSON.stringify({[type.toLowerCase()]: password})
+		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
-}
 
-const handleLoginAttempt = (verified, timestamp, setState) => {
-	console.log("login attempt", verified)
+const attemptPasswordChange = (password) =>
+	request("/authorization/password", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+		body: JSON.stringify({ password })
+	}, authPromiseHandler)
+
+const attemptSetup = (username, password, token) =>
+	request("/authorization/setup", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+		body: JSON.stringify({ username, password, token })
+	}, authPromiseHandler)
+
+const attemptLogout = () =>
+	request("/authorization/logout", {
+		method: "POST",
+		headers: { "Accept": "application/json", "Content-Type": "application/json" },
+	}, authPromiseHandler)
+
+const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false, theme = null) => {
 	setTimeout(() => {
-		setState((oldState) => ({
-			...oldState,
-			loggedIn: verified
-		}))
+		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false, theme: verified ? theme : null }))
 		setTimeout(() => {
-			setState((oldState) => ({
-				...oldState,
-			    loaded: true
-			}))
+			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
 	}, 500)
 }
@@ -60,34 +53,76 @@ const handleLoginAttempt = (verified, timestamp, setState) => {
 const useAuth = () => {
 	const [state, setState] = useState({
 		loaded: false,
+		setup: null,
+		tokenRequired: false,
 		loggedIn: false,
-		bearerToken: Cookies.get("bearertoken"),
+		role: null,
+		forcePasswordChange: false,
+		theme: null,
 		timestamp: new Date()
 	})
 
 	useEffect(() => {
-		if(state.bearerToken){
-			attemptVerification().then(res => {
-				handleLoginAttempt(!res.error, state.timestamp, setState)
-			})
-		}
-		else{
-			handleLoginAttempt(false, state.timestamp, setState) 
-		}
-	}, [])
-    
-	const tryLogin = (input, type, callback) => {
-		attemptLogin(input, type).then(res => {
-			callback(!res.error)
-			if(type == "password"){
-				handleLoginAttempt(!res.error, state.timestamp, setState)
+		checkStatus().then(res => {
+			if (res.error) {
+				setState(s => ({ ...s, setup: null, loaded: true }))
+				return
 			}
+			const isSetup = res.setup === true
+			setState(s => ({ ...s, setup: isSetup, tokenRequired: !!res.tokenRequired }))
+			if (!isSetup) {
+				handleLoginAttempt(false, null, state.timestamp, setState)
+				return
+			}
+			attemptVerification().then(res => {
+				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
+			})
+		})
+
+		const refreshRole = () => {
+			if (document.hidden) return
+			request("/authorization/verify", {
+				method: "POST",
+				headers: { "Accept": "application/json", "Content-Type": "application/json" },
+			}, prom => prom.then(res => {
+				if (res.status === 401) return handleLoginAttempt(false, null, state.timestamp, setState)
+				if (!res.ok) return
+				res.json().then(body => { if (!body.error) setState(s => ({ ...s, role: body.role, forcePasswordChange: !!body.forcePasswordChange })) }).catch(() => {})
+			}).catch(() => {}))
+		}
+		document.addEventListener("visibilitychange", refreshRole)
+		return () => document.removeEventListener("visibilitychange", refreshRole)
+	}, [])
+
+	const tryLogin = (username, password, callback) => {
+		attemptLogin(username, password).then(res => {
+			callback(!res.error, res.errors)
+			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
 		})
 	}
 
-	console.log("LOADED:", state.loaded, "\nLOGGED IN:", state.loggedIn)
+	const trySetup = (username, password, token, callback) => {
+		attemptSetup(username, password, token).then(res => {
+			callback(!res.error, res.errors)
+			if (!res.error) setTimeout(() => setState(s => ({ ...s, setup: true })), 1500)
+		})
+	}
 
-	return [state.loaded, state.loggedIn, tryLogin]
+	const changePassword = (password, callback) => {
+		attemptPasswordChange(password).then(res => {
+			if (!res.error) setState(s => ({ ...s, forcePasswordChange: false }))
+			callback(!res.error, res.errors)
+		})
+	}
+
+	const signOut = (callback) => {
+		attemptLogout().then(res => {
+			if (!res.error) setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null }))
+			callback(!res.error, res.errors)
+		})
+	}
+
+	return { loaded: state.loaded, setup: state.setup, tokenRequired: state.tokenRequired, loggedIn: state.loggedIn, role: state.role, forcePasswordChange: state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, theme: state.theme }
 }
 
 export default useAuth

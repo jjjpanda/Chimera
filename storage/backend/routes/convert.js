@@ -1,5 +1,6 @@
 var express    = require("express")
-var {validateBody} = require("lib")
+var {validateBody, auth} = require("lib")
+const { requireAdmin } = auth
 var {
 	validateDays,
 	validateRequest,
@@ -21,14 +22,14 @@ var {
 
 const app = express.Router()
 
-app.post("/createVideo", validateBody, validateDays, validateRequest, createVideo)
+app.post("/createVideo", requireAdmin, validateBody, validateDays, validateRequest, createVideo)
 app.post("/listFramesVideo", validateBody, validateDays, validateRequest, listOfFrames)
 
-app.post("/createZip", validateBody, validateRequest, createZip)
+app.post("/createZip", requireAdmin, validateBody, validateDays, validateRequest, createZip)
 
-app.post("/statusProcess", validateBody, validateID, statusProcess)
-app.post("/cancelProcess", validateBody, validateID, cancelProcess)
+app.post("/statusProcess", requireAdmin, validateBody, validateID, statusProcess)
+app.post("/cancelProcess", requireAdmin, validateBody, validateID, cancelProcess)
 app.get("/listProcess", listProcess)
-app.post("/deleteProcess", validateBody, validateID, deleteProcess)
+app.post("/deleteProcess", requireAdmin, validateBody, validateID, deleteProcess)
 
 module.exports = app

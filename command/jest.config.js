@@ -7,6 +7,7 @@ module.exports = {
 		"json"
 	],
 	setupFiles: ["dotenv/config"],
+	testPathIgnorePatterns: ["/node_modules/", "/e2e/"],
 	testTimeout: 10000,
 	transform: {
 		"\\/(frontend|backend|dist)\\/.+\\.jsx?$": "babel-jest"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 
 import {request, jsonProcessing} from "../js/request.js"
 
@@ -32,9 +32,9 @@ const listTasks = (setState) => {
 }
 
 const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
-	jsonProcessing(prom, (data) => {
+	jsonProcessing(prom, () => {
 		setTimeout(() => {
-			setKey(key+1) 
+			setKey(k => k + 1)
 		}, 1500)
 	})
 }
@@ -87,11 +87,14 @@ const useTasks = () => {
 		listTasks(setState)
 	}, [key])
 
+	const reload = () => setKey(k => k + 1)
+
 	return [
-		state, 
+		state,
 		restartTasksGenerator(key, setKey),
 		stopTasksGenerator(key, setKey),
-		deleteTasksGenerator(key, setKey)
+		deleteTasksGenerator(key, setKey),
+		reload
 	]
 }
 

@@ -7,8 +7,13 @@ shared
 feed
 *.log
 *.conf
+motion.conf
 eslint
 .well-known
 log
 coverage
 objectTemp
+objectCaptures
+*.onnx
+command/test-results
+command/playwright-report

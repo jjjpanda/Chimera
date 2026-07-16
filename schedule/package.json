@@ -2,25 +2,23 @@
   "name": "schedule",
   "main": "server.js",
   "scripts": {
-    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:env",
     "start": "node start.js",
-    "test": "jest --verbose",
-    "prunewrap": "npm shrinkwrap"
+    "test": "jest --verbose"
   },
   "dependencies": {
-    "heartbeat": "jjjpanda/heartbeat#v1.3.0",
-    "memory": "file:../memory",
+    "axios": "^1.7.0",
     "cookie-parser": "^1.4.5",
-    "express": "^4.17.1",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "heartbeat": "jjjpanda/heartbeat#v1.4.1",
+    "helmet": "^8.0.0",
     "lib": "file:../lib",
-    "helmet": "^4.6.0",
-    "moment": "^2.29.1",
-    "node-cron": "^3.0.0",
-    "axios": "^0.24.0",
-    "dotenv": "^10.0.0"
+    "memory": "file:../memory",
+    "node-cron": "^4.5.0",
+    "pg": "^8.21.0"
   },
   "peerDependencies": {
-    "jest": "^27.3.1",
+    "jest": "^29.0.0",
     "supertest": "^6.1.6"
   }
 }

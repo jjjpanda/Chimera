@@ -1,14 +1,30 @@
+const loginAttempts = require("../../memory/lib/loginAttempts.js")
+const loginStore = loginAttempts()
+
 module.exports = {
-	client: (name) => ({
-		emit: (event, ...args) => {
-			if(event == "savePassword"){
-				args[1]()
-			}
-			else if(event == "verifyPassword"){
-				args[1](false)
-			}
-		},
-		on: () => {}
-	}),
-	server: () => {}
+	client: () => {
+		const sock = {
+			emit: (event, ...args) => {
+				if(event == "savePassword"){
+					args[1]()
+				}
+				else if(event == "verifyPassword"){
+					args[1](false)
+				}
+				else if(event == "loginReserve"){
+					const ack = args.pop()
+					loginStore.loginReserve(...args, (blocked) => ack(null, blocked))
+				}
+				else if(event == "loginRelease"){
+					loginStore.loginRelease(...args)
+				}
+			},
+			on: () => {},
+			connected: true,
+			timeout: () => sock
+		}
+		return sock
+	},
+	server: () => {},
+	loginAttempts
 }

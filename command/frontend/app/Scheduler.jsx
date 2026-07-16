@@ -1,47 +1,47 @@
-import React, {useState} from "react"
-
-import { Space, Input, Typography, Button } from "antd"
+import React, { useState } from "react"
 
 import cronstrue from "cronstrue"
 
-const humanReadableCronWithErrorCheck = (cronString) => {
+import { Input } from "../components/ui/input"
+import { Button } from "../components/ui/button"
+import { Label } from "../components/ui/label"
+
+const humanReadableCron = (cronString) => {
 	try {
 		return cronstrue.toString(cronString)
-	} catch(e){
+	} catch (e) {
 		return ""
 	}
 }
 
-const cronErrorCheck = (cronString) => {
+const cronIsInvalid = (cronString) => {
+	if (/(^| )\/\d/.test(cronString)) return true
 	try {
 		cronstrue.toString(cronString)
 		return false
-	} catch(e){
+	} catch (e) {
 		return true
 	}
 }
 
-const Scheduler = (props) => {
-	const [cronString, setCronString] = useState(props.cronString)
+const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false }) => {
+	const [cronString, setCronString] = useState(initial)
 
 	return (
-		<Space direction="vertical">
-			<Space>
-				<Input 
-					value={cronString} 
-					onChange={(e) => {
-						const {value} = e.target
-						setCronString(value)
-					}}
+		<div className="flex flex-col gap-1.5">
+			<Label className="text-xs text-muted">CRON expression</Label>
+			<div className="flex items-center gap-2">
+				<Input
+					value={cronString}
+					onChange={(e) => setCronString(e.target.value)}
 					placeholder="* * * * *"
 				/>
-				<Button 
-					disabled={cronErrorCheck(cronString)}
-					onClick={() => props.onEnter(props.url, props.body, cronString)}
-				> Schedule </Button>
-			</Space>
-			<Typography>{humanReadableCronWithErrorCheck(cronString)}</Typography>
-		</Space>
+				<Button disabled={disabled || cronIsInvalid(cronString)} onClick={() => onEnter(url, cronString)}>
+					Schedule
+				</Button>
+			</div>
+			<p className="min-h-5 text-sm text-muted">{cronIsInvalid(cronString) ? "" : humanReadableCron(cronString)}</p>
+		</div>
 	)
 }
 

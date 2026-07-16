@@ -1,0 +1,23 @@
+{
+  "name": "object",
+  "main": "server.js",
+  "scripts": {
+    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:database",
+    "start": "node start.js",
+    "test": "jest --verbose"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "heartbeat": "jjjpanda/heartbeat#v1.4.1",
+    "helmet": "^8.0.0",
+    "lib": "file:../lib",
+    "memory": "file:../memory",
+    "onnxruntime-node": "^1.20.0"
+  },
+  "peerDependencies": {
+    "jest": "^29.0.0",
+    "supertest": "^6.1.6"
+  }
+}

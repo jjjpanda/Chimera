@@ -1,16 +1,10 @@
 import React from "react"
-import { useParams } from "react-router-dom"
-
 import LoginForm from "./LoginForm.jsx"
 
-const LoginPage = (props) => {
-	if(props.withPassword){
-		const {password} = useParams()
-		return <LoginForm passwordAttempt={password} {...props} />
-	}
-	else{
-		return <LoginForm {...props} />
-	}
-}
+const LoginPage = (props) => (
+	<div className="min-h-screen bg-bg flex items-center justify-center">
+		<LoginForm {...props} />
+	</div>
+)
 
 export default LoginPage

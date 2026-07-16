@@ -1,31 +1,28 @@
 # Command <img src="frontend/res/logo.png" alt="logo" width="20"/> 
 
-The command server is face of the operation. It runs the web-app and the authentication of the other endpoints. 
+Serves the web app and handles authentication, RBAC, and session management.
 
 ---
-# Routes
-## ▶ /authorization
+# API
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|POST|/login|Auth Routes|N/A|N/A|
-|POST|/requestLink|Auth Routes|N/A|N/A|
-|POST|/verify|Auth Routes|N/A|N/A|
-## ▶ /
+Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth/RBAC/sessions live here; other services validate against this service's `auth`/`sessions` tables via [lib](../lib).
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/res|res|N/A|N/A|
-|GET|/|Serves main website|None|html|
-|GET|/live|Serves main website|None|html|
-|GET|/process|Serves main website|None|html|
-|GET|/scrub|Serves main website|None|html|
-|GET|/stats|Serves main website|None|html|
-|GET|/login|Serves the login page|None|html|
-|GET|/login/:password|Attempts login with password as URL param|None|html|
+- login/logout, session verification
+- first-admin bootstrap + admin recovery (`/authorization/setup`)
+- admin-only user and session management (create/list/update/delete users; list/revoke sessions)
+- theme and password changes
+- list cameras (RTSP credentials stripped) for the web app
 
-## ▶ /command
+`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when no admin exists; it cannot reset or take over an existing account. `/setup` is public but rate-limited.
 
-|Type|Route|Description|Parameters|Returns|
-| :-|:- |:-:|:-:|:-:|
-|GET|/health|Confirms server alive|N/A|N/A|
+---
+# Web app
+
+- Serves the compiled SPA (`dist/`, built from `frontend/`) at `/`, `/login`, and every app path; `/res` serves static assets.
+- Client-side React ([frontend/App.jsx](frontend/App.jsx)); unauthenticated visitors redirect to `/login`.
+- Sections: Home, Live, Clip Maker, Recordings, Stats, Schedule, Objects, and an admin-only Admin (hidden unless role is `admin`). Mobile shows a subset.
+
+---
+# Config
+
+`command_ON`, `command_PORT`, `command_HOST`, `command_PROXY_ON`, `SECRETKEY`, `setup_TOKEN`; see [../env.example](../env.example).

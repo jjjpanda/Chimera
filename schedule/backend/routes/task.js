@@ -1,6 +1,7 @@
 var express    = require("express")
 
-var { validateBody } = require("lib")
+var { validateBody, auth } = require("lib")
+const { requireAdmin } = auth
 var {
 	validateStartableTask,
 	validateId,
@@ -8,14 +9,17 @@ var {
 	stopTask,
 	destroyTask,
 	taskList,
-	sendList
+	sendList,
+	taskRuns
 }              = require("./lib/scheduler.js")
 
 const app = express.Router()
 
-app.post("/start", validateBody, validateStartableTask, taskList, startNewTask)
-app.get("/list", taskList, sendList)
-app.post("/stop", validateBody, validateId, stopTask)
-app.post("/destroy", validateBody, validateId, destroyTask)
+app.post("/start", requireAdmin, validateBody, validateStartableTask, startNewTask)
+app.get("/list", requireAdmin, taskList, sendList)
+app.post("/stop", requireAdmin, validateBody, validateId, stopTask)
+app.post("/destroy", requireAdmin, validateBody, validateId, destroyTask)
+app.get("/runs", requireAdmin, taskRuns)
+app.get("/runs/:taskId", requireAdmin, taskRuns)
 
 module.exports = app

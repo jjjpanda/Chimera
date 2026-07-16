@@ -1,59 +1,75 @@
-import {useEffect, useState} from "react"
+import { useEffect, useState, useRef } from "react"
 
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
+import toast from "../js/toast.js"
 
-const listVideos = (state, setState) => {
-	setState((oldState) => ({
-		...oldState,
-		loading: true,
-		videoList: []
-	}))
+const listVideos = (cameras, setState, seqRef) => {
+	const seq = ++seqRef.current
+	setState((old) => ({ ...old, loading: true }))
 	request("/livestream/status", {
 		method: "GET",
-		headers: {
-			"Content-Type": "application/json",
-		},
+		headers: { "Content-Type": "application/json" },
 		mode: "cors"
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			console.log(data)
-			if(DataTransferItemList){
-				setState((oldState) => ({
-					...oldState,
-					loading: false,
-					videoList: data.map((cam) => parseInt(cam.name.split("_")[3])).sort((camNumA, camNumB) => {
-						return camNumA - camNumB
-					}).map((num) => ({
-						camera: oldState.cameras[num - 1],
+			if (seq !== seqRef.current) return
+			const nums = (Array.isArray(data) ? data : [])
+				.map((cam) => parseInt(cam.name.split("_")[3]))
+				.sort((a, b) => a - b)
+			setState((old) => ({
+				...old,
+				loading: false,
+				lastUpdated: moment().format("h:mm:ss a"),
+				videoList: nums.map((num) => {
+					const cam = cameras.find((c) => c.id === num)
+					return {
+						camera: cam ? cam.name : `Camera ${num}`,
+						online: true,
 						url: `/livestream/feed/${num}/video.m3u8`
-					})),
-					lastUpdated: moment().format("h:mm:ss a")
-				}))
-			}	
+					}
+				})
+			}))
 		})
 	})
 }
 
-const attemptRestart = (camera) => {
+const attemptRestart = (camera) =>
 	request("/livestream/restart", {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({camera}),
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ camera }),
 		mode: "cors"
-	})
-}
+	}, (prom) => prom.then((res) => res.ok).catch(() => false))
 
-const useLiveVideo = (initialState) => {
-	const [state, setState] = useState(initialState)
+const useLiveVideo = (cameras) => {
+	const seqRef = useRef(0)
+	const [state, setState] = useState({
+		loading: false,
+		restarting: false,
+		lastUpdated: moment().format("h:mm:ss a"),
+		videoList: []
+	})
+
+	const refresh = () => listVideos(cameras, setState, seqRef)
+
+	const restartAll = () => {
+		if (!cameras.length || state.restarting) return
+		setState((old) => ({ ...old, restarting: true }))
+		toast("Restarting livestreams…")
+		Promise.all(cameras.map((cam) => attemptRestart(cam.id))).then((results) => {
+			const failed = results.filter((ok) => !ok).length
+			if (failed) toast(`${failed} camera${failed === 1 ? "" : "s"} could not be restarted`)
+			setState((old) => ({ ...old, restarting: false }))
+			refresh()
+		})
+	}
 
 	useEffect(() => {
-		listVideos(state, setState)
-	}, [])
+		refresh()
+	}, [cameras])
 
-	return [state, setState, attemptRestart]
+	return [state, refresh, restartAll]
 }
 
 export default useLiveVideo

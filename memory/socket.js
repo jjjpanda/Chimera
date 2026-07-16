@@ -1,6 +1,6 @@
 const { Server } = require("socket.io")
 
-const { isPrimeInstance } = require("lib")
+const { isPrimeInstance, timingSafeCompare } = require("lib")
 
 module.exports = () => {
 	if(process.env.memory_ON == "true" && isPrimeInstance){
@@ -12,31 +12,27 @@ module.exports = () => {
 				credentials: true
 			},
 			allowRequest: (req, callback) => {
-				const authorized = req.headers.authorization == process.env.memory_AUTH_TOKEN
+				const authorized = timingSafeCompare(req.headers.authorization, process.env.memory_AUTH_TOKEN)
 				callback(authorized ? "OK" : "UNAUTHORIZED", authorized)
 			}
 		})
 
 		const {createTask, startTask, stopTask, destroyTask, listTasks} = require("./lib/scheduledTasks.js")(io)
-		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")(io)
-		const {savePassword, verifyPassword, deletePassword} = require("./lib/tempPassword.js")(io)
-		const cronTask = require("./lib/cronTask.js")(io)
+		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")()
+		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
+		const sessionSync = require("./lib/sessionSync.js")
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
         
 		io.on("connection", client => {
+			const {sessionInvalidate, sessionInvalidateUser, sessionInvalidateAll} = sessionSync(client)
+
 			client.on("log", data => console.log(data))
 
 			client.on("callback", (callback) => {
 				callback()
 			})
 
-			client.on("cron", cronTask)
-
-			client.on("savePassword", savePassword)
-			client.on("verifyPassword", verifyPassword)
-			client.on("deletePassword", deletePassword)
-            
 			client.on("createTask", createTask)
 			client.on("startTask", startTask)
 			client.on("stopTask", stopTask)
@@ -45,6 +41,13 @@ module.exports = () => {
 
 			client.on("saveProcessEnder", saveProcessEnder)
 			client.on("cancelProcess", cancelProcess)
+
+			client.on("loginReserve", loginReserve)
+			client.on("loginRelease", loginRelease)
+
+			client.on("sessionInvalidate", sessionInvalidate)
+			client.on("sessionInvalidateUser", sessionInvalidateUser)
+			client.on("sessionInvalidateAll", sessionInvalidateAll)
 
 			client.on("disconnect", () => {
 				console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)

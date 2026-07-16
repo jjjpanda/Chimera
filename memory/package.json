@@ -2,16 +2,14 @@
   "name": "memory",
   "main": "server.js",
   "scripts": {
-    "prestart": "cd .. && npm-run-all -s --npm-path npm prepare:env",
     "start": "node start.js",
-    "test": "jest --verbose",
-    "prunewrap": "npm shrinkwrap"
+    "test": "jest --verbose"
   },
   "dependencies": {
-    "socket.io": "^4.4.0",
-    "socket.io-client": "^4.4.0",
+    "socket.io": "^4.7.0",
+    "socket.io-client": "^4.7.0",
     "lib": "file:../lib",
-    "node-cron": "^3.0.0",
-    "dotenv": "^10.0.0"
+    "node-cron": "^4.5.0",
+    "dotenv": "^16.4.0"
   }
 }

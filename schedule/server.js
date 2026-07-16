@@ -1,11 +1,18 @@
-const {handleServerStart} = require("lib")
+const {handleServerStart, isPrimeInstance} = require("lib")
 const app = require("./backend/schedule.js")
+const { registerTaskRunner, autoRegisterCleanup, rehydrateTasks, startDbPruning } = require("./backend/routes/lib/scheduler.js")
 
 module.exports = {
 	start: () => {
 		const successCallback = () => {
 			console.log(`⌚ Schedule On ▶ PORT ${process.env.schedule_PORT}`)
 			console.log("\t▶ Scheduler Routes:\t /task")
+			if (isPrimeInstance) {
+				registerTaskRunner()
+				autoRegisterCleanup()
+				rehydrateTasks()
+				startDbPruning()
+			}
 		}
 		const failureCallback = () => {
 			console.log("⌚ Schedule Off ❌")
