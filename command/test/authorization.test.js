@@ -37,25 +37,29 @@ describe("Authorization Routes", () => {
 	})
 
 	describe("POST /authorization/setup", () => {
-		test("returns 200 on first-time setup", async () => {
+		test("returns 200 on first-time setup with a valid setup_TOKEN", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const spy = jest.spyOn(auth, "invalidateUser")
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // no admin exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123" })
+				.send({ username: "admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(spy).toHaveBeenCalled()
 		})
 
-		test("returns 403 when table already has a row", async () => {
-			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
-			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
-			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // INSERT
+		test("refuses setup when setup_TOKEN is not configured", async () => {
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "password123" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
 		test("allows admin recovery with a valid setup_TOKEN when no admin exists", async () => {
@@ -141,35 +145,39 @@ describe("Authorization Routes", () => {
 		})
 
 		test("returns 400 when username or password is missing", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin" })
+				.send({ username: "admin", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body.error).toBe(true)
 		})
 
 		test("returns 400 for username containing slash", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "bad/admin", password: "password123" })
+				.send({ username: "bad/admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "short" })
+				.send({ username: "admin", password: "short", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
 		})
 
 		test("returns 500 when the transaction throws a generic error", async () => {
+			process.env.setup_TOKEN = "boot-token"
 			const errSpy = jest.spyOn(console, "error").mockImplementation(() => {})
 			mockedPool.query.mockRejectedValueOnce(new Error("db down"))
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123" })
+				.send({ username: "admin", password: "password123", token: "boot-token" })
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 			expect(errSpy).toHaveBeenCalled()
@@ -277,6 +285,27 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(401)
 			expect(res.body).toEqual({ error: "unauthorized" })
+		})
+	})
+
+	describe("CSRF protection on cookie-authed routes", () => {
+		const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
+
+		test("rejects a cross-site POST with 403", async () => {
+			const res = await supertest(app)
+				.post("/authorization/verify")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.set("Sec-Fetch-Site", "cross-site")
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: "forbidden" })
+		})
+
+		test("allows a same-origin POST", async () => {
+			const res = await supertest(app)
+				.post("/authorization/verify")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.set("Sec-Fetch-Site", "same-origin")
+			expect(res.status).toBe(200)
 		})
 	})
 
@@ -833,6 +862,18 @@ describe("Authorization Routes", () => {
 					.send({})
 			}
 			expect(res.status).toBe(400)
+		})
+
+		test("locks a single account across distinct IPs", async () => {
+			let res
+			for (let i = 0; i < 11; i++) {
+				res = await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `198.51.100.${100 + i}`)
+					.send({ username: "lockme", password: "wrongpassword" })
+			}
+			expect(res.status).toBe(429)
+			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
 		})
 	})
 

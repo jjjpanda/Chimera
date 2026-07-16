@@ -35,6 +35,23 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 		if (e.key === "Enter") onSubmit()
 	}
 
+	if (!tokenRequired) {
+		return (
+			<div className="min-h-screen bg-bg flex items-center justify-center">
+				<Card className="w-80 bg-surface border-border">
+					<CardHeader className="items-center gap-2 pb-2">
+						<img src="/res/logo.png" alt="Chimera" className="h-12 w-12 object-contain" />
+						<CardTitle className="text-primary text-xl">Chimera</CardTitle>
+						<p className="text-muted text-sm">Setup unavailable</p>
+					</CardHeader>
+					<CardContent>
+						<p className="text-muted text-sm">Set the <code>setup_TOKEN</code> environment variable to create the admin account.</p>
+					</CardContent>
+				</Card>
+			</div>
+		)
+	}
+
 	return (
 		<div className="min-h-screen bg-bg flex items-center justify-center">
 			<Card className="w-80 bg-surface border-border">
