@@ -201,6 +201,20 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false, role: "user", theme: "system" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
+			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
+		})
+
+		test("sets Secure attribute on bearertoken cookie when gateway_HTTPS_Redirect=true", async () => {
+			jest.resetModules()
+			process.env.gateway_HTTPS_Redirect = "true"
+			const freshApp = require("../backend/command.js")
+			const res = await supertest(freshApp)
+				.post("/authorization/login")
+				.send({ username: "admin", password: "mockedPassword" })
+			delete process.env.gateway_HTTPS_Redirect
+			jest.resetModules()
+			expect(res.status).toBe(200)
+			expect(res.headers["set-cookie"][0]).toMatch(/; ?Secure/i)
 		})
 
 		test("rejects login when a forced temp password has expired", async () => {

@@ -22,7 +22,7 @@ Forwarded with `X-Forwarded-*` (`xfwd`). The gateway does no auth — each servi
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS.
+`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It also gates the `Secure` flag on [command](../command)'s auth cookie — set it on any TLS deploy, even if not redirecting HTTP traffic.
 
 ---
 # ACME challenges
