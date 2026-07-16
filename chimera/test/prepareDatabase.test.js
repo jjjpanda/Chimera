@@ -1,7 +1,7 @@
 jest.mock("pg", () => ({ Pool: jest.fn(() => ({ query: jest.fn(), on: jest.fn() })) }))
 
 const { Pool } = require("pg")
-const { creationTasks, missingColumns } = require("../prepareDatabase.js")
+const { creationTasks, missingColumns, runCreationTasks } = require("../prepareDatabase.js")
 const poolConfig = Pool.mock.calls[0][0]
 const poolInstance = Pool.mock.results[0].value
 
@@ -58,5 +58,47 @@ describe("prepareDatabase migration tasks", () => {
 		poolInstance.query.mockResolvedValueOnce({ rows: [{ column_name: "id" }, { column_name: "url" }] })
 		const missing = await missingColumns("scheduled_tasks", ["id", "url"])
 		expect(missing).toEqual([])
+	})
+})
+
+describe("runCreationTasks", () => {
+	const columnRows = (columns) => ({ rows: columns.map((c) => ({ column_name: c })) })
+
+	beforeEach(() => {
+		poolInstance.query.mockReset()
+	})
+
+	test("an existing table (42P07) with all expected columns reports ok", async () => {
+		poolInstance.query.mockImplementation((query, params) => {
+			if (/information_schema/.test(query)) {
+				const task = creationTasks.find((t) => t.table === params[0])
+				return Promise.resolve(columnRows(task.columns))
+			}
+			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
+			return Promise.resolve({ rows: [] })
+		})
+		const issues = await runCreationTasks()
+		expect(issues).toBe(false)
+	})
+
+	test("an existing table (42P07) missing expected columns reports issues", async () => {
+		poolInstance.query.mockImplementation((query, params) => {
+			if (/information_schema/.test(query)) {
+				return params[0] === "auth" ? Promise.resolve(columnRows(["id", "username", "hash", "role"])) : Promise.resolve(columnRows(["id"]))
+			}
+			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
+			return Promise.resolve({ rows: [] })
+		})
+		const issues = await runCreationTasks()
+		expect(issues).toBe(true)
+	})
+
+	test("a schema-check failure after 42P07 reports issues instead of throwing", async () => {
+		poolInstance.query.mockImplementation((query) => {
+			if (/information_schema/.test(query)) return Promise.reject(new Error("connection lost"))
+			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
+			return Promise.resolve({ rows: [] })
+		})
+		await expect(runCreationTasks()).resolves.toBe(true)
 	})
 })

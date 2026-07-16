@@ -26,7 +26,7 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 ---
 # prepareDatabase.js
 
-Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once. An existing table (`42P07`) is checked against `information_schema.columns` for the expected v6 columns — only a match is treated as success; missing columns exit `1` and list what's missing. Indexes use `IF NOT EXISTS`. Any other error exits `1`.
+Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once. An existing table (`42P07`) has its column names (not types) checked against `information_schema.columns` for the expected v6 shape — only a match is treated as success; missing columns exit `1` and list what's missing. Indexes use `IF NOT EXISTS`. Any other error exits `1`.
 
 No v5 → v6 upgrade path: v6 changed the `auth` table shape, so a v5 database will fail this check. Run `npm run docker:delete` to drop the volume and start fresh.
 

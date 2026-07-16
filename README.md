@@ -100,7 +100,7 @@ npm run docker:up
 <details>
 <summary><b>Database schema</b></summary>
 
-Created by [prepareDatabase.js](chimera/prepareDatabase.js): tables/indexes are created if missing, and an existing table is verified against the expected columns rather than assumed correct. Full config in [env.example](env.example).
+Created by [prepareDatabase.js](chimera/prepareDatabase.js): tables/indexes are created if missing, and an existing table's column names (not types) are checked against what's expected rather than assumed correct. Full config in [env.example](env.example).
 
 | Tables | Owner |
 |---|---|

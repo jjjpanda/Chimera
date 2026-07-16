@@ -76,36 +76,43 @@ const creationTasks = [
 
 async function missingColumns(table, columns) {
 	const { rows } = await pool.query(
-		"SELECT column_name FROM information_schema.columns WHERE table_name = $1",
+		"SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = ANY(current_schemas(false))",
 		[table]
 	)
 	const existing = new Set(rows.map((r) => r.column_name))
 	return columns.filter((c) => !existing.has(c))
 }
 
-module.exports = { creationTasks, missingColumns }
-
-if (require.main === module) {
+async function runCreationTasks() {
 	let issues = false
-	;(async () => {
-		for (const { query, description, table, columns } of creationTasks) {
-			let ok
-			let detail = ""
-			try {
-				await pool.query(query)
-				ok = true
-			} catch (e) {
-				if (e && e.code == "42P07" && table) {
+	for (const { query, description, table, columns } of creationTasks) {
+		let ok
+		let detail = ""
+		try {
+			await pool.query(query)
+			ok = true
+		} catch (e) {
+			if (e && e.code == "42P07" && table) {
+				try {
 					const missing = await missingColumns(table, columns)
 					ok = missing.length === 0
-					if (!ok) detail = ` — missing columns: ${missing.join(", ")}`
-				} else {
+					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to reset the database.`
+				} catch (schemaError) {
 					ok = false
+					detail = ` — failed to verify schema: ${schemaError.message}`
 				}
+			} else {
+				ok = false
 			}
-			if (!ok) issues = true
-			console.log(`${description} ${ok ? "✔️" : "❌"}${detail}`)
 		}
-		process.exit(issues ? 1 : 0)
-	})()
+		if (!ok) issues = true
+		console.log(`${description} ${ok ? "✔️" : "❌"}${detail}`)
+	}
+	return issues
+}
+
+module.exports = { creationTasks, missingColumns, runCreationTasks }
+
+if (require.main === module) {
+	runCreationTasks().then((issues) => process.exit(issues ? 1 : 0))
 }
