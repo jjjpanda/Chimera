@@ -414,6 +414,25 @@ describe("File Routes", () => {
 				expect(query).not.toHaveBeenCalled()
 			})
 
+			test("confines a traversal-laden frame name to the camera directory", async () => {
+				process.env.storage_MAX_GB = "1"
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "../../../../etc/passwd.jpg", size: "600000000" },
+						{ id: 2, camera: "1", name: "b.jpg", size: "600000000" }
+					] }))
+				const res = await supertest(app)
+					.post("/file/pathAutoClean")
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				const base = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "passwd.jpg"))
+				unlinkSpy.mock.calls.forEach(([p]) => {
+					expect(path.resolve(String(p)).startsWith(path.resolve(base) + path.sep)).toBe(true)
+				})
+			})
+
 			test("skips when non-frame artifacts dominate and deleting all frames can't reach target", async () => {
 				process.env.storage_MAX_GB = "1"
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
