@@ -3,12 +3,13 @@ const { json, mockApi } = require("./api")
 
 test.describe("authentication", () => {
 	test("first-time setup form is shown and submits", async ({ page }) => {
-		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: false }) })
+		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: true }) })
 		await page.goto("/")
 		await expect(page.getByText("Create your account")).toBeVisible()
 		await page.getByPlaceholder("username").fill("admin")
 		await page.getByPlaceholder("password", { exact: true }).fill("password123")
 		await page.getByPlaceholder("confirm password").fill("password123")
+		await page.getByPlaceholder("setup token").fill("boot-token")
 		await page.getByRole("button", { name: "Create Account" }).click()
 		await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible()
 	})
@@ -17,6 +18,13 @@ test.describe("authentication", () => {
 		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: true }) })
 		await page.goto("/")
 		await expect(page.getByPlaceholder("setup token")).toBeVisible()
+	})
+
+	test("setup is unavailable when no setup token is configured", async ({ page }) => {
+		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: false }) })
+		await page.goto("/")
+		await expect(page.getByText("Setup unavailable")).toBeVisible()
+		await expect(page.getByRole("button", { name: "Create Account" })).not.toBeVisible()
 	})
 
 	test("login page is shown when set up but not authenticated", async ({ page }) => {
@@ -44,7 +52,7 @@ test.describe("authentication", () => {
 	})
 
 	test("setup rejects a password shorter than 8 characters", async ({ page }) => {
-		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: false }) })
+		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: true }) })
 		await page.goto("/")
 		await page.getByPlaceholder("username").fill("admin")
 		await page.getByPlaceholder("password", { exact: true }).fill("short")
@@ -99,5 +107,17 @@ test.describe("authentication", () => {
 		await page.getByRole("button", { name: "Log Out" }).click()
 		await page.getByRole("dialog").getByRole("button", { name: "Log Out" }).click()
 		await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible()
+	})
+
+	test("failed logout keeps the session and shows an error", async ({ page }) => {
+		await mockApi(page, { "POST /authorization/logout": json({ error: true }, 500) })
+		await page.goto("/")
+		await page.getByPlaceholder("username").fill("admin")
+		await page.getByPlaceholder("password").fill("password123")
+		await page.getByRole("button", { name: "Sign In" }).click()
+		await page.getByRole("button", { name: "Log Out" }).click()
+		await page.getByRole("dialog").getByRole("button", { name: "Log Out" }).click()
+		await expect(page.getByText("Failed to log out")).toBeVisible()
+		await expect(page.getByRole("button", { name: "Live" })).toBeVisible()
 	})
 })

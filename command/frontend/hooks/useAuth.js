@@ -115,9 +115,10 @@ const useAuth = () => {
 		})
 	}
 
-	const signOut = () => {
-		attemptLogout().finally(() => {
-			setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null }))
+	const signOut = (callback) => {
+		attemptLogout().then(res => {
+			if (!res.error) setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null }))
+			callback(!res.error, res.errors)
 		})
 	}
 

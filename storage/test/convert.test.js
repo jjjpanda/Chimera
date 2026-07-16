@@ -58,6 +58,16 @@ describe("Convert Routes", () => {
 				.set("Cookie", "userCookie")
 				.expect(403, done)
 		})
+
+		test("clamps out-of-range and non-numeric fps", () => {
+			const { clampFPS } = require("../backend/routes/lib/video.js")
+			expect(clampFPS(120)).toBe(60)
+			expect(clampFPS(0)).toBe(1)
+			expect(clampFPS(-5)).toBe(1)
+			expect(clampFPS(24)).toBe(24)
+			expect(clampFPS("abc")).toBe(20)
+			expect(clampFPS(undefined)).toBe(20)
+		})
 	})
 
 	describe("/convert/listFramesVideo", () => {
