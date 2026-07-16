@@ -1,49 +1,112 @@
-# Chimera 
+# Chimera
 
-<img src="command/frontend/res/logo.png" alt="logo" width="100"/>
+<img src="command/frontend/res/logo.png" alt="logo" width="90"/>
 
 Microservices security-camera system for RTSP/IP cameras.
 
-**Services:** [command](command) · [livestream](livestream) · [schedule](schedule) · [storage](storage) · [gateway](gateway) · [memory](memory) · [object](object)
+```mermaid
+flowchart LR
+    user(("Browser"))
+    cam["📷 IP Cameras · RTSP"]
 
-**Shared:** [lib](lib) (utilities every service imports) · [chimera](chimera) (boot scripts: preflight wizard, env validation, schema creation)
+    gw["gateway<br/>TLS · public entry"]
 
-**Bundled in the image:** [motion](https://github.com/Motion-Project/motion) (saves RTSP frames, with [storage](storage)) · [ffmpeg](https://ffmpeg.org) · [heartbeat](https://github.com/jjjpanda/heartbeat) · [postgres](https://www.postgresql.org) (own container)
+    subgraph cap [Capture]
+      motion["motion → frames"]
+      ff["ffmpeg ×N → HLS"]
+    end
 
----
-# Quick start (Docker)
+    subgraph svcs [Services]
+      cmd["command<br/>web app · auth"]
+      store["storage<br/>frames · clips"]
+      live["livestream<br/>HLS"]
+      obj["object<br/>detection"]
+      sched["schedule<br/>cron"]
+    end
 
-Bare-metal is unsupported. The image bundles motion, ffmpeg, Node, and pm2, and pins `TZ=UTC` (required — non-UTC misaligns clips/zips/frames).
+    db[("Postgres")]
 
+    user -->|HTTPS| gw
+    cam --> motion & ff
+    motion --> store
+    ff --> live & obj
+    gw --> cmd & store & live & obj & sched
+    store & cmd & obj & sched --> db
 ```
-cp env.example .env          # fill in values; leave optional fields blank after =
+
+## Services
+
+| | |
+|---|---|
+| [command](command) | Web app · auth · RBAC · sessions |
+| [storage](storage) | Saves motion frames · builds clips & zips · quota |
+| [livestream](livestream) | Per-camera HLS streams |
+| [object](object) | YOLOX detection on feeds · webhook alerts |
+| [schedule](schedule) | Cron jobs (auto-cleanup, etc.) |
+| [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
+| [memory](memory) | Shared state across a pm2 cluster |
+
+Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
+
+**Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
+**Bundled in the image:** motion · ffmpeg · heartbeat · postgres
+
+## Quick start
+
+> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
+
+```bash
+cp env.example .env                    # fill in values
 cp motion.conf.example motion.conf
-# add a cameraconf/camN.conf per camera (see cameraconf/camera.conf.example)
-npm run docker:build
+# add cameraconf/camN.conf per camera  (see cameraconf/camera.conf.example)
+
+npm run docker:build                   # runs preflight first — bad config blocks the build
 npm run docker:up
 ```
 
-- `npm run preflight` seeds and validates `.env` / `motion.conf` / `cameraconf/*.conf` before building; `docker:build`/`up` run it first, so a bad config blocks the build.
-- `docker:logs` tails · `docker:down` stops · `docker:rebuild` redeploys · `docker:delete` wipes volumes.
-- **First run:** no users exist — open the gateway and create the first admin from the setup screen (`POST /authorization/setup`, authorized with `setup_TOKEN`).
+**First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 
----
-# Architecture
+<details>
+<summary><b>Commands</b></summary>
 
-One pm2 process per enabled service, fronted by a Postgres side container. Each service is toggled by `<prefix>_ON`; off means pm2 never launches it.
+| | |
+|---|---|
+| `npm run preflight` | Seed & validate config |
+| `npm run docker:up` | Start |
+| `npm run docker:down` | Stop |
+| `npm run docker:logs` | Tail logs |
+| `npm run docker:rebuild` | Redeploy |
+| `npm run docker:delete` | Stop + wipe volumes |
 
-pm2 ([pm2.config.js](pm2.config.js)) — each app runs `<name>/start.js` as its own process (independent; pm2 restarts crashes per-process, no cross-service fatal chaining):
-```
-command · storage · livestream · schedule · object · gateway · memory   one process each, per <prefix>_ON
-motion                 storage_ON
-ffmpeg × N             one HLS transcoder per camera, livestream_ON
-heartbeat              production only
-```
+</details>
 
-- `object` and `memory` are single-instance; the rest honor `chimeraInstances`. The gateway is the only public entrypoint — reverse-proxies every `<prefix>_PROXY_ON=true` service and terminates TLS.
-- Boot chain ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
-- Postgres runs as a side container ([docker-compose.yml](docker-compose.yml)); Chimera waits on its healthcheck.
-- TLS renewal (`certbot_ON=true`; disable for BYO certs / upstream TLS): a `certbot` side container issues + renews certs every 12h via HTTP-01 (needs `gateway_PORT=80` so the host publishes port 80) over the shared `acme-webroot` volume at the gateway's `/.well-known`; registers with no email (no LE expiry reminders) and POSTs `alert_URL` on failure. The gateway polls cert mtime and self-restarts (pm2) in the 3–4am UTC window to pick up new certs — first issuance restarts immediately.
-- `chimeraInstances`: `1` = single process; `>1`, `max`, `0` and `-1` = cluster (pm2 reads `0` as every CPU and `-1` as CPUs minus one), which forces `memory_ON=true` so instances coordinate through the memory socket. Any other value — including anything below `-1`, which pm2 would fork rather than cluster — is rejected at boot.
+<details>
+<summary><b>Boot & scaling</b></summary>
 
-**Schema** ([prepareDatabase.js](chimera/prepareDatabase.js), created idempotently): `frame_files` / `frame_deletes` (storage) · `auth` / `sessions` (command) · `objects_detected` (object) · `task_runs` (schedule). Full config in [env.example](env.example).
+- **Boot chain** ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
+- One pm2 process per enabled service ([pm2.config.js](pm2.config.js)); crashes restart per-process, no cross-service chaining.
+- `object` and `memory` are single-instance; the rest honor `chimeraInstances`.
+- **`chimeraInstances`:** `1` = single process. `max` / `0` / `-1` / any integer `>1` = cluster — forces `memory_ON=true` so instances share state via the memory socket. Any other value is rejected at boot.
+
+</details>
+
+<details>
+<summary><b>TLS renewal</b></summary>
+
+`certbot_ON=true` auto-issues + renews Let's Encrypt certs (HTTP-01, needs `gateway_PORT=80`); the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+
+</details>
+
+<details>
+<summary><b>Database schema</b></summary>
+
+Created idempotently by [prepareDatabase.js](chimera/prepareDatabase.js). Full config in [env.example](env.example).
+
+| Tables | Owner |
+|---|---|
+| `frame_files` · `frame_deletes` | storage |
+| `auth` · `sessions` | command |
+| `objects_detected` | object |
+| `task_runs` | schedule |
+
+</details>
