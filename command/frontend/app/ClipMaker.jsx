@@ -251,9 +251,12 @@ const ClipMakerFull = () => {
 	const canvasRefs = useRef({})  // { [camId]: canvas element }
 	const imageCaches = useRef({}) // { [camId]: { [url]: Image } }
 	const loadGenRef = useRef({})  // { [camId]: generation } — cancels stale image settles
+	const startedFrames = useRef({}) // { [camId]: frames array already queued } — skips cams unaffected by this render
 	const padLoading = useRef({})  // { [camId]: bool } — a contentPad measure is in flight
 	const loadSeq = useRef(0)      // cancels stale network responses
 	const navTimer = useRef(null)
+	const mounted = useRef(true)
+	useEffect(() => () => { mounted.current = false }, [])
 
 	const activeIdxs = multiCam ? selectedCams : (camera != null ? [camera] : [])
 
@@ -362,13 +365,15 @@ const ClipMakerFull = () => {
 	useEffect(() => {
 		const timers = []
 		cams.forEach(c => {
+			if (startedFrames.current[c.id] === c.frames) return
+			startedFrames.current[c.id] = c.frames
 			const cache = imageCaches.current[c.id] || (imageCaches.current[c.id] = {})
 			const newUrls = c.frames.filter(u => !cache[u])
 			if (!newUrls.length) return
 			const gen = (loadGenRef.current[c.id] = (loadGenRef.current[c.id] || 0) + 1)
 			let next = 0
 			const startNext = () => {
-				if (next >= newUrls.length || loadGenRef.current[c.id] !== gen) return
+				if (!mounted.current || next >= newUrls.length || loadGenRef.current[c.id] !== gen) return
 				const url = newUrls[next++]
 				const img = new Image()
 				let settled = false, timer
@@ -430,6 +435,7 @@ const ClipMakerFull = () => {
 		setCams([])
 		imageCaches.current = {}
 		loadGenRef.current = {}
+		startedFrames.current = {}
 		padLoading.current = {}
 		setLoadedParams(null)
 		setTrimRange([0, 100])
@@ -475,6 +481,7 @@ const ClipMakerFull = () => {
 		setLoadedParams({ start, end, number, cams: [...ids].sort() })
 		imageCaches.current = {}
 		loadGenRef.current = {}
+		startedFrames.current = {}
 		padLoading.current = {}
 		setScrubIdx(0)
 		setTrimRange([0, 100])
@@ -587,6 +594,7 @@ const ClipMakerFull = () => {
 		setCams(prev => prev.map(c => ({ ...c, frames: [], imagesLoaded: 0, dims: null })))
 		imageCaches.current = {}
 		loadGenRef.current = {}
+		startedFrames.current = {}
 	}
 
 	return (

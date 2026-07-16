@@ -22,4 +22,12 @@ describe("startDbPruning", () => {
 		expect(queries).toContainEqual(expect.stringMatching(/^DELETE FROM frame_deletes WHERE timestamp < NOW\(\) - INTERVAL '30 days'$/))
 		spy.mockRestore()
 	})
+
+	test("prunes immediately on startup, not just after the first interval elapses", () => {
+		const spy = jest.spyOn(global, "setInterval").mockImplementation(() => ({ unref: () => {} }))
+		app.startDbPruning()
+		const queries = mockedPool.query.mock.calls.map((c) => c[0])
+		expect(queries).toContainEqual(expect.stringMatching(/^DELETE FROM frame_deletes WHERE timestamp < NOW\(\) - INTERVAL '30 days'$/))
+		spy.mockRestore()
+	})
 })

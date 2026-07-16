@@ -199,7 +199,7 @@ describe("scan", () => {
 		expect(sendWebhook).not.toHaveBeenCalled()
 	})
 
-	test("a scan whose camera is stopped during the capture write inserts nothing and sends no webhook", async () => {
+	test("a scan whose camera is stopped during the capture write inserts nothing, sends no webhook, and unlinks the orphaned capture", async () => {
 		let release
 		fs.promises.writeFile.mockImplementation(() => new Promise((r) => { release = r }))
 		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
@@ -214,6 +214,8 @@ describe("scan", () => {
 		expect(fs.promises.writeFile).toHaveBeenCalledTimes(1)
 		expect(pool.query).not.toHaveBeenCalled()
 		expect(sendWebhook).not.toHaveBeenCalled()
+		const written = path.basename(fs.promises.writeFile.mock.calls[0][0])
+		expect(fs.promises.unlink).toHaveBeenCalledWith(path.join(worker.CAPTURES_DIR, written))
 	})
 
 	test("scanning an unknown camera id throws distinguishably and leaves no status entry behind", async () => {
