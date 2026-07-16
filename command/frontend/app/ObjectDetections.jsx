@@ -1,17 +1,19 @@
 import React, { useMemo, useRef, useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import moment from "moment"
-import { RefreshCw, ScanEye, AlertCircle, ImageOff, ArrowUpDown } from "lucide-react"
+import { RefreshCw, ScanEye, AlertCircle, ImageOff } from "lucide-react"
 
 import useObjectDetections from "../hooks/useObjectDetections.js"
+import usePreviewHeight from "../hooks/usePreviewHeight"
 import { useRole } from "./AuthContext.jsx"
-import { Card } from "../components/ui/card"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
 import { detectGrayPad } from "../js/letterbox.js"
-
-const STROKE = "#34d399"
+import DetectionOverlay from "../components/DetectionOverlay.jsx"
+import ResizeHandle from "../components/ResizeHandle.jsx"
+import CameraGridMini from "../components/CameraGridMini.jsx"
+import { padSlots } from "../js/grid.js"
 
 const cameraName = (status, n) => status?.cameraNames?.[n] || `Camera ${n}`
 
@@ -27,7 +29,7 @@ const groupDetections = (detections) => {
 
 const DetectionImage = ({ image, boxes, cover = false, height }) => {
 	const [dims, setDims] = useState({ w: 416, h: 416 })
-	const [pad, setPad] = useState({ top: 0, bot: 0 })
+	const [pad, setPad] = useState({ top: 0, bot: 0, left: 0, right: 0 })
 
 	const handleLoad = (e) => {
 		const img = e.target
@@ -35,8 +37,8 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 		setPad(detectGrayPad(img))
 	}
 
+	const contentW = dims.w - pad.left - pad.right
 	const contentH = dims.h - pad.top - pad.bot
-	const svgViewBox = `0 ${pad.top} ${dims.w} ${contentH}`
 
 	if (cover) {
 		return (
@@ -47,23 +49,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 					className="absolute inset-0 w-full h-full object-cover object-top"
 					onLoad={handleLoad}
 				/>
-				<svg
-					className="pointer-events-none absolute inset-0 w-full h-full"
-					viewBox={svgViewBox}
-					preserveAspectRatio="xMidYMin slice"
-				>
-					{boxes.map((d, i) => (
-						<g key={i}>
-							<rect x={d.box[0]} y={d.box[1]} width={d.box[2]} height={d.box[3]}
-								fill="none" stroke={STROKE} strokeWidth={2} rx={2} />
-							<text x={d.box[0] + 3} y={Math.max(pad.top + 12, d.box[1] - 4)}
-								fontSize={13} fill={STROKE}
-								style={{ paintOrder: "stroke", stroke: "#000", strokeWidth: 3, fontWeight: 600 }}>
-								{`${d.type} ${Math.round(d.confidence * 100)}%`}
-							</text>
-						</g>
-					))}
-				</svg>
+				<DetectionOverlay boxes={boxes} dims={dims} pad={pad} fit="xMidYMin slice" />
 			</div>
 		)
 	}
@@ -72,34 +58,23 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 		<div
 			className="relative w-full overflow-hidden rounded-md bg-surface-raised"
 			style={{
-				aspectRatio: `${dims.w} / ${contentH}`,
-				...(height != null ? { maxHeight: height, maxWidth: contentH > 0 ? height * dims.w / contentH : undefined, margin: "0 auto" } : {})
+				aspectRatio: `${contentW} / ${contentH}`,
+				...(height != null ? { maxHeight: height, maxWidth: contentH > 0 ? height * contentW / contentH : undefined, margin: "0 auto" } : {})
 			}}
 		>
 			<img
 				src={`/object/captures/${image}`}
 				alt="detection"
-				className="absolute w-full h-auto"
-				style={pad.top > 0 ? { top: `-${(pad.top / contentH) * 100}%` } : { top: 0 }}
+				className="absolute"
+				style={{
+					width: `${(dims.w / contentW) * 100}%`,
+					height: "auto",
+					left: pad.left > 0 ? `-${(pad.left / contentW) * 100}%` : 0,
+					top: pad.top > 0 ? `-${(pad.top / contentH) * 100}%` : 0
+				}}
 				onLoad={handleLoad}
 			/>
-			<svg
-				className="pointer-events-none absolute inset-0 w-full h-full"
-				viewBox={svgViewBox}
-				preserveAspectRatio="none"
-			>
-				{boxes.map((d, i) => (
-					<g key={i}>
-						<rect x={d.box[0]} y={d.box[1]} width={d.box[2]} height={d.box[3]}
-							fill="none" stroke={STROKE} strokeWidth={2} rx={2} />
-						<text x={d.box[0] + 3} y={Math.max(pad.top + 12, d.box[1] - 4)}
-							fontSize={13} fill={STROKE}
-							style={{ paintOrder: "stroke", stroke: "#000", strokeWidth: 3, fontWeight: 600 }}>
-							{`${d.type} ${Math.round(d.confidence * 100)}%`}
-						</text>
-					</g>
-				))}
-			</svg>
+			<DetectionOverlay boxes={boxes} dims={dims} pad={pad} fit="none" />
 		</div>
 	)
 }
@@ -118,38 +93,17 @@ const ObjectDetectionsMini = () => {
 		return result.slice(0, 4)
 	}, [groups])
 
-	const slots = [0, 1, 2, 3].map(i => lastPerCamera[i] ?? null)
+	const slots = padSlots(lastPerCamera)
 
 	return (
-		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={() => navigate("/objects")}>
-			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
-				{slots.map((g, i) => (
-					<div
-						key={i}
-						onClick={g ? (e) => { e.stopPropagation(); navigate(`/objects?camera=${g.camera}`) } : undefined}
-						className={`relative overflow-hidden ${g ? "bg-black" : "bg-muted/20"}`}
-					>
-						{g ? (
-							<DetectionImage key={g.image} image={g.image} boxes={g.boxes} cover />
-						) : (
-							<div className="absolute inset-0 flex items-center justify-center">
-								<ImageOff className="size-5 opacity-30 text-muted" />
-							</div>
-						)}
-						{g && (
-							<div className="absolute bottom-1.5 inset-x-0 flex justify-center pointer-events-none">
-								<span className="bg-accent/85 text-accent-foreground text-xs font-medium px-3 py-0.5 rounded-full">
-									{cameraName(status, g.camera)}
-								</span>
-							</div>
-						)}
-					</div>
-				))}
-				<div className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground" onClick={(e) => { e.stopPropagation(); navigate("/objects") }}>
-					<ScanEye className="size-6" />
-				</div>
-			</div>
-		</Card>
+		<CameraGridMini
+			slots={slots}
+			onActivate={() => navigate("/objects")}
+			onCellClick={g => navigate(`/objects?camera=${g.camera}`)}
+			cellLabel={g => cameraName(status, g.camera)}
+			centerIcon={<ScanEye className="size-6" />}
+			renderCell={g => <DetectionImage key={g.image} image={g.image} boxes={g.boxes} cover />}
+		/>
 	)
 }
 
@@ -162,21 +116,8 @@ const ObjectDetectionsFull = () => {
 	const cameras = status?.cameras ? Object.entries(status.cameras) : []
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
-	const [previewHeight, setPreviewHeight] = useState(200)
+	const [previewHeight, , startResizeDrag] = usePreviewHeight(200)
 	const trackRef = useRef(null)
-
-	const startResizeDrag = (e) => {
-		e.preventDefault()
-		const el = e.currentTarget
-		el.setPointerCapture(e.pointerId)
-		const startY = e.clientY
-		const startH = previewHeight
-		const maxH = Math.min(window.innerWidth * 9 / 16, window.innerHeight * 2 / 3)
-		const move = (ev) => setPreviewHeight(Math.max(80, Math.min(maxH, startH + ev.clientY - startY)))
-		const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up) }
-		el.addEventListener("pointermove", move)
-		el.addEventListener("pointerup", up)
-	}
 
 	useEffect(() => {
 		if (selectedCam != null || cameras.length === 0) return
@@ -252,12 +193,7 @@ const ObjectDetectionsFull = () => {
 					<ImageOff className="size-8 opacity-20 text-muted" />
 				</div>
 			)}
-			<div className="relative w-full h-4 flex items-center cursor-ns-resize touch-none select-none group" onPointerDown={startResizeDrag}>
-				<div className="absolute inset-x-0 h-0.5 bg-border group-hover:bg-muted/40 transition-colors" />
-				<div className="absolute right-2 z-10 bg-bg">
-					<ArrowUpDown className="size-3 text-muted/60 group-hover:text-muted transition-colors" />
-				</div>
-			</div>
+			<ResizeHandle onPointerDown={startResizeDrag} grip={false} />
 
 			{camGroups.length > 1 && (
 				<div className="px-8 pt-1 pb-0">
