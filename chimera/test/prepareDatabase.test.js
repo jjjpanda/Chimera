@@ -1,8 +1,9 @@
 jest.mock("pg", () => ({ Pool: jest.fn(() => ({ query: jest.fn(), on: jest.fn() })) }))
 
 const { Pool } = require("pg")
-const { creationTasks } = require("../prepareDatabase.js")
+const { creationTasks, missingColumns } = require("../prepareDatabase.js")
 const poolConfig = Pool.mock.calls[0][0]
+const poolInstance = Pool.mock.results[0].value
 
 describe("prepareDatabase migration tasks", () => {
 	const find = (re) => creationTasks.find(t => re.test(t.query))
@@ -37,5 +38,25 @@ describe("prepareDatabase migration tasks", () => {
 			expect(typeof t.query).toBe("string")
 			expect(typeof t.description).toBe("string")
 		}
+	})
+
+	test("every CREATE TABLE task carries its table name and columns", () => {
+		for (const t of creationTasks.filter(t => /CREATE TABLE/.test(t.query))) {
+			expect(typeof t.table).toBe("string")
+			expect(Array.isArray(t.columns)).toBe(true)
+			expect(t.columns.length).toBeGreaterThan(0)
+		}
+	})
+
+	test("missingColumns reports columns absent from information_schema", async () => {
+		poolInstance.query.mockResolvedValueOnce({ rows: [{ column_name: "id" }, { column_name: "username" }, { column_name: "hash" }] })
+		const missing = await missingColumns("auth", ["id", "username", "hash", "role", "theme"])
+		expect(missing).toEqual(["role", "theme"])
+	})
+
+	test("missingColumns reports nothing when the schema matches", async () => {
+		poolInstance.query.mockResolvedValueOnce({ rows: [{ column_name: "id" }, { column_name: "url" }] })
+		const missing = await missingColumns("scheduled_tasks", ["id", "url"])
+		expect(missing).toEqual([])
 	})
 })

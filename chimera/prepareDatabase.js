@@ -12,31 +12,45 @@ const pool = new Pool({
 const creationTasks = [
 	{
 		query: "CREATE TABLE frame_files(ID SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, camera NUMERIC(10), name VARCHAR, size NUMERIC);",
-		description: "frame files table"
+		description: "frame files table",
+		table: "frame_files",
+		columns: ["id", "timestamp", "camera", "name", "size"],
 	},
 	{
 		query: "CREATE TABLE frame_deletes(ID SERIAL PRIMARY KEY, timestamp TIMESTAMPTZ, camera NUMERIC(10), size NUMERIC, count NUMERIC);",
-		description: "frame deletions table"
+		description: "frame deletions table",
+		table: "frame_deletes",
+		columns: ["id", "timestamp", "camera", "size", "count"],
 	},
 	{
 		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMPTZ, theme VARCHAR(10) DEFAULT 'system');",
-		description: "authorization table"
+		description: "authorization table",
+		table: "auth",
+		columns: ["id", "username", "hash", "role", "last_login", "force_password_change", "temp_password_expires", "theme"],
 	},
 	{
 		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen TIMESTAMPTZ, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
-		description: "sessions table"
+		description: "sessions table",
+		table: "sessions",
+		columns: ["id", "username", "jti", "issued_at", "last_seen", "ip", "user_agent", "revoked"],
 	},
 	{
 		query: "CREATE TABLE objects_detected(ID SERIAL PRIMARY KEY, camera NUMERIC(10), timestamp TIMESTAMPTZ DEFAULT NOW(), type VARCHAR(20), confidence NUMERIC(10, 6), box JSONB, image VARCHAR);",
-		description: "objects detected table"
+		description: "objects detected table",
+		table: "objects_detected",
+		columns: ["id", "camera", "timestamp", "type", "confidence", "box", "image"],
 	},
 	{
 		query: "CREATE TABLE task_runs(id SERIAL PRIMARY KEY, task_id TEXT NOT NULL, url TEXT NOT NULL, status TEXT NOT NULL, http_status INTEGER, error TEXT, ran_at TIMESTAMPTZ NOT NULL DEFAULT NOW());",
-		description: "task runs table"
+		description: "task runs table",
+		table: "task_runs",
+		columns: ["id", "task_id", "url", "status", "http_status", "error", "ran_at"],
 	},
 	{
 		query: "CREATE TABLE scheduled_tasks(id TEXT PRIMARY KEY, url TEXT NOT NULL, body JSONB NOT NULL, cron_string TEXT NOT NULL, running BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());",
-		description: "scheduled tasks table"
+		description: "scheduled tasks table",
+		table: "scheduled_tasks",
+		columns: ["id", "url", "body", "cron_string", "running", "created_at"],
 	},
 	{
 		query: "CREATE INDEX IF NOT EXISTS idx_frame_files_camera_timestamp ON frame_files(camera, timestamp);",
@@ -60,21 +74,37 @@ const creationTasks = [
 	},
 ]
 
-module.exports = { creationTasks }
+async function missingColumns(table, columns) {
+	const { rows } = await pool.query(
+		"SELECT column_name FROM information_schema.columns WHERE table_name = $1",
+		[table]
+	)
+	const existing = new Set(rows.map((r) => r.column_name))
+	return columns.filter((c) => !existing.has(c))
+}
+
+module.exports = { creationTasks, missingColumns }
 
 if (require.main === module) {
 	let issues = false
 	;(async () => {
-		for (const { query, description } of creationTasks) {
-			let tableExists
+		for (const { query, description, table, columns } of creationTasks) {
+			let ok
+			let detail = ""
 			try {
 				await pool.query(query)
-				tableExists = true
+				ok = true
 			} catch (e) {
-				tableExists = e && e.code == "42P07"
+				if (e && e.code == "42P07" && table) {
+					const missing = await missingColumns(table, columns)
+					ok = missing.length === 0
+					if (!ok) detail = ` — missing columns: ${missing.join(", ")}`
+				} else {
+					ok = false
+				}
 			}
-			if (!tableExists) issues = true
-			console.log(`${description} ${tableExists ? "✔️" : "❌"}`)
+			if (!ok) issues = true
+			console.log(`${description} ${ok ? "✔️" : "❌"}${detail}`)
 		}
 		process.exit(issues ? 1 : 0)
 	})()
