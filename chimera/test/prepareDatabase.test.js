@@ -25,7 +25,7 @@ describe("prepareDatabase migration tasks", () => {
 
 	test("builds the indexes idempotently and without CONCURRENTLY", () => {
 		const idx = creationTasks.filter(t => /CREATE INDEX/.test(t.query))
-		expect(idx).toHaveLength(5)
+		expect(idx).toHaveLength(6)
 		for (const t of idx) {
 			expect(t.query).toMatch(/CREATE INDEX IF NOT EXISTS/)
 			expect(t.query).not.toMatch(/CONCURRENTLY/)

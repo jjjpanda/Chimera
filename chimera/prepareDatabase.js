@@ -51,6 +51,10 @@ const creationTasks = [
 		description: "objects detected (camera, timestamp) index"
 	},
 	{
+		query: "CREATE INDEX IF NOT EXISTS idx_objects_detected_image ON objects_detected(image);",
+		description: "objects detected (image) index"
+	},
+	{
 		query: "CREATE INDEX IF NOT EXISTS idx_task_runs_ran_at ON task_runs(ran_at);",
 		description: "task runs (ran_at) index"
 	},

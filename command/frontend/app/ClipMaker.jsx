@@ -24,6 +24,7 @@ import moment from "moment"
 
 const DETECT_INPUT = 416  // YOLOX letterbox square; detection boxes are in this pixel space
 const FUSE_PCT = 1.5  // detection ticks closer than this (% of track) fuse into a band
+const MAX_CONCURRENT_DECODES = 24  // per camera; caps simultaneous Image decodes for large frame ranges
 
 const PRESETS = [
 	{ label: "30m", value: 30, unit: "minutes" },
@@ -365,7 +366,10 @@ const ClipMakerFull = () => {
 			const newUrls = c.frames.filter(u => !cache[u])
 			if (!newUrls.length) return
 			const gen = (loadGenRef.current[c.id] = (loadGenRef.current[c.id] || 0) + 1)
-			newUrls.forEach(url => {
+			let next = 0
+			const startNext = () => {
+				if (next >= newUrls.length || loadGenRef.current[c.id] !== gen) return
+				const url = newUrls[next++]
 				const img = new Image()
 				let settled = false, timer
 				const settle = () => {
@@ -373,13 +377,15 @@ const ClipMakerFull = () => {
 					settled = true
 					clearTimeout(timer)
 					setCams(prev => prev.map(pc => pc.id === c.id ? { ...pc, imagesLoaded: pc.imagesLoaded + 1 } : pc))
+					startNext()
 				}
 				img.onload = img.onerror = settle
 				timer = setTimeout(settle, 10000)
 				timers.push(timer)
 				img.src = url
 				cache[url] = img
-			})
+			}
+			for (let i = 0; i < Math.min(MAX_CONCURRENT_DECODES, newUrls.length); i++) startNext()
 		})
 		return () => timers.forEach(clearTimeout)
 	}, [framesKey])
