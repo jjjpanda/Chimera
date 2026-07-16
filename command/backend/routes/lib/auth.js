@@ -7,6 +7,7 @@ const { createPool, withTransaction } = require("lib")
 const pool = createPool("COMMAND POOL ERROR")
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
+const COOKIE_SECURE = process.env.gateway_HTTPS_Redirect == "true"
 
 class HttpError extends Error {
 	constructor(status, errors) {
@@ -20,6 +21,7 @@ module.exports = {
 	pool,
 	withTransaction: (fn) => withTransaction(pool, fn),
 	HttpError,
+	COOKIE_SECURE,
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
 		const deny = () => res.status(400).json({ error: true, errors: "Invalid username or password" })
@@ -57,7 +59,7 @@ module.exports = {
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000,
 					httpOnly: true,
-					secure: req.secure,
+					secure: COOKIE_SECURE,
 					sameSite: "lax"
 				})
 				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange, theme: req.userTheme })

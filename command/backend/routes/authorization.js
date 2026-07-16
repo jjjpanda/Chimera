@@ -1,7 +1,7 @@
 var express = require("express")
 var { validateBody, auth, password, timingSafeCompare } = require("lib")
 const { requireAdmin } = auth
-const { passwordCheck, login, pool, withTransaction, HttpError } = require("./lib/auth.js")
+const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
 
@@ -257,7 +257,7 @@ app.post("/logout", authorize, async (req, res) => {
 			await pool.query("UPDATE sessions SET revoked = TRUE WHERE jti = $1", [req.decoded.jti])
 			auth.invalidateSession(req.decoded.jti)
 		}
-		res.clearCookie("bearertoken", { httpOnly: true, secure: req.secure, sameSite: "lax" })
+		res.clearCookie("bearertoken", { httpOnly: true, secure: COOKIE_SECURE, sameSite: "lax" })
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
