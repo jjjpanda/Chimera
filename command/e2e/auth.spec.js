@@ -100,4 +100,16 @@ test.describe("authentication", () => {
 		await page.getByRole("dialog").getByRole("button", { name: "Log Out" }).click()
 		await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible()
 	})
+
+	test("failed logout keeps the session and shows an error", async ({ page }) => {
+		await mockApi(page, { "POST /authorization/logout": json({ error: true }, 500) })
+		await page.goto("/")
+		await page.getByPlaceholder("username").fill("admin")
+		await page.getByPlaceholder("password").fill("password123")
+		await page.getByRole("button", { name: "Sign In" }).click()
+		await page.getByRole("button", { name: "Log Out" }).click()
+		await page.getByRole("dialog").getByRole("button", { name: "Log Out" }).click()
+		await expect(page.getByText("Failed to log out")).toBeVisible()
+		await expect(page.getByRole("button", { name: "Live" })).toBeVisible()
+	})
 })

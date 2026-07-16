@@ -3,10 +3,20 @@ import { LogOut } from "lucide-react"
 import { useSignOut } from "./AuthContext.jsx"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog"
 import { Button } from "../components/ui/button"
+import toast from "../js/toast.js"
 
 const SignOutButton = ({ className, iconOnly }) => {
 	const signOut = useSignOut()
 	const [open, setOpen] = useState(false)
+
+	const handleSignOut = () => {
+		signOut((success, errors) => {
+			if (!success) {
+				setOpen(false)
+				toast(errors || "Failed to log out")
+			}
+		})
+	}
 
 	return (
 		<>
@@ -24,7 +34,7 @@ const SignOutButton = ({ className, iconOnly }) => {
 						<DialogClose asChild>
 							<Button variant="ghost" className="text-muted hover:text-primary">Cancel</Button>
 						</DialogClose>
-						<Button onClick={signOut} className="bg-danger text-danger-foreground hover:bg-danger/80">Log Out</Button>
+						<Button onClick={handleSignOut} className="bg-danger text-danger-foreground hover:bg-danger/80">Log Out</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

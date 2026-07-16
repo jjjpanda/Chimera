@@ -1,5 +1,16 @@
+let unauthorizedHandled = false
+
+const handleUnauthorized = (url, res) => {
+	if (unauthorizedHandled) return res
+	if (res.status !== 401 && res.status !== 403) return res
+	if (String(url).startsWith("/authorization")) return res
+	unauthorizedHandled = true
+	window.location.assign("/login")
+	return res
+}
+
 const request = (url, opt, callback) => {
-	return callback(fetch(url, opt))
+	return callback(fetch(url, opt).then(res => handleUnauthorized(url, res)))
 }
 
 const authPromiseHandler = (prom) => prom.then(res => res.json()).catch(() => ({ error: true }))
