@@ -5,8 +5,8 @@ module.exports = {
 		callback(null, processNames.map((name) => ({
 			name,
 			pm2_env: {
-				status: "on",
-				unstable_restarts: 0
+				status: "online",
+				restart_time: 0
 			}
 		})))
 	},
