@@ -1,4 +1,5 @@
 process.env.SECRETKEY = "test-secret"
+process.env.command_COOKIE_SECURE = "false"
 
 jest.mock("pg")
 jest.mock("pm2")
@@ -186,6 +187,11 @@ describe("Authorization Routes", () => {
 	})
 
 	describe("POST /authorization/login", () => {
+		afterEach(() => {
+			process.env.command_COOKIE_SECURE = "false"
+			jest.resetModules()
+		})
+
 		test("returns 400 with wrong credentials", async () => {
 			const res = await supertest(app)
 				.post("/authorization/login")
@@ -201,6 +207,27 @@ describe("Authorization Routes", () => {
 			expect(res.body).toEqual({ error: false, role: "user", theme: "system" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
+			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
+		})
+
+		test("sets Secure attribute on bearertoken cookie when command_COOKIE_SECURE=true", async () => {
+			jest.resetModules()
+			process.env.command_COOKIE_SECURE = "true"
+			const freshApp = require("../backend/command.js")
+			const res = await supertest(freshApp)
+				.post("/authorization/login")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(200)
+			expect(res.headers["set-cookie"][0]).toMatch(/; ?Secure/i)
+		})
+
+		test("omits Secure attribute on bearertoken cookie regardless of X-Forwarded-Proto", async () => {
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-Proto", "https")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(200)
+			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
 		})
 
 		test("rejects login when a forced temp password has expired", async () => {
