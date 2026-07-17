@@ -15,7 +15,7 @@ PALE_YELLOW = (255,255,153)
 SKY_BLUE = (37,187,242)
 AZURE = (29,156,212)
 SCARLET = (220,12,40)
-PURPLE = (113,48,159)
+PURPLE = (103,38,149)
 BERRY = (169,29,97)
 VERMILION = (232,5,28)
 PEACH = (255,200,100)
@@ -51,7 +51,7 @@ RING_STOPS = [
 #                   -- matches the wedges where they meet the ring and
 #                   interpolates smoothly across the gaps between them
 RINGS = [
-    dict(radius=40.0, width=8.0, rotate=20, tint=0.0, alpha=255),
+    dict(radius=40.0, width=12.0, rotate=20, tint=0.0, alpha=255),
     dict(radius=340.0, width=8.0, color_source="wedges", tint=0.0, alpha=235),
 ]
 
@@ -102,7 +102,7 @@ WEDGES = [
     )
 ]
 
-OUTPUT = "logo_generated.png"
+OUTPUT = "logo.png"
 
 # ============================== ENGINE ==============================
 
