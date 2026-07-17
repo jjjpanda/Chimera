@@ -68,6 +68,8 @@ const useLiveVideo = (cameras) => {
 
 	useEffect(() => {
 		refresh()
+		const id = setInterval(refresh, 5000)
+		return () => clearInterval(id)
 	}, [cameras])
 
 	return [state, refresh, restartAll]

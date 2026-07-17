@@ -56,7 +56,7 @@ const Feed = ({ video, hideLabel }) => (
 			<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-sm">
 				<span
 					className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger pointer-events-auto")}
-					title={video.online ? undefined : `Offline${video.restarts ? ` · ${video.restarts} restarts` : ""}`}
+					title={video.online ? undefined : `Offline${video.restarts ? ` · ${video.restarts} restart${video.restarts === 1 ? "" : "s"}` : ""}`}
 				/>
 				<span className="text-sm font-medium text-white">{video.camera}</span>
 			</div>
