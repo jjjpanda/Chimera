@@ -70,8 +70,8 @@ RINGS = [
 WEDGES = [
     dict(a0=123, a1=166, hue_skew=-40, alpha=255,
          stops=[
-             (0.00, WHITE, 0.5),
-             (0.43, PURPLE),
+             (0.00, WHITE, 0.4),
+             (0.47, PURPLE),
              (0.77, BERRY),
              (1.00, VERMILION)
              ]
