@@ -7,7 +7,7 @@ const { createPool, withTransaction } = require("lib")
 const pool = createPool("COMMAND POOL ERROR")
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
-const COOKIE_SECURE = process.env.gateway_HTTPS_Redirect == "true"
+const COOKIE_SECURE = process.env.command_COOKIE_SECURE === "true"
 
 class HttpError extends Error {
 	constructor(status, errors) {
