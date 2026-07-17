@@ -12,7 +12,7 @@ module.exports = {
 	},
 	"overrides": [
 		{
-			"files": ["**/*.test.js", "**/*.spec.js", "**/__tests__/**", "**/__mocks__/**", "**/jest.config.js"],
+			"files": ["**/*.test.js", "**/*.test.jsx", "**/*.spec.js", "**/*.spec.jsx", "**/__tests__/**", "**/__mocks__/**", "**/jest.config.js"],
 			"env": {
 				"jest": true
 			}

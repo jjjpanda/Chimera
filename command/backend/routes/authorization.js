@@ -91,12 +91,12 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 			const target = (await client.query("SELECT role FROM auth WHERE username = $1", [username])).rows[0]
 			const allowed = noAdmin && !target
 			if (!allowed) return { rowCount: 0 }
-			const upsert = await client.query(
-				"INSERT INTO auth(username, hash, role) VALUES ($1, $2, 'admin') ON CONFLICT (username) DO UPDATE SET hash = EXCLUDED.hash, role = 'admin', force_password_change = FALSE, temp_password_expires = NULL",
+			const insert = await client.query(
+				"INSERT INTO auth(username, hash, role) VALUES ($1, $2, 'admin')",
 				[username, hash]
 			)
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1", [username])
-			return upsert
+			return insert
 		})
 		if (result.rowCount === 0) return res.status(403).json({ error: true })
 		auth.invalidateUser(username)

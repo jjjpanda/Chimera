@@ -159,7 +159,10 @@ const handleDetections = async (camera, detections, jpeg, era) => {
 				return false
 			})
 		if (stored) captureWriteFailing = false
-		if (gone(camera, era)) return
+		if (gone(camera, era)) {
+			if (stored) await fs.promises.unlink(path.join(CAPTURES_DIR, image)).catch(() => {})
+			return
+		}
 		const persistable = stored ? detections.filter((d) => Array.isArray(d.box)) : []
 		if (persistable.length) {
 			const values = []
