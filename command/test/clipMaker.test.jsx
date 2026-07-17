@@ -109,6 +109,35 @@ test("multi-cam loading finishes even when one camera has more frames than the c
 	expect(screen.queryByText("Loading…")).toBeNull()
 })
 
+test("decodes abandoned by a stop never settle against the next load", async () => {
+	const { container } = renderClipMaker()
+
+	await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+	await act(async () => { screen.getByText("CamA").click() })
+	await act(async () => { screen.getByText("Load Images").click() })
+
+	await resolveDetections(101)
+	await resolveFrames(101, framesFor(30, 101))
+	const abandoned = [...FakeImage.instances]
+
+	const stop = [...container.querySelectorAll("button")].find(b => b.querySelector("svg.lucide-square"))
+	await act(async () => { stop.click() })
+
+	await act(async () => { screen.getByText("Load Images").click() })
+	await resolveDetections(101)
+	await resolveFrames(101, framesFor(30, 101))
+	const started = FakeImage.instances.length
+
+	// the stopped load's decodes finish late, after the new load has already queued its own
+	await act(async () => {
+		abandoned.forEach(img => img.onload())
+		await Promise.resolve()
+	})
+
+	expect(FakeImage.instances).toHaveLength(started)
+	expect(screen.queryByText("Loading…")).toBeTruthy()
+})
+
 test("a hung decode still times out when a later camera re-triggers the shared effect", async () => {
 	jest.useFakeTimers()
 	try {

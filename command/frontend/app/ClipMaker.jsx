@@ -250,7 +250,7 @@ const ClipMakerFull = () => {
 
 	const canvasRefs = useRef({})  // { [camId]: canvas element }
 	const imageCaches = useRef({}) // { [camId]: { [url]: Image } }
-	const loadGenRef = useRef({})  // { [camId]: generation } — cancels stale image settles
+	const decodeGen = useRef(0)    // bumped on every reset — must only ever climb, or stale settles pass the check
 	const startedFrames = useRef({}) // { [camId]: frames array already queued } — skips cams unaffected by this render
 	const decodeTimers = useRef({}) // { [camId]: timer[] } — watchdogs for that cam's in-flight decodes
 	const padLoading = useRef({})  // { [camId]: bool } — a contentPad measure is in flight
@@ -269,8 +269,8 @@ const ClipMakerFull = () => {
 		Object.values(decodeTimers.current).forEach(ts => ts.forEach(clearTimeout))
 		decodeTimers.current = {}
 		imageCaches.current = {}
-		loadGenRef.current = {}
 		startedFrames.current = {}
+		decodeGen.current++
 	}
 
 	const activeIdxs = multiCam ? selectedCams : (camera != null ? [camera] : [])
@@ -384,17 +384,17 @@ const ClipMakerFull = () => {
 			const cache = imageCaches.current[c.id] || (imageCaches.current[c.id] = {})
 			const newUrls = c.frames.filter(u => !cache[u])
 			if (!newUrls.length) return
-			const gen = (loadGenRef.current[c.id] = (loadGenRef.current[c.id] || 0) + 1)
+			const gen = decodeGen.current
 			decodeTimers.current[c.id]?.forEach(clearTimeout)
 			const timers = decodeTimers.current[c.id] = []
 			let next = 0
 			const startNext = () => {
-				if (!mounted.current || next >= newUrls.length || loadGenRef.current[c.id] !== gen) return
+				if (!mounted.current || next >= newUrls.length || decodeGen.current !== gen) return
 				const url = newUrls[next++]
 				const img = new Image()
 				let settled = false, timer
 				const settle = () => {
-					if (settled || loadGenRef.current[c.id] !== gen) return
+					if (settled || decodeGen.current !== gen) return
 					settled = true
 					clearTimeout(timer)
 					setCams(prev => prev.map(pc => pc.id === c.id ? { ...pc, imagesLoaded: pc.imagesLoaded + 1 } : pc))
