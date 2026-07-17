@@ -109,6 +109,4 @@ Created by [prepareDatabase.js](chimera/prepareDatabase.js): tables/indexes are 
 | `objects_detected` | object |
 | `task_runs` | schedule |
 
-**v6.0.0:** the `auth` table shape changed — there is no upgrade path from a v5 database. `prepareDatabase.js` now exits `1` and lists missing columns instead of booting against a stale schema. Run `npm run docker:delete` to drop the volume and start fresh (this destroys existing data).
-
 </details>

@@ -100,7 +100,7 @@ async function runCreationTasks() {
 				try {
 					const missing = await missingColumns(table, columns)
 					ok = missing.length === 0
-					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to reset the database.`
+					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage/certs, then start fresh.`
 				} catch (schemaError) {
 					ok = false
 					detail = ` — failed to verify schema: ${schemaError.message}`
