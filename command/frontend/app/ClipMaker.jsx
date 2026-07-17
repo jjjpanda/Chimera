@@ -252,11 +252,26 @@ const ClipMakerFull = () => {
 	const imageCaches = useRef({}) // { [camId]: { [url]: Image } }
 	const loadGenRef = useRef({})  // { [camId]: generation } — cancels stale image settles
 	const startedFrames = useRef({}) // { [camId]: frames array already queued } — skips cams unaffected by this render
+	const decodeTimers = useRef({}) // { [camId]: timer[] } — watchdogs for that cam's in-flight decodes
 	const padLoading = useRef({})  // { [camId]: bool } — a contentPad measure is in flight
 	const loadSeq = useRef(0)      // cancels stale network responses
 	const navTimer = useRef(null)
 	const mounted = useRef(true)
-	useEffect(() => () => { mounted.current = false }, [])
+	useEffect(() => {
+		mounted.current = true
+		return () => {
+			mounted.current = false
+			Object.values(decodeTimers.current).forEach(ts => ts.forEach(clearTimeout))
+		}
+	}, [])
+
+	const resetDecodes = () => {
+		Object.values(decodeTimers.current).forEach(ts => ts.forEach(clearTimeout))
+		decodeTimers.current = {}
+		imageCaches.current = {}
+		loadGenRef.current = {}
+		startedFrames.current = {}
+	}
 
 	const activeIdxs = multiCam ? selectedCams : (camera != null ? [camera] : [])
 
@@ -363,7 +378,6 @@ const ClipMakerFull = () => {
 
 	const framesKey = useMemo(() => cams.map(c => `${c.id}:${c.frames.join(",")}`).join("|"), [cams])
 	useEffect(() => {
-		const timers = []
 		cams.forEach(c => {
 			if (startedFrames.current[c.id] === c.frames) return
 			startedFrames.current[c.id] = c.frames
@@ -371,6 +385,8 @@ const ClipMakerFull = () => {
 			const newUrls = c.frames.filter(u => !cache[u])
 			if (!newUrls.length) return
 			const gen = (loadGenRef.current[c.id] = (loadGenRef.current[c.id] || 0) + 1)
+			decodeTimers.current[c.id]?.forEach(clearTimeout)
+			const timers = decodeTimers.current[c.id] = []
 			let next = 0
 			const startNext = () => {
 				if (!mounted.current || next >= newUrls.length || loadGenRef.current[c.id] !== gen) return
@@ -392,7 +408,6 @@ const ClipMakerFull = () => {
 			}
 			for (let i = 0; i < Math.min(MAX_CONCURRENT_DECODES, newUrls.length); i++) startNext()
 		})
-		return () => timers.forEach(clearTimeout)
 	}, [framesKey])
 
 	// measure each camera's letterbox pad once from a detection capture (constant per camera), so
@@ -433,9 +448,7 @@ const ClipMakerFull = () => {
 		setMultiCam(m => !m)
 		setSelectedCams([])
 		setCams([])
-		imageCaches.current = {}
-		loadGenRef.current = {}
-		startedFrames.current = {}
+		resetDecodes()
 		padLoading.current = {}
 		setLoadedParams(null)
 		setTrimRange([0, 100])
@@ -479,9 +492,7 @@ const ClipMakerFull = () => {
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
 		setLoadedParams({ start, end, number, cams: [...ids].sort() })
-		imageCaches.current = {}
-		loadGenRef.current = {}
-		startedFrames.current = {}
+		resetDecodes()
 		padLoading.current = {}
 		setScrubIdx(0)
 		setTrimRange([0, 100])
@@ -592,9 +603,7 @@ const ClipMakerFull = () => {
 
 	const stopLoading = () => {
 		setCams(prev => prev.map(c => ({ ...c, frames: [], imagesLoaded: 0, dims: null })))
-		imageCaches.current = {}
-		loadGenRef.current = {}
-		startedFrames.current = {}
+		resetDecodes()
 	}
 
 	return (

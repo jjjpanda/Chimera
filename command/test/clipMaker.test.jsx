@@ -51,8 +51,8 @@ const resolveFrames = (camId, list) => act(async () => {
 	await Promise.resolve()
 })
 
-const settleAllImages = () => act(async () => {
-	FakeImage.instances.forEach(img => img.onload && img.onload())
+const settleAllImages = (skip = () => false) => act(async () => {
+	FakeImage.instances.forEach((img, i) => { if (!skip(i) && img.onload) img.onload() })
 	await Promise.resolve()
 })
 
@@ -63,6 +63,28 @@ beforeEach(() => {
 })
 
 const framesFor = (n, camId) => Array.from({ length: n }, (_, i) => `/frame-${camId}-${i}.jpg`)
+
+const renderClipMaker = (wrap = (el) => el) => {
+	const future = { v7_startTransition: true, v7_relativeSplatPath: true }
+	return render(wrap(React.createElement(MemoryRouter, { future }, React.createElement(ClipMaker))))
+}
+
+test("decodes still start after StrictMode's remount", async () => {
+	renderClipMaker(el => React.createElement(React.StrictMode, null, el))
+
+	await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+	await act(async () => { screen.getByText("CamA").click() })
+	await act(async () => { screen.getByText("Load Images").click() })
+
+	await resolveDetections(101)
+	await resolveFrames(101, framesFor(3, 101))
+
+	expect(FakeImage.instances.length).toBeGreaterThan(0)
+
+	await settleAllImages()
+
+	expect(screen.queryByText("Loading…")).toBeNull()
+})
 
 test("multi-cam loading finishes even when one camera has more frames than the concurrent-decode cap", async () => {
 	const future = { v7_startTransition: true, v7_relativeSplatPath: true }
@@ -85,4 +107,34 @@ test("multi-cam loading finishes even when one camera has more frames than the c
 
 	expect(screen.getByText("Reload Images")).toBeTruthy()
 	expect(screen.queryByText("Loading…")).toBeNull()
+})
+
+test("a hung decode still times out when a later camera re-triggers the shared effect", async () => {
+	jest.useFakeTimers()
+	try {
+		const future = { v7_startTransition: true, v7_relativeSplatPath: true }
+		render(React.createElement(MemoryRouter, { future }, React.createElement(ClipMaker)))
+
+		await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+		await act(async () => { screen.getByText("CamA").click() })
+		await act(async () => { screen.getByText("CamB").click() })
+		await act(async () => { screen.getByText("Load Images").click() })
+
+		await resolveDetections(101)
+		await resolveFrames(101, framesFor(30, 101))
+		await resolveDetections(102)
+		await resolveFrames(102, framesFor(3, 102))
+
+		// instance 0 is camera A's first decode: queued before camera B re-ran the effect, and never settles
+		await settleAllImages(i => i === 0)
+		await settleAllImages(i => i === 0)
+
+		expect(screen.queryByText("Loading…")).toBeTruthy()
+
+		await act(async () => { jest.advanceTimersByTime(10000) })
+
+		expect(screen.queryByText("Loading…")).toBeNull()
+	} finally {
+		jest.useRealTimers()
+	}
 })
