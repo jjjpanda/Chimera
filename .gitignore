@@ -17,3 +17,4 @@ objectCaptures
 *.onnx
 command/test-results
 command/playwright-report
+__pycache__
