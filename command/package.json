@@ -39,6 +39,7 @@
   },
   "peerDependencies": {
     "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0",
     "supertest": "^6.1.6"
   },
   "devDependencies": {
@@ -58,6 +59,7 @@
     "@radix-ui/react-slider": "^1.2.1",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.1",
+    "@testing-library/react": "^16.0.1",
     "@vitejs/plugin-react": "^4.3.3",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",

@@ -26,9 +26,9 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 ---
 # prepareDatabase.js
 
-Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once — idempotent (existing table → `42P07`, treated as success; indexes use `IF NOT EXISTS`). Any other error exits `1`.
+Connects with `database_*` and runs each `CREATE TABLE`/`INDEX` once. An existing table (`42P07`) has its column names (not types) checked against `information_schema.columns` for the expected v6 shape — only a match is treated as success; missing columns exit `1` and list what's missing. Indexes use `IF NOT EXISTS`. Any other error exits `1`.
 
-Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs`, `scheduled_tasks` (schedule). Plus five indexes: `frame_files(camera, timestamp)`, `frame_files(timestamp)`, `objects_detected(camera, timestamp)`, `task_runs(ran_at)`, and `sessions(username)`.
+Tables (owner): `frame_files`, `frame_deletes` (storage) · `auth`, `sessions` (command) · `objects_detected` (object) · `task_runs`, `scheduled_tasks` (schedule). Plus six indexes: `frame_files(camera, timestamp)`, `frame_files(timestamp)`, `objects_detected(camera, timestamp)`, `objects_detected(image)`, `task_runs(ran_at)`, and `sessions(username)`.
 
 ---
 # preflight.js — `npm run preflight`

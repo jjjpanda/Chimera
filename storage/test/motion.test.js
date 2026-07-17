@@ -8,7 +8,7 @@ jest.mock("pm2")
 
 const processList = [{
 	name: "motion",
-	status: "on",
+	status: "online",
 	restarts: 0
 }]
 

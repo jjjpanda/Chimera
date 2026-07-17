@@ -10,6 +10,6 @@ module.exports = {
 	testPathIgnorePatterns: ["/node_modules/", "/e2e/"],
 	testTimeout: 10000,
 	transform: {
-		"\\/(frontend|backend|dist)\\/.+\\.jsx?$": "babel-jest"
+		"[\\\\/](frontend|backend|dist)[\\\\/].+\\.jsx?$": "babel-jest"
 	}
 }
