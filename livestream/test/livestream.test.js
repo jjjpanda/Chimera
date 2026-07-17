@@ -3,7 +3,7 @@ const app = require("../backend/livestream.js")
 
 const processList = [1, 2, 3].map((i) => ({
 	name: `live_stream_cam_${i}`,
-	status: "on",
+	status: "online",
 	restarts: 0
 }))
 

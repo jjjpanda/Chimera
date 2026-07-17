@@ -14,18 +14,19 @@ const listVideos = (cameras, setState, seqRef) => {
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			if (seq !== seqRef.current) return
-			const nums = (Array.isArray(data) ? data : [])
-				.map((cam) => parseInt(cam.name.split("_")[3]))
-				.sort((a, b) => a - b)
+			const streams = (Array.isArray(data) ? data : [])
+				.map((cam) => ({ ...cam, num: parseInt(cam.name.split("_")[3]) }))
+				.sort((a, b) => a.num - b.num)
 			setState((old) => ({
 				...old,
 				loading: false,
 				lastUpdated: moment().format("h:mm:ss a"),
-				videoList: nums.map((num) => {
+				videoList: streams.map(({ num, status, restarts }) => {
 					const cam = cameras.find((c) => c.id === num)
 					return {
 						camera: cam ? cam.name : `Camera ${num}`,
-						online: true,
+						online: status === "online",
+						restarts,
 						url: `/livestream/feed/${num}/video.m3u8`
 					}
 				})
@@ -67,6 +68,8 @@ const useLiveVideo = (cameras) => {
 
 	useEffect(() => {
 		refresh()
+		const id = setInterval(refresh, 5000)
+		return () => clearInterval(id)
 	}, [cameras])
 
 	return [state, refresh, restartAll]
