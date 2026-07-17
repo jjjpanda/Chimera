@@ -76,7 +76,7 @@ const creationTasks = [
 
 async function missingColumns(table, columns) {
 	const { rows } = await pool.query(
-		"SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = ANY(current_schemas(false))",
+		"SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = current_schema()",
 		[table]
 	)
 	const existing = new Set(rows.map((r) => r.column_name))
@@ -103,6 +103,7 @@ async function runCreationTasks() {
 				}
 			} else {
 				ok = false
+				if (e) detail = ` — ${e.message || e.code || e}`
 			}
 		}
 		if (!ok) issues = true
@@ -114,5 +115,10 @@ async function runCreationTasks() {
 module.exports = { creationTasks, missingColumns, runCreationTasks }
 
 if (require.main === module) {
-	runCreationTasks().then((issues) => process.exit(issues ? 1 : 0))
+	runCreationTasks()
+		.then((issues) => process.exit(issues ? 1 : 0))
+		.catch((e) => {
+			console.error(e)
+			process.exit(1)
+		})
 }

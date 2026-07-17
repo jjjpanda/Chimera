@@ -48,6 +48,31 @@ describe("prepareDatabase migration tasks", () => {
 		}
 	})
 
+	const ddlColumns = (body) => {
+		const defs = []
+		let depth = 0
+		let cur = ""
+		for (const ch of body) {
+			if (ch === "(") depth++
+			else if (ch === ")") depth--
+			else if (ch === "," && depth === 0) {
+				defs.push(cur)
+				cur = ""
+				continue
+			}
+			cur += ch
+		}
+		defs.push(cur)
+		return defs.map(d => d.trim().split(/\s+/)[0].toLowerCase())
+	}
+
+	test("every CREATE TABLE task's table and columns match its DDL", () => {
+		for (const t of creationTasks.filter(t => /CREATE TABLE/.test(t.query))) {
+			const [, name, body] = /CREATE TABLE (\w+)\((.*)\);/.exec(t.query)
+			expect([t.table, t.columns]).toEqual([name.toLowerCase(), ddlColumns(body)])
+		}
+	})
+
 	test("missingColumns reports columns absent from information_schema", async () => {
 		poolInstance.query.mockResolvedValueOnce({ rows: [{ column_name: "id" }, { column_name: "username" }, { column_name: "hash" }] })
 		const missing = await missingColumns("auth", ["id", "username", "hash", "role", "theme"])
@@ -91,6 +116,14 @@ describe("runCreationTasks", () => {
 		})
 		const issues = await runCreationTasks()
 		expect(issues).toBe(true)
+	})
+
+	test("a non-42P07 failure reports the underlying error", async () => {
+		const log = jest.spyOn(console, "log").mockImplementation(() => {})
+		poolInstance.query.mockRejectedValue(Object.assign(new Error("permission denied for schema public"), { code: "42501" }))
+		await expect(runCreationTasks()).resolves.toBe(true)
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("permission denied for schema public"))
+		log.mockRestore()
 	})
 
 	test("a schema-check failure after 42P07 reports issues instead of throwing", async () => {
