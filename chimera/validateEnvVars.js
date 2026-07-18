@@ -105,6 +105,11 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
 }
 
+const gwHost = (() => { try { const h = process.env.gateway_HOST || ""; return new URL(/^https?:\/\//i.test(h) ? h : `https://${h}`).hostname } catch { return "" } })()
+if (gwHost && !["localhost", "127.0.0.1", "::1"].includes(gwHost) && (process.env.command_COOKIE_SECURE !== "true" || process.env.gateway_HTTPS_Redirect !== "true")) {
+	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true and gateway_HTTPS_Redirect=true for a non-loopback gateway_HOST")
+}
+
 if(allEnvPresent){
 	process.exit(0)
 }
