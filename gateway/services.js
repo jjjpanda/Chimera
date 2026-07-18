@@ -1,7 +1,9 @@
+const { storageHost } = require("lib")
+
 module.exports = [{
 	serviceOn: process.env.storage_PROXY_ON === "true",
 	log: "📂 Storage Proxied ◀",
-	baseURL: process.env.storage_HOST,
+	baseURL: storageHost(),
 	postPathRegex: /\/convert\/(.*Video|.*Zip|.*Process)|\/file\/path.*|\/motion\/.*/,
 	getPathRegex: /\/convert\/listProcess|\/shared\/.*|\/file\/(path.*|dailyStats)|\/motion\/.*|\/database\/.*|\/storage\/health|\/events|\/frames\/.*|\/usage/,
 	deletePathRegex: /\/camera\/\d+/
