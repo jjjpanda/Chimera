@@ -4,6 +4,7 @@ const path = require("path")
 const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
+const gatewayHost = require("../lib/utils/gatewayHost.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
@@ -110,6 +111,11 @@ if (multiInstance(instances) && process.env.memory_ON !== "true") {
 
 if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
+}
+
+const gwHost = (() => { try { return new URL(gatewayHost()).hostname } catch { return (process.env.gateway_HOST || "").trim() } })()
+if (gwHost && !["localhost", "127.0.0.1", "::1", "[::1]"].includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
 
 if(allEnvPresent){

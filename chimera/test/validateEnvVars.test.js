@@ -125,6 +125,50 @@ describe("validateEnvVars certbot port warning", () => {
 	})
 })
 
+describe("validateEnvVars insecure-cookie warning", () => {
+	test("warns (non-fatal) on a public gateway_HOST with insecure cookie flags", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "127.0.0.1", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a public gateway_HOST when both secure flags are set", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when command_COOKIE_SECURE is set, regardless of gateway_HTTPS_Redirect (reverse-proxy TLS termination)", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a bracketed IPv6 loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "[::1]", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns when only gateway_HTTPS_Redirect is set (command_COOKIE_SECURE still false)", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {
+		const res = run({ gateway_HOST: "not a valid host", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars memory_ON cluster override", () => {
 	test("announces the override when a cluster overrules memory_ON=false", () => {
 		const res = run({ memory_ON: "false", chimeraInstances: "4" })

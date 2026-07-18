@@ -33,7 +33,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ count: "1" }] })
 			const res = await supertest(app).get("/authorization/status")
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ setup: true, tokenRequired: false })
+			expect(res.body).toEqual({ setup: true })
 		})
 	})
 

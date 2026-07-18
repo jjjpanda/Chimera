@@ -126,8 +126,7 @@
         "nanoid": "^3.1.30",
         "pg": "^8.11.0",
         "pm2": "^7.0.3",
-        "proxy-addr": "^2.0.7",
-        "request-ip": "^3.3.0"
+        "proxy-addr": "^2.0.7"
       },
       "peerDependencies": {
         "jest": "^29.0.0"
@@ -12563,12 +12562,6 @@
         "regjsparser": "bin/parser"
       }
     },
-    "node_modules/request-ip": {
-      "version": "3.3.0",
-      "resolved": "https://registry.npmjs.org/request-ip/-/request-ip-3.3.0.tgz",
-      "integrity": "sha512-cA6Xh6e0fDBBBwH77SLJaJPBmD3nWVAcF9/XAcsrIHdjhFzFiB5aNQFytdjCGPezU3ROwrR11IddKAM08vohxA==",
-      "license": "MIT"
-    },
     "node_modules/require-directory": {
       "version": "2.1.1",
       "resolved": "https://registry.npmjs.org/require-directory/-/require-directory-2.1.1.tgz",
@@ -21322,8 +21315,7 @@
         "nanoid": "^3.1.30",
         "pg": "^8.11.0",
         "pm2": "^7.0.3",
-        "proxy-addr": "^2.0.7",
-        "request-ip": "^3.3.0"
+        "proxy-addr": "^2.0.7"
       }
     },
     "lilconfig": {
@@ -22884,11 +22876,6 @@
       "requires": {
         "jsesc": "~3.1.0"
       }
-    },
-    "request-ip": {
-      "version": "3.3.0",
-      "resolved": "https://registry.npmjs.org/request-ip/-/request-ip-3.3.0.tgz",
-      "integrity": "sha512-cA6Xh6e0fDBBBwH77SLJaJPBmD3nWVAcF9/XAcsrIHdjhFzFiB5aNQFytdjCGPezU3ROwrR11IddKAM08vohxA=="
     },
     "require-directory": {
       "version": "2.1.1",
