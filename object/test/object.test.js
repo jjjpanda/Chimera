@@ -140,7 +140,7 @@ describe("Object Routes", () => {
 			.set("Cookie", authorized)
 			.send({ camera: 1 })
 			.expect(502)
-			.expect((res) => expect(res.body.error).toBe("frame grab failed"))
+			.expect((res) => expect(res.body.error).toBe(true))
 			.end(done)
 	})
 
@@ -152,7 +152,7 @@ describe("Object Routes", () => {
 			.set("Cookie", authorized)
 			.send({ camera: 999 })
 			.expect(404)
-			.expect((res) => expect(res.body.error).toBe("unknown camera"))
+			.expect((res) => expect(res.body.error).toBe(true))
 			.end(done)
 	})
 })

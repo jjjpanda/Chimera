@@ -69,8 +69,8 @@ const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (re
 
 app.get("/status", async (req, res) => {
 	try {
-		const result = await pool.query("SELECT COUNT(*) FROM auth")
-		res.json({ setup: parseInt(result.rows[0].count) > 0, tokenRequired: !!process.env.setup_TOKEN })
+		const setup = parseInt((await pool.query("SELECT COUNT(*) FROM auth")).rows[0].count) > 0
+		res.json(setup ? { setup: true } : { setup: false, tokenRequired: !!process.env.setup_TOKEN })
 	} catch (e) {
 		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!process.env.setup_TOKEN })
 		sendError(res, e)
