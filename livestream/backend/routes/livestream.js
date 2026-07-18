@@ -1,6 +1,6 @@
 var express    = require("express")
 const path = require("path")
-const { subprocess } = require("lib")
+const { subprocess, auth } = require("lib")
 const memory = require("memory")
 
 const app = express.Router()
@@ -52,7 +52,7 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
-app.post("/restart", (req, res, next) => {
+app.post("/restart", auth.requireAdmin, (req, res, next) => {
 	const {camera} = req.body
 	if(!isCameraId(camera)){
 		res.status(400).send({})

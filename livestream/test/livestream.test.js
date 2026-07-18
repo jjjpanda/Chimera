@@ -61,12 +61,12 @@ describe("Livestream Routes", () => {
 				.expect(401, done)
 		})
 
-		test("non-admin user passes the gate (400 without a camera)", (done) => {
+		test("non-admin user is forbidden from the gate", (done) => {
 			supertest(app)
 				.post("/livestream/restart")
 				.set("Cookie", "userCookie")
 				.send({})
-				.expect(400, done)
+				.expect(403, done)
 		})
 
 		test("admin passes the gate (400 without a camera)", (done) => {
@@ -80,7 +80,7 @@ describe("Livestream Routes", () => {
 		test("restarts a numeric camera", (done) => {
 			supertest(app)
 				.post("/livestream/restart")
-				.set("Cookie", "userCookie")
+				.set("Cookie", "validCookie")
 				.set("X-Forwarded-For", "10.0.0.1")
 				.send({ camera: 1 })
 				.expect(200, done)

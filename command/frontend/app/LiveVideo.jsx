@@ -4,6 +4,7 @@ import useLiveVideo from "../hooks/useLiveVideo.js"
 import useCameras from "../hooks/useCameras.js"
 import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
 import NavigateToRoute from "./NavigateToRoute.jsx"
+import { useRole } from "./AuthContext.jsx"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Button } from "../components/ui/button"
@@ -65,6 +66,7 @@ const Feed = ({ video, hideLabel }) => (
 )
 
 const LiveVideo = (props) => {
+	const isAdmin = useRole() === "admin"
 	const [cameras] = useCameras()
 	const [state, , restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
@@ -84,10 +86,12 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-3">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
-						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
-						{state.restarting ? "Restarting…" : "Restart streams"}
-					</Button>
+					{isAdmin && (
+						<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+							<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
+							{state.restarting ? "Restarting…" : "Restart streams"}
+						</Button>
+					)}
 				</div>
 				{state.videoList.map((video) => (
 					<Feed key={video.url} video={video} />
@@ -100,10 +104,12 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-2">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
-						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
-						{state.restarting ? "Restarting…" : "Restart streams"}
-					</Button>
+					{isAdmin && (
+						<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+							<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
+							{state.restarting ? "Restarting…" : "Restart streams"}
+						</Button>
+					)}
 				</div>
 				{videos.map((row, ri) => (
 					<div key={ri} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
@@ -123,9 +129,11 @@ const LiveVideo = (props) => {
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="text-sm">Live Video</CardTitle>
 				<div className="flex items-center gap-1">
-					<Button variant="ghost" size="icon" className="size-6" onClick={restart} disabled={state.restarting} title="Restart streams">
-						<RefreshCw className={cn("size-3", state.restarting && "animate-spin")} />
-					</Button>
+					{isAdmin && (
+						<Button variant="ghost" size="icon" className="size-6" onClick={restart} disabled={state.restarting} title="Restart streams">
+							<RefreshCw className={cn("size-3", state.restarting && "animate-spin")} />
+						</Button>
+					)}
 					<NavigateToRoute to="/live" />
 				</div>
 			</CardHeader>
