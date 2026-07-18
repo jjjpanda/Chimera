@@ -3,6 +3,7 @@ const fs = require("fs")
 const path = require("path")
 const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
+const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
@@ -13,6 +14,12 @@ const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 const instances = (process.env.chimeraInstances || "").trim()
 if (instances !== "" && !validInstances(instances)) {
 	console.log("chimeraInstances MUST BE \"max\", -1, OR AN INTEGER >= 0 — pm2 only runs cluster_mode for those; anything below -1 forks N processes that all bind the same port")
+	allEnvPresent = false
+}
+
+const trustedSources = (process.env.scheduler_TRUSTED_SOURCES || "").trim()
+if (trustedSources !== "" && !validTrustedSources(trustedSources)) {
+	console.log("scheduler_TRUSTED_SOURCES MUST BE COMMA-SEPARATED IPs/CIDRs OR proxy-addr NAMES LIKE \"loopback\" — proxy-addr.compile throws at import and crash-loops every service")
 	allEnvPresent = false
 }
 

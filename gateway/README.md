@@ -13,7 +13,7 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-Forwarded with `X-Forwarded-*` (`xfwd`). The gateway does no auth — each service enforces its own after the proxy hop.
+Forwarded with `X-Forwarded-*` (`xfwd`), minus any inbound `Authorization` header, which is stripped on every proxied request. That strip is security-load-bearing, not dead code: without it a public client could replay a leaked `scheduler_AUTH` through the gateway to a same-box service, where `req.ip` is loopback and therefore passes `scheduler_TRUSTED_SOURCES`. The gateway does no auth of its own — each service enforces its own after the proxy hop.
 
 ---
 # Ports & TLS
