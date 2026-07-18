@@ -48,7 +48,7 @@ describe("registerTaskRunner", () => {
 		await new Promise(process.nextTick)
 
 		expect(mockPost).toHaveBeenCalledWith(
-			"https://storage.test/file/pathClean",
+			"http://storage.test/file/pathClean",
 			{ camera: 1 },
 			expect.objectContaining({ headers: expect.any(Object) })
 		)
