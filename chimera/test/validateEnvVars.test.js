@@ -144,9 +144,15 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("warns when only command_COOKIE_SECURE is set (gateway_HTTPS_Redirect still false)", () => {
+	test("no warning when command_COOKIE_SECURE is set, regardless of gateway_HTTPS_Redirect (reverse-proxy TLS termination)", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a bracketed IPv6 loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "[::1]", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
 

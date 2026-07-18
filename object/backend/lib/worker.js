@@ -209,7 +209,8 @@ const scan = async (id, era = epoch) => {
 		}
 		return detections
 	} catch (e) {
-		if (status[id]) status[id].error = e.message
+		console.error("OBJECT SCAN ERROR", e.message)
+		if (status[id]) status[id].error = "scan failed"
 		throw e
 	}
 }
@@ -234,7 +235,8 @@ const startLoop = (id, era) => {
 			inFlight.add(st)
 			const done = scan(id, era).finally(() => inFlight.delete(st))
 			await capped(done, config.intervalMs * 6).catch((e) => {
-				if (status[id] === st) st.error = e.message
+				console.error("OBJECT CAPTURE ERROR", e.message)
+				if (status[id] === st) st.error = "capture failed"
 			})
 		}
 		if (era !== epoch || status[id] !== st || !st.running) return
