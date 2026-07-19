@@ -104,10 +104,11 @@ const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => o
 const isServiceOff = (lines, key) => {
 	if (key === "storage_MOTION_CONF_FILEPATH" || /^ffmpeg_/.test(key)) return !camerasNeeded(lines)
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
-	if (key === "storage_HOST" && (on(lines, "schedule") || getVal(lines, "storage_PROXY_ON") === "true")) return false
+	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
+	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false
 	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
 }

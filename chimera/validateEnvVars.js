@@ -121,7 +121,6 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 }
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
-// host keeps the port, hostname drops it — the gateway collision check needs the port, the loopback checks must ignore it
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 

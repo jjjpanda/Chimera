@@ -219,9 +219,15 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false" }), "storage_HOST")).toBe(true)
 	})
 
-	test("storage_HOST required despite storage_ON=false when the gateway proxies storage — it is the proxy target", () => {
-		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_HOST")).toBe(false)
-		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "false" }), "storage_HOST")).toBe(true)
+	test.each(["storage", "schedule", "livestream", "object", "command"])("%s_HOST required despite %s_ON=false when the gateway proxies it — it is the proxy target", (prefix) => {
+		const off = { schedule_ON: "false", [`${prefix}_ON`]: "false" }
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "true" }), `${prefix}_HOST`)).toBe(false)
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
+	})
+
+	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_PORT")).toBe(true)
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
 	})
 
 	test("scheduler_TRUSTED_SOURCES is never service-gated — lib compiles it at import in every service", () => {
