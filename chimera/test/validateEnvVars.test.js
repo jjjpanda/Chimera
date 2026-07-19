@@ -255,6 +255,12 @@ describe("validateEnvVars storage_HOST protocol gate", () => {
 		expect(res.stdout).not.toContain(MESSAGE)
 	})
 
+	test("blocks boot for a proxied-but-not-local storage — the gateway still dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "storage.example.com" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
 	test("quiet when storage is off and nothing dials storage_HOST", () => {
 		const res = run({ storage_ON: "false", storage_PROXY_ON: "false", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "127.0.0.1:8081" })
 		expect(res.stdout).not.toContain(MESSAGE)
