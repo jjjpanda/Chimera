@@ -241,6 +241,26 @@ describe("validateEnvVars scheduler_TRUSTED_SOURCES gate", () => {
 	})
 })
 
+describe("validateEnvVars storage_HOST behind the gateway", () => {
+	const WARNING = "storage_HOST points at gateway_HOST"
+
+	test("warns when storage_HOST resolves to the gateway — the Authorization strip 401s every cron", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet when storage_HOST shares a hostname but not a port with the gateway", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+})
+
 describe("validateEnvVars bool gate", () => {
 	test("blocks boot when a bool var is not exactly true/false", () => {
 		const res = run({ command_ON: "yes" })

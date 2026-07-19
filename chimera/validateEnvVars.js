@@ -5,6 +5,7 @@ const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
+const storageHost = require("../lib/utils/storageHost.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
@@ -116,6 +117,12 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 const gwHost = (() => { try { return new URL(gatewayHost()).hostname } catch { return (process.env.gateway_HOST || "").trim() } })()
 if (gwHost && !["localhost", "127.0.0.1", "::1", "[::1]"].includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+}
+
+const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
+const gwOrigin = originOf(gatewayHost())
+if (process.env.schedule_ON === "true" && gwOrigin && gwOrigin === originOf(storageHost())) {
+	console.log("WARNING: storage_HOST points at gateway_HOST — the Chimera gateway strips Authorization on every proxied request, so scheduled tasks 401 no matter what scheduler_TRUSTED_SOURCES is set to; point storage_HOST straight at the storage service unless a separate reverse proxy routes it there")
 }
 
 if(allEnvPresent){
