@@ -121,19 +121,23 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 }
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
-const gwHost = (() => { try { return new URL(gatewayHost()).hostname } catch { return (process.env.gateway_HOST || "").trim() } })()
+// host keeps the port, hostname drops it — the gateway collision check needs the port, the loopback checks must ignore it
+const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
+const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
+
+const gwHost = hostnameOf(gatewayHost()) || (process.env.gateway_HOST || "").trim()
 if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
 
-const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
-const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
+const scheduleOn = process.env.schedule_ON === "true"
 const gwOrigin = originOf(gatewayHost())
+const stOrigin = originOf(storageHost())
 const stHostname = hostnameOf(storageHost())
-if (process.env.schedule_ON === "true" && gwOrigin && gwOrigin === originOf(storageHost())) {
-	console.log("WARNING: storage_HOST points at gateway_HOST — the Chimera gateway strips Authorization on every proxied request, so scheduled tasks 401 no matter what scheduler_TRUSTED_SOURCES is set to; point storage_HOST straight at the storage service. A reverse proxy in front of storage is not a fix either: one that forwards Authorization and dials storage over loopback satisfies the default trust and re-exposes scheduler_AUTH to the public internet, so it must strip Authorization from public traffic")
+if (scheduleOn && gwOrigin && gwOrigin === stOrigin) {
+	console.log("WARNING: storage_HOST points at gateway_HOST — the gateway strips Authorization on every proxied request, so scheduled tasks 401 whatever scheduler_TRUSTED_SOURCES says; point storage_HOST straight at the storage service")
 }
-else if (process.env.schedule_ON === "true" && stHostname && !LOOPBACK.includes(stHostname) && trustedSources === "") {
+else if (scheduleOn && stHostname && !LOOPBACK.includes(stHostname) && trustedSources === "") {
 	console.log("WARNING: storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset — storage trusts only loopback peers by default, so every scheduled task 401s with nothing but a webhook alert; set scheduler_TRUSTED_SOURCES to the address/CIDR the schedule service connects from")
 }
 

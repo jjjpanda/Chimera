@@ -13,7 +13,9 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-Forwarded with `X-Forwarded-*` (`xfwd`), minus any inbound `Authorization` header, which is stripped on every proxied request. **Do not remove the strip** — it is what closes the scheduler bypass from the public entrypoint. Services match `scheduler_TRUSTED_SOURCES` against the socket peer, and in the shipped single-container layout the gateway reaches each service over loopback, so a proxied request already satisfies the default `loopback` trust; only the strip stops a leaked `scheduler_AUTH` from riding in on a public request and being honoured. Beyond that the gateway does no auth of its own — each service enforces its own after the proxy hop.
+Forwarded with `X-Forwarded-*` (`xfwd`), minus any inbound `Authorization` header. The gateway does no auth of its own — each service enforces its own after the proxy hop.
+
+The `Authorization` strip is load-bearing, not hygiene. Services match `scheduler_TRUSTED_SOURCES` against the socket peer, and the gateway reaches each service over loopback, so anything it proxies already satisfies the default `loopback` trust. The strip is the only thing stopping a leaked `scheduler_AUTH` from riding in on a public request. **Any reverse proxy you put in front of a service must strip `Authorization` from public traffic for the same reason** — one that forwards it and dials the service over loopback re-exposes `scheduler_AUTH` to the internet.
 
 ---
 # Ports & TLS
