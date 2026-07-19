@@ -65,6 +65,7 @@ describe("varProblem", () => {
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
+	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -109,6 +110,16 @@ describe("varProblem", () => {
 		expect(varProblem(instancesVar, "0")).toBeNull()
 		expect(varProblem(instancesVar, "1")).toBeNull()
 		expect(varProblem(instancesVar, "4")).toBeNull()
+	})
+
+	test("storage_HOST: implied protocol → error, since https:// to a plain-HTTP storage fails every cron", () => {
+		expect(varProblem(storageHostVar, "127.0.0.1:8081")).toBeTruthy()
+		expect(varProblem(storageHostVar, "storage.server.example")).toBeTruthy()
+	})
+
+	test("storage_HOST: explicit protocol → null", () => {
+		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
+		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
 	})
 })
 

@@ -27,6 +27,12 @@ if (trustedSources !== "" && !validTrustedSources(trustedSources)) {
 
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
+const rawStorageHost = (process.env.storage_HOST || "").trim()
+if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https?:\/\//i.test(rawStorageHost)) {
+	console.log("storage_HOST MUST START WITH http:// OR https:// — scheduled tasks and the gateway proxy dial it directly and storage only ever serves plain HTTP, so an implied https:// fails the TLS handshake on every request")
+	allEnvPresent = false
+}
+
 const checkVar = (varName) => {
 	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return true
 	const val = process.env[varName]

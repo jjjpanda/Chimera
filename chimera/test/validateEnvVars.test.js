@@ -241,6 +241,27 @@ describe("validateEnvVars scheduler_TRUSTED_SOURCES gate", () => {
 	})
 })
 
+describe("validateEnvVars storage_HOST protocol gate", () => {
+	const MESSAGE = "storage_HOST MUST START WITH http:// OR https://"
+
+	test.each(["127.0.0.1:8081", "storage.server.example"])("blocks boot on a protocol-less %s — an implied https:// fails the TLS handshake", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["http://127.0.0.1:7820", "https://storage.server.example"])("accepts %s", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).not.toContain(MESSAGE)
+	})
+
+	test("quiet when storage is off and nothing dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "false", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "127.0.0.1:8081" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars storage_HOST behind the gateway", () => {
 	const WARNING = "storage_HOST points at gateway_HOST"
 
