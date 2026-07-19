@@ -3,7 +3,9 @@ const fs = require("fs")
 const path = require("path")
 const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
+const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
+const storageHost = require("../lib/utils/storageHost.js")
 
 let allEnvPresent = true
 const schema = parseSchema()
@@ -17,7 +19,19 @@ if (instances !== "" && !validInstances(instances)) {
 	allEnvPresent = false
 }
 
+const trustedSources = (process.env.scheduler_TRUSTED_SOURCES || "").trim()
+if (trustedSources !== "" && !validTrustedSources(trustedSources)) {
+	console.log("scheduler_TRUSTED_SOURCES MUST BE COMMA-SEPARATED IPs/CIDRs OR proxy-addr NAMES LIKE \"loopback\" — proxy-addr.compile throws at import and crash-loops every service")
+	allEnvPresent = false
+}
+
 const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
+
+const rawStorageHost = (process.env.storage_HOST || "").trim()
+if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https?:\/\//i.test(rawStorageHost)) {
+	console.log("storage_HOST MUST START WITH http:// OR https:// — scheduled tasks and the gateway proxy dial it directly and storage only ever serves plain HTTP, so an implied https:// fails the TLS handshake on every request")
+	allEnvPresent = false
+}
 
 const checkVar = (varName) => {
 	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return true
@@ -106,9 +120,24 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
 }
 
-const gwHost = (() => { try { return new URL(gatewayHost()).hostname } catch { return (process.env.gateway_HOST || "").trim() } })()
-if (gwHost && !["localhost", "127.0.0.1", "::1", "[::1]"].includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
+const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
+const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
+
+const gwHost = hostnameOf(gatewayHost()) || (process.env.gateway_HOST || "").trim()
+if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+}
+
+const scheduleOn = process.env.schedule_ON === "true"
+const gwOrigin = originOf(gatewayHost())
+const stOrigin = originOf(storageHost())
+const stHostname = hostnameOf(storageHost())
+if (scheduleOn && gwOrigin && gwOrigin === stOrigin) {
+	console.log("WARNING: storage_HOST points at gateway_HOST — the gateway strips Authorization on every proxied request, so scheduled tasks 401 whatever scheduler_TRUSTED_SOURCES says; point storage_HOST straight at the storage service")
+}
+else if (scheduleOn && stHostname && !LOOPBACK.includes(stHostname) && trustedSources === "") {
+	console.log("WARNING: storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset — storage trusts only loopback peers by default, so every scheduled task 401s with nothing but a webhook alert; set scheduler_TRUSTED_SOURCES to the address/CIDR the schedule service connects from")
 }
 
 if(allEnvPresent){

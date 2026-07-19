@@ -61,4 +61,22 @@ describe("Gateway Tests", () => {
 				})
 		})
 	})
+
+	test("Gateway strips inbound Authorization header before proxying", (done) => {
+		const echo = require("express")()
+		echo.get("/command/health", (req, res) => {
+			res.send({ authorization: req.headers.authorization || null })
+		})
+		const server = echo.listen(process.env.command_PORT, () => {
+			supertest(gateway)
+				.get("/command/health")
+				.set("Authorization", "Bearer sekrit")
+				.expect(200, (err, res) => {
+					server.close()
+					if (err) return done(err)
+					expect(res.body.authorization).toBeNull()
+					done()
+				})
+		})
+	})
 })

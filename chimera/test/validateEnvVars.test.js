@@ -227,6 +227,92 @@ describe("validateEnvVars chimeraInstances format", () => {
 	})
 })
 
+describe("validateEnvVars scheduler_TRUSTED_SOURCES gate", () => {
+	test.each(["loopbak", "10.0.0.0/99", "not an ip", ",", " , , "])("blocks boot on %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["loopback", "10.0.0.0/8", "127.0.0.1", "loopback,10.0.0.0/8", ""])("accepts %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).not.toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars storage_HOST protocol gate", () => {
+	const MESSAGE = "storage_HOST MUST START WITH http:// OR https://"
+
+	test.each(["127.0.0.1:8081", "storage.server.example"])("blocks boot on a protocol-less %s — an implied https:// fails the TLS handshake", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["http://127.0.0.1:7820", "https://storage.server.example"])("accepts %s", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).not.toContain(MESSAGE)
+	})
+
+	test("blocks boot for a proxied-but-not-local storage — the gateway still dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "storage.example.com" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("quiet when storage is off and nothing dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "false", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "127.0.0.1:8081" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars storage_HOST behind the gateway", () => {
+	const WARNING = "storage_HOST points at gateway_HOST"
+
+	test("warns when storage_HOST resolves to the gateway — the Authorization strip 401s every cron", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet when storage_HOST shares a hostname but not a port with the gateway", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+})
+
+describe("validateEnvVars off-box storage_HOST against the default loopback trust", () => {
+	const WARNING = "storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset"
+
+	test("warns when storage_HOST is off-box and the trust list is left at the loopback default", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet once scheduler_TRUSTED_SOURCES covers the off-box range", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "10.0.0.0/8" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet for a loopback storage_HOST", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+})
+
 describe("validateEnvVars bool gate", () => {
 	test("blocks boot when a bool var is not exactly true/false", () => {
 		const res = run({ command_ON: "yes" })

@@ -3,6 +3,7 @@ const path = require("path")
 const readline = require("readline")
 const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
+const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -52,6 +53,8 @@ const varProblem = (v, val) => {
 	const blank = val === undefined || val === "" || val === v.placeholder
 	if (blank) return v.optional ? null : "required, not set"
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
+	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
+	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
 	if (t === "port" && !/^\d+$/.test(val)) return `must be a number (got "${val}")`
@@ -101,8 +104,11 @@ const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => o
 const isServiceOff = (lines, key) => {
 	if (key === "storage_MOTION_CONF_FILEPATH" || /^ffmpeg_/.test(key)) return !camerasNeeded(lines)
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
+	if (key === "storage_HOST" && on(lines, "schedule")) return false
+	if (key === "scheduler_TRUSTED_SOURCES") return false
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
+	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false
 	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
 }

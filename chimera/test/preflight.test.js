@@ -65,6 +65,7 @@ describe("varProblem", () => {
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
+	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -109,6 +110,16 @@ describe("varProblem", () => {
 		expect(varProblem(instancesVar, "0")).toBeNull()
 		expect(varProblem(instancesVar, "1")).toBeNull()
 		expect(varProblem(instancesVar, "4")).toBeNull()
+	})
+
+	test("storage_HOST: implied protocol → error, since https:// to a plain-HTTP storage fails every cron", () => {
+		expect(varProblem(storageHostVar, "127.0.0.1:8081")).toBeTruthy()
+		expect(varProblem(storageHostVar, "storage.server.example")).toBeTruthy()
+	})
+
+	test("storage_HOST: explicit protocol → null", () => {
+		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
+		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
 	})
 })
 
@@ -200,5 +211,28 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "max" }), "memory_AUTH_TOKEN")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "0" }), "memory_PORT")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "-1" }), "memory_PORT")).toBe(false)
+	})
+
+	test("storage_HOST required despite storage_ON=false when schedule is on — crons post to it directly", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "true" }), "storage_HOST")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "true", schedule_ON: "false" }), "storage_HOST")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false" }), "storage_HOST")).toBe(true)
+	})
+
+	test.each(["storage", "schedule", "livestream", "object", "command"])("%s_HOST required despite %s_ON=false when the gateway proxies it — it is the proxy target", (prefix) => {
+		const off = { schedule_ON: "false", [`${prefix}_ON`]: "false" }
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "true" }), `${prefix}_HOST`)).toBe(false)
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
+	})
+
+	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_PORT")).toBe(true)
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
+	})
+
+	test("scheduler_TRUSTED_SOURCES is never service-gated — lib compiles it at import in every service", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
 	})
 })

@@ -13,7 +13,8 @@
     "moment-timezone": "^0.6.2",
     "nanoid": "^3.1.30",
     "pg": "^8.11.0",
-    "pm2": "^7.0.3"
+    "pm2": "^7.0.3",
+    "proxy-addr": "^2.0.7"
   },
   "peerDependencies": {
     "jest": "^29.0.0"
