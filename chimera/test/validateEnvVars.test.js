@@ -227,6 +227,20 @@ describe("validateEnvVars chimeraInstances format", () => {
 	})
 })
 
+describe("validateEnvVars scheduler_TRUSTED_SOURCES gate", () => {
+	test.each(["loopbak", "10.0.0.0/99", "not an ip", ",", " , , "])("blocks boot on %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["loopback", "10.0.0.0/8", "127.0.0.1", "loopback,10.0.0.0/8", ""])("accepts %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).not.toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars bool gate", () => {
 	test("blocks boot when a bool var is not exactly true/false", () => {
 		const res = run({ command_ON: "yes" })
