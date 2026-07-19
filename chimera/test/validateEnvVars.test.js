@@ -261,6 +261,31 @@ describe("validateEnvVars storage_HOST behind the gateway", () => {
 	})
 })
 
+describe("validateEnvVars off-box storage_HOST against the default loopback trust", () => {
+	const WARNING = "storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset"
+
+	test("warns when storage_HOST is off-box and the trust list is left at the loopback default", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet once scheduler_TRUSTED_SOURCES covers the off-box range", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "10.0.0.0/8" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet for a loopback storage_HOST", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+})
+
 describe("validateEnvVars bool gate", () => {
 	test("blocks boot when a bool var is not exactly true/false", () => {
 		const res = run({ command_ON: "yes" })
