@@ -13,15 +13,9 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-Forwarded with `X-Forwarded-*` (`xfwd`), minus any inbound `Authorization` header. The gateway does no auth of its own — each service enforces its own after the proxy hop.
+Forwarded with `X-Forwarded-*` (`xfwd`). Any `Authorization` header on the incoming request is dropped before forwarding. The gateway does no auth of its own — each service enforces its own after the proxy hop.
 
-### Why `Authorization` is stripped
-
-Services trust the scheduler token (`scheduler_AUTH`) only from addresses in `scheduler_TRUSTED_SOURCES`, which defaults to loopback. The gateway calls services over loopback, so everything it forwards looks trusted to them.
-
-Stripping the header is therefore what stops a stolen token from arriving in a request off the internet and being honoured.
-
-The same applies to anything you put in front of Chimera or its services — nginx, Caddy, a cloud load balancer. If it forwards `Authorization` from public traffic, it hands attackers the token bypass. Strip it there too.
+If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), drop `Authorization` there too. Passing it through from public traffic lets an outsider act as the scheduler.
 
 ---
 # Ports & TLS

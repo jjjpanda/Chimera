@@ -18,7 +18,7 @@ New tasks need a whitelisted `url` and a JSON-string body. Protected tasks (the 
 
 - Runs under pm2 when `schedule_ON=true`; [gateway](../gateway) proxies when `schedule_PROXY_ON=true`.
 - Crons POST directly to `${storage_HOST}${url}` (bypassing the gateway) with `scheduler_AUTH` in `Authorization`. [lib](../lib) accepts this token (instead of a session) only for `schedulableUrls`: `/convert/createVideo`, `/convert/createZip`, `/file/pathMetrics`, `/file/pathDelete`, `/file/pathClean`, `/file/pathAutoClean` — and only from a source matching `scheduler_TRUSTED_SOURCES` (default `loopback`).
-- `storage_HOST` must point at storage itself. Aim it at [gateway](../gateway) and every task 401s whatever `scheduler_TRUSTED_SOURCES` says, because the gateway strips `Authorization`.
+- `storage_HOST` must point at storage itself, not at [gateway](../gateway). Routed through the gateway, every task fails with 401.
 - Task configs and timers live in the [memory](../memory) socket, shared across the cluster; on tick memory emits the task id and this service makes the call.
 - Each fire writes a `task_runs` row and a webhook alert. The prime instance prunes rows older than 30 days.
 - If `storage_MAX_GB` is set, the prime instance registers a protected hourly `/file/pathAutoClean` task trimming oldest footage.
