@@ -15,7 +15,13 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 
 Forwarded with `X-Forwarded-*` (`xfwd`), minus any inbound `Authorization` header. The gateway does no auth of its own — each service enforces its own after the proxy hop.
 
-The `Authorization` strip is load-bearing, not hygiene. Services match `scheduler_TRUSTED_SOURCES` against the socket peer, and the gateway reaches each service over loopback, so anything it proxies already satisfies the default `loopback` trust. The strip is the only thing stopping a leaked `scheduler_AUTH` from riding in on a public request. **Any reverse proxy you put in front of a service must strip `Authorization` from public traffic for the same reason** — one that forwards it and dials the service over loopback re-exposes `scheduler_AUTH` to the internet.
+### Why `Authorization` is stripped
+
+Services trust the scheduler token (`scheduler_AUTH`) only from addresses in `scheduler_TRUSTED_SOURCES`, which defaults to loopback. The gateway calls services over loopback, so everything it forwards looks trusted to them.
+
+Stripping the header is therefore what stops a stolen token from arriving in a request off the internet and being honoured.
+
+The same applies to anything you put in front of Chimera or its services — nginx, Caddy, a cloud load balancer. If it forwards `Authorization` from public traffic, it hands attackers the token bypass. Strip it there too.
 
 ---
 # Ports & TLS
