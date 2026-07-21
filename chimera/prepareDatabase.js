@@ -1,11 +1,10 @@
 require("dotenv").config()
 const Pool = require("pg").Pool
-const readSecret = require("../lib/utils/readSecret.js")
 const pool = new Pool({
 	user: process.env.database_USER,
 	host: process.env.database_HOST,
 	database: process.env.database_NAME,
-	password: readSecret("database_PASSWORD"),
+	password: process.env.database_PASSWORD,
 	port: process.env.database_PORT,
 	connectionTimeoutMillis: 5000,
 })

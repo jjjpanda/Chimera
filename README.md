@@ -57,6 +57,7 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 ```bash
 cp env.example .env                    # fill in values
+mkdir -p secrets && echo -n "<same value as database_PASSWORD in .env>" > secrets/database_PASSWORD
 cp motion.conf.example motion.conf
 # add cameraconf/camN.conf per camera  (see cameraconf/camera.conf.example)
 
@@ -79,8 +80,6 @@ npm run docker:up
 | `npm run docker:logs` | Tail logs |
 | `npm run docker:rebuild` | Redeploy |
 | `npm run docker:delete` | Stop + wipe volumes |
-
-Optional: keep the seven secrets out of `docker inspect` with [docker secrets](secrets/README.md) — write `secrets/<KEY>` files, then use `npm run docker:up:secrets` / `docker:rebuild:secrets`.
 
 </details>
 

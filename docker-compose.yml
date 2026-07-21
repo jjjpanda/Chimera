@@ -1,7 +1,6 @@
 services:
   chimera:
     build: .
-    env_file: .env
     environment:
       TZ: UTC
     security_opt:
@@ -28,6 +27,7 @@ services:
       - ./motion.conf:/etc/motion/motion.conf:ro
       - ./cameraconf:/etc/motion/cameraconf:ro
       - acme-webroot:/app/.well-known
+      - ./.env:/app/.env:ro
     # pm2-runtime streams all services here (file sinks -> /dev/null); the only log sink, only one rotated
     logging:
       driver: json-file
@@ -45,7 +45,6 @@ services:
     environment:
       gateway_HOST: ${gateway_HOST}
       gateway_PORT: ${gateway_PORT}
-      alert_URL: ${alert_URL:-}
       certbot_ON: ${certbot_ON}
     security_opt:
       - no-new-privileges:true
@@ -65,6 +64,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
       - acme-webroot:/webroot/.well-known
       - ./certbot-entry.sh:/certbot-entry.sh:ro
+      - ./.env:/.env:ro
     depends_on:
       - chimera
     restart: unless-stopped
@@ -76,7 +76,9 @@ services:
       PGTZ: UTC
       POSTGRES_DB: ${database_NAME}
       POSTGRES_USER: ${database_USER}
-      POSTGRES_PASSWORD: ${database_PASSWORD:-}
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_PASSWORD
+    secrets:
+      - database_PASSWORD
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -102,3 +104,7 @@ volumes:
   chimera-pgdata:
   chimera-storage:
   acme-webroot:
+
+secrets:
+  database_PASSWORD:
+    file: ./secrets/database_PASSWORD

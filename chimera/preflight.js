@@ -11,21 +11,9 @@ const ENV_EXAMPLE = path.join(ROOT, "env.example")
 const MOTION = path.join(ROOT, "motion.conf")
 const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
-const SECRETS_DIR = path.join(ROOT, "secrets")
 
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
-
-const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$|alert_URL$/.test(key)
-
-const secretFile = (key) => {
-	const f = path.join(SECRETS_DIR, key)
-	try {
-		return fs.statSync(f).isFile() ? fs.readFileSync(f, "utf8") : null
-	} catch {
-		return null
-	}
-}
 
 const parseSchema = () =>
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).reduce((acc, line) => {
@@ -61,20 +49,7 @@ const seedEnv = () => fs.writeFileSync(ENV,
 		return `${m[1]} =${h >= 0 ? " " + m[2].slice(h) : ""}`
 	}).join("\n"))
 
-const secretFileProblem = (v, raw) => {
-	const val = raw.trim()
-	if (val === "" || val === v.placeholder) return `secrets/${v.key} is ${val === "" ? "empty" : "still the placeholder"}`
-	if (v.key === "database_PASSWORD" && (val.includes("\n") || raw.replace(/\n+$/, "") !== val))
-		return `secrets/${v.key} has padding or extra lines — postgres keeps them but the app strips them, so login fails; rewrite it with \`printf '%s'\``
-	return null
-}
-
 const varProblem = (v, val) => {
-	// readSecret() prefers the file, so it is what preflight validates
-	if (isSecret(v.key)) {
-		const raw = secretFile(v.key)
-		if (raw !== null) return secretFileProblem(v, raw)
-	}
 	const blank = val === undefined || val === "" || val === v.placeholder
 	if (blank) return v.optional ? null : "required, not set"
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
@@ -253,4 +228,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, isSecret }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }

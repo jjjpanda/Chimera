@@ -1,4 +1,4 @@
-const {handleServerStart, isPrimeInstance, readSecret} = require("lib")
+const {handleServerStart, isPrimeInstance} = require("lib")
 const app = require("./backend/command.js")
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
 			console.log("🎮 Command Off ❌")
 		} 
 		if(process.env.command_ON === "true"){
-			if(!readSecret("setup_TOKEN")){
+			if(!process.env.setup_TOKEN){
 				throw new Error("setup_TOKEN must be set: /authorization/setup is publicly reachable through the gateway")
 			}
 			handleServerStart(app, process.env.command_PORT, successCallback, failureCallback)

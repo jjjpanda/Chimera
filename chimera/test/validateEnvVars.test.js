@@ -72,47 +72,6 @@ describe("validateEnvVars placeholder-secret gate", () => {
 	})
 })
 
-describe("validateEnvVars file-backed secrets", () => {
-	const secretFile = (name, contents) => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-secret-"))
-		const file = path.join(dir, name)
-		fs.writeFileSync(file, contents)
-		return file
-	}
-
-	test("reads SECRETKEY from SECRETKEY_FILE when the env var is unset — the docker secrets path", () => {
-		const res = run({ SECRETKEY: "", SECRETKEY_FILE: secretFile("SECRETKEY", "a".repeat(40) + "\n") })
-		expect(res.stdout).toBe("")
-		expect(res.status).toBe(0)
-	})
-
-	test("blocks boot when the mounted secret file holds a too-short SECRETKEY", () => {
-		const res = run({ SECRETKEY: "", SECRETKEY_FILE: secretFile("SECRETKEY", "too-short\n") })
-		expect(res.stdout).toContain("SECRETKEY TOO SHORT")
-		expect(res.status).toBe(1)
-	})
-
-	test("SECRETKEY_FILE wins over a set SECRETKEY", () => {
-		const res = run({ SECRETKEY: "a".repeat(40), SECRETKEY_FILE: secretFile("SECRETKEY", "too-short\n") })
-		expect(res.stdout).toContain("SECRETKEY TOO SHORT")
-		expect(res.status).toBe(1)
-	})
-
-	test("reads every secret from its file", () => {
-		const res = run({
-			SECRETKEY: "", SECRETKEY_FILE: secretFile("SECRETKEY", "a".repeat(40)),
-			scheduler_AUTH: "", scheduler_AUTH_FILE: secretFile("scheduler_AUTH", "sched-auth"),
-			setup_TOKEN: "", setup_TOKEN_FILE: secretFile("setup_TOKEN", "setup-token"),
-			memory_AUTH_TOKEN: "", memory_AUTH_TOKEN_FILE: secretFile("memory_AUTH_TOKEN", "memory-token"),
-			database_PASSWORD: "", database_PASSWORD_FILE: secretFile("database_PASSWORD", "db-pass"),
-			alert_URL: "", alert_URL_FILE: secretFile("alert_URL", "https://discord.com/api/webhooks/1/abc"),
-			admin_alert_URL: "", admin_alert_URL_FILE: secretFile("admin_alert_URL", "https://discord.com/api/webhooks/2/def")
-		})
-		expect(res.stdout).toBe("")
-		expect(res.status).toBe(0)
-	})
-})
-
 describe("validateEnvVars confirmURL gate", () => {
 	test("blocks boot when alert_URL is not a valid URL", () => {
 		const res = run({ alert_URL: "not a url" })

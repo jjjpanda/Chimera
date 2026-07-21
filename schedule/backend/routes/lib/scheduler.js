@@ -2,7 +2,7 @@ const cron     = require("node-cron")
 const axios  = require("axios").default.create({
 	validateStatus: (status) => status == 200,
 })
-const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls, storageHost, readSecret } = require("lib")
+const { webhookAlert, alertTime, randomID, jsonFileHanding, pruneInterval, schedulableUrls, storageHost } = require("lib")
 const pool = require("../../lib/pool")
 
 const client = require("memory").client("TASK SCHEDULER")
@@ -229,7 +229,7 @@ const runTask = ({ id, url, body }) => {
 	}
 	console.log(id, " | CRON: ", url)
 	axios.post(`${storageHost()}${url}`, body, {
-		headers: { "Authorization": readSecret("scheduler_AUTH") }
+		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
 		console.log(data)

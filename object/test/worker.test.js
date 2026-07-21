@@ -1,4 +1,4 @@
-jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => Promise.resolve([])), mapLimit: require("../../lib/utils/mapLimit.js"), webhookAlert: jest.fn(), readSecret: require("../../lib/utils/readSecret.js") }))
+jest.mock("lib", () => ({ isPrimeInstance: true, objectState: { register: jest.fn() }, loadCameras: jest.fn(() => Promise.resolve([])), mapLimit: require("../../lib/utils/mapLimit.js"), webhookAlert: jest.fn() }))
 jest.mock("child_process", () => ({ execFile: jest.fn() }))
 jest.mock("fs", () => ({ mkdirSync: jest.fn(), readFileSync: jest.fn(), unlinkSync: jest.fn(), writeFileSync: jest.fn(), readdirSync: jest.fn(() => []), statSync: jest.fn(() => ({ mtimeMs: 0 })), promises: { readdir: jest.fn(() => Promise.resolve([])), stat: jest.fn(() => Promise.resolve({ mtimeMs: 0 })), unlink: jest.fn(() => Promise.resolve()), writeFile: jest.fn(() => Promise.resolve()) } }))
 jest.mock("../backend/lib/pool.js", () => ({ query: jest.fn() }))

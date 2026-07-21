@@ -1,9 +1,8 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
-const readSecret = require("../lib/utils/readSecret.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const storageHost = require("../lib/utils/storageHost.js")
@@ -12,6 +11,7 @@ let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
+const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 
 const instances = (process.env.chimeraInstances || "").trim()
 if (instances !== "" && !validInstances(instances)) {
@@ -35,7 +35,7 @@ if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https
 
 const checkVar = (varName) => {
 	if (optionalKeys.has(varName) || isServiceOff(envLines, varName)) return true
-	const val = isSecret(varName) ? readSecret(varName) : process.env[varName]
+	const val = process.env[varName]
 	if (val == null || val.trim() === "") {
 		console.log("MISSING ENV VAR", varName)
 		allEnvPresent = false
@@ -95,7 +95,7 @@ const confirmPath = (varName, shouldBeFolder=false) => {
 
 const confirmURL = (varName) => {
 	if (isServiceOff(envLines, varName)) return
-	const val = isSecret(varName) ? readSecret(varName) : process.env[varName]
+	const val = process.env[varName]
 	if (val == null || val.trim() === "") return
 	try {
 		if (!/^https?:$/.test(new URL(val).protocol)) throw new Error("scheme")
