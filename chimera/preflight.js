@@ -103,6 +103,10 @@ const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const isServiceOff = (lines, key) => {
 	if (key === "storage_MOTION_CONF_FILEPATH" || /^ffmpeg_/.test(key)) return !camerasNeeded(lines)
+	// object needs both: writes storage_FOLDERPATH, reads livestream_FOLDERPATH
+	if (key === "storage_FOLDERPATH") return !on(lines, "storage") && !on(lines, "object")
+	if (key === "livestream_FOLDERPATH") return !on(lines, "livestream") && !on(lines, "object")
+	if (key === "livestream_PROXY_ON") return !on(lines, "livestream") && !on(lines, "object")
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
@@ -111,6 +115,21 @@ const isServiceOff = (lines, key) => {
 	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false
 	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
+}
+
+const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream") && getVal(lines, "livestream_PROXY_ON") !== "true"
+	? "object_ON requires livestream_ON, or livestream_PROXY_ON=true when livestream runs on another node writing the shared livestream_FOLDERPATH — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
+	: null
+
+const answerProblem = (v, val) => val.includes("#")
+	? "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
+	: varProblem(v, val)
+
+const envProblems = (schema, lines) => {
+	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
+	const feedProb = objectFeedProblem(lines)
+	if (feedProb) probs.push(["object_ON", feedProb])
+	return probs
 }
 
 const runCheck = () => {
@@ -123,7 +142,7 @@ const runCheck = () => {
 		console.log(`  .env          ${BAD}  missing`)
 		failed = true
 	} else {
-		const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
+		const probs = envProblems(schema, lines)
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
@@ -164,20 +183,33 @@ const runInteractive = async () => {
 	const schema = parseSchema()
 	const lines = readLines()
 	console.log("Checking .env...")
-	for (const v of schema) {
-		if (isServiceOff(lines, v.key)) continue
-		const p = varProblem(v, getVal(lines, v.key))
-		if (!p) continue
-		console.log(`\n  ${v.key} ${BAD} ${p}`)
-		if (v.desc) console.log(`    ${v.desc}`)
-		let val
-		do {
-			val = await ask(`    ${v.key} = `)
-		} while (varProblem(v, val))
-		setVal(lines, v.key, val)
-	}
+	// answering a key can unskip an earlier one, so re-walk until nothing new
+	let answered
+	const asked = new Set()
+	do {
+		answered = false
+		for (const v of schema) {
+			if (asked.has(v.key) || isServiceOff(lines, v.key)) continue
+			const p = varProblem(v, getVal(lines, v.key))
+			if (!p) continue
+			console.log(`\n  ${v.key} ${BAD} ${p}`)
+			if (v.desc) console.log(`    ${v.desc}`)
+			let val, ap
+			do {
+				val = await ask(`    ${v.key} = `)
+				ap = answerProblem(v, val)
+				if (ap) console.log(`    ${BAD} ${ap}`)
+			} while (ap)
+			setVal(lines, v.key, val)
+			asked.add(v.key)
+			answered = true
+		}
+	} while (answered)
 	fs.writeFileSync(ENV, lines.join("\n"))
-	console.log(`.env ${OK}\n`)
+	const probs = envProblems(schema, lines)
+	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
+	const envOk = !probs.length
+	console.log(`.env ${envOk ? OK : BAD}\n`)
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -219,7 +251,7 @@ const runInteractive = async () => {
 	}
 
 	rl.close()
-	if (motionOk && camOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
+	if (motionOk && camOk && envOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
 	else { console.log(`Still incomplete ${BAD}  Docker blocked.`); process.exit(1) }
 }
 
@@ -228,4 +260,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, answerProblem, envProblems, runInteractive, readLines, getVal, setVal }

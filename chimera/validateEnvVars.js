@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, objectFeedProblem } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -30,6 +30,12 @@ const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 const rawStorageHost = (process.env.storage_HOST || "").trim()
 if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https?:\/\//i.test(rawStorageHost)) {
 	console.log("storage_HOST MUST START WITH http:// OR https:// — scheduled tasks and the gateway proxy dial it directly and storage only ever serves plain HTTP, so an implied https:// fails the TLS handshake on every request")
+	allEnvPresent = false
+}
+
+const objectFeed = objectFeedProblem(envLines)
+if (objectFeed) {
+	console.log(objectFeed)
 	allEnvPresent = false
 }
 

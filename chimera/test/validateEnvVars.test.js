@@ -94,7 +94,7 @@ describe("validateEnvVars confirmURL gate", () => {
 
 describe("validateEnvVars confirmPath gate", () => {
 	test("skips path validation when the owning service is off", () => {
-		const res = run({ storage_ON: "false", storage_FOLDERPATH: "relative/path" })
+		const res = run({ storage_ON: "false", object_ON: "false", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).not.toContain("storage_FOLDERPATH SHOULD BE")
 		expect(res.status).toBe(0)
 	})
@@ -103,6 +103,34 @@ describe("validateEnvVars confirmPath gate", () => {
 		const res = run({ storage_ON: "true", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).toContain("storage_FOLDERPATH SHOULD BE AN ABSOLUTE PATH")
 		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars object/livestream dependency gate", () => {
+	const MESSAGE = "object_ON requires livestream_ON"
+
+	test("blocks boot when object is on and livestream is off — object scans an HLS feed nothing writes", () => {
+		const res = run({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "false" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts object alongside livestream", () => {
+		const res = run({ object_ON: "true", livestream_ON: "true" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+
+	test("accepts object with a proxied livestream — a peer node writes the shared livestream_FOLDERPATH", () => {
+		const res = run({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet when object is off", () => {
+		const res = run({ object_ON: "false", livestream_ON: "false", livestream_PROXY_ON: "false" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
 	})
 })
 

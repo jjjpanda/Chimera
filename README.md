@@ -86,6 +86,7 @@ npm run docker:up
 - **Boot chain** ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
 - One pm2 process per enabled service ([pm2.config.js](pm2.config.js)); crashes restart per-process, no cross-service chaining.
 - `object` and `memory` are single-instance; the rest honor `chimeraInstances`.
+- `object` reads its frames from the livestream feeds, so `object_ON=true` needs `livestream_ON=true` (or `livestream_PROXY_ON=true` when livestream runs on another machine). Anything else fails the boot chain.
 - **`chimeraInstances`:** `1` = single process. `max` / `0` / `-1` / any integer `>1` = cluster — forces `memory_ON=true` so instances share state via the memory socket. Any other value is rejected at boot.
 
 </details>

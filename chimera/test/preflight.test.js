@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -123,6 +123,58 @@ describe("varProblem", () => {
 	})
 })
 
+describe("objectFeedProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("object without livestream blocks — the HLS feed object scans is never written", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false" }))).toMatch(/object_ON requires livestream_ON/)
+	})
+
+	test("an unset livestream_ON blocks the same way — only \"true\" starts the ffmpeg writers", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true" }))).toBeTruthy()
+	})
+
+	test("object with livestream passes", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "true" }))).toBeNull()
+	})
+
+	test("livestream_PROXY_ON passes — livestream runs on another node writing the shared livestream_FOLDERPATH", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" }))).toBeNull()
+	})
+
+	test("livestream_PROXY_ON=false is no escape", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "false" }))).toBeTruthy()
+	})
+
+	test("livestream without object passes — livestream stands alone", () => {
+		expect(objectFeedProblem(lines({ object_ON: "false", livestream_ON: "true" }))).toBeNull()
+	})
+
+	test("both off passes", () => {
+		expect(objectFeedProblem(lines({ object_ON: "false", livestream_ON: "false" }))).toBeNull()
+	})
+})
+
+describe("envProblems", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+	const SCHEMA = [{ key: "storage_FOLDERPATH", placeholder: "Base shared file path", desc: "Base shared file path", optional: false }]
+
+	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {
+		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "true", storage_FOLDERPATH: "" })))
+			.toEqual([["storage_FOLDERPATH", "required, not set"]])
+	})
+
+	test("the same blank is skipped when neither storage nor object is on", () => {
+		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "false", storage_FOLDERPATH: "" }))).toHaveLength(0)
+	})
+
+	test("the object/livestream dependency rides along with the per-key problems", () => {
+		const probs = envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "false", storage_FOLDERPATH: "" }))
+		expect(probs.map(([k]) => k)).toEqual(["storage_FOLDERPATH", "object_ON"])
+		expect(probs[1][1]).toMatch(/object_ON requires livestream_ON/)
+	})
+})
+
 describe("cameraProblems", () => {
 	test("no problems with valid confs", () => {
 		expect(cameraProblems()).toHaveLength(0)
@@ -191,14 +243,16 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "ffprobe_FILEPATH")).toBe(true)
 	})
 
-	test("storage_FOLDERPATH follows storage service", () => {
-		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
+	test("storage_FOLDERPATH follows storage or object — object writes objectCaptures under it", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "false" }), "storage_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ storage_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
 	})
 
-	test("livestream_FOLDERPATH follows livestream service", () => {
-		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(true)
+	test("livestream_FOLDERPATH follows livestream or object — object reads its feeds out of it", () => {
+		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "false" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
+		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
 	})
 
 	test("memory vars follow memory service when single-instance", () => {
