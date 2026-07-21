@@ -45,6 +45,7 @@ services:
     environment:
       gateway_HOST: ${gateway_HOST}
       gateway_PORT: ${gateway_PORT}
+      alert_URL: ${alert_URL}
       certbot_ON: ${certbot_ON}
     security_opt:
       - no-new-privileges:true
@@ -64,7 +65,6 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
       - acme-webroot:/webroot/.well-known
       - ./certbot-entry.sh:/certbot-entry.sh:ro
-      - ./.env:/.env:ro
     depends_on:
       - chimera
     restart: unless-stopped
@@ -107,4 +107,4 @@ volumes:
 
 secrets:
   database_PASSWORD:
-    file: ./secrets/database_PASSWORD
+    environment: "database_PASSWORD"
