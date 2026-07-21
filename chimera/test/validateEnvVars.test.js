@@ -46,6 +46,17 @@ describe("validateEnvVars against the CI env file", () => {
 	})
 })
 
+describe("validateEnvVars unreadable .env gate", () => {
+	test("blocks boot and names the file when .env exists but cannot be read", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unreadable-env-"))
+		fs.mkdirSync(path.join(dir, ".env"))
+		const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: BASE, encoding: "utf8" })
+		fs.rmSync(dir, { recursive: true, force: true })
+		expect(res.stdout).toContain("CANNOT READ")
+		expect(res.status).toBe(1)
+	})
+})
+
 describe("validateEnvVars placeholder-secret gate", () => {
 	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
 		const res = run({ SECRETKEY: "Auth secret key for hashing, min 32 characters" })

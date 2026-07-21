@@ -82,6 +82,12 @@ describe("pm2.config livestream ffmpeg apps", () => {
 		expect(args[args.indexOf("-i") + 1]).toBe("rtsp://user:p%40ss@cam/stream")
 	})
 
+	test("ffmpeg runs at loglevel error to keep container logs quiet", () => {
+		const { args } = appNamed(liveConfig(), "live_stream_cam_2")
+		expect(args[0]).toBe("-loglevel")
+		expect(args[1]).toBe("error")
+	})
+
 	test("no ffmpeg apps when livestream_FOLDERPATH is unset", () => {
 		const config = load({
 			livestream_ON: "true",

@@ -40,7 +40,16 @@ if (objectFeed) {
 }
 
 const rawEnvPath = path.resolve(process.cwd(), ".env")
-const rawEnvLines = fs.existsSync(rawEnvPath) ? fs.readFileSync(rawEnvPath, "utf8").split(/\r?\n/) : []
+let rawEnvLines = []
+try {
+	rawEnvLines = fs.readFileSync(rawEnvPath, "utf8").split(/\r?\n/)
+}
+catch (e) {
+	if (e.code !== "ENOENT") {
+		console.log(`CANNOT READ ${rawEnvPath} (${e.code}) — dotenv swallows this, so every variable reads as unset; the container opens it as uid 1000, not root`)
+		allEnvPresent = false
+	}
+}
 schema.forEach(v => {
 	if (isServiceOff(envLines, v.key)) return
 	const hp = hashTruncated(rawEnvLines, v.key)
