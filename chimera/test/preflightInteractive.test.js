@@ -127,6 +127,18 @@ describe("runInteractive re-walk", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	test("re-asks a pre-existing hand-edited value that already has a # — its truncated remainder looked valid, so nothing would otherwise catch it", async () => {
+		setup({
+			env: { ...BLANK, SECRETKEY: "a-real-secret#leftover" },
+			answers: ["false", "false", "false", "another-real-secret"]
+		})
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("cannot contain #")
+		expect(env).toContain("SECRETKEY = another-real-secret")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
 	test("seeds .env from env.example when it is missing", async () => {
 		setup({
 			env: {},

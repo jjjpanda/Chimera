@@ -23,6 +23,7 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 - `object_ON=true` requires `livestream_ON=true` — object's only frame source is `livestream_FOLDERPATH/feed/<id>/video.m3u8`, and pm2 starts the per-camera ffmpeg writers only for livestream. `livestream_PROXY_ON` is gateway routing and does not satisfy it.
 - `storage_MOTION_CONF_FILEPATH` required only when storage/object/livestream is on.
 - `storage_FOLDERPATH` (`objectCaptures/` out) and `livestream_FOLDERPATH` (frames in) are also required when `object_ON=true`, even with their own service off.
+- Re-reads the raw `.env` file (not `process.env`) for every key to catch a `#` dotenv already silently truncated before parsing — see `preflight.js` below.
 - Absolute-path checks: key/cert/ffmpeg/ffprobe files; `storage_FOLDERPATH` / `livestream_FOLDERPATH` folders.
 
 ---
@@ -42,6 +43,6 @@ npm run preflight            # interactive; fixes problems in place
 npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
 ```
 
-- `.env`: interactive seeds a missing file from `env.example` and re-prompts until valid; `--check` only reports. Validates required / boolean / port keys; skips disabled services. Answers cannot contain `#` — dotenv reads it as a comment and drops the rest of the line. The walk repeats until stable, since answering one key can unskip an earlier one, and forces a re-ask of `livestream_ON` / `object_ON` while that pair stays inconsistent.
+- `.env`: interactive seeds a missing file from `env.example` and re-prompts until valid; `--check` only reports. Validates required / boolean / port keys; skips disabled services. No value may contain `#` — dotenv reads it as a comment and drops the rest of the line; this is checked for wizard answers and for values already sitting in the file (hand-edited or left over from a previous run), not just fresh input. The walk repeats until stable, since answering one key can unskip an earlier one, and forces a re-ask of `livestream_ON` / `object_ON` while that pair stays inconsistent.
 - `motion.conf` / `cameraconf/`: checked only when storage/object/livestream is on. Validates each camera `.conf` (unique `camera_id` / `camera_name`, `netcam_url` scheme) and can scaffold new ones. An absolute `camera_dir` in `motion.conf` is ignored here (falls back to `cameraconf/`), but `loadCameras.js` (used by pm2) does honor it — the two can disagree.
 - Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVars.js` and tests.

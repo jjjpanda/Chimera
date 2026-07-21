@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems, hashTruncated } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -168,6 +168,31 @@ describe("envProblems", () => {
 		const probs = envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "false", storage_FOLDERPATH: "" }))
 		expect(probs.map(([k]) => k)).toEqual(["storage_FOLDERPATH", "object_ON"])
 		expect(probs[1][1]).toMatch(/object_ON requires livestream_ON/)
+	})
+
+	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {
+		const probs = envProblems(SCHEMA, lines({ storage_ON: "true", storage_FOLDERPATH: "/mnt/storage#leftover" }))
+		expect(probs).toEqual([["storage_FOLDERPATH", expect.stringMatching(/cannot contain #/)]])
+	})
+})
+
+describe("hashTruncated", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("flags a value that dotenv would silently truncate at #", () => {
+		expect(hashTruncated(lines({ setup_TOKEN: "Str0ng#Passphrase" }), "setup_TOKEN")).toMatch(/cannot contain #/)
+	})
+
+	test("does not flag a plain value", () => {
+		expect(hashTruncated(lines({ setup_TOKEN: "a-real-secret" }), "setup_TOKEN")).toBeNull()
+	})
+
+	test("does not flag a seeded key left blank with its example comment intact", () => {
+		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# Docker: /mnt/storage/" }), "livestream_FOLDERPATH")).toBeNull()
+	})
+
+	test("does not flag a key that is not set at all", () => {
+		expect(hashTruncated(lines({}), "setup_TOKEN")).toBeNull()
 	})
 })
 

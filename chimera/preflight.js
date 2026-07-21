@@ -28,13 +28,14 @@ const typeOf = (key, placeholder) =>
 			: "string"
 
 const readLines = () => fs.existsSync(ENV) ? fs.readFileSync(ENV, "utf8").split(/\r?\n/) : []
-const getVal = (lines, key) => {
+const getRaw = (lines, key) => {
 	for (const l of lines) {
 		const m = l.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (m && m[1] === key) return m[2].split("#")[0].trim()
+		if (m && m[1] === key) return m[2].trim()
 	}
 	return undefined
 }
+const getVal = (lines, key) => getRaw(lines, key)?.split("#")[0].trim()
 const setVal = (lines, key, value) => {
 	const idx = lines.findIndex(l => { const m = l.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/); return m && m[1] === key })
 	if (idx >= 0) lines[idx] = `${key} = ${value}`
@@ -120,12 +121,18 @@ const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestre
 	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
 	: null
 
-const answerProblem = (v, val) => val.includes("#")
-	? "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
-	: varProblem(v, val)
+const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
+const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
+
+const hashTruncated = (lines, key) => {
+	const val = getVal(lines, key)
+	const raw = getRaw(lines, key)
+	return val && raw && raw.includes("#") ? HASH_MSG : null
+}
+const keyProblem = (lines, v) => hashTruncated(lines, v.key) || varProblem(v, getVal(lines, v.key))
 
 const envProblems = (schema, lines) => {
-	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
+	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, keyProblem(lines, v)]).filter(([, p]) => p)
 	const feedProb = objectFeedProblem(lines)
 	if (feedProb) probs.push(["object_ON", feedProb])
 	return probs
@@ -200,7 +207,7 @@ const runInteractive = async () => {
 		answered = false
 		for (const v of schema) {
 			if (asked.has(v.key) || isServiceOff(lines, v.key)) continue
-			const p = varProblem(v, getVal(lines, v.key))
+			const p = keyProblem(lines, v)
 			if (!p) continue
 			console.log(`\n  ${v.key} ${BAD} ${p}`)
 			await askKey(v)
@@ -275,4 +282,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, answerProblem, envProblems, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }

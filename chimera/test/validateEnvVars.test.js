@@ -134,6 +134,39 @@ describe("validateEnvVars object/livestream dependency gate", () => {
 	})
 })
 
+describe("validateEnvVars hand-edited # gate", () => {
+	const withTmpEnvFile = (contents, fn) => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-env-"))
+		fs.writeFileSync(path.join(dir, ".env"), contents)
+		try {
+			return fn(dir)
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true })
+		}
+	}
+
+	test("blocks boot when the .env file dotenv loaded truncates a secret at # — process.env only ever sees the truncated half", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = Str0ng#Passphrase\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).toContain("setup_TOKEN")
+			expect(res.stdout).toContain("cannot contain #")
+			expect(res.status).toBe(1)
+		})
+	})
+
+	test("quiet when the .env file dotenv loaded has no #", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = a-real-secret-value-thats-long-enough\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).not.toContain("cannot contain #")
+			expect(res.status).toBe(0)
+		})
+	})
+})
+
 describe("validateEnvVars certbot port warning", () => {
 	test("warns (non-fatal) when certbot_ON=true and gateway_PORT is not 80", () => {
 		const res = run({ certbot_ON: "true", gateway_PORT: "8080" })
