@@ -15,11 +15,12 @@ jest.mock("fs", () => {
 			if (p.includes("motion.conf")) return ""
 			return actual.readFileSync(p)
 		}),
+		statSync: jest.fn(actual.statSync),
 		readdirSync: jest.fn(() => ["cam1.conf", "cam2.conf"])
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, isSecret } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -120,6 +121,67 @@ describe("varProblem", () => {
 	test("storage_HOST: explicit protocol → null", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+})
+
+describe("varProblem: secrets/<KEY> files", () => {
+	const secretVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
+	const dbVar = { key: "database_PASSWORD", placeholder: "postgres password", optional: false }
+	const plainVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
+
+	const fs = require("fs")
+	const defaults = ["statSync", "readFileSync"].reduce((acc, k) => ({ ...acc, [k]: fs[k].getMockImplementation() }), {})
+	afterEach(() => Object.entries(defaults).forEach(([k, impl]) => fs[k].mockImplementation(impl)))
+
+	const secretFiles = (contents) => {
+		const hit = (p) => Object.keys(contents).find(k => String(p).endsWith(`secrets\\${k}`) || String(p).endsWith(`secrets/${k}`))
+		fs.statSync.mockImplementation((p) => {
+			if (!hit(p)) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+			return { isFile: () => true }
+		})
+		fs.readFileSync.mockImplementation((p) => hit(p) ? contents[hit(p)] : defaults.readFileSync(p))
+	}
+
+	test("a blank .env key is satisfied by a real value in secrets/<KEY>", () => {
+		secretFiles({ SECRETKEY: "a-real-32-character-secret-value\n" })
+		expect(varProblem(secretVar, "")).toBeNull()
+	})
+
+	test("no secrets/<KEY> falls through to the normal .env rules", () => {
+		expect(varProblem(secretVar, "")).toBe("required, not set")
+		expect(varProblem(secretVar, "a-real-secret")).toBeNull()
+	})
+
+	test("an empty or placeholder secrets/<KEY> blocks", () => {
+		secretFiles({ SECRETKEY: "  \n" })
+		expect(varProblem(secretVar, "")).toMatch(/empty/)
+		secretFiles({ SECRETKEY: "Auth secret key" })
+		expect(varProblem(secretVar, "")).toMatch(/placeholder/)
+	})
+
+	test("the file wins over a stale .env value, matching readSecret()", () => {
+		secretFiles({ SECRETKEY: "Auth secret key" })
+		expect(varProblem(secretVar, "a-real-secret")).toMatch(/placeholder/)
+	})
+
+	test("a padded database_PASSWORD blocks — postgres keeps the padding, the app strips it", () => {
+		secretFiles({ database_PASSWORD: " pad " })
+		expect(varProblem(dbVar, "")).toMatch(/padding/)
+		secretFiles({ database_PASSWORD: "p1\np2\n" })
+		expect(varProblem(dbVar, "")).toMatch(/padding/)
+	})
+
+	test("a trailing newline on database_PASSWORD is fine — both readers strip it", () => {
+		secretFiles({ database_PASSWORD: "pad\n" })
+		expect(varProblem(dbVar, "")).toBeNull()
+	})
+
+	test("non-secret keys never consult secrets/", () => {
+		expect(isSecret("gateway_PORT")).toBe(false)
+		expect(isSecret("object_MODEL_URL")).toBe(false)
+		expect(["SECRETKEY", "scheduler_AUTH", "setup_TOKEN", "memory_AUTH_TOKEN", "database_PASSWORD", "alert_URL", "admin_alert_URL"].every(isSecret)).toBe(true)
+		secretFiles({ gateway_PORT: "8080" })
+		expect(varProblem(plainVar, "")).toBe("required, not set")
 	})
 })
 

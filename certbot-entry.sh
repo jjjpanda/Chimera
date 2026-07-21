@@ -2,7 +2,9 @@
 
 [ "$certbot_ON" = "true" ] || { echo "certbot disabled (certbot_ON!=true)"; exec tail -f /dev/null; }
 
-until apk add --no-cache curl; do sleep 5; done
+v=$(cat /run/secrets/alert_URL 2>/dev/null) && [ -n "$v" ] && alert_URL=$v
+# curl rejects a padded URL outright; lib/utils/readSecret.js trims the same way
+alert_URL=$(printf '%s' "$alert_URL" | tr -d '[:space:]')
 
 DOMAIN=$(echo "$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $1}' | awk -F: '{print $1}')
 mkdir -p /webroot/.well-known/acme-challenge

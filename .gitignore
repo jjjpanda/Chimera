@@ -18,3 +18,5 @@ objectCaptures
 command/test-results
 command/playwright-report
 __pycache__
+secrets/*
+!secrets/README.md

@@ -1,5 +1,5 @@
 require("dotenv").config()
-const { gatewayHost } = require("lib")
+const { gatewayHost, readSecret } = require("lib")
 
 const baseUrl = gatewayHost()
 
@@ -11,7 +11,7 @@ module.exports = {
 		schedule: `${baseUrl}/schedule/health`,
 		storage: `${baseUrl}/storage/health`
 	},
-	webhookUrl: process.env.alert_URL,
+	webhookUrl: readSecret("alert_URL"),
 	cronString: "*/10 * * * *",
 	consoleOutput: true
 }

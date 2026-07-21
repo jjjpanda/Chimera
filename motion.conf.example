@@ -13,7 +13,7 @@
 # Run in foreground (PM2 manages the process)
 daemon off
 
-# Logging — stdout is captured by PM2 into log/motion.pm2.log
+# Logging — stdout is captured by PM2 and streamed to `npm run docker:logs`
 log_level 6
 
 ############################################################
@@ -89,6 +89,9 @@ stream_maxrate 2
 # Requires postgresql-client in the chimera image (already
 # installed via Dockerfile) and the database_* env vars from
 # .env (database_USER / database_PASSWORD / database_NAME).
+# Under docker secrets (secrets/README.md) database_PASSWORD
+# is absent and database_PASSWORD_FILE points at the mounted
+# file instead, so the password is read from whichever is set.
 # Host is "postgres" — the compose service name; do NOT use
 # localhost (motion runs inside the chimera container).
 #
@@ -96,7 +99,7 @@ stream_maxrate 2
 # chimera/prepareDatabase.js).
 ############################################################
 
-on_picture_save SZ=$(wc -c "%f" | head -n1 | awk '{print $1;}'); PGPASSWORD="$database_PASSWORD" psql -h postgres -U "$database_USER" -d "$database_NAME" -c "INSERT INTO frame_files(timestamp, camera, name, size) VALUES(now(), %t, '%Y%m%d-%H%M%S-%q.jpg', $SZ);"
+on_picture_save SZ=$(wc -c "%f" | head -n1 | awk '{print $1;}'); PW=$(cat "$database_PASSWORD_FILE" 2>/dev/null); [ -n "$PW" ] || PW="$database_PASSWORD"; PGPASSWORD="$PW" psql -h postgres -U "$database_USER" -d "$database_NAME" -c "INSERT INTO frame_files(timestamp, camera, name, size) VALUES(now(), %t, '%Y%m%d-%H%M%S-%q.jpg', $SZ);"
 
 ############################################################
 # Per-camera include directory

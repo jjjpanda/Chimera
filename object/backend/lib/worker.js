@@ -1,7 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const { execFile } = require("child_process")
-const { isPrimeInstance, loadCameras, mapLimit, webhookAlert } = require("lib")
+const { isPrimeInstance, loadCameras, mapLimit, webhookAlert, readSecret } = require("lib")
 const pool = require("./pool.js")
 const detector = require("./detector.js")
 const sendWebhook = require("./webhook.js")
@@ -181,7 +181,7 @@ const handleDetections = async (camera, detections, jpeg, era) => {
 	}
 	if (process.env.object_ALERT_ON === "false") return
 	const summary = detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(", ")
-	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
+	await sendWebhook(readSecret("alert_URL"), `🔍 Camera ${camera}: detected ${summary}`, jpeg)
 }
 
 const scan = async (id, era = epoch) => {

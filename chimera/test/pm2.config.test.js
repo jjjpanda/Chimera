@@ -21,6 +21,15 @@ const load = (overrides) => {
 
 const appNamed = (config, name) => config.apps.find(app => app.name == name)
 
+describe("pm2.config production logging", () => {
+	test("prod routes file sinks to /dev/null and sets no log: file — the only sink is container stdout", () => {
+		const app = appNamed(load({}), "command")
+		expect(app.out_file).toBe("/dev/null")
+		expect(app.error_file).toBe("/dev/null")
+		expect(app.log).toBeUndefined()
+	})
+})
+
 describe("pm2.config cluster gate", () => {
 	test.each(["max", "0", "-1", "4"])("chimeraInstances=%s forces memory on and scales the service", (chimeraInstances) => {
 		const config = load({ chimeraInstances, memory_ON: "false" })

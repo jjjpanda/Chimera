@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare } = require("lib")
+var { validateBody, auth, password, timingSafeCompare, readSecret } = require("lib")
 const { requireAdmin } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -70,16 +70,17 @@ const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (re
 app.get("/status", async (req, res) => {
 	try {
 		const setup = parseInt((await pool.query("SELECT COUNT(*) FROM auth")).rows[0].count) > 0
-		res.json(setup ? { setup: true } : { setup: false, tokenRequired: !!process.env.setup_TOKEN })
+		res.json(setup ? { setup: true } : { setup: false, tokenRequired: !!readSecret("setup_TOKEN") })
 	} catch (e) {
-		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!process.env.setup_TOKEN })
+		if (e.code === "42P01") return res.json({ setup: false, tokenRequired: !!readSecret("setup_TOKEN") })
 		sendError(res, e)
 	}
 })
 
 app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
-	if (!process.env.setup_TOKEN || !timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true })
+	const setupToken = readSecret("setup_TOKEN")
+	if (!setupToken || !timingSafeCompare(token, setupToken)) return res.status(403).json({ error: true })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })

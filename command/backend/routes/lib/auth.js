@@ -1,8 +1,8 @@
-const secretKey = process.env.SECRETKEY
+const { createPool, withTransaction, readSecret } = require("lib")
+const secretKey = readSecret("SECRETKEY")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { randomUUID } = require("crypto")
-const { createPool, withTransaction } = require("lib")
 
 const pool = createPool("COMMAND POOL ERROR")
 

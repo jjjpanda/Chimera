@@ -37,10 +37,13 @@
     "docker:build": "docker compose build",
     "predocker:up": "node chimera/preflight.js --check",
     "docker:up": "docker compose up -d",
+    "predocker:up:secrets": "node chimera/preflight.js --check",
+    "docker:up:secrets": "docker compose -f docker-compose.yml -f docker-compose.secrets.yml up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:restart": "docker compose restart",
     "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
+    "docker:rebuild:secrets": "npm-run-all -s --npm-path npm docker:down docker:build docker:up:secrets",
     "docker:delete": "docker compose down -v"
   },
   "dependencies": {

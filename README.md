@@ -64,6 +64,8 @@ npm run docker:build                   # runs preflight first — bad config blo
 npm run docker:up
 ```
 
+`cameraconf/` is mounted read-only and read as uid 1000, so keep those files world-readable — the default is fine, but `chmod 600` hides your cameras from the app.
+
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 
 <details>
@@ -78,6 +80,8 @@ npm run docker:up
 | `npm run docker:rebuild` | Redeploy |
 | `npm run docker:delete` | Stop + wipe volumes |
 
+Optional: keep the seven secrets out of `docker inspect` with [docker secrets](secrets/README.md) — write `secrets/<KEY>` files, then use `npm run docker:up:secrets` / `docker:rebuild:secrets`.
+
 </details>
 
 <details>
@@ -87,6 +91,9 @@ npm run docker:up
 - One pm2 process per enabled service ([pm2.config.js](pm2.config.js)); crashes restart per-process, no cross-service chaining.
 - `object` and `memory` are single-instance; the rest honor `chimeraInstances`.
 - **`chimeraInstances`:** `1` = single process. `max` / `0` / `-1` / any integer `>1` = cluster — forces `memory_ON=true` so instances share state via the memory socket. Any other value is rejected at boot.
+- The container caps default to `mem_limit` 2g and `pids_limit` 512, which fit a single instance. A cluster needs both raised via `chimera_MEM_LIMIT` / `chimera_PIDS_LIMIT` in `.env`, or it is OOM-killed at boot. Budget the pids cap past the process count — the cgroup counts threads, and motion's `on_picture_save` forks five processes per saved frame.
+- In production pm2 writes no log files; everything streams to container stdout, rotated by the `json-file` driver (`npm run docker:logs`).
+- `chimera` has no `DAC_OVERRIDE`, so `docker compose exec chimera pm2 list` fails as root — use `docker compose exec -u node chimera pm2 list`.
 
 </details>
 
