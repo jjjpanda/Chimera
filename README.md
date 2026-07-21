@@ -88,6 +88,7 @@ npm run docker:up
 - **Boot chain** ([entrypoint.sh](entrypoint.sh), aborts on first failure): ACME dir → `validateEnvVars.js` → `prepareDatabase.js` → `pm2-runtime`.
 - One pm2 process per enabled service ([pm2.config.js](pm2.config.js)); crashes restart per-process, no cross-service chaining.
 - `object` and `memory` are single-instance; the rest honor `chimeraInstances`.
+- `object` reads its frames from the livestream feeds, so `object_ON=true` needs `livestream_ON=true` — anything else fails the boot chain. It also makes `livestream_FOLDERPATH` (frames in) and `storage_FOLDERPATH` (`objectCaptures/` out) required, even when `storage_ON=false`.
 - **`chimeraInstances`:** `1` = single process. `max` / `0` / `-1` / any integer `>1` = cluster — forces `memory_ON=true` so instances share state via the memory socket. Any other value is rejected at boot.
 - The container caps default to `mem_limit` 2g and `pids_limit` 512, which fit a single instance. A cluster needs both raised via `chimera_MEM_LIMIT` / `chimera_PIDS_LIMIT` in `.env`, or it is OOM-killed at boot. Budget the pids cap past the process count — the cgroup counts threads, and motion's `on_picture_save` forks five processes per saved frame.
 - In production pm2 writes no log files; everything streams to container stdout, rotated by the `json-file` driver (`npm run docker:logs`).

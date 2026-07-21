@@ -1,3 +1,4 @@
+const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const { spawnSync } = require("child_process")
@@ -47,5 +48,45 @@ describe("pm2.config cluster gate", () => {
 		const config = load({ chimeraInstances: "4", memory_ON: "true" })
 		expect(appNamed(config, "memory").instances).toBe(1)
 		expect(appNamed(config, "command").instances).toBe("4")
+	})
+})
+
+describe("pm2.config livestream ffmpeg apps", () => {
+	let root, feed
+
+	beforeAll(() => {
+		root = fs.mkdtempSync(path.join(os.tmpdir(), "pm2-livestream-"))
+		feed = path.join(root, "feed")
+		fs.mkdirSync(path.join(root, "cameraconf"))
+		fs.writeFileSync(path.join(root, "motion.conf"), "camera_dir cameraconf\n")
+		fs.writeFileSync(path.join(root, "cameraconf", "cam2.conf"), "camera_id 2\ncamera_name back\nnetcam_url rtsp://cam/stream\nnetcam_userpass user:p@ss\n")
+	})
+
+	afterAll(() => fs.rmSync(root, { recursive: true, force: true }))
+
+	const liveConfig = () => load({
+		livestream_ON: "true",
+		livestream_FOLDERPATH: root,
+		storage_MOTION_CONF_FILEPATH: path.join(root, "motion.conf")
+	})
+
+	test("one ffmpeg app per camera, writing its HLS playlist under livestream_FOLDERPATH", () => {
+		const app = appNamed(liveConfig(), "live_stream_cam_2")
+		expect(app.interpreter).toBe("none")
+		expect(app.args[app.args.length - 1]).toBe(path.join(feed, "2", "video.m3u8"))
+		expect(fs.existsSync(path.join(feed, "2"))).toBe(true)
+	})
+
+	test("credentials reach ffmpeg url-encoded, never as a bare netcam_userpass", () => {
+		const { args } = appNamed(liveConfig(), "live_stream_cam_2")
+		expect(args[args.indexOf("-i") + 1]).toBe("rtsp://user:p%40ss@cam/stream")
+	})
+
+	test("no ffmpeg apps when livestream_FOLDERPATH is unset", () => {
+		const config = load({
+			livestream_ON: "true",
+			storage_MOTION_CONF_FILEPATH: path.join(root, "motion.conf")
+		})
+		expect(config.apps.filter(a => a.name.startsWith("live_stream_cam_"))).toHaveLength(0)
 	})
 })

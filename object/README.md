@@ -15,7 +15,7 @@ Session-guarded (`authorize`) except `/object/health`; config updates and on-dem
 ---
 # Runtime
 
-- Launched by pm2 (`object/start.js`, single instance) when `object_ON=true`; [gateway](../gateway) proxies when `object_PROXY_ON=true`.
+- Launched by pm2 (`object/start.js`, single instance) when `object_ON=true` — which also requires `livestream_ON=true`, since object's only frame source is the livestream HLS feed; anything else fails the boot chain. [gateway](../gateway) proxies when `object_PROXY_ON=true`.
 - The prime instance scans each camera every `object_INTERVAL_MS`, writes to `objects_detected`, and prunes captures to `object_MAX_CAPTURES` every `object_PRUNE_INTERVAL_MS`.
 - config/status/scan are local, `isPrimeInstance`-gated handlers; the only memory socket client is `AUTH` (session sync), used when `memory_ON=true`.
 - YOLOX-Tiny ONNX (~20MB) fetched to `backend/model/yolox_tiny.onnx` on first boot; override with `object_MODEL_URL` (requires `object_MODEL_SHA256`).
@@ -24,4 +24,4 @@ Session-guarded (`authorize`) except `/object/health`; config updates and on-dem
 ---
 # Config
 
-`object_*` keys in [env.example](../env.example). Loads cameras via `storage_MOTION_CONF_FILEPATH`; reuses `livestream_FOLDERPATH`, `ffmpeg_FILEPATH`, `alert_URL`, `database_*`, `storage_FOLDERPATH` (holds `objectCaptures/`).
+`object_*` keys in [env.example](../env.example). Loads cameras via `storage_MOTION_CONF_FILEPATH`; reuses `livestream_FOLDERPATH` (feed input — required here even with `livestream_ON=false`) and `storage_FOLDERPATH` (holds `objectCaptures/`, required even with `storage_ON=false`), plus `ffmpeg_FILEPATH`, `alert_URL`, `database_*`.

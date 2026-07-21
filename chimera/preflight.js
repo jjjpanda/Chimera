@@ -28,13 +28,14 @@ const typeOf = (key, placeholder) =>
 			: "string"
 
 const readLines = () => fs.existsSync(ENV) ? fs.readFileSync(ENV, "utf8").split(/\r?\n/) : []
-const getVal = (lines, key) => {
+const getRaw = (lines, key) => {
 	for (const l of lines) {
 		const m = l.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (m && m[1] === key) return m[2].split("#")[0].trim()
+		if (m && m[1] === key) return m[2].trim()
 	}
 	return undefined
 }
+const getVal = (lines, key) => getRaw(lines, key)?.split("#")[0].trim()
 const setVal = (lines, key, value) => {
 	const idx = lines.findIndex(l => { const m = l.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/); return m && m[1] === key })
 	if (idx >= 0) lines[idx] = `${key} = ${value}`
@@ -103,6 +104,9 @@ const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const isServiceOff = (lines, key) => {
 	if (key === "storage_MOTION_CONF_FILEPATH" || /^ffmpeg_/.test(key)) return !camerasNeeded(lines)
+	// object needs both: writes storage_FOLDERPATH, reads livestream_FOLDERPATH
+	if (key === "storage_FOLDERPATH") return !on(lines, "storage") && !on(lines, "object")
+	if (key === "livestream_FOLDERPATH") return !on(lines, "livestream") && !on(lines, "object")
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
@@ -111,6 +115,27 @@ const isServiceOff = (lines, key) => {
 	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false
 	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
+}
+
+const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
+	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
+	: null
+
+const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
+const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
+
+const hashTruncated = (lines, key) => {
+	const val = getVal(lines, key)
+	const raw = getRaw(lines, key)
+	return val && raw && raw.includes("#") ? HASH_MSG : null
+}
+const keyProblem = (lines, v) => hashTruncated(lines, v.key) || varProblem(v, getVal(lines, v.key))
+
+const envProblems = (schema, lines) => {
+	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, keyProblem(lines, v)]).filter(([, p]) => p)
+	const feedProb = objectFeedProblem(lines)
+	if (feedProb) probs.push(["object_ON", feedProb])
+	return probs
 }
 
 const runCheck = () => {
@@ -123,7 +148,7 @@ const runCheck = () => {
 		console.log(`  .env          ${BAD}  missing`)
 		failed = true
 	} else {
-		const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, varProblem(v, getVal(lines, v.key))]).filter(([, p]) => p)
+		const probs = envProblems(schema, lines)
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
@@ -164,20 +189,49 @@ const runInteractive = async () => {
 	const schema = parseSchema()
 	const lines = readLines()
 	console.log("Checking .env...")
-	for (const v of schema) {
-		if (isServiceOff(lines, v.key)) continue
-		const p = varProblem(v, getVal(lines, v.key))
-		if (!p) continue
-		console.log(`\n  ${v.key} ${BAD} ${p}`)
+	// answering a key can unskip an earlier one, so re-walk until nothing new
+	let answered
+	const asked = new Set()
+	const askKey = async (v) => {
 		if (v.desc) console.log(`    ${v.desc}`)
-		let val
+		let val, ap
 		do {
 			val = await ask(`    ${v.key} = `)
-		} while (varProblem(v, val))
+			ap = answerProblem(v, val)
+			if (ap) console.log(`    ${BAD} ${ap}`)
+		} while (ap)
 		setVal(lines, v.key, val)
+		asked.add(v.key)
 	}
+	do {
+		answered = false
+		for (const v of schema) {
+			if (asked.has(v.key) || isServiceOff(lines, v.key)) continue
+			const p = keyProblem(lines, v)
+			if (!p) continue
+			console.log(`\n  ${v.key} ${BAD} ${p}`)
+			await askKey(v)
+			answered = true
+		}
+		// both keys hold valid values, so the walk never re-asks them — force it
+		const feedProb = objectFeedProblem(lines)
+		if (feedProb) {
+			console.log(`\n  object_ON ${BAD} ${feedProb}`)
+			for (const key of ["livestream_ON", "object_ON"]) {
+				if (!objectFeedProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
+	} while (answered)
 	fs.writeFileSync(ENV, lines.join("\n"))
-	console.log(`.env ${OK}\n`)
+	const probs = envProblems(schema, lines)
+	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
+	const envOk = !probs.length
+	console.log(`.env ${envOk ? OK : BAD}\n`)
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -219,7 +273,7 @@ const runInteractive = async () => {
 	}
 
 	rl.close()
-	if (motionOk && camOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
+	if (motionOk && camOk && envOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
 	else { console.log(`Still incomplete ${BAD}  Docker blocked.`); process.exit(1) }
 }
 
@@ -228,4 +282,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
