@@ -64,8 +64,6 @@ npm run docker:build                   # runs preflight first — bad config blo
 npm run docker:up
 ```
 
-`.env`, `motion.conf`, and `cameraconf/` are all mounted read-only and read as uid 1000 — keep them world-readable, the default is fine, but `chmod 600` hides them from the app.
-
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 
 <details>
