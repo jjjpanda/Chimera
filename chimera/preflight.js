@@ -106,7 +106,6 @@ const isServiceOff = (lines, key) => {
 	// object needs both: writes storage_FOLDERPATH, reads livestream_FOLDERPATH
 	if (key === "storage_FOLDERPATH") return !on(lines, "storage") && !on(lines, "object")
 	if (key === "livestream_FOLDERPATH") return !on(lines, "livestream") && !on(lines, "object")
-	if (key === "livestream_PROXY_ON") return !on(lines, "livestream") && !on(lines, "object")
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
@@ -117,8 +116,8 @@ const isServiceOff = (lines, key) => {
 	return getVal(lines, `${prefix}_ON`) === "false"
 }
 
-const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream") && getVal(lines, "livestream_PROXY_ON") !== "true"
-	? "object_ON requires livestream_ON, or livestream_PROXY_ON=true when livestream runs on another node writing the shared livestream_FOLDERPATH — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
+const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
+	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
 	: null
 
 const answerProblem = (v, val) => val.includes("#")
@@ -186,6 +185,17 @@ const runInteractive = async () => {
 	// answering a key can unskip an earlier one, so re-walk until nothing new
 	let answered
 	const asked = new Set()
+	const askKey = async (v) => {
+		if (v.desc) console.log(`    ${v.desc}`)
+		let val, ap
+		do {
+			val = await ask(`    ${v.key} = `)
+			ap = answerProblem(v, val)
+			if (ap) console.log(`    ${BAD} ${ap}`)
+		} while (ap)
+		setVal(lines, v.key, val)
+		asked.add(v.key)
+	}
 	do {
 		answered = false
 		for (const v of schema) {
@@ -193,15 +203,20 @@ const runInteractive = async () => {
 			const p = varProblem(v, getVal(lines, v.key))
 			if (!p) continue
 			console.log(`\n  ${v.key} ${BAD} ${p}`)
-			if (v.desc) console.log(`    ${v.desc}`)
-			let val, ap
-			do {
-				val = await ask(`    ${v.key} = `)
-				ap = answerProblem(v, val)
-				if (ap) console.log(`    ${BAD} ${ap}`)
-			} while (ap)
-			setVal(lines, v.key, val)
-			asked.add(v.key)
+			await askKey(v)
+			answered = true
+		}
+		// both keys hold valid values, so the walk never re-asks them — force it
+		const feedProb = objectFeedProblem(lines)
+		if (feedProb) {
+			console.log(`\n  object_ON ${BAD} ${feedProb}`)
+			for (const key of ["livestream_ON", "object_ON"]) {
+				if (!objectFeedProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
 			answered = true
 		}
 	} while (answered)

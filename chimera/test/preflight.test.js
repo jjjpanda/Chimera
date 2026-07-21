@@ -138,12 +138,8 @@ describe("objectFeedProblem", () => {
 		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "true" }))).toBeNull()
 	})
 
-	test("livestream_PROXY_ON passes — livestream runs on another node writing the shared livestream_FOLDERPATH", () => {
-		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" }))).toBeNull()
-	})
-
-	test("livestream_PROXY_ON=false is no escape", () => {
-		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "false" }))).toBeTruthy()
+	test("livestream_PROXY_ON is no escape — it only routes gateway HTTP to livestream_HOST, it never fills the local livestream_FOLDERPATH", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" }))).toBeTruthy()
 	})
 
 	test("livestream without object passes — livestream stands alone", () => {

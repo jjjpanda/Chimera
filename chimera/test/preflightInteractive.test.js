@@ -139,26 +139,38 @@ describe("runInteractive re-walk", () => {
 	})
 })
 
-describe("runInteractive final gate", () => {
-	test("objectFeedProblem blocks the run — it cannot be answered away, so it is reported after the walk", async () => {
-		setup({
-			env: { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: "a-real-secret" },
-			answers: []
-		})
-		const { out, exitCode } = await run()
+describe("runInteractive objectFeedProblem", () => {
+	// every key holds a valid value, so the schema walk asks nothing at all
+	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: "a-real-secret" }
+
+	test("prompts livestream_ON instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
+		setup({ env: BROKEN, answers: ["true"] })
+		const { out, env, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
-		expect(out).toContain("Still incomplete")
-		expect(exitCode).toBe(1)
+		expect(env).toContain("livestream_ON = true")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
 	})
 
-	test("livestream_PROXY_ON=true clears that gate — livestream runs on another node", async () => {
-		setup({
-			env: { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "true", object_ON: "true", SECRETKEY: "a-real-secret" },
-			answers: []
-		})
+	test("falls through to object_ON when livestream stays off — turning object off resolves it too", async () => {
+		setup({ env: BROKEN, answers: ["false", "false"] })
+		const { env, exitCode } = await run()
+		expect(env).toContain("object_ON = false")
+		expect(exitCode).toBe(0)
+	})
+
+	test("re-asks while the pair stays inconsistent", async () => {
+		setup({ env: BROKEN, answers: ["false", "true", "true"] })
+		const { env, exitCode } = await run()
+		expect(env).toContain("livestream_ON = true")
+		expect(env).toContain("object_ON = true")
+		expect(exitCode).toBe(0)
+	})
+
+	test("livestream_PROXY_ON=true is no escape — it only routes gateway HTTP, so the wizard still prompts", async () => {
+		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true"] })
 		const { out, exitCode } = await run()
-		expect(out).not.toContain("object_ON requires livestream_ON")
-		expect(out).toContain("All checks passed")
+		expect(out).toContain("object_ON requires livestream_ON")
 		expect(exitCode).toBe(0)
 	})
 })

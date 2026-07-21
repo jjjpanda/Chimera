@@ -121,10 +121,10 @@ describe("validateEnvVars object/livestream dependency gate", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("accepts object with a proxied livestream — a peer node writes the shared livestream_FOLDERPATH", () => {
+	test("livestream_PROXY_ON does not excuse it — it only routes gateway HTTP to livestream_HOST, nothing writes the local livestream_FOLDERPATH", () => {
 		const res = run({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" })
-		expect(res.stdout).not.toContain(MESSAGE)
-		expect(res.status).toBe(0)
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
 	})
 
 	test("quiet when object is off", () => {
