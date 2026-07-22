@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app ./
 
 RUN chmod +x entrypoint.sh \
-    && mkdir -p /home/node/.pm2 \
+    && mkdir -p /app/log /home/node/.pm2 \
     && chown -R node:node /app /home/node
 
 EXPOSE 80 443

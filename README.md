@@ -64,7 +64,7 @@ npm run docker:build                   # runs preflight first — bad config blo
 npm run docker:up
 ```
 
-**`.env` permissions:** the app reads `.env` from inside the container and fails to start if it cannot open the file. Keep it readable — `cp` gives you the right permissions. Do not `chmod 600` it or create it as a different user (for example with `sudo`): the container reads it as uid 1000, not root, and the boot check stops with `CANNOT READ /app/.env`.
+**`.env` and `motion.conf` permissions:** the app reads both files from inside the container and fails to start if it cannot open one. Keep them readable — `cp` gives you the right permissions. Do not `chmod 600` them or create them as a different user (for example with `sudo`): the container reads them as uid 1000, not root, and the boot check stops with `CANNOT READ`.
 
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 
