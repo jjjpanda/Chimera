@@ -125,9 +125,9 @@ const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it a
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
 const hashTruncated = (lines, key) => {
-	const val = getVal(lines, key)
 	const raw = getRaw(lines, key)
-	return val && raw && raw.includes("#") ? HASH_MSG : null
+	const h = raw === undefined ? -1 : raw.indexOf("#")
+	return h > 0 && /\S/.test(raw[h - 1]) ? HASH_MSG : null
 }
 const keyProblem = (lines, v) => hashTruncated(lines, v.key) || varProblem(v, getVal(lines, v.key))
 

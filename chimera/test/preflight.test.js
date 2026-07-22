@@ -194,6 +194,10 @@ describe("hashTruncated", () => {
 	test("does not flag a key that is not set at all", () => {
 		expect(hashTruncated(lines({}), "setup_TOKEN")).toBeNull()
 	})
+
+	test("does not flag a filled value that kept the env.example hint dotenv strips", () => {
+		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # Docker: /mnt/storage/" }), "storage_FOLDERPATH")).toBeNull()
+	})
 })
 
 describe("cameraProblems", () => {

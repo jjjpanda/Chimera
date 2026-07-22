@@ -185,6 +185,16 @@ describe("validateEnvVars hand-edited # gate", () => {
 		})
 	})
 
+	test("quiet when the .env file keeps the env.example hint after a filled value — dotenv strips it", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = a-real-secret-value-thats-long-enough  # Docker: change me\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).not.toContain("cannot contain #")
+			expect(res.status).toBe(0)
+		})
+	})
+
 	test("quiet when the .env file dotenv loaded has no #", () => {
 		const envWithoutToken = { ...BASE }
 		delete envWithoutToken.setup_TOKEN
