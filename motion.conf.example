@@ -108,7 +108,7 @@ on_picture_save SZ=$(wc -c "%f" | head -n1 | awk '{print $1;}'); PGPASSWORD="$da
 # `npm run preflight` validates them before docker.
 #
 # docker-compose.yml bind-mounts the whole directory:
-#   - ./cameraconf:/etc/motion/cameraconf:ro
+#   - ./cameraconf:/etc/motion/cameraconf
 ############################################################
 
 camera_dir /etc/motion/cameraconf

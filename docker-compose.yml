@@ -25,7 +25,7 @@ services:
       - chimera-storage:/mnt/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./motion.conf:/etc/motion/motion.conf:ro
-      - ./cameraconf:/etc/motion/cameraconf:ro
+      - ./cameraconf:/etc/motion/cameraconf
       - acme-webroot:/app/.well-known
       - ./.env:/app/.env:ro
     # pm2-runtime streams all services here (file sinks -> /dev/null); the only log sink, only one rotated

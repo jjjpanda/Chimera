@@ -57,6 +57,24 @@ describe("validateEnvVars unreadable .env gate", () => {
 	})
 })
 
+describe("validateEnvVars unreadable motion.conf gate", () => {
+	test("blocks boot and names the file when storage_MOTION_CONF_FILEPATH exists but cannot be read", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unreadable-motion-conf-"))
+		const confPath = path.join(dir, "motion.conf")
+		fs.mkdirSync(confPath)
+		const res = run({ storage_MOTION_CONF_FILEPATH: confPath })
+		fs.rmSync(dir, { recursive: true, force: true })
+		expect(res.stdout).toContain("CANNOT READ")
+		expect(res.status).toBe(1)
+	})
+
+	test("does not block boot when storage_MOTION_CONF_FILEPATH is missing outright — existence is unchecked", () => {
+		const res = run({ storage_MOTION_CONF_FILEPATH: path.join(os.tmpdir(), "no-such-motion.conf") })
+		expect(res.stdout).not.toContain("CANNOT READ")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars placeholder-secret gate", () => {
 	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
 		const res = run({ SECRETKEY: "Auth secret key for hashing, min 32 characters" })
