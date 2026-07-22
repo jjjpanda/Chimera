@@ -83,8 +83,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # initdb runs `find $PGDATA` as root on the 0700 data dir and reads a 0400
-    # POSTGRES_PASSWORD_FILE — both reads, so DAC_READ_SEARCH suffices (not DAC_OVERRIDE)
+    # DAC_READ_SEARCH: root scans the 0700 data dir that postgres owns. It only reads,
+    # so DAC_OVERRIDE is not necessary.
+    # No FOWNER: root's chmods fail, but the entrypoint repeats them after it switches
+    # to postgres, the owner.
     cap_add:
       - CHOWN
       - DAC_READ_SEARCH
