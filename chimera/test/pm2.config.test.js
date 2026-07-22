@@ -22,6 +22,15 @@ const load = (overrides) => {
 
 const appNamed = (config, name) => config.apps.find(app => app.name == name)
 
+describe("pm2.config production logging", () => {
+	test("prod routes file sinks to /dev/null and sets no log: file — the only sink is container stdout", () => {
+		const app = appNamed(load({}), "command")
+		expect(app.out_file).toBe("/dev/null")
+		expect(app.error_file).toBe("/dev/null")
+		expect(app.log).toBeUndefined()
+	})
+})
+
 describe("pm2.config cluster gate", () => {
 	test.each(["max", "0", "-1", "4"])("chimeraInstances=%s forces memory on and scales the service", (chimeraInstances) => {
 		const config = load({ chimeraInstances, memory_ON: "false" })
@@ -71,6 +80,12 @@ describe("pm2.config livestream ffmpeg apps", () => {
 	test("credentials reach ffmpeg url-encoded, never as a bare netcam_userpass", () => {
 		const { args } = appNamed(liveConfig(), "live_stream_cam_2")
 		expect(args[args.indexOf("-i") + 1]).toBe("rtsp://user:p%40ss@cam/stream")
+	})
+
+	test("ffmpeg runs at loglevel error to keep container logs quiet", () => {
+		const { args } = appNamed(liveConfig(), "live_stream_cam_2")
+		expect(args[0]).toBe("-loglevel")
+		expect(args[1]).toBe("error")
 	})
 
 	test("no ffmpeg apps when livestream_FOLDERPATH is unset", () => {

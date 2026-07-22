@@ -1,9 +1,21 @@
 services:
   chimera:
     build: .
-    env_file: .env
     environment:
       TZ: UTC
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # caps let entrypoint.sh chmod/chown volumes before gosu-dropping to node
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - FSETID
+      - SETUID
+      - SETGID
+    mem_limit: ${chimera_MEM_LIMIT:-2g}
+    pids_limit: ${chimera_PIDS_LIMIT:-512}
     sysctls:
       - net.ipv4.ip_unprivileged_port_start=80
     ports:
@@ -15,20 +27,38 @@ services:
       - ./motion.conf:/etc/motion/motion.conf:ro
       - ./cameraconf:/etc/motion/cameraconf
       - acme-webroot:/app/.well-known
+      - ./.env:/app/.env:ro
+    # pm2-runtime streams all services here (file sinks -> /dev/null); the only log sink, only one rotated
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
 
-  # Automates initial issuance and renewal via HTTP-01.
-  # Owns the read-write cert store so the gateway (ro mount) never holds write access.
+  # HTTP-01 issuance/renewal; owns the RW cert store so the gateway (ro mount) never writes
   certbot:
-    image: certbot/certbot:v5.6.0
+    build: ./certbot
     environment:
       gateway_HOST: ${gateway_HOST}
       gateway_PORT: ${gateway_PORT}
       alert_URL: ${alert_URL}
       certbot_ON: ${certbot_ON}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # certbot-entry.sh chgrp/chmods cert files to the gateway's group
+    cap_add:
+      - CHOWN
+    # gid 1000 = chimera's group on acme-webroot (chmod 2775); without it root+CHOWN can't write HTTP-01 files
+    group_add:
+      - "1000"
+    mem_limit: 256m
+    pids_limit: 128
     entrypoint: /bin/sh
     command: /certbot-entry.sh
     volumes:
@@ -40,13 +70,30 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15
+    image: postgres:15.18@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c
     environment:
       TZ: UTC
       PGTZ: UTC
       POSTGRES_DB: ${database_NAME}
       POSTGRES_USER: ${database_USER}
-      POSTGRES_PASSWORD: ${database_PASSWORD}
+      POSTGRES_PASSWORD_FILE: /run/secrets/database_PASSWORD
+    secrets:
+      - database_PASSWORD
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # DAC_READ_SEARCH: root scans the 0700 data dir that postgres owns. It only reads,
+    # so DAC_OVERRIDE is not necessary.
+    # No FOWNER: root's chmods fail, but the entrypoint repeats them after it switches
+    # to postgres, the owner.
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - SETUID
+      - SETGID
+    mem_limit: 1g
+    pids_limit: 256
     volumes:
       - chimera-pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -59,3 +106,7 @@ volumes:
   chimera-pgdata:
   chimera-storage:
   acme-webroot:
+
+secrets:
+  database_PASSWORD:
+    environment: "database_PASSWORD"

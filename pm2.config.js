@@ -17,11 +17,15 @@ const scaled = multiInstance ? requested : undefined
 const baseEnv = { NODE_ENV: process.env.NODE_ENV, memory_ON: process.env.memory_ON }
 const ignore_watch = ["shared", "feed", "objectTemp", "objectCaptures", "object/backend/model", "*.log", "log", ".env", ".well-known", "*.config.js", "*.json", "node_modules"]
 
+const logging = (devFile) => ({
+	log_date_format: "YYYY-MM-DD HH:mm:ss",
+	...(isDev ? { log: `./log/${devFile}` } : { out_file: "/dev/null", error_file: "/dev/null" }),
+})
+
 const svc = (name, { instances = scaled } = {}) => ({
 	script: `${name}/start.js`,
 	name,
-	log: `./log/${name}.${isDev ? "dev." : ""}log`,
-	log_date_format: "YYYY-MM-DD HH:mm:ss",
+	...logging(`${name}.dev.log`),
 	...(isDev ? { watch: [name, "lib"], ignore_watch } : {}),
 	instances,
 	env: baseEnv,
@@ -47,8 +51,7 @@ if(!isDev){
 	config.apps.push({
 		script: "npx heartbeat",
 		name: "heartbeat",
-		log: "./log/heartbeat.log",
-		log_date_format:"YYYY-MM-DD HH:mm:ss"
+		...logging("heartbeat.dev.log"),
 	})
 }
 
@@ -69,8 +72,7 @@ if(process.env.storage_ON === "true"){
 		args: ["-c", process.env.storage_MOTION_CONF_FILEPATH],
 		interpreter: "none",
 		name: "motion",
-		log: `./log/motion.${isDev ? "dev" : "pm2"}.log`,
-		log_date_format:"YYYY-MM-DD HH:mm:ss",
+		...logging("motion.dev.log"),
 	})
 }
 
@@ -90,6 +92,7 @@ if(process.env.livestream_ON === "true"){
 			config.apps.push({
 				script: process.env.ffmpeg_FILEPATH || "ffmpeg",
 				args: [
+					"-loglevel", "error",
 					"-rtsp_transport", "tcp",
 					"-i", cam.full_url,
 					"-fflags", "flush_packets",
@@ -104,8 +107,7 @@ if(process.env.livestream_ON === "true"){
 				],
 				interpreter: "none",
 				name: `live_stream_cam_${cam.id}`,
-				log: `./log/livestream.${cam.id}${isDev ? ".dev" : ""}.log`,
-				log_date_format:"YYYY-MM-DD HH:mm:ss",
+				...logging(`livestream.${cam.id}.dev.log`),
 			})
 		}
 	} else {

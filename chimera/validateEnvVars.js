@@ -40,7 +40,16 @@ if (objectFeed) {
 }
 
 const rawEnvPath = path.resolve(process.cwd(), ".env")
-const rawEnvLines = fs.existsSync(rawEnvPath) ? fs.readFileSync(rawEnvPath, "utf8").split(/\r?\n/) : []
+let rawEnvLines = []
+try {
+	rawEnvLines = fs.readFileSync(rawEnvPath, "utf8").split(/\r?\n/)
+}
+catch (e) {
+	if (e.code !== "ENOENT") {
+		console.log(`CANNOT READ ${rawEnvPath} (${e.code}) — dotenv swallows this, so every variable reads as unset; the container opens it as uid 1000, not root`)
+		allEnvPresent = false
+	}
+}
 schema.forEach(v => {
 	if (isServiceOff(envLines, v.key)) return
 	const hp = hashTruncated(rawEnvLines, v.key)
@@ -127,6 +136,18 @@ schema.filter(v => /_URL$/.test(v.key)).forEach(v => confirmURL(v.key))
 // storage_MOTION_CONF_FILEPATH intentionally skips the filesystem path check
 schema.filter(v => /_FILEPATH$/.test(v.key) && v.key !== "storage_MOTION_CONF_FILEPATH").forEach(v => confirmPath(v.key))
 schema.filter(v => /_FOLDERPATH$/.test(v.key)).forEach(v => confirmPath(v.key, true))
+
+const motionConfPath = process.env.storage_MOTION_CONF_FILEPATH
+if (!isServiceOff(envLines, "storage_MOTION_CONF_FILEPATH") && motionConfPath) {
+	try {
+		fs.readFileSync(motionConfPath)
+	} catch (e) {
+		if (e.code !== "ENOENT") {
+			console.log(`CANNOT READ ${motionConfPath} (${e.code}) — motion opens this as uid 1000; an unreadable file crash-loops the motion process instead of failing here`)
+			allEnvPresent = false
+		}
+	}
+}
 
 if (multiInstance(instances) && process.env.memory_ON !== "true") {
 	console.log("FORCING memory_ON=true — chimeraInstances asks for a cluster; instances coordinate through the memory socket")
