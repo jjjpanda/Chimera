@@ -307,6 +307,7 @@ const ClipMakerFull = () => {
 	const [cams, setCams] = useState([]) // { id, idx, name, frames, imagesLoaded, fetching, generating, detections, contentPad, dims }
 
 	const canvasRefs = useRef({})  // { [camId]: canvas element }
+	const drawnCells = useRef({})  // { [camId]: "gen:url" last painted } — skips redraw of unchanged cells
 	const imageCaches = useRef({}) // { [camId]: { [url]: Image } }
 	const decodeGen = useRef(0)    // bumped on every reset — must only ever climb, or stale settles pass the check
 	const startedFrames = useRef({}) // { [camId]: frames array already queued } — skips cams unaffected by this render
@@ -328,6 +329,7 @@ const ClipMakerFull = () => {
 		decodeTimers.current = {}
 		imageCaches.current = {}
 		startedFrames.current = {}
+		drawnCells.current = {}
 		decodeGen.current++
 	}
 
@@ -489,8 +491,12 @@ const ClipMakerFull = () => {
 		cams.forEach((c, ci) => {
 			const canvas = canvasRefs.current[c.id]
 			if (!canvas || !c.frames.length) return
-			const img = imageCaches.current[c.id]?.[c.frames[nearestFrameIndex(camViews[ci].timesMs, scrubMs)]]
+			const url = c.frames[nearestFrameIndex(camViews[ci].timesMs, scrubMs)]
+			const img = imageCaches.current[c.id]?.[url]
 			if (!img?.complete || !img.naturalWidth) return
+			const sig = `${decodeGen.current}:${url}`
+			if (drawnCells.current[c.id] === sig) return
+			drawnCells.current[c.id] = sig
 			if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
 				canvas.width = img.naturalWidth
 				canvas.height = img.naturalHeight
