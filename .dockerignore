@@ -2,6 +2,12 @@
 feed/
 log/
 .env
+secrets/
 *.md
 motion.conf
 cameraconf/
+.git
+.github
+**/test/
+**/*.test.js
+**/coverage/

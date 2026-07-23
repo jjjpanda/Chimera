@@ -19,7 +19,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems, hashTruncated } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -65,6 +65,7 @@ describe("varProblem", () => {
 	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
+	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -109,6 +110,93 @@ describe("varProblem", () => {
 		expect(varProblem(instancesVar, "0")).toBeNull()
 		expect(varProblem(instancesVar, "1")).toBeNull()
 		expect(varProblem(instancesVar, "4")).toBeNull()
+	})
+
+	test("storage_HOST: implied protocol → error, since https:// to a plain-HTTP storage fails every cron", () => {
+		expect(varProblem(storageHostVar, "127.0.0.1:8081")).toBeTruthy()
+		expect(varProblem(storageHostVar, "storage.server.example")).toBeTruthy()
+	})
+
+	test("storage_HOST: explicit protocol → null", () => {
+		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
+		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+})
+
+describe("objectFeedProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("object without livestream blocks — the HLS feed object scans is never written", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false" }))).toMatch(/object_ON requires livestream_ON/)
+	})
+
+	test("an unset livestream_ON blocks the same way — only \"true\" starts the ffmpeg writers", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true" }))).toBeTruthy()
+	})
+
+	test("object with livestream passes", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "true" }))).toBeNull()
+	})
+
+	test("livestream_PROXY_ON is no escape — it only routes gateway HTTP to livestream_HOST, it never fills the local livestream_FOLDERPATH", () => {
+		expect(objectFeedProblem(lines({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" }))).toBeTruthy()
+	})
+
+	test("livestream without object passes — livestream stands alone", () => {
+		expect(objectFeedProblem(lines({ object_ON: "false", livestream_ON: "true" }))).toBeNull()
+	})
+
+	test("both off passes", () => {
+		expect(objectFeedProblem(lines({ object_ON: "false", livestream_ON: "false" }))).toBeNull()
+	})
+})
+
+describe("envProblems", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+	const SCHEMA = [{ key: "storage_FOLDERPATH", placeholder: "Base shared file path", desc: "Base shared file path", optional: false }]
+
+	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {
+		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "true", storage_FOLDERPATH: "" })))
+			.toEqual([["storage_FOLDERPATH", "required, not set"]])
+	})
+
+	test("the same blank is skipped when neither storage nor object is on", () => {
+		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "false", storage_FOLDERPATH: "" }))).toHaveLength(0)
+	})
+
+	test("the object/livestream dependency rides along with the per-key problems", () => {
+		const probs = envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "false", storage_FOLDERPATH: "" }))
+		expect(probs.map(([k]) => k)).toEqual(["storage_FOLDERPATH", "object_ON"])
+		expect(probs[1][1]).toMatch(/object_ON requires livestream_ON/)
+	})
+
+	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {
+		const probs = envProblems(SCHEMA, lines({ storage_ON: "true", storage_FOLDERPATH: "/mnt/storage#leftover" }))
+		expect(probs).toEqual([["storage_FOLDERPATH", expect.stringMatching(/cannot contain #/)]])
+	})
+})
+
+describe("hashTruncated", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("flags a value that dotenv would silently truncate at #", () => {
+		expect(hashTruncated(lines({ setup_TOKEN: "Str0ng#Passphrase" }), "setup_TOKEN")).toMatch(/cannot contain #/)
+	})
+
+	test("does not flag a plain value", () => {
+		expect(hashTruncated(lines({ setup_TOKEN: "a-real-secret" }), "setup_TOKEN")).toBeNull()
+	})
+
+	test("does not flag a seeded key left blank with its example comment intact", () => {
+		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# Docker: /mnt/storage/" }), "livestream_FOLDERPATH")).toBeNull()
+	})
+
+	test("does not flag a key that is not set at all", () => {
+		expect(hashTruncated(lines({}), "setup_TOKEN")).toBeNull()
+	})
+
+	test("does not flag a filled value that kept the env.example hint dotenv strips", () => {
+		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # Docker: /mnt/storage/" }), "storage_FOLDERPATH")).toBeNull()
 	})
 })
 
@@ -180,14 +268,16 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "ffprobe_FILEPATH")).toBe(true)
 	})
 
-	test("storage_FOLDERPATH follows storage service", () => {
-		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
+	test("storage_FOLDERPATH follows storage or object — object writes objectCaptures under it", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "false" }), "storage_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ storage_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "false", object_ON: "true" }), "storage_FOLDERPATH")).toBe(false)
 	})
 
-	test("livestream_FOLDERPATH follows livestream service", () => {
-		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(true)
+	test("livestream_FOLDERPATH follows livestream or object — object reads its feeds out of it", () => {
+		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "false" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
+		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
 	})
 
 	test("memory vars follow memory service when single-instance", () => {
@@ -200,5 +290,28 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "max" }), "memory_AUTH_TOKEN")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "0" }), "memory_PORT")).toBe(false)
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "-1" }), "memory_PORT")).toBe(false)
+	})
+
+	test("storage_HOST required despite storage_ON=false when schedule is on — crons post to it directly", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "true" }), "storage_HOST")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "true", schedule_ON: "false" }), "storage_HOST")).toBe(false)
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false" }), "storage_HOST")).toBe(true)
+	})
+
+	test.each(["storage", "schedule", "livestream", "object", "command"])("%s_HOST required despite %s_ON=false when the gateway proxies it — it is the proxy target", (prefix) => {
+		const off = { schedule_ON: "false", [`${prefix}_ON`]: "false" }
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "true" }), `${prefix}_HOST`)).toBe(false)
+		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
+	})
+
+	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_PORT")).toBe(true)
+		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
+	})
+
+	test("scheduler_TRUSTED_SOURCES is never service-gated — lib compiles it at import in every service", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
 	})
 })

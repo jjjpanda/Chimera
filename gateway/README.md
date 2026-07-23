@@ -13,7 +13,9 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-Forwarded with `X-Forwarded-*` (`xfwd`). The gateway does no auth — each service enforces its own after the proxy hop.
+Forwarded with `X-Forwarded-*` (`xfwd`). Any `Authorization` header on the incoming request is dropped before forwarding. The gateway does no auth of its own — each service enforces its own after the proxy hop.
+
+If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), drop `Authorization` there too. Passing it through from public traffic lets an outsider act as the scheduler.
 
 ---
 # Ports & TLS

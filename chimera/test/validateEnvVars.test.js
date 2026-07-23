@@ -46,6 +46,35 @@ describe("validateEnvVars against the CI env file", () => {
 	})
 })
 
+describe("validateEnvVars unreadable .env gate", () => {
+	test("blocks boot and names the file when .env exists but cannot be read", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unreadable-env-"))
+		fs.mkdirSync(path.join(dir, ".env"))
+		const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: BASE, encoding: "utf8" })
+		fs.rmSync(dir, { recursive: true, force: true })
+		expect(res.stdout).toContain("CANNOT READ")
+		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars unreadable motion.conf gate", () => {
+	test("blocks boot and names the file when storage_MOTION_CONF_FILEPATH exists but cannot be read", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "unreadable-motion-conf-"))
+		const confPath = path.join(dir, "motion.conf")
+		fs.mkdirSync(confPath)
+		const res = run({ storage_MOTION_CONF_FILEPATH: confPath })
+		fs.rmSync(dir, { recursive: true, force: true })
+		expect(res.stdout).toContain("CANNOT READ")
+		expect(res.status).toBe(1)
+	})
+
+	test("does not block boot when storage_MOTION_CONF_FILEPATH is missing outright — existence is unchecked", () => {
+		const res = run({ storage_MOTION_CONF_FILEPATH: path.join(os.tmpdir(), "no-such-motion.conf") })
+		expect(res.stdout).not.toContain("CANNOT READ")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars placeholder-secret gate", () => {
 	test("blocks boot when SECRETKEY still holds the env.example placeholder", () => {
 		const res = run({ SECRETKEY: "Auth secret key for hashing, min 32 characters" })
@@ -94,7 +123,7 @@ describe("validateEnvVars confirmURL gate", () => {
 
 describe("validateEnvVars confirmPath gate", () => {
 	test("skips path validation when the owning service is off", () => {
-		const res = run({ storage_ON: "false", storage_FOLDERPATH: "relative/path" })
+		const res = run({ storage_ON: "false", object_ON: "false", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).not.toContain("storage_FOLDERPATH SHOULD BE")
 		expect(res.status).toBe(0)
 	})
@@ -103,6 +132,77 @@ describe("validateEnvVars confirmPath gate", () => {
 		const res = run({ storage_ON: "true", storage_FOLDERPATH: "relative/path" })
 		expect(res.stdout).toContain("storage_FOLDERPATH SHOULD BE AN ABSOLUTE PATH")
 		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars object/livestream dependency gate", () => {
+	const MESSAGE = "object_ON requires livestream_ON"
+
+	test("blocks boot when object is on and livestream is off — object scans an HLS feed nothing writes", () => {
+		const res = run({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "false" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts object alongside livestream", () => {
+		const res = run({ object_ON: "true", livestream_ON: "true" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+
+	test("livestream_PROXY_ON does not excuse it — it only routes gateway HTTP to livestream_HOST, nothing writes the local livestream_FOLDERPATH", () => {
+		const res = run({ object_ON: "true", livestream_ON: "false", livestream_PROXY_ON: "true" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("quiet when object is off", () => {
+		const res = run({ object_ON: "false", livestream_ON: "false", livestream_PROXY_ON: "false" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars hand-edited # gate", () => {
+	const withTmpEnvFile = (contents, fn) => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-env-"))
+		fs.writeFileSync(path.join(dir, ".env"), contents)
+		try {
+			return fn(dir)
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true })
+		}
+	}
+
+	test("blocks boot when the .env file dotenv loaded truncates a secret at # — process.env only ever sees the truncated half", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = Str0ng#Passphrase\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).toContain("setup_TOKEN")
+			expect(res.stdout).toContain("cannot contain #")
+			expect(res.status).toBe(1)
+		})
+	})
+
+	test("quiet when the .env file keeps the env.example hint after a filled value — dotenv strips it", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = a-real-secret-value-thats-long-enough  # Docker: change me\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).not.toContain("cannot contain #")
+			expect(res.status).toBe(0)
+		})
+	})
+
+	test("quiet when the .env file dotenv loaded has no #", () => {
+		const envWithoutToken = { ...BASE }
+		delete envWithoutToken.setup_TOKEN
+		withTmpEnvFile("setup_TOKEN = a-real-secret-value-thats-long-enough\n", (dir) => {
+			const res = spawnSync(process.execPath, [SCRIPT], { cwd: dir, env: envWithoutToken, encoding: "utf8" })
+			expect(res.stdout).not.toContain("cannot contain #")
+			expect(res.status).toBe(0)
+		})
 	})
 })
 
@@ -121,6 +221,50 @@ describe("validateEnvVars certbot port warning", () => {
 	test("no warning when certbot_ON is not true", () => {
 		const res = run({ certbot_ON: "false", gateway_PORT: "8080" })
 		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars insecure-cookie warning", () => {
+	test("warns (non-fatal) on a public gateway_HOST with insecure cookie flags", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "127.0.0.1", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a public gateway_HOST when both secure flags are set", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when command_COOKIE_SECURE is set, regardless of gateway_HTTPS_Redirect (reverse-proxy TLS termination)", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a bracketed IPv6 loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "[::1]", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns when only gateway_HTTPS_Redirect is set (command_COOKIE_SECURE still false)", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {
+		const res = run({ gateway_HOST: "not a valid host", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
 })
@@ -180,6 +324,92 @@ describe("validateEnvVars chimeraInstances format", () => {
 		const res = run({ chimeraInstances: val, memory_ON: "false", memory_PORT: "" })
 		expect(res.stdout).toContain("MISSING ENV VAR memory_PORT")
 		expect(res.status).toBe(1)
+	})
+})
+
+describe("validateEnvVars scheduler_TRUSTED_SOURCES gate", () => {
+	test.each(["loopbak", "10.0.0.0/99", "not an ip", ",", " , , "])("blocks boot on %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["loopback", "10.0.0.0/8", "127.0.0.1", "loopback,10.0.0.0/8", ""])("accepts %s", (val) => {
+		const res = run({ scheduler_TRUSTED_SOURCES: val })
+		expect(res.stdout).not.toContain("scheduler_TRUSTED_SOURCES MUST BE")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars storage_HOST protocol gate", () => {
+	const MESSAGE = "storage_HOST MUST START WITH http:// OR https://"
+
+	test.each(["127.0.0.1:8081", "storage.server.example"])("blocks boot on a protocol-less %s — an implied https:// fails the TLS handshake", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test.each(["http://127.0.0.1:7820", "https://storage.server.example"])("accepts %s", (val) => {
+		const res = run({ storage_HOST: val })
+		expect(res.stdout).not.toContain(MESSAGE)
+	})
+
+	test("blocks boot for a proxied-but-not-local storage — the gateway still dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "storage.example.com" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("quiet when storage is off and nothing dials storage_HOST", () => {
+		const res = run({ storage_ON: "false", storage_PROXY_ON: "false", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "127.0.0.1:8081" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars storage_HOST behind the gateway", () => {
+	const WARNING = "storage_HOST points at gateway_HOST"
+
+	test("warns when storage_HOST resolves to the gateway — the Authorization strip 401s every cron", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet when storage_HOST shares a hostname but not a port with the gateway", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://127.0.0.1:7922" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+})
+
+describe("validateEnvVars off-box storage_HOST against the default loopback trust", () => {
+	const WARNING = "storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset"
+
+	test("warns when storage_HOST is off-box and the trust list is left at the loopback default", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).toContain(WARNING)
+		expect(res.status).toBe(0)
+	})
+
+	test("quiet once scheduler_TRUSTED_SOURCES covers the off-box range", () => {
+		const res = run({ schedule_ON: "true", storage_ON: "false", storage_PROXY_ON: "false", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "10.0.0.0/8" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet for a loopback storage_HOST", () => {
+		const res = run({ schedule_ON: "true", storage_HOST: "http://127.0.0.1:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
+	})
+
+	test("quiet when the schedule service is off", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "http://10.0.0.5:7820", scheduler_TRUSTED_SOURCES: "" })
+		expect(res.stdout).not.toContain(WARNING)
 	})
 })
 

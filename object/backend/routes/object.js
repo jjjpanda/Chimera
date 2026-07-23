@@ -31,7 +31,7 @@ app.post("/scan", requireAdmin, (req, res) => {
 	if (!camera) return res.status(400).send({ error: "camera required" })
 	ifPrime(res, () =>
 		worker.scan(camera).then(detections => res.send({ camera, detections }))
-			.catch(e => res.status(e.code === "UNKNOWN_CAMERA" ? 404 : 502).send({ error: e.message })))
+			.catch(e => { console.error(e); res.status(e.code === "UNKNOWN_CAMERA" ? 404 : 502).send({ error: true }) }))
 })
 
 app.get("/detections", async (req, res) => {

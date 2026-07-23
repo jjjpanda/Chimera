@@ -180,7 +180,7 @@ describe("scan", () => {
 		execFile.mockImplementation((file, args, opts, cb) => cb(new Error("ffmpeg boom")))
 		await expect(worker.scan(4)).rejects.toThrow("ffmpeg boom")
 		expect(detector.detect).not.toHaveBeenCalled()
-		expect(worker.getStatus()[4].error).toBe("ffmpeg boom")
+		expect(worker.getStatus()[4].error).toBe("scan failed")
 	})
 
 	test("a scan still in flight when the workers stop persists nothing", async () => {
@@ -406,7 +406,7 @@ describe("startWorkers / stopWorkers", () => {
 
 		expect(scansOf(1)).toBe(7)
 		expect(scansOf(2)).toBe(1)
-		expect(worker.getStatus()[2].error).toBe("scan timeout")
+		expect(worker.getStatus()[2].error).toBe("capture failed")
 		expect(worker.getStatus()[1].error).toBeNull()
 		expect(jest.getTimerCount()).toBe(4)
 	})

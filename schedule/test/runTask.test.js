@@ -27,13 +27,13 @@ const runner = () => {
 
 describe("registerTaskRunner", () => {
 	beforeEach(() => {
-		process.env.gateway_HOST = "gateway.test"
+		process.env.storage_HOST = "storage.test"
 		mockPost.mockResolvedValue({ data: {} })
 		mockedPool.query.mockResolvedValue({})
 	})
 
 	afterEach(() => {
-		delete process.env.gateway_HOST
+		delete process.env.storage_HOST
 		jest.clearAllMocks()
 	})
 
@@ -43,12 +43,12 @@ describe("registerTaskRunner", () => {
 		expect(mockClient.on.mock.calls.filter(([event]) => event == "runTask")).toHaveLength(1)
 	})
 
-	test("posts the task url through the gateway and records the run", async () => {
+	test("posts the task url directly to storage and records the run", async () => {
 		runner()({ id: "task-abc", url: "/file/pathClean", body: { camera: 1 } })
 		await new Promise(process.nextTick)
 
 		expect(mockPost).toHaveBeenCalledWith(
-			"https://gateway.test/file/pathClean",
+			"https://storage.test/file/pathClean",
 			{ camera: 1 },
 			expect.objectContaining({ headers: expect.any(Object) })
 		)

@@ -51,6 +51,7 @@ for(const apiService of services){
 			target: baseURL,
 			logLevel: "silent",
 			xfwd: true,
+			onProxyReq: (proxyReq) => proxyReq.removeHeader("authorization"),
 		}))
 	}
 }

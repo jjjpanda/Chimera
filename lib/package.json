@@ -14,7 +14,7 @@
     "nanoid": "^3.1.30",
     "pg": "^8.11.0",
     "pm2": "^7.0.3",
-    "request-ip": "^3.3.0"
+    "proxy-addr": "^2.0.7"
   },
   "peerDependencies": {
     "jest": "^29.0.0"
