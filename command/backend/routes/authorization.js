@@ -1,9 +1,10 @@
 var express = require("express")
 var { validateBody, auth, password, timingSafeCompare } = require("lib")
-const { requireAdmin } = auth
+const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
+const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).send({ error: "forbidden" }) : next())
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
@@ -106,7 +107,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	}
 })
 
-app.post("/login", validateBody, loginLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, loginLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])

@@ -161,10 +161,17 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
+const protocolOf = (url) => { try { return new URL(url).protocol } catch { return "" } }
 
-const gwHost = hostnameOf(gatewayHost()) || (process.env.gateway_HOST || "").trim()
+const gwUrl = gatewayHost()
+const gwHost = hostnameOf(gwUrl) || (process.env.gateway_HOST || "").trim()
 if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
-	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+	if (protocolOf(gwUrl) === "https:") {
+		console.log("command_COOKIE_SECURE MUST BE true — gateway_HOST resolves to HTTPS and is non-loopback, so the session cookie ships without Secure and leaks on any HTTP downgrade")
+		allEnvPresent = false
+	} else {
+		console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+	}
 }
 
 const scheduleOn = process.env.schedule_ON === "true"
