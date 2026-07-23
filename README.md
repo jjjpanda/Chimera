@@ -53,7 +53,7 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 ## Quick start
 
-> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
+> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container. Needs Docker Compose v2.23.1 or newer for the `secrets.environment` source.
 
 ```bash
 cp env.example .env                    # fill in values
