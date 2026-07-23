@@ -37,7 +37,7 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const rateLimit = ({ windowMs, max, keyFn }) => {
+const makeReserve = ({ windowMs, max, keyFn }) => {
 	const local = memory.loginAttempts()
 	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
 	const reserveLocal = (key, cb) =>
@@ -52,20 +52,34 @@ const rateLimit = ({ windowMs, max, keyFn }) => {
 			cb(blocked, () => memoryClient.emit("loginRelease", key))
 		})
 	}
+	const releaseOnSuccess = (res, release) =>
+		res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
+	return { reserve: (req, cb) => reserve(getKey(req), cb), releaseOnSuccess }
+}
+
+const rateLimit = (opts) => {
+	const { reserve, releaseOnSuccess } = makeReserve(opts)
 	return (req, res, next) => {
-		const key = getKey(req)
-		reserve(key, (blocked, release) => {
+		reserve(req, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
-			res.on("finish", () => {
-				if (res.statusCode < 400 || res.statusCode >= 500) release()
-			})
+			releaseOnSuccess(res, release)
 			next()
 		})
 	}
 }
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
-const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
+
+const accountLimiter = (() => {
+	const { reserve, releaseOnSuccess } = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
+	return (req, res, next) => {
+		reserve(req, (blocked, release) => {
+			releaseOnSuccess(res, release)
+			req.accountThrottled = blocked
+			next()
+		})
+	}
+})()
 
 app.get("/status", async (req, res) => {
 	try {

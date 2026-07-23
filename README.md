@@ -56,13 +56,16 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 > **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
 
 ```bash
+npm install                            # install deps — preflight (via docker:build) needs them
 cp env.example .env                    # fill in values
 cp motion.conf.example motion.conf
 # add cameraconf/camN.conf per camera  (see cameraconf/camera.conf.example)
 
-npm run docker:build                   # runs preflight first — bad config blocks the build
+npm run docker:build                   # runs preflight first — missing/mistyped config blocks the build
 npm run docker:up
 ```
+
+Preflight catches missing, mistyped, and mis-scheme'd config before the build. Deeper checks — `SECRETKEY` length, `*_URL` scheme, and filesystem paths/readability — run inside the container at boot, so a build can pass preflight and still stop on startup.
 
 **`.env` and `motion.conf` permissions:** the app reads both files from inside the container and fails to start if it cannot open one. Keep them readable — `cp` gives you the right permissions. Do not `chmod 600` them or create them as a different user (for example with `sudo`): the container reads them as uid 1000, not root, and the boot check stops with `CANNOT READ`.
 

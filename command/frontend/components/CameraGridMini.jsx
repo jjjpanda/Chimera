@@ -3,7 +3,13 @@ import { ImageOff } from "lucide-react"
 import { Card } from "./ui/card"
 
 const CameraGridMini = ({ slots, renderCell, cellLabel, onCellClick, centerIcon, onActivate }) => (
-	<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={onActivate}>
+	<Card
+		role="button"
+		tabIndex={0}
+		onClick={onActivate}
+		onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivate() } }}
+		className="h-full overflow-hidden cursor-pointer select-none transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+	>
 		<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 			{slots.map((slot, i) => (
 				<div

@@ -18,7 +18,7 @@ module.exports = () => {
 		})
 
 		const {createTask, startTask, stopTask, destroyTask, listTasks} = require("./lib/scheduledTasks.js")(io)
-		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")()
+		const {saveProcessEnder, deleteProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")()
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
 		const sessionSync = require("./lib/sessionSync.js")
 
@@ -40,6 +40,7 @@ module.exports = () => {
 			client.on("listTask", listTasks)
 
 			client.on("saveProcessEnder", saveProcessEnder)
+			client.on("deleteProcessEnder", deleteProcessEnder)
 			client.on("cancelProcess", cancelProcess)
 
 			client.on("loginReserve", loginReserve)

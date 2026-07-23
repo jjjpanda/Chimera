@@ -57,6 +57,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			output.on("error", (err) => {
 				cancelled = true
 				console.log("ZIP OUTPUT ERROR: " + err.message)
+				client.emit("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {})
 				fs.unlink(zipPath, () => {})
 				alertFailure()
@@ -66,6 +67,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 
 			output.on("close", () => {
+				client.emit("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(cancelled){
 						fs.unlink(zipPath, () => {})
@@ -79,6 +81,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
+				client.emit("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(!cancelled){
 						alertFailure()

@@ -902,6 +902,21 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
 		})
+
+		test("a correct password still logs in after wrong attempts exhaust the per-username budget", async () => {
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${10 + i}`)
+					.send({ username: "dosvictim", password: "wrongpassword" })
+			}
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.99")
+				.send({ username: "dosvictim", password: "mockedPassword" })
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
+		})
 	})
 
 	describe("rateLimit (shared memory instance)", () => {

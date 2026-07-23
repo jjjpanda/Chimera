@@ -24,7 +24,9 @@ module.exports = {
 	COOKIE_SECURE,
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
-		const deny = () => res.status(400).json({ error: true, errors: "Invalid username or password" })
+		const deny = () => req.accountThrottled
+			? res.status(429).json({ error: true, errors: "Too many attempts" })
+			: res.status(400).json({ error: true, errors: "Invalid username or password" })
 		const serverError = () => res.status(500).json({ error: true })
 
 		pool.query("SELECT hash, role, force_password_change, temp_password_expires, theme FROM auth WHERE username = $1", [username], (err, values) => {
