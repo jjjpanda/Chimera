@@ -8,6 +8,7 @@ import usePreviewHeight from "../hooks/usePreviewHeight"
 import { useRole } from "./AuthContext.jsx"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
+import { Slider } from "../components/ui/slider"
 import toast from "../js/toast.js"
 import { detectGrayPad } from "../js/letterbox.js"
 import DetectionOverlay from "../components/DetectionOverlay.jsx"
@@ -117,7 +118,6 @@ const ObjectDetectionsFull = () => {
 	const [selectedCam, setSelectedCam] = useState(null)
 	const [scrubIdx, setScrubIdx] = useState(0)
 	const [previewHeight, , startResizeDrag] = usePreviewHeight(200)
-	const trackRef = useRef(null)
 
 	useEffect(() => {
 		if (selectedCam != null || cameras.length === 0) return
@@ -143,26 +143,6 @@ const ObjectDetectionsFull = () => {
 	}, [selectedCam, camGroups.length])
 
 	const currentGroup = camGroups[scrubIdx] ?? null
-	const scrubPct = camGroups.length > 1 ? (scrubIdx / (camGroups.length - 1)) * 100 : 0
-
-	const seekTo = (clientX) => {
-		const rect = trackRef.current?.getBoundingClientRect()
-		if (!rect) return
-		const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-		setScrubIdx(Math.round(pct * Math.max(0, camGroups.length - 1)))
-	}
-
-	const startDrag = (e) => {
-		e.preventDefault()
-		seekTo(e.clientX)
-		const move = (ev) => seekTo(ev.clientX)
-		const up = () => {
-			window.removeEventListener("pointermove", move)
-			window.removeEventListener("pointerup", up)
-		}
-		window.addEventListener("pointermove", move)
-		window.addEventListener("pointerup", up)
-	}
 
 	const runScan = (camera) => {
 		toast(`Scanning camera ${camera}…`)
@@ -197,17 +177,15 @@ const ObjectDetectionsFull = () => {
 
 			{camGroups.length > 1 && (
 				<div className="px-8 pt-1 pb-0">
-					<div
-						ref={trackRef}
-						className="relative h-12 flex items-center select-none cursor-pointer"
-						onPointerDown={startDrag}
-					>
-						<div className="absolute inset-x-0 h-3 bg-secondary rounded-full" />
-						<div
-							className="absolute w-6 h-6 rounded-full bg-primary ring-2 ring-accent shadow-lg touch-none"
-							style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
-						/>
-					</div>
+					<Slider
+						className="h-12"
+						min={0}
+						max={camGroups.length - 1}
+						step={1}
+						value={[scrubIdx]}
+						onValueChange={([v]) => setScrubIdx(v)}
+						aria-label="Scrub detections"
+					/>
 					<div className="flex justify-between text-[11px] text-muted -mt-1 pb-1">
 						<span>{currentGroup ? moment(currentGroup.time).format("MM/DD HH:mm:ss") : ""}</span>
 						<span>{scrubIdx + 1} / {camGroups.length}</span>

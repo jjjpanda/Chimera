@@ -124,6 +124,40 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 		window.addEventListener("pointerup", up)
 	}
 
+	const KEY_DELTA = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageUp: 10, PageDown: -10 }
+
+	const onScrubKey = (e) => {
+		const max = Math.max(0, frameCount - 1)
+		let next
+		if (e.key in KEY_DELTA) next = scrubIdx + KEY_DELTA[e.key]
+		else if (e.key === "Home") next = 0
+		else if (e.key === "End") next = max
+		else return
+		e.preventDefault()
+		onScrubChange(clamp(next, 0, max))
+	}
+
+	const onTrimKey = (e, which) => {
+		const [tsCur, teCur] = trimRange
+		const cur = which === "start" ? tsCur : teCur
+		let next
+		if (e.key in KEY_DELTA) next = cur + KEY_DELTA[e.key]
+		else if (e.key === "Home") next = which === "start" ? 0 : tsCur + 1
+		else if (e.key === "End") next = which === "start" ? teCur - 1 : 100
+		else return
+		e.preventDefault()
+		const scrubPctNow = frameCount > 1 ? (scrubIdx / (frameCount - 1)) * 100 : 0
+		if (which === "start") {
+			const ns = clamp(next, 0, teCur - 1)
+			onTrimChange([ns, teCur])
+			if (scrubPctNow < ns) onScrubChange(Math.round((ns / 100) * Math.max(0, frameCount - 1)))
+		} else {
+			const ne = clamp(next, tsCur + 1, 100)
+			onTrimChange([tsCur, ne])
+			if (scrubPctNow > ne) onScrubChange(Math.round((ne / 100) * Math.max(0, frameCount - 1)))
+		}
+	}
+
 	const scrubPct = frameCount > 1 ? (scrubIdx / (frameCount - 1)) * 100 : 0
 	const [ts, te] = trimRange
 
@@ -160,23 +194,47 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 			{trimming && (
 				<>
 					<div
-						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none"
+						role="slider"
+						tabIndex={0}
+						aria-label="Trim start"
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-valuenow={Math.round(ts)}
+						aria-valuetext={`Start ${Math.round(ts)}%`}
+						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${ts}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-start") }}
+						onKeyDown={(e) => onTrimKey(e, "start")}
 					/>
 					<div
-						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none"
+						role="slider"
+						tabIndex={0}
+						aria-label="Trim end"
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-valuenow={Math.round(te)}
+						aria-valuetext={`End ${Math.round(te)}%`}
+						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${te}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-end") }}
+						onKeyDown={(e) => onTrimKey(e, "end")}
 					/>
 				</>
 			)}
 
 			{!disabled && (
 				<div
-					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8"}`}
+					role="slider"
+					tabIndex={0}
+					aria-label="Scrub position"
+					aria-valuemin={0}
+					aria-valuemax={Math.max(0, frameCount - 1)}
+					aria-valuenow={scrubIdx}
+					aria-valuetext={`Frame ${scrubIdx + 1} of ${frameCount}`}
+					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-none focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8"}`}
 					style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
 					onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "scrub") }}
+					onKeyDown={onScrubKey}
 				/>
 			)}
 		</div>
@@ -672,7 +730,7 @@ const ClipMakerFull = () => {
 				{stoppable ? (
 					<div className="flex items-center gap-2">
 						<Progress value={progress} className="h-2 flex-1" />
-						<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={stopLoading}>
+						<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={stopLoading}>
 							<Square className="h-4 w-4" />
 						</Button>
 					</div>
@@ -788,7 +846,7 @@ const ClipMakerFull = () => {
 					<div className="flex flex-col gap-1.5">
 						<Label>Frames</Label>
 						<div className="flex items-center gap-2">
-							<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setNumber(n => Math.max(1, n - 10))}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(1, n - 10))}>
 								<Minus className="size-4" />
 							</Button>
 							<Input
@@ -798,7 +856,7 @@ const ClipMakerFull = () => {
 								onChange={e => setNumber(Math.max(1, parseInt(e.target.value) || 1))}
 								className="flex-1 text-center text-sm font-medium px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 							/>
-							<Button variant="outline" size="icon" className="size-9 shrink-0" onClick={() => setNumber(n => n + 10)}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => n + 10)}>
 								<Plus className="size-4" />
 							</Button>
 						</div>
@@ -863,7 +921,7 @@ const ClipMakerFull = () => {
 										<div className="flex items-center justify-between gap-4">
 											<Label>FPS</Label>
 											<div className="flex items-center gap-2">
-												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
+												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
@@ -873,7 +931,7 @@ const ClipMakerFull = () => {
 													onChange={e => setFps(Math.max(1, parseInt(e.target.value) || 1))}
 													className="w-16 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 												/>
-												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setFps(f => f + 5)}>
+												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setFps(f => f + 5)}>
 													<Plus className="size-4" />
 												</Button>
 											</div>
@@ -881,7 +939,7 @@ const ClipMakerFull = () => {
 										<div className="flex items-center justify-between gap-4">
 											<Label>Skip</Label>
 											<div className="flex items-center gap-2">
-												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
+												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
@@ -891,7 +949,7 @@ const ClipMakerFull = () => {
 													onChange={e => setSkip(Math.max(1, parseInt(e.target.value) || 1))}
 													className="w-16 text-center font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 												/>
-												<Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setSkip(s => s + 1)}>
+												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setSkip(s => s + 1)}>
 													<Plus className="size-4" />
 												</Button>
 											</div>
