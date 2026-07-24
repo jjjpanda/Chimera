@@ -287,6 +287,23 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("rejects a cross-site POST with 403", async () => {
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("Sec-Fetch-Site", "cross-site")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: "forbidden" })
+		})
+
+		test("allows a same-origin POST", async () => {
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("Sec-Fetch-Site", "same-origin")
+				.send({ username: "admin", password: "mockedPassword" })
+			expect(res.status).toBe(200)
+		})
 	})
 
 	describe("POST /authorization/verify", () => {

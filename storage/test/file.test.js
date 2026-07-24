@@ -260,6 +260,7 @@ describe("File Routes", () => {
 				const [sql, values] = bulkQuery.mock.calls[0]
 				expect(sql).toMatch(/AND timestamp<=\(\$2::timestamp AT TIME ZONE 'UTC'\)/)
 				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$3::timestamp AT TIME ZONE 'UTC'\)/)
+				expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
 				expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 				expect(values[2]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 			})

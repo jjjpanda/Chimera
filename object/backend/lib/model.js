@@ -42,14 +42,14 @@ const ensureModel = async () => {
 	console.log("🔍 Downloading YOLOX model from", url)
 	const controller = new AbortController()
 	const timer = setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS)
-	let res
+	let buffer
 	try {
-		res = await fetch(url, { signal: controller.signal })
+		const res = await fetch(url, { signal: controller.signal })
+		if (!res.ok) throw new Error(`model download failed: ${res.status}`)
+		buffer = Buffer.from(await res.arrayBuffer())
 	} finally {
 		clearTimeout(timer)
 	}
-	if (!res.ok) throw new Error(`model download failed: ${res.status}`)
-	const buffer = Buffer.from(await res.arrayBuffer())
 
 	if (getHash(buffer) !== expectedSha256) throw new Error("downloaded model failed SHA256 integrity check")
 
