@@ -231,7 +231,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 					aria-valuemax={Math.max(0, frameCount - 1)}
 					aria-valuenow={scrubIdx}
 					aria-valuetext={`Frame ${scrubIdx + 1} of ${frameCount}`}
-					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-none focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8"}`}
+					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8"}`}
 					style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
 					onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "scrub") }}
 					onKeyDown={onScrubKey}
