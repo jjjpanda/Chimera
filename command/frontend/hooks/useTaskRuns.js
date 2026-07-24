@@ -12,6 +12,7 @@ const useTaskRuns = (taskId, active = false) => {
 		const url = taskId ? `/task/runs/${taskId}` : "/task/runs"
 		request(url, { method: "GET" }, (prom) => {
 			jsonProcessing(prom, (data) => {
+				if (silent && !Array.isArray(data?.runs)) return
 				setState({
 					runs: data?.runs ?? [],
 					loading: false

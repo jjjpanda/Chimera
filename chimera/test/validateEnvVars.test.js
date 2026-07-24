@@ -273,6 +273,12 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
+
+	test("no warning on a public gateway_HOST with an insecure cookie when gateway_ON is false", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("command_COOKIE_SECURE")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars memory_ON cluster override", () => {

@@ -81,3 +81,29 @@ test("a silent poll does not raise the loading flag", async () => {
 		jest.useRealTimers()
 	}
 })
+
+test("a failed silent poll keeps the last good runs list and the poll keeps running", async () => {
+	jest.useFakeTimers()
+	try {
+		const { result } = renderHook(() => useTaskRuns(undefined, true))
+		await resolveRuns([{ id: 1 }])
+		expect(result.current[0].runs).toEqual([{ id: 1 }])
+
+		act(() => { jest.advanceTimersByTime(5000) })
+		await act(async () => {
+			const call = runsCalls().find((c) => !c.resolved)
+			call.resolved = true
+			call.resolve({ error: true })
+			await Promise.resolve()
+		})
+		expect(result.current[0].runs).toEqual([{ id: 1 }])
+
+		await act(async () => {
+			jest.advanceTimersByTime(5000)
+			await Promise.resolve()
+		})
+		expect(runsCalls()).toHaveLength(3)
+	} finally {
+		jest.useRealTimers()
+	}
+})
