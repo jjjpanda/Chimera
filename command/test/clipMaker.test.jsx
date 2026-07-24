@@ -22,7 +22,7 @@ jest.mock("../frontend/js/request.js", () => {
 })
 
 const React = require("react")
-const { render, screen, act } = require("@testing-library/react")
+const { render, screen, act, fireEvent } = require("@testing-library/react")
 const { MemoryRouter } = require("react-router-dom")
 const ClipMaker = require("../frontend/app/ClipMaker.jsx").default
 const { __calls: calls } = require("../frontend/js/request.js")
@@ -33,6 +33,9 @@ class FakeImage {
 	}
 }
 FakeImage.instances = []
+
+const drawnUrls = []
+HTMLCanvasElement.prototype.getContext = () => ({ drawImage: (img) => drawnUrls.push(img.src) })
 
 const resolveCall = (urlSubstr, matcher, data) => {
 	const call = calls.find(c => !c.resolved && c.url.includes(urlSubstr) && matcher(c))
@@ -56,13 +59,29 @@ const settleAllImages = (skip = () => false) => act(async () => {
 	await Promise.resolve()
 })
 
+// decoded images report their intrinsic size, so the canvas draw effect gets past its `complete` guard
+const decodeAllImages = () => act(async () => {
+	FakeImage.instances.forEach(img => {
+		if (!img.onload) return
+		img.complete = true
+		img.naturalWidth = 640
+		img.naturalHeight = 360
+		img.onload()
+	})
+	await Promise.resolve()
+})
+
 beforeEach(() => {
 	calls.length = 0
+	drawnUrls.length = 0
 	FakeImage.instances = []
 	global.Image = FakeImage
 })
 
 const framesFor = (n, camId) => Array.from({ length: n }, (_, i) => `/frame-${camId}-${i}.jpg`)
+
+// parseFrameTime only reads YYYYMMDD-HHmmss names, so timed frames are needed to scrub between them
+const timedFramesFor = (n) => Array.from({ length: n }, (_, i) => `/20240101-0000${String(i).padStart(2, "0")}.jpg`)
 
 const renderClipMaker = (wrap = (el) => el) => {
 	const future = { v7_startTransition: true, v7_relativeSplatPath: true }
@@ -166,4 +185,101 @@ test("a hung decode still times out when a later camera re-triggers the shared e
 	} finally {
 		jest.useRealTimers()
 	}
+})
+
+const loadCamA = async (frames) => {
+	renderClipMaker()
+	await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+	await act(async () => { screen.getByText("CamA").click() })
+	await act(async () => { screen.getByText("Load Images").click() })
+	await resolveDetections(101)
+	await resolveFrames(101, frames)
+}
+
+const valueNow = (label) => screen.getByLabelText(label).getAttribute("aria-valuenow")
+
+test("scrub thumb moves with the keyboard and clamps at both ends", async () => {
+	await loadCamA(framesFor(30, 101))
+	await settleAllImages()
+	await settleAllImages()
+
+	const thumb = screen.getByLabelText("Scrub position")
+	expect(valueNow("Scrub position")).toBe("0")
+
+	fireEvent.keyDown(thumb, { key: "ArrowRight" })
+	expect(valueNow("Scrub position")).toBe("1")
+	fireEvent.keyDown(thumb, { key: "ArrowUp" })
+	expect(valueNow("Scrub position")).toBe("2")
+	fireEvent.keyDown(thumb, { key: "PageUp" })
+	expect(valueNow("Scrub position")).toBe("12")
+	fireEvent.keyDown(thumb, { key: "End" })
+	expect(valueNow("Scrub position")).toBe("29")
+	fireEvent.keyDown(thumb, { key: "ArrowRight" })
+	expect(valueNow("Scrub position")).toBe("29")
+
+	fireEvent.keyDown(thumb, { key: "PageDown" })
+	expect(valueNow("Scrub position")).toBe("19")
+	fireEvent.keyDown(thumb, { key: "ArrowDown" })
+	expect(valueNow("Scrub position")).toBe("18")
+	fireEvent.keyDown(thumb, { key: "a" })
+	expect(valueNow("Scrub position")).toBe("18")
+	fireEvent.keyDown(thumb, { key: "Home" })
+	expect(valueNow("Scrub position")).toBe("0")
+	fireEvent.keyDown(thumb, { key: "ArrowLeft" })
+	expect(valueNow("Scrub position")).toBe("0")
+})
+
+test("trim thumbs move with the keyboard and pull the scrub back inside the range", async () => {
+	await loadCamA(framesFor(30, 101))
+	await settleAllImages()
+	await settleAllImages()
+
+	await act(async () => { screen.getByText("Time Zoom").click() })
+	const start = screen.getByLabelText("Trim start")
+	const end = screen.getByLabelText("Trim end")
+
+	// the scrub sits at frame 0, so every step of the start handle drags it forward
+	for (let i = 0; i < 5; i++) fireEvent.keyDown(start, { key: "PageUp" })
+	expect(valueNow("Trim start")).toBe("50")
+	expect(valueNow("Scrub position")).toBe("15")
+
+	fireEvent.keyDown(screen.getByLabelText("Scrub position"), { key: "End" })
+	expect(valueNow("Scrub position")).toBe("29")
+	fireEvent.keyDown(end, { key: "PageDown" })
+	expect(valueNow("Trim end")).toBe("90")
+	expect(valueNow("Scrub position")).toBe("26")
+
+	// Home/End on a handle stop one step short of the other handle
+	fireEvent.keyDown(end, { key: "Home" })
+	expect(valueNow("Trim end")).toBe("51")
+	expect(valueNow("Scrub position")).toBe("15")
+	fireEvent.keyDown(start, { key: "End" })
+	expect(valueNow("Trim start")).toBe("50")
+
+	fireEvent.keyDown(start, { key: "Home" })
+	expect(valueNow("Trim start")).toBe("0")
+	fireEvent.keyDown(end, { key: "End" })
+	expect(valueNow("Trim end")).toBe("100")
+})
+
+test("a canvas cell repaints only when its own frame changes", async () => {
+	const [f0, f1] = timedFramesFor(3)
+	await loadCamA(timedFramesFor(3))
+	await decodeAllImages()
+
+	// three decode settles plus the dims write all re-run the draw effect against the same frame
+	expect(drawnUrls).toEqual([f0])
+
+	const thumb = screen.getByLabelText("Scrub position")
+	fireEvent.keyDown(thumb, { key: "ArrowRight" })
+	expect(drawnUrls).toEqual([f0, f1])
+	fireEvent.keyDown(thumb, { key: "ArrowLeft" })
+	expect(drawnUrls).toEqual([f0, f1, f0])
+
+	// a reload clears drawnCells, so the same frame must repaint onto the reset canvas
+	await act(async () => { screen.getByText("Reload Images").click() })
+	await resolveDetections(101)
+	await resolveFrames(101, timedFramesFor(3))
+	await decodeAllImages()
+	expect(drawnUrls).toEqual([f0, f1, f0, f0])
 })

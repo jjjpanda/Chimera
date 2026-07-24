@@ -3,7 +3,7 @@ import * as SliderPrimitive from "@radix-ui/react-slider"
 
 import { cn } from "../../lib/utils"
 
-const Slider = React.forwardRef(({ className, value, defaultValue, ...props }, ref) => {
+const Slider = React.forwardRef(({ className, value, defaultValue, "aria-label": ariaLabel, ...props }, ref) => {
 	const thumbCount = (value ?? defaultValue ?? [0]).length
 	return (
 		<SliderPrimitive.Root
@@ -17,7 +17,7 @@ const Slider = React.forwardRef(({ className, value, defaultValue, ...props }, r
 				<SliderPrimitive.Range className="absolute h-full bg-accent" />
 			</SliderPrimitive.Track>
 			{Array.from({ length: thumbCount }).map((_, i) => (
-				<SliderPrimitive.Thumb key={i} className="block size-4 rounded-full border border-accent bg-accent shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50" />
+				<SliderPrimitive.Thumb key={i} aria-label={ariaLabel} className="block size-4 rounded-full border border-accent bg-accent shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50" />
 			))}
 		</SliderPrimitive.Root>
 	)
