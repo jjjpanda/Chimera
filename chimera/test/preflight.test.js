@@ -66,6 +66,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -120,6 +121,14 @@ describe("varProblem", () => {
 	test("storage_HOST: explicit protocol → null", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+
+	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
+		expect(varProblem(tokenVar, "too-short-a-token")).toBeTruthy()
+	})
+
+	test("setup_TOKEN: at least 32 characters → null", () => {
+		expect(varProblem(tokenVar, "a".repeat(32))).toBeNull()
 	})
 })
 

@@ -99,6 +99,18 @@ describe("validateEnvVars placeholder-secret gate", () => {
 		expect(res.stdout).not.toContain("SECRETKEY TOO SHORT")
 		expect(res.status).toBe(0)
 	})
+
+	test("blocks boot when setup_TOKEN is shorter than 32 characters — it is the admin-recovery credential", () => {
+		const res = run({ setup_TOKEN: "too-short-a-token" })
+		expect(res.stdout).toContain("setup_TOKEN TOO SHORT — must be at least 32 characters: setup_TOKEN")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts setup_TOKEN at least 32 characters long", () => {
+		const res = run({ setup_TOKEN: "a".repeat(32) })
+		expect(res.stdout).not.toContain("setup_TOKEN TOO SHORT")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars confirmURL gate", () => {

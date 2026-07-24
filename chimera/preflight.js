@@ -56,6 +56,7 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
+	if (v.key === "setup_TOKEN" && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
 	if (t === "port" && !/^\d+$/.test(val)) return `must be a number (got "${val}")`
