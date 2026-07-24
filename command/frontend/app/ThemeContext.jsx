@@ -16,15 +16,15 @@ const saveTheme = (theme) =>
 		.then((res) => { if (!res.ok) throw new Error() })
 		.catch(() => toast("Couldn't save theme")))
 
-export const ThemeProvider = ({ serverTheme, children }) => {
+export const ThemeProvider = ({ serverTheme, loggedIn, children }) => {
 	const [theme, setTheme] = useState(() => localStorage.getItem("theme") ?? "system")
 
 	useEffect(() => {
-		if (serverTheme) {
-			setTheme(serverTheme)
-			localStorage.setItem("theme", serverTheme)
-		}
-	}, [serverTheme])
+		if (!loggedIn) return
+		const resolved = serverTheme || "system"
+		setTheme(resolved)
+		localStorage.setItem("theme", resolved)
+	}, [serverTheme, loggedIn])
 
 	useEffect(() => {
 		document.documentElement.classList.toggle("dark", isDark(theme))

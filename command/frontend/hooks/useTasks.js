@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react"
 
 import {request, jsonProcessing} from "../js/request.js"
+import toast from "../js/toast.js"
 
-const listTasks = (setState) => {
-	setState(() => ({
-		processList: [],
-		loading: true
-	}))
+const POLL_MS = 5000
+
+const listTasks = (setState, silent = false) => {
+	if (!silent) {
+		setState(() => ({
+			processList: [],
+			loading: true
+		}))
+	}
 	request("/task/list", {
 		method: "GET",
 		headers: {
@@ -18,7 +23,7 @@ const listTasks = (setState) => {
 				const {tasks} = data
 				setState(() => ({
 					processList: tasks,
-					loading: false 
+					loading: false
 				}))
 			}
 			else{
@@ -31,48 +36,23 @@ const listTasks = (setState) => {
 	})
 }
 
-const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
-	jsonProcessing(prom, () => {
-		setTimeout(() => {
-			setKey(k => k + 1)
-		}, 1500)
+const mutateTaskGenerator = (setKey, url, action) => (id) => {
+	request(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			id
+		})
+	}, (prom) => {
+		jsonProcessing(prom, (data) => {
+			if (!data || data.error) toast(`Couldn't ${action} task`)
+			setTimeout(() => {
+				setKey(k => k + 1)
+			}, 1500)
+		})
 	})
-}
-
-const restartTasksGenerator = (key, setKey) => (id) => {
-	request("/task/start", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
-
-const stopTasksGenerator = (key, setKey) => (id) => {
-	request("/task/stop", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
-
-const deleteTasksGenerator = (key, setKey) => (id) => {
-	request("/task/destroy", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
 }
 
 const useTasks = () => {
@@ -87,13 +67,20 @@ const useTasks = () => {
 		listTasks(setState)
 	}, [key])
 
+	const anyRunning = state.processList.some(t => t.running)
+	useEffect(() => {
+		if (!anyRunning) return
+		const timer = setInterval(() => listTasks(setState, true), POLL_MS)
+		return () => clearInterval(timer)
+	}, [anyRunning])
+
 	const reload = () => setKey(k => k + 1)
 
 	return [
 		state,
-		restartTasksGenerator(key, setKey),
-		stopTasksGenerator(key, setKey),
-		deleteTasksGenerator(key, setKey),
+		mutateTaskGenerator(setKey, "/task/start", "restart"),
+		mutateTaskGenerator(setKey, "/task/stop", "stop"),
+		mutateTaskGenerator(setKey, "/task/destroy", "delete"),
 		reload
 	]
 }

@@ -226,8 +226,14 @@ describe("validateEnvVars certbot port warning", () => {
 })
 
 describe("validateEnvVars insecure-cookie warning", () => {
-	test("warns (non-fatal) on a public gateway_HOST with insecure cookie flags", () => {
+	test("fails on an HTTPS-resolved public gateway_HOST with an insecure cookie", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("warns (non-fatal) on a plain-HTTP public gateway_HOST with an insecure cookie", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
@@ -256,10 +262,10 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("warns when only gateway_HTTPS_Redirect is set (command_COOKIE_SECURE still false)", () => {
+	test("fails when gateway_HTTPS_Redirect is set but command_COOKIE_SECURE is still false", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
-		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
-		expect(res.status).toBe(0)
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
 	})
 
 	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {

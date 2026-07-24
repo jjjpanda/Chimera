@@ -64,7 +64,7 @@ npm run docker:build                   # runs preflight first — bad config blo
 npm run docker:up
 ```
 
-**`.env` and `motion.conf` permissions:** the app reads both files from inside the container and fails to start if it cannot open one. Keep them readable — `cp` gives you the right permissions. Do not `chmod 600` them or create them as a different user (for example with `sudo`): the container reads them as uid 1000, not root, and the boot check stops with `CANNOT READ`.
+**`.env` and `motion.conf` permissions:** the app reads both files from inside the container and fails to start if it cannot open one. Keep them readable — `cp` gives you the right permissions. Do not `chmod 600` them or create them as a different user (for example with `sudo`): the container reads them as uid 1000, not root, and the boot check stops with `CANNOT READ`. This applies to native Linux hosts and to Docker Desktop when the project sits on a Linux filesystem (a WSL2 distro, or a Mac/Windows VM volume), because those keep real POSIX modes. Only Windows-drive paths such as `/mnt/c` hide the modes.
 
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 

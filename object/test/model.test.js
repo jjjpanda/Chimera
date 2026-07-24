@@ -113,7 +113,7 @@ describe("ensureModel", () => {
 
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
-		expect(fetch).toHaveBeenCalledWith("http://custom.url")
+		expect(fetch).toHaveBeenCalledWith("http://custom.url", expect.objectContaining({ signal: expect.anything() }))
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
 	})
 
@@ -165,7 +165,7 @@ describe("ensureModel", () => {
 			
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
-		expect(fetch).toHaveBeenCalledWith("https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx")
+		expect(fetch).toHaveBeenCalledWith("https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx", expect.objectContaining({ signal: expect.anything() }))
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
 		
 		crypto.createHash.mockRestore()

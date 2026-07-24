@@ -159,7 +159,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
-	const [{ runs, loading: runsLoading }] = useTaskRuns()
+	const [{ runs, loading: runsLoading }] = useTaskRuns(undefined, processList.some(t => t.running))
 	const [busyId, setBusyId] = useState(null)
 	useEffect(() => { setBusyId(null) }, [processList])
 
