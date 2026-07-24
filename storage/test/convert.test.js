@@ -422,6 +422,45 @@ describe("Convert Routes", () => {
 		})
 	})
 
+	describe("converter ender cleanup", () => {
+		const { EventEmitter } = require("events")
+		const fs = require("fs")
+		const memory = require("memory")
+		const { zip } = require("../backend/routes/lib/zip.js")
+
+		const startZip = () => {
+			memory.__emitted.length = 0
+			const output = new EventEmitter()
+			jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
+			jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			return { output, archive, id: saved.args[0] }
+		}
+
+		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
+
+		test("deletes the ender when the archive finishes", () => {
+			const { output, id } = startZip()
+			output.emit("close")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when the output stream errors", () => {
+			const { output, id } = startZip()
+			output.emit("error", new Error("ENOSPC"))
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when the archive errors", () => {
+			const { archive, id } = startZip()
+			archive.emit("error", new Error("EPIPE"))
+			expect(deletedIds()).toContain(id)
+		})
+	})
+
 	describe("createVideo frame-list write failure", () => {
 		const fs = require("fs")
 		const { createVideo } = require("../backend/routes/lib/video.js")

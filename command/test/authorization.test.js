@@ -902,6 +902,39 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
 		})
+
+		test("a correct password still logs in after wrong attempts exhaust the per-username budget", async () => {
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${10 + i}`)
+					.send({ username: "dosvictim", password: "wrongpassword" })
+			}
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.99")
+				.send({ username: "dosvictim", password: "mockedPassword" })
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
+		})
+
+		test("a successful login does not refund a guess to an exhausted per-username budget", async () => {
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${110 + i}`)
+					.send({ username: "refundvictim", password: "wrongpassword" })
+			}
+			await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.150")
+				.send({ username: "refundvictim", password: "mockedPassword" })
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.151")
+				.send({ username: "refundvictim", password: "wrongpassword" })
+			expect(res.status).toBe(429)
+		})
 	})
 
 	describe("rateLimit (shared memory instance)", () => {

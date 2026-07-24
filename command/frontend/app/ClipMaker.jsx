@@ -210,6 +210,7 @@ const ClipMakerMini = () => {
 		<CameraGridMini
 			slots={slots}
 			onActivate={() => navigate("/clip")}
+			activateLabel="Open clip maker"
 			onCellClick={cam => navigate(`/clip?camera=${cam.id}`)}
 			cellLabel={cam => cam.name}
 			centerIcon={<Rewind className="size-6" />}
@@ -712,14 +713,11 @@ const ClipMakerFull = () => {
 							) : (
 								<div className="flex items-center gap-2">
 									{cams.some(c => c.detections.length > 0) && (
-										<div
-											onClick={() => setShowBoxes(v => !v)}
-											className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted"
-										>
+										<label className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted">
 											<ScanEye className="size-3.5" />
 											Boxes
-											<Switch checked={showBoxes} className="pointer-events-none" />
-										</div>
+											<Switch checked={showBoxes} onCheckedChange={setShowBoxes} />
+										</label>
 									)}
 									<Button variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setTrimming(true)}>
 										<ZoomIn className="size-3" />

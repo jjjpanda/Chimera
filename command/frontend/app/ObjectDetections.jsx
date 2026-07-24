@@ -99,6 +99,7 @@ const ObjectDetectionsMini = () => {
 		<CameraGridMini
 			slots={slots}
 			onActivate={() => navigate("/objects")}
+			activateLabel="Open object detections"
 			onCellClick={g => navigate(`/objects?camera=${g.camera}`)}
 			cellLabel={g => cameraName(status, g.camera)}
 			centerIcon={<ScanEye className="size-6" />}

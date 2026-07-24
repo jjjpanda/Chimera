@@ -6,6 +6,11 @@ module.exports = () => ({
 		callback(id)
 	},
 
+	deleteProcessEnder: (id, callback=()=>{}) => {
+		converterProcesses.delete(id)
+		callback(id)
+	},
+
 	cancelProcess: (id, type, callback=()=>{}) => {
 		let msg = "not cancelled"
 		try{

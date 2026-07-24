@@ -8,7 +8,8 @@ jest.mock("fs", () => {
 				"SECRETKEY = Auth secret key",
 				"gateway_PORT = Port number",
 				"command_ON = (true | false)",
-				"alert_TZ = IANA tz ***"
+				"alert_TZ = IANA tz ***",
+				"storage_FOLDERPATH = Base shared file path  # Docker: /mnt/storage/"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
@@ -38,6 +39,13 @@ describe("parseSchema", () => {
 		const schema = parseSchema()
 		const sk = schema.find(v => v.key === "SECRETKEY")
 		expect(sk.optional).toBe(false)
+	})
+
+	test("keeps the # Docker hint in desc but strips it from placeholder", () => {
+		const schema = parseSchema()
+		const fp = schema.find(v => v.key === "storage_FOLDERPATH")
+		expect(fp.placeholder).toBe("Base shared file path")
+		expect(fp.desc).toContain("# Docker: /mnt/storage/")
 	})
 })
 

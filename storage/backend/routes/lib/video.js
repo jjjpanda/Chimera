@@ -97,6 +97,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 			.on("end", () => {
 				bar.stop()
+				client.emit("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(save){
 						webhookAlert(`Your video (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
@@ -106,6 +107,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
+			client.emit("deleteProcessEnder", rand)
 			if(!save){
 				if(!res.headersSent) res.status(500).end()
 				else res.destroy(err)
