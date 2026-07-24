@@ -72,8 +72,8 @@ const checkVar = (varName) => {
 		allEnvPresent = false
 		return false
 	}
-	if (varName === "SECRETKEY" && val.trim().length < 32) {
-		console.log("SECRETKEY TOO SHORT — must be at least 32 characters:", varName)
+	if ((varName === "SECRETKEY" || varName === "setup_TOKEN") && val.trim().length < 32) {
+		console.log(varName, "TOO SHORT — must be at least 32 characters:", varName)
 		allEnvPresent = false
 		return false
 	}
