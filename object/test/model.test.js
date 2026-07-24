@@ -120,8 +120,31 @@ describe("ensureModel", () => {
 	test("throws error if fetch fails with HTTP error", async () => {
 		fs.existsSync.mockReturnValue(false)
 		mockFetch(Buffer.from(""), false, 404)
-		
+
 		await expect(ensureModel()).rejects.toThrow("model download failed: 404")
+	})
+
+	test("aborts the download once it stalls past the connect timeout", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		let capturedSignal
+		fetch.mockImplementationOnce((url, { signal }) => new Promise((resolve, reject) => {
+			capturedSignal = signal
+			signal.addEventListener("abort", () => {
+				const err = new Error("The operation was aborted")
+				err.name = "AbortError"
+				reject(err)
+			})
+		}))
+
+		const promise = ensureModel()
+		jest.advanceTimersByTime(60000)
+
+		await expect(promise).rejects.toThrow(/aborted/i)
+		expect(capturedSignal.aborted).toBe(true)
+
+		jest.useRealTimers()
 	})
 
 	test("default path: returns existing file if it matches DEFAULT_SHA256", async () => {
