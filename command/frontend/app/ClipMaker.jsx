@@ -210,6 +210,7 @@ const ClipMakerMini = () => {
 		<CameraGridMini
 			slots={slots}
 			onActivate={() => navigate("/clip")}
+			activateLabel="Open clip maker"
 			onCellClick={cam => navigate(`/clip?camera=${cam.id}`)}
 			cellLabel={cam => cam.name}
 			centerIcon={<Rewind className="size-6" />}

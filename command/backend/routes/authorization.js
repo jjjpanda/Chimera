@@ -70,12 +70,15 @@ const rateLimit = (opts) => {
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
+const THROTTLE_DELAY_MS = 1000
+
 const accountLimiter = (() => {
 	const { reserve, releaseOnSuccess } = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
 	return (req, res, next) => {
 		reserve(req, (blocked, release) => {
-			releaseOnSuccess(res, release)
 			req.accountThrottled = blocked
+			if (blocked) return setTimeout(next, THROTTLE_DELAY_MS)
+			releaseOnSuccess(res, release)
 			next()
 		})
 	}

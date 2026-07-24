@@ -1,8 +1,12 @@
+const emitted = []
+
 module.exports = {
+	__emitted: emitted,
 	client: () => {
 		const c = {
 			timeout: () => c,
 			emit: (event, ...args) => {
+				emitted.push({ event, args })
 				if(event == "savePassword"){
 					args[1]()
 				}
