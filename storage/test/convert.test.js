@@ -39,6 +39,20 @@ jest.mock("lib")
 jest.mock("fs")
 jest.mock("memory")
 jest.mock("pm2")
+jest.mock("cli-progress")
+jest.mock("fluent-ffmpeg", () => {
+	const { EventEmitter } = require("events")
+	const chainable = ["inputFormat", "outputFPS", "videoBitrate", "videoCodec", "toFormat", "mergeToFile", "outputOptions", "pipe"]
+	const factory = jest.fn(() => {
+		const command = new EventEmitter()
+		chainable.forEach((method) => { command[method] = jest.fn(() => command) })
+		command.kill = jest.fn()
+		return command
+	})
+	factory.setFfmpegPath = jest.fn()
+	factory.setFfprobePath = jest.fn()
+	return factory
+})
 
 describe("Convert Routes", () => {
 	let cookieWithBearerToken = "validCookie"
@@ -457,6 +471,42 @@ describe("Convert Routes", () => {
 		test("deletes the ender when the archive errors", () => {
 			const { archive, id } = startZip()
 			archive.emit("error", new Error("EPIPE"))
+			expect(deletedIds()).toContain(id)
+		})
+	})
+
+	describe("createVideo ender cleanup", () => {
+		const fs = require("fs")
+		const memory = require("memory")
+		const ffmpeg = require("fluent-ffmpeg")
+		const { createVideo } = require("../backend/routes/lib/video.js")
+
+		const startVideo = () => {
+			memory.__emitted.length = 0
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
+			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
+			const res = { send: jest.fn() }
+
+			createVideo(req, res)
+
+			writeFileSpy.mockRestore()
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			const command = ffmpeg.mock.results[ffmpeg.mock.results.length - 1].value
+			return { command, id: saved.args[0] }
+		}
+
+		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
+
+		test("deletes the ender when ffmpeg finishes", () => {
+			const { command, id } = startVideo()
+			command.emit("end")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when ffmpeg errors", () => {
+			const { command, id } = startVideo()
+			command.emit("error", new Error("ffmpeg exited with code 1"))
 			expect(deletedIds()).toContain(id)
 		})
 	})
