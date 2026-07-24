@@ -147,21 +147,23 @@ describe("ensureModel", () => {
 		jest.useRealTimers()
 	})
 
-	test("does not abort a slow body read once the connection is established", async () => {
+	test("aborts if the body read stalls after the connection is established", async () => {
 		fs.existsSync.mockReturnValue(false)
 		jest.useFakeTimers()
 
-		const goodBuffer = Buffer.from("good data")
-		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
-
 		let capturedSignal
-		let resolveArrayBuffer
 		fetch.mockImplementationOnce((url, { signal }) => {
 			capturedSignal = signal
 			return Promise.resolve({
 				ok: true,
 				status: 200,
-				arrayBuffer: () => new Promise((resolve) => { resolveArrayBuffer = resolve })
+				arrayBuffer: () => new Promise((resolve, reject) => {
+					signal.addEventListener("abort", () => {
+						const err = new Error("The operation was aborted")
+						err.name = "AbortError"
+						reject(err)
+					})
+				})
 			})
 		})
 
@@ -169,12 +171,10 @@ describe("ensureModel", () => {
 		await Promise.resolve()
 		await Promise.resolve()
 
-		jest.advanceTimersByTime(120000)
-		expect(capturedSignal.aborted).toBe(false)
+		jest.advanceTimersByTime(60000)
 
-		resolveArrayBuffer(goodBuffer.buffer.slice(goodBuffer.byteOffset, goodBuffer.byteOffset + goodBuffer.byteLength))
-		const result = await promise
-		expect(result).toBe(MODEL_PATH)
+		await expect(promise).rejects.toThrow(/aborted/i)
+		expect(capturedSignal.aborted).toBe(true)
 
 		jest.useRealTimers()
 	})

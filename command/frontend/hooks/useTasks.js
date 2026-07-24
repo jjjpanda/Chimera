@@ -26,7 +26,7 @@ const listTasks = (setState, silent = false) => {
 					loading: false
 				}))
 			}
-			else{
+			else if (!silent) {
 				setState(() => ({
 					processList: [],
 					loading: false

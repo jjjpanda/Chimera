@@ -45,7 +45,6 @@ const ensureModel = async () => {
 	let buffer
 	try {
 		const res = await fetch(url, { signal: controller.signal })
-		clearTimeout(timer)
 		if (!res.ok) throw new Error(`model download failed: ${res.status}`)
 		buffer = Buffer.from(await res.arrayBuffer())
 	} finally {

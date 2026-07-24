@@ -12,6 +12,7 @@ const listProcesses = (setState, silent = false) => {
 		headers: { "Content-Type": "application/json" }
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			if (silent && !Array.isArray(data?.list)) return
 			setState((s) => ({
 				...s,
 				processList: [...(data?.list ?? []).sort((a, b) =>
