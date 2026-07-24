@@ -165,7 +165,7 @@ const protocolOf = (url) => { try { return new URL(url).protocol } catch { retur
 
 const gwUrl = gatewayHost()
 const gwHost = hostnameOf(gwUrl) || (process.env.gateway_HOST || "").trim()
-if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+if (!isServiceOff(envLines, "gateway_HOST") && gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
 	if (protocolOf(gwUrl) === "https:") {
 		console.log("command_COOKIE_SECURE MUST BE true — gateway_HOST resolves to HTTPS and is non-loopback, so the session cookie ships without Secure and leaks on any HTTP downgrade; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix instead, because browsers drop Secure cookies on non-HTTPS origins")
 		allEnvPresent = false

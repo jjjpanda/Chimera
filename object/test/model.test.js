@@ -147,6 +147,38 @@ describe("ensureModel", () => {
 		jest.useRealTimers()
 	})
 
+	test("does not abort a slow body read once the connection is established", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		const goodBuffer = Buffer.from("good data")
+		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
+
+		let capturedSignal
+		let resolveArrayBuffer
+		fetch.mockImplementationOnce((url, { signal }) => {
+			capturedSignal = signal
+			return Promise.resolve({
+				ok: true,
+				status: 200,
+				arrayBuffer: () => new Promise((resolve) => { resolveArrayBuffer = resolve })
+			})
+		})
+
+		const promise = ensureModel()
+		await Promise.resolve()
+		await Promise.resolve()
+
+		jest.advanceTimersByTime(120000)
+		expect(capturedSignal.aborted).toBe(false)
+
+		resolveArrayBuffer(goodBuffer.buffer.slice(goodBuffer.byteOffset, goodBuffer.byteOffset + goodBuffer.byteLength))
+		const result = await promise
+		expect(result).toBe(MODEL_PATH)
+
+		jest.useRealTimers()
+	})
+
 	test("default path: returns existing file if it matches DEFAULT_SHA256", async () => {
 		fs.existsSync.mockReturnValue(true)
 		const buffer = Buffer.from("default data")

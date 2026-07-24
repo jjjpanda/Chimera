@@ -46,8 +46,10 @@ const mutateTaskGenerator = (setKey, url, action) => (id) => {
 			id
 		})
 	}, (prom) => {
+		let ok = false
+		prom.then((res) => { ok = res.ok }).catch(() => {})
 		jsonProcessing(prom, (data) => {
-			if (!data || data.error) toast(`Couldn't ${action} task`)
+			if (!ok || !data || data.error) toast(`Couldn't ${action} task`)
 			setTimeout(() => {
 				setKey(k => k + 1)
 			}, 1500)
