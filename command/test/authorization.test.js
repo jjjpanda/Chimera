@@ -931,7 +931,7 @@ describe("Authorization Routes", () => {
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${180 + i}`)
 					.send({ username: "floodvictim", password: "wrongpassword" })
-					.then((res) => Date.now() - start)
+					.then(() => Date.now() - start)
 			))
 			results.sort((a, b) => a - b)
 			expect(results[0]).toBeGreaterThanOrEqual(900)
