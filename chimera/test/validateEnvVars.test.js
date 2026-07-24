@@ -262,8 +262,14 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("fails when gateway_HTTPS_Redirect is set but command_COOKIE_SECURE is still false", () => {
-		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+	test("fails when gateway_HTTPS_Redirect is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("fails when certbot_ON is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false", certbot_ON: "true", gateway_PORT: "80" })
 		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
 		expect(res.status).toBe(1)
 	})
