@@ -72,12 +72,25 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
 const THROTTLE_DELAY_MS = 1000
 
+const throttleSchedule = new Map()
+const delayThrottled = (key, fn) => {
+	const now = Date.now()
+	const runAt = Math.max(now, throttleSchedule.get(key) || now) + THROTTLE_DELAY_MS
+	throttleSchedule.set(key, runAt)
+	setTimeout(() => {
+		if (throttleSchedule.get(key) === runAt) throttleSchedule.delete(key)
+		fn()
+	}, runAt - now)
+}
+
+const accountKeyFn = (req) => `user:${String(req.body?.username ?? "")}`
+
 const accountLimiter = (() => {
-	const { reserve, releaseOnSuccess } = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
+	const { reserve, releaseOnSuccess } = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
 	return (req, res, next) => {
 		reserve(req, (blocked, release) => {
 			req.accountThrottled = blocked
-			if (blocked) return setTimeout(next, THROTTLE_DELAY_MS)
+			if (blocked) return delayThrottled(accountKeyFn(req), next)
 			releaseOnSuccess(res, release)
 			next()
 		})

@@ -918,6 +918,27 @@ describe("Authorization Routes", () => {
 			expect(res.body.error).toBe(false)
 		})
 
+		test("throttled requests for the same username are serialized, bounding guess throughput", async () => {
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${160 + i}`)
+					.send({ username: "floodvictim", password: "wrongpassword" })
+			}
+			const start = Date.now()
+			const results = await Promise.all([0, 1, 2].map((i) =>
+				supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${180 + i}`)
+					.send({ username: "floodvictim", password: "wrongpassword" })
+					.then((res) => Date.now() - start)
+			))
+			results.sort((a, b) => a - b)
+			expect(results[0]).toBeGreaterThanOrEqual(900)
+			expect(results[1]).toBeGreaterThanOrEqual(results[0] + 900)
+			expect(results[2]).toBeGreaterThanOrEqual(results[1] + 900)
+		})
+
 		test("a successful login does not refund a guess to an exhausted per-username budget", async () => {
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)
