@@ -38,6 +38,11 @@ Three controls run on `POST /authorization/login`, in order:
 - **Per username** — 10 tries per 15 minutes. A success refunds its slot; a failure does not.
 - **Throttle** — once the per-username budget is spent, one credential check per `THROTTLE_DELAY_MS` (10s). Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open.
 
-A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. The per-IP limit still applies, so a stolen token buys 10 tries per 15 minutes and no more. Logout keeps the cookie on purpose — it exists to survive session expiry.
+A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 10 tries per 15 minutes **per address** — so a token replayed from many addresses gets 10 tries from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
 
-A user on a device with no `devicetoken` can still be throttled while an attack is running.
+Two gaps stay open:
+
+- A user on a device with no `devicetoken` can still be throttled while an attack is running.
+- `knownDevice` matches the username only, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
+
+Logout keeps the cookie on purpose — it exists to survive session expiry.
