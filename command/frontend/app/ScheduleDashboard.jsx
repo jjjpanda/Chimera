@@ -58,7 +58,7 @@ const taskSummary = (task, cameras = []) => {
 	return [label, cam, window].filter(Boolean).join(" · ")
 }
 
-const taskIdKey = (tasks) => tasks.map(t => t.id).join(",")
+export const taskIdKey = (tasks) => tasks.map(t => `${t.id}:${t.running}`).join(",")
 
 const nextRunSeconds = (cronString) => {
 	try {
