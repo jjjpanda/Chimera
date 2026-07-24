@@ -1,7 +1,7 @@
 var express = require("express")
 var { validateBody, auth, password, timingSafeCompare } = require("lib")
 const { requireAdmin } = auth
-const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE } = require("./lib/auth.js")
+const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
 
@@ -70,29 +70,24 @@ const rateLimit = (opts) => {
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
-const THROTTLE_DELAY_MS = 1000
-
-const throttleSchedule = new Map()
-const delayThrottled = (key, fn) => {
-	const now = Date.now()
-	const runAt = Math.max(now, throttleSchedule.get(key) || now) + THROTTLE_DELAY_MS
-	throttleSchedule.set(key, runAt)
-	setTimeout(() => {
-		if (throttleSchedule.get(key) === runAt) throttleSchedule.delete(key)
-		fn()
-	}, runAt - now)
-}
+const THROTTLE_DELAY_MS = 10000
 
 const accountKeyFn = (req) => `user:${String(req.body?.username ?? "")}`
 
 const accountLimiter = (() => {
-	const { reserve, releaseOnSuccess } = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
+	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
+	const throttle = makeReserve({ windowMs: THROTTLE_DELAY_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
 	return (req, res, next) => {
-		reserve(req, (blocked, release) => {
+		if (knownDevice(req)) return next()
+		budget.reserve(req, (blocked, release) => {
 			req.accountThrottled = blocked
-			if (blocked) return delayThrottled(accountKeyFn(req), next)
-			releaseOnSuccess(res, release)
-			next()
+			if (!blocked) {
+				budget.releaseOnSuccess(res, release)
+				return next()
+			}
+			throttle.reserve(req, (tooSoon) => tooSoon
+				? res.status(429).json({ error: true, errors: "Too many attempts" })
+				: next())
 		})
 	}
 })()

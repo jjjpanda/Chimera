@@ -8,6 +8,7 @@ const pool = createPool("COMMAND POOL ERROR")
 
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
 const COOKIE_SECURE = process.env.command_COOKIE_SECURE === "true"
+const DEVICE_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000
 
 class HttpError extends Error {
 	constructor(status, errors) {
@@ -22,6 +23,21 @@ module.exports = {
 	withTransaction: (fn) => withTransaction(pool, fn),
 	HttpError,
 	COOKIE_SECURE,
+	/**
+	 * True when the request carries a device token this server issued to the
+	 * same username on an earlier successful login.
+	 */
+	knownDevice: (req) => {
+		const token = req.cookies?.devicetoken
+		if (!token) return false
+		try {
+			const decoded = jwt.verify(token, secretKey)
+			return decoded.device === true && decoded.username === req.body?.username
+		} catch {
+			return false
+		}
+	},
+
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
 		const deny = () => req.accountThrottled
@@ -60,6 +76,12 @@ module.exports = {
 				if (err || !token) return res.status(500).json({ error: true })
 				res.cookie("bearertoken", `Bearer ${token}`, {
 					maxAge: 2592000000,
+					httpOnly: true,
+					secure: COOKIE_SECURE,
+					sameSite: "lax"
+				})
+				res.cookie("devicetoken", jwt.sign({ username, device: true }, secretKey, { expiresIn: "365d" }), {
+					maxAge: DEVICE_TOKEN_MAX_AGE,
 					httpOnly: true,
 					secure: COOKIE_SECURE,
 					sameSite: "lax"

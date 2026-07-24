@@ -918,7 +918,7 @@ describe("Authorization Routes", () => {
 			expect(res.body.error).toBe(false)
 		})
 
-		test("throttled requests for the same username are serialized, bounding guess throughput", async () => {
+		test("only one credential check runs per throttle window once the budget is spent", async () => {
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)
 					.post("/authorization/login")
@@ -926,17 +926,93 @@ describe("Authorization Routes", () => {
 					.send({ username: "floodvictim", password: "wrongpassword" })
 			}
 			const start = Date.now()
-			const results = await Promise.all([0, 1, 2].map((i) =>
+			const first = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.180")
+				.send({ username: "floodvictim", password: "mockedPassword" })
+			const second = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.181")
+				.send({ username: "floodvictim", password: "mockedPassword" })
+			expect(first.status).toBe(200)
+			expect(second.status).toBe(429)
+			expect(Date.now() - start).toBeLessThan(1000)
+		})
+
+		test("a throttled request is refused immediately instead of being queued", async () => {
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${20 + i}`)
+					.send({ username: "queuevictim", password: "wrongpassword" })
+			}
+			const start = Date.now()
+			const results = await Promise.all([0, 1, 2, 3, 4].map((i) =>
 				supertest(app)
 					.post("/authorization/login")
-					.set("X-Forwarded-For", `192.0.2.${180 + i}`)
-					.send({ username: "floodvictim", password: "wrongpassword" })
-					.then(() => Date.now() - start)
+					.set("X-Forwarded-For", `192.0.2.${60 + i}`)
+					.send({ username: "queuevictim", password: "wrongpassword" })
 			))
-			results.sort((a, b) => a - b)
-			expect(results[0]).toBeGreaterThanOrEqual(900)
-			expect(results[1]).toBeGreaterThanOrEqual(results[0] + 900)
-			expect(results[2]).toBeGreaterThanOrEqual(results[1] + 900)
+			expect(results.every((r) => r.status === 429)).toBe(true)
+			expect(Date.now() - start).toBeLessThan(1000)
+		})
+
+		test("a device token from an earlier login skips the throttle", async () => {
+			const agent = supertest.agent(app)
+			const enrol = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.200")
+				.send({ username: "knowndevice", password: "mockedPassword" })
+			expect(enrol.status).toBe(200)
+
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${210 + i}`)
+					.send({ username: "knowndevice", password: "wrongpassword" })
+			}
+			const throttled = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.230")
+				.send({ username: "knowndevice", password: "wrongpassword" })
+			expect(throttled.status).toBe(429)
+
+			const known = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.231")
+				.send({ username: "knowndevice", password: "mockedPassword" })
+			expect(known.status).toBe(200)
+
+			const stranger = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.232")
+				.send({ username: "knowndevice", password: "mockedPassword" })
+			expect(stranger.status).toBe(429)
+		})
+
+		test("a device token for another username does not skip the throttle", async () => {
+			const agent = supertest.agent(app)
+			await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.240")
+				.send({ username: "deviceowner", password: "mockedPassword" })
+
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `198.51.100.${10 + i}`)
+					.send({ username: "othervictim", password: "wrongpassword" })
+			}
+			await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "198.51.100.40")
+				.send({ username: "othervictim", password: "wrongpassword" })
+
+			const res = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "198.51.100.41")
+				.send({ username: "othervictim", password: "mockedPassword" })
+			expect(res.status).toBe(429)
 		})
 
 		test("a successful login does not refund a guess to an exhausted per-username budget", async () => {

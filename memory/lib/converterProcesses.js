@@ -1,8 +1,8 @@
 const converterProcesses = new Map()
 
 module.exports = () => ({
-	saveProcessEnder: (id, converterProcessEnder, callback=()=>{}) => {
-		converterProcesses.set(id, converterProcessEnder)
+	saveProcessEnder: (owner, id, converterProcessEnder, callback=()=>{}) => {
+		converterProcesses.set(id, { owner, end: converterProcessEnder })
 		callback(id)
 	},
 
@@ -11,10 +11,14 @@ module.exports = () => ({
 		callback(id)
 	},
 
+	deleteClientProcesses: (owner) => {
+		for(const [id, entry] of converterProcesses) if(entry.owner === owner) converterProcesses.delete(id)
+	},
+
 	cancelProcess: (id, type, callback=()=>{}) => {
 		let msg = "not cancelled"
 		try{
-			converterProcesses.get(id)()
+			converterProcesses.get(id).end()
 			if(type == "mp4"){
 				msg = `Your video (${id}) was cancelled.`
 			}
