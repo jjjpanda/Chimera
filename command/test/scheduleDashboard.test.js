@@ -20,7 +20,6 @@ jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: jest.fn
 const React = require("react")
 const { render, act, screen, fireEvent } = require("@testing-library/react")
 const ScheduleDashboard = require("../frontend/app/ScheduleDashboard.jsx").default
-const { taskIdKey } = require("../frontend/app/ScheduleDashboard.jsx")
 const { __calls: calls } = require("../frontend/js/request.js")
 
 const callsTo = (url) => calls.filter((c) => c.url === url)
@@ -34,24 +33,6 @@ const resolve = (url, data) => act(async () => {
 })
 
 beforeEach(() => { calls.length = 0 })
-
-test("stays the same across a silent poll that changes nothing", () => {
-	const before = taskIdKey([{ id: 1, running: true }, { id: 2, running: false }])
-	const after = taskIdKey([{ id: 1, running: true }, { id: 2, running: false }])
-	expect(after).toBe(before)
-})
-
-test("changes when a task's running state flips, even though the id set is unchanged", () => {
-	const before = taskIdKey([{ id: 1, running: true }])
-	const after = taskIdKey([{ id: 1, running: false }])
-	expect(after).not.toBe(before)
-})
-
-test("changes when the id set changes", () => {
-	const before = taskIdKey([{ id: 1, running: true }])
-	const after = taskIdKey([{ id: 1, running: true }, { id: 2, running: false }])
-	expect(after).not.toBe(before)
-})
 
 describe("run-history refresh wiring", () => {
 	const mount = async (tasks) => {

@@ -58,8 +58,6 @@ const taskSummary = (task, cameras = []) => {
 	return [label, cam, window].filter(Boolean).join(" · ")
 }
 
-export const taskIdKey = (tasks) => tasks.map(t => `${t.id}:${t.running}`).join(",")
-
 const nextRunSeconds = (cronString) => {
 	try {
 		return moment(cronParser.parseExpression(cronString).next().toString()).diff(moment(), "seconds")
@@ -89,7 +87,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
 	const [busyId, setBusyId] = useState(null)
 	const [deleteTarget, setDeleteTarget] = useState(null)
-	useEffect(() => { setBusyId(null) }, [taskIdKey(processList)])
+	useEffect(() => { setBusyId(null) }, [processList])
 
 	const sortedUpcoming = [...processList].sort((a, b) => nextRunSeconds(a.cronString) - nextRunSeconds(b.cronString))
 	const sortedAll = [...processList].sort((a, b) => String(a.id).localeCompare(String(b.id)))
@@ -163,7 +161,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 	const [cameras] = useCameras()
 	const [{ runs, loading: runsLoading }, reloadRuns] = useTaskRuns()
 	const [busyId, setBusyId] = useState(null)
-	useEffect(() => { setBusyId(null) }, [taskIdKey(processList)])
+	useEffect(() => { setBusyId(null) }, [processList])
 
 	const [deleteTarget, setDeleteTarget] = useState(null)
 
