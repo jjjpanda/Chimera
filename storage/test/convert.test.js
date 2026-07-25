@@ -490,11 +490,16 @@ describe("Convert Routes", () => {
 			expect(archive.abort).toHaveBeenCalledTimes(1)
 		})
 
-		test("registers the ender while the memory client is disconnected", () => {
+		test("buffers the ender registration while disconnected and flushes it on reconnect", () => {
 			memory.__client.connected = false
-			const { output, id } = startZip()
-			output.emit("close")
-			expect(deletedIds()).toContain(id)
+			const { archive } = runZip()
+			expect(memory.__emitted.map(e => e.event)).not.toContain("saveProcessEnder")
+
+			memory.__client.connected = true
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			saved.args[1](true)
+			expect(archive.abort).toHaveBeenCalledTimes(1)
 		})
 
 		test("registers no ender while memory is off", () => {
@@ -557,11 +562,16 @@ describe("Convert Routes", () => {
 			expect(command.kill).toHaveBeenCalledTimes(1)
 		})
 
-		test("registers the ender while the memory client is disconnected", () => {
+		test("buffers the ender registration while disconnected and flushes it on reconnect", () => {
 			memory.__client.connected = false
-			const { command, id } = startVideo()
-			command.emit("end")
-			expect(deletedIds()).toContain(id)
+			const command = runVideo()
+			expect(memory.__emitted.map(e => e.event)).not.toContain("saveProcessEnder")
+
+			memory.__client.connected = true
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			saved.args[1](true)
+			expect(command.kill).toHaveBeenCalledTimes(1)
 		})
 
 		test("registers no ender while memory is off", () => {

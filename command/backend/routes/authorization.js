@@ -70,13 +70,13 @@ const rateLimit = (opts) => {
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
-const THROTTLE_DELAY_MS = 10000
+const THROTTLE_WINDOW_MS = 10000
 
 const accountKeyFn = (req) => `user:${String(req.body?.username ?? "")}`
 
 const accountLimiter = (() => {
 	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
-	const throttle = makeReserve({ windowMs: THROTTLE_DELAY_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
+	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
 	return async (req, res, next) => {
 		if (await knownDevice(req)) return next()
 		budget.reserve(req, (blocked, release) => {
