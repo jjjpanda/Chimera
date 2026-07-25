@@ -66,7 +66,7 @@ npm run docker:up
 
 **`.env` and `motion.conf` permissions:** the app runs as a non-root user inside the container, so it must be able to read both files. It stops with `CANNOT READ` if it cannot open one. Use `cp` — it sets the right permissions. Do not run `chmod 600` on them, and do not create them with `sudo`.
 
-This matters on Linux, and on Docker Desktop for Mac or Windows when the project folder lives inside the Linux filesystem (a WSL distro, or the Docker VM). It does not matter when the folder lives on a Mac or Windows drive that Docker Desktop shares into the container, because those file systems do not pass host permissions through.
+This applies when the project folder is on a Linux file system: a native Linux host, or a folder inside a WSL distro such as `\\wsl$\Ubuntu\home\you\chimera`. It does not apply when the folder is on a Mac or Windows drive, such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera`, because Docker Desktop gives the container its own ownership for those files.
 
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
 
