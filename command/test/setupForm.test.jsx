@@ -42,6 +42,19 @@ test("a password/confirm mismatch blocks submission and shows an error", () => {
 	expect(screen.getByText("Passwords do not match.")).toBeTruthy()
 })
 
+test("submit does not trigger native page navigation", () => {
+	const trySetup = jest.fn()
+	const submitSpy = jest.spyOn(window.HTMLFormElement.prototype, "requestSubmit")
+	render(React.createElement(SetupForm, { trySetup, tokenRequired: true }))
+
+	const form = screen.getByText("Create Account").closest("form")
+	const submitEvent = new window.Event("submit", { bubbles: true, cancelable: true })
+	fireEvent(form, submitEvent)
+
+	expect(submitEvent.defaultPrevented).toBe(true)
+	submitSpy.mockRestore()
+})
+
 test("does not render the setup form when no token is configured", () => {
 	const trySetup = jest.fn()
 	render(React.createElement(SetupForm, { trySetup, tokenRequired: false }))
