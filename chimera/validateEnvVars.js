@@ -166,7 +166,7 @@ const protocolOf = (url) => { try { return new URL(url).protocol } catch { retur
 const gwUrl = gatewayHost()
 const gwHost = hostnameOf(gwUrl) || (process.env.gateway_HOST || "").trim()
 const httpsExpected = protocolOf(gwUrl) === "https:" || process.env.gateway_HTTPS_Redirect === "true" || process.env.certbot_ON === "true"
-if (!isServiceOff(envLines, "gateway_HOST") && !isServiceOff(envLines, "command_COOKIE_SECURE") && gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+if (!isServiceOff(envLines, "command_COOKIE_SECURE") && gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
 	if (httpsExpected) {
 		console.log("command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins")
 		allEnvPresent = false

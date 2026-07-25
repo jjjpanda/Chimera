@@ -280,9 +280,21 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("no warning on a public gateway_HOST with an insecure cookie when gateway_ON is false", () => {
-		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).not.toContain("command_COOKIE_SECURE")
+	test("fails on a public gateway_HOST with an insecure cookie when gateway_ON is false — storage still builds webhook links from it", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("no warning on a loopback gateway_HOST when gateway_ON is false", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "127.0.0.1", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a public gateway_HOST when both the gateway and the command service are off", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "false", command_PROXY_ON: "false", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
 
