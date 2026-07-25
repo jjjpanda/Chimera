@@ -3,7 +3,7 @@ import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
 import cronParser from "cron-parser"
-import { Trash2, Minus, Plus, ArrowRight } from "lucide-react"
+import { Trash2, Minus, Plus, ArrowRight, RefreshCw } from "lucide-react"
 
 import useTasks from "../hooks/useTasks.js"
 import useScheduler from "../hooks/useScheduler.js"
@@ -161,7 +161,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
-	const [{ runs, loading: runsLoading }] = useTaskRuns(undefined, processList.some(t => t.running))
+	const [{ runs, loading: runsLoading }, reloadRuns] = useTaskRuns()
 	const [busyId, setBusyId] = useState(null)
 	useEffect(() => { setBusyId(null) }, [taskIdKey(processList)])
 
@@ -377,7 +377,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 
 			<Card className="bg-surface border-border">
 				<CardHeader>
-					<CardTitle className="text-primary">Run History</CardTitle>
+					<div className="flex items-center justify-between">
+						<CardTitle className="text-primary">Run History</CardTitle>
+						<Button variant="ghost" size="icon" onClick={reloadRuns} disabled={runsLoading} title="Refresh">
+							<RefreshCw className="size-4" />
+						</Button>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{runsLoading ? (

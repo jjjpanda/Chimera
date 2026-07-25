@@ -10,14 +10,15 @@ jest.mock("../frontend/js/request.js", () => {
 			calls.push({ url, opts, resolve })
 			cb(promise)
 		},
-		jsonProcessing: (prom, cb) => { prom.then(cb) }
+		jsonProcessing: (prom, cb) => { prom.then(cb) },
+		statusProcessing: (prom, code, cb) => { prom.then((res) => cb(res.status === code)).catch(() => cb(false)) }
 	}
 })
 
 jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: jest.fn() }))
 
 const React = require("react")
-const { render, act } = require("@testing-library/react")
+const { render, act, screen, fireEvent } = require("@testing-library/react")
 const ScheduleDashboard = require("../frontend/app/ScheduleDashboard.jsx").default
 const { taskIdKey } = require("../frontend/app/ScheduleDashboard.jsx")
 const { __calls: calls } = require("../frontend/js/request.js")
@@ -52,7 +53,7 @@ test("changes when the id set changes", () => {
 	expect(after).not.toBe(before)
 })
 
-describe("run-history poll wiring", () => {
+describe("run-history refresh wiring", () => {
 	const mount = async (tasks) => {
 		render(React.createElement(ScheduleDashboard))
 		await resolve("/cameras", [])
@@ -60,35 +61,29 @@ describe("run-history poll wiring", () => {
 		await resolve("/task/list", { tasks })
 	}
 
-	test("polls run history once a task is running", async () => {
+	test("an armed task does not start a background poll", async () => {
 		jest.useFakeTimers()
 		try {
 			await mount([{ id: "a", running: true }])
 			expect(callsTo("/task/runs")).toHaveLength(1)
+			expect(callsTo("/task/list")).toHaveLength(1)
 
 			await act(async () => {
-				jest.advanceTimersByTime(5000)
+				jest.advanceTimersByTime(60000)
 				await Promise.resolve()
 			})
-			expect(callsTo("/task/runs")).toHaveLength(2)
+			expect(callsTo("/task/runs")).toHaveLength(1)
+			expect(callsTo("/task/list")).toHaveLength(1)
 		} finally {
 			jest.useRealTimers()
 		}
 	})
 
-	test("leaves run history unpolled while every task is stopped", async () => {
-		jest.useFakeTimers()
-		try {
-			await mount([{ id: "a", running: false }])
-			expect(callsTo("/task/runs")).toHaveLength(1)
+	test("the refresh button refetches run history", async () => {
+		await mount([{ id: "a", running: true }])
+		expect(callsTo("/task/runs")).toHaveLength(1)
 
-			await act(async () => {
-				jest.advanceTimersByTime(15000)
-				await Promise.resolve()
-			})
-			expect(callsTo("/task/runs")).toHaveLength(1)
-		} finally {
-			jest.useRealTimers()
-		}
+		await act(async () => { fireEvent.click(screen.getByTitle("Refresh")) })
+		expect(callsTo("/task/runs")).toHaveLength(2)
 	})
 })

@@ -18,7 +18,7 @@ const { renderHook, act } = require("@testing-library/react")
 const useTaskRuns = require("../frontend/hooks/useTaskRuns.js").default
 const { __calls: calls } = require("../frontend/js/request.js")
 
-const runsCalls = () => calls.filter((c) => c.url === "/task/runs")
+const runsCalls = (url = "/task/runs") => calls.filter((c) => c.url === url)
 
 const resolveRuns = (runs) => act(async () => {
 	const call = runsCalls().find((c) => !c.resolved)
@@ -30,80 +30,54 @@ const resolveRuns = (runs) => act(async () => {
 
 beforeEach(() => { calls.length = 0 })
 
-test("does not poll while inactive", async () => {
+test("fetches once on mount and never on a timer", async () => {
 	jest.useFakeTimers()
 	try {
-		renderHook(() => useTaskRuns(undefined, false))
+		renderHook(() => useTaskRuns())
 		await resolveRuns([{ id: 1 }])
 
-		act(() => { jest.advanceTimersByTime(15000) })
+		act(() => { jest.advanceTimersByTime(60000) })
 		expect(runsCalls()).toHaveLength(1)
 	} finally {
 		jest.useRealTimers()
 	}
 })
 
-test("polls every 5s while active, and stops once active goes false", async () => {
-	jest.useFakeTimers()
-	try {
-		const { rerender } = renderHook(({ active }) => useTaskRuns(undefined, active), { initialProps: { active: true } })
-		await resolveRuns([{ id: 1 }])
-		expect(runsCalls()).toHaveLength(1)
+test("the returned reload triggers a refetch", async () => {
+	const { result } = renderHook(() => useTaskRuns())
+	await resolveRuns([{ id: 1 }])
+	expect(result.current[0].runs).toEqual([{ id: 1 }])
 
-		await act(async () => {
-			jest.advanceTimersByTime(5000)
-			await Promise.resolve()
-		})
-		expect(runsCalls()).toHaveLength(2)
+	act(() => { result.current[1]() })
+	expect(runsCalls()).toHaveLength(2)
 
-		rerender({ active: false })
-		act(() => { jest.advanceTimersByTime(15000) })
-		expect(runsCalls()).toHaveLength(2)
-	} finally {
-		jest.useRealTimers()
-	}
+	await resolveRuns([{ id: 1 }, { id: 2 }])
+	expect(result.current[0].runs).toEqual([{ id: 1 }, { id: 2 }])
+	expect(result.current[0].loading).toBe(false)
 })
 
-test("a silent poll does not raise the loading flag", async () => {
-	jest.useFakeTimers()
-	try {
-		const { result } = renderHook(() => useTaskRuns(undefined, true))
-		await resolveRuns([{ id: 1 }])
-		expect(result.current[0].loading).toBe(false)
+test("raises loading while a fetch is in flight", async () => {
+	const { result } = renderHook(() => useTaskRuns())
+	expect(result.current[0].loading).toBe(true)
 
-		act(() => { jest.advanceTimersByTime(5000) })
-		expect(result.current[0].loading).toBe(false)
-
-		await resolveRuns([{ id: 1 }, { id: 2 }])
-		expect(result.current[0].runs).toEqual([{ id: 1 }, { id: 2 }])
-		expect(result.current[0].loading).toBe(false)
-	} finally {
-		jest.useRealTimers()
-	}
+	await resolveRuns([{ id: 1 }])
+	expect(result.current[0].loading).toBe(false)
 })
 
-test("a failed silent poll keeps the last good runs list and the poll keeps running", async () => {
-	jest.useFakeTimers()
-	try {
-		const { result } = renderHook(() => useTaskRuns(undefined, true))
-		await resolveRuns([{ id: 1 }])
-		expect(result.current[0].runs).toEqual([{ id: 1 }])
+test("a failed fetch empties the list and clears loading", async () => {
+	const { result } = renderHook(() => useTaskRuns())
+	await act(async () => {
+		const call = runsCalls().find((c) => !c.resolved)
+		call.resolved = true
+		call.resolve({ error: true })
+		await Promise.resolve()
+	})
+	expect(result.current[0].runs).toEqual([])
+	expect(result.current[0].loading).toBe(false)
+})
 
-		act(() => { jest.advanceTimersByTime(5000) })
-		await act(async () => {
-			const call = runsCalls().find((c) => !c.resolved)
-			call.resolved = true
-			call.resolve({ error: true })
-			await Promise.resolve()
-		})
-		expect(result.current[0].runs).toEqual([{ id: 1 }])
-
-		await act(async () => {
-			jest.advanceTimersByTime(5000)
-			await Promise.resolve()
-		})
-		expect(runsCalls()).toHaveLength(3)
-	} finally {
-		jest.useRealTimers()
-	}
+test("scopes the request to a task id when given one", () => {
+	renderHook(() => useTaskRuns("task-1"))
+	expect(runsCalls("/task/runs/task-1")).toHaveLength(1)
+	expect(runsCalls()).toHaveLength(0)
 })

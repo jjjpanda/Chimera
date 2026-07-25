@@ -1,17 +1,13 @@
 import { useState, useEffect } from "react"
 
-import {request, jsonProcessing} from "../js/request.js"
+import {request, jsonProcessing, statusProcessing} from "../js/request.js"
 import toast from "../js/toast.js"
 
-const POLL_MS = 5000
-
-const listTasks = (setState, silent = false) => {
-	if (!silent) {
-		setState(() => ({
-			processList: [],
-			loading: true
-		}))
-	}
+const listTasks = (setState) => {
+	setState(() => ({
+		processList: [],
+		loading: true
+	}))
 	request("/task/list", {
 		method: "GET",
 		headers: {
@@ -19,19 +15,10 @@ const listTasks = (setState, silent = false) => {
 		}
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			if(data && "tasks" in data){
-				const {tasks} = data
-				setState(() => ({
-					processList: tasks,
-					loading: false
-				}))
-			}
-			else if (!silent) {
-				setState(() => ({
-					processList: [],
-					loading: false
-				}))
-			}
+			setState(() => ({
+				processList: data?.tasks ?? [],
+				loading: false
+			}))
 		})
 	})
 }
@@ -46,10 +33,8 @@ const mutateTaskGenerator = (setKey, url, action) => (id) => {
 			id
 		})
 	}, (prom) => {
-		let ok = false
-		prom.then((res) => { ok = res.ok }).catch(() => {})
-		jsonProcessing(prom, (data) => {
-			if (!ok || !data || data.error) toast(`Couldn't ${action} task`)
+		statusProcessing(prom, 200, (ok) => {
+			if (!ok) toast(`Couldn't ${action} task`)
 			setTimeout(() => {
 				setKey(k => k + 1)
 			}, 1500)
@@ -68,13 +53,6 @@ const useTasks = () => {
 	useEffect(() => {
 		listTasks(setState)
 	}, [key])
-
-	const anyRunning = state.processList.some(t => t.running)
-	useEffect(() => {
-		if (!anyRunning) return
-		const timer = setInterval(() => listTasks(setState, true), POLL_MS)
-		return () => clearInterval(timer)
-	}, [anyRunning])
 
 	const reload = () => setKey(k => k + 1)
 
