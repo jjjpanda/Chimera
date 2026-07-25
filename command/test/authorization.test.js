@@ -1015,6 +1015,67 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 		})
 
+		test("a password change voids the device token", async () => {
+			const agent = supertest.agent(app)
+			const enrol = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.250")
+				.send({ username: "resetdevice", password: "mockedPassword" })
+			expect(enrol.status).toBe(200)
+
+			for (let i = 0; i < 11; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.114.${10 + i}`)
+					.send({ username: "resetdevice", password: "wrongpassword" })
+			}
+
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ hash: bcrypt.hashSync("rotated", 10) }], rowCount: 1 })
+			const res = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.114.90")
+				.send({ username: "resetdevice", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
+		test("a deleted account voids the device token", async () => {
+			const agent = supertest.agent(app)
+			await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.116.5")
+				.send({ username: "gonedevice", password: "mockedPassword" })
+
+			for (let i = 0; i < 11; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.116.${10 + i}`)
+					.send({ username: "gonedevice", password: "wrongpassword" })
+			}
+
+			mockedPool.query.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+			const res = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.116.90")
+				.send({ username: "gonedevice", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
+		test("a device token with no password fingerprint does not skip the throttle", async () => {
+			for (let i = 0; i < 11; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.115.${10 + i}`)
+					.send({ username: "legacydevice", password: "wrongpassword" })
+			}
+			const legacy = jwt.sign({ username: "legacydevice", device: true }, process.env.SECRETKEY, { expiresIn: "365d" })
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.115.90")
+				.set("Cookie", [`devicetoken=${legacy}`])
+				.send({ username: "legacydevice", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
 		test("a successful login does not refund a guess to an exhausted per-username budget", async () => {
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)

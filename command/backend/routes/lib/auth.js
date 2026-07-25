@@ -1,7 +1,7 @@
 const secretKey = process.env.SECRETKEY
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
-const { randomUUID } = require("crypto")
+const { randomUUID, createHash } = require("crypto")
 const { createPool, withTransaction } = require("lib")
 
 const pool = createPool("COMMAND POOL ERROR")
@@ -9,6 +9,8 @@ const pool = createPool("COMMAND POOL ERROR")
 const DUMMY_HASH = bcrypt.hashSync("invalid", 10)
 const COOKIE_SECURE = process.env.command_COOKIE_SECURE === "true"
 const DEVICE_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000
+
+const deviceKey = (hash) => createHash("sha256").update(hash).digest("base64url")
 
 class HttpError extends Error {
 	constructor(status, errors) {
@@ -25,14 +27,18 @@ module.exports = {
 	COOKIE_SECURE,
 	/**
 	 * True when the request carries a device token this server issued to the
-	 * same username on an earlier successful login.
+	 * same username on an earlier successful login, and that username's
+	 * password has not changed since. A password reset or a deleted account
+	 * revokes every device token it issued.
 	 */
-	knownDevice: (req) => {
+	knownDevice: async (req) => {
 		const token = req.cookies?.devicetoken
 		if (!token) return false
 		try {
 			const decoded = jwt.verify(token, secretKey)
-			return decoded.device === true && decoded.username === req.body?.username
+			if (decoded.device !== true || decoded.username !== req.body?.username || !decoded.dk) return false
+			const row = (await pool.query("SELECT hash FROM auth WHERE username = $1", [decoded.username])).rows[0]
+			return !!row?.hash && deviceKey(row.hash) === decoded.dk
 		} catch {
 			return false
 		}
@@ -53,6 +59,7 @@ module.exports = {
 				if (!success || !row || !row.hash) return deny()
 				if (row.force_password_change && row.temp_password_expires && new Date(row.temp_password_expires) < new Date()) return deny()
 				req.userRole = row.role
+				req.deviceKey = deviceKey(row.hash)
 				req.forcePasswordChange = row.force_password_change
 				req.userTheme = row.theme ?? "system"
 				next()
@@ -80,7 +87,7 @@ module.exports = {
 					secure: COOKIE_SECURE,
 					sameSite: "lax"
 				})
-				res.cookie("devicetoken", jwt.sign({ username, device: true }, secretKey, { expiresIn: "365d" }), {
+				res.cookie("devicetoken", jwt.sign({ username, device: true, dk: req.deviceKey }, secretKey, { expiresIn: "365d" }), {
 					maxAge: DEVICE_TOKEN_MAX_AGE,
 					httpOnly: true,
 					secure: COOKIE_SECURE,

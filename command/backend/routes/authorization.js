@@ -77,8 +77,8 @@ const accountKeyFn = (req) => `user:${String(req.body?.username ?? "")}`
 const accountLimiter = (() => {
 	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
 	const throttle = makeReserve({ windowMs: THROTTLE_DELAY_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
-	return (req, res, next) => {
-		if (knownDevice(req)) return next()
+	return async (req, res, next) => {
+		if (await knownDevice(req)) return next()
 		budget.reserve(req, (blocked, release) => {
 			req.accountThrottled = blocked
 			if (!blocked) {

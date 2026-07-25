@@ -40,9 +40,11 @@ Three controls run on `POST /authorization/login`, in order:
 
 A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 10 tries per 15 minutes **per address** — so a token replayed from many addresses gets 10 tries from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
 
+The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
+
 Two gaps stay open:
 
 - A user on a device with no `devicetoken` can still be throttled while an attack is running.
-- `knownDevice` matches the username only, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
+- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
 
 Logout keeps the cookie on purpose — it exists to survive session expiry.
