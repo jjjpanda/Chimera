@@ -442,6 +442,7 @@ describe("Convert Routes", () => {
 		const memory = require("memory")
 		const { zip } = require("../backend/routes/lib/zip.js")
 
+		beforeEach(() => { process.env.memory_ON = "true" })
 		afterEach(() => { memory.__client.connected = true })
 
 		const runZip = () => {
@@ -489,8 +490,15 @@ describe("Convert Routes", () => {
 			expect(archive.abort).toHaveBeenCalledTimes(1)
 		})
 
-		test("registers no ender while the memory client is disconnected", () => {
+		test("registers the ender while the memory client is disconnected", () => {
 			memory.__client.connected = false
+			const { output, id } = startZip()
+			output.emit("close")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("registers no ender while memory is off", () => {
+			process.env.memory_ON = "false"
 			const { output } = runZip()
 			output.emit("close")
 			const events = memory.__emitted.map(e => e.event)
@@ -505,6 +513,7 @@ describe("Convert Routes", () => {
 		const ffmpeg = require("fluent-ffmpeg")
 		const { createVideo } = require("../backend/routes/lib/video.js")
 
+		beforeEach(() => { process.env.memory_ON = "true" })
 		afterEach(() => { memory.__client.connected = true })
 
 		const runVideo = () => {
@@ -548,8 +557,15 @@ describe("Convert Routes", () => {
 			expect(command.kill).toHaveBeenCalledTimes(1)
 		})
 
-		test("registers no ender while the memory client is disconnected", () => {
+		test("registers the ender while the memory client is disconnected", () => {
 			memory.__client.connected = false
+			const { command, id } = startVideo()
+			command.emit("end")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("registers no ender while memory is off", () => {
+			process.env.memory_ON = "false"
 			runVideo().emit("end")
 			const events = memory.__emitted.map(e => e.event)
 			expect(events).not.toContain("saveProcessEnder")

@@ -10,7 +10,7 @@ const {
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 const client = require("memory").client("ZIP PROCESS")
-const emitIfConnected = (event, ...args) => { if(client.connected) client.emit(event, ...args) }
+const emitToMemory = (event, ...args) => { if(process.env.memory_ON == "true") client.emit(event, ...args) }
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
@@ -58,7 +58,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			output.on("error", (err) => {
 				cancelled = true
 				console.log("ZIP OUTPUT ERROR: " + err.message)
-				emitIfConnected("deleteProcessEnder", rand)
+				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {})
 				fs.unlink(zipPath, () => {})
 				alertFailure()
@@ -68,7 +68,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 
 			output.on("close", () => {
-				emitIfConnected("deleteProcessEnder", rand)
+				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(cancelled){
 						fs.unlink(zipPath, () => {})
@@ -82,7 +82,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			archive.on("error", function(err) {
 				console.log("An error occurred: " + err.message)
-				emitIfConnected("deleteProcessEnder", rand)
+				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(!cancelled){
 						alertFailure()
@@ -95,7 +95,7 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			archive.pipe(output)
 
-			emitIfConnected("saveProcessEnder", rand, (cancel) => {
+			emitToMemory("saveProcessEnder", rand, (cancel) => {
 				if(!cancel) return
 				cancelled = true
 				archive.abort()

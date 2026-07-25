@@ -14,7 +14,7 @@ ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
 
 const client = require("memory").client("VIDEO PROCESS")
-const emitIfConnected = (event, ...args) => { if(client.connected) client.emit(event, ...args) }
+const emitToMemory = (event, ...args) => { if(process.env.memory_ON == "true") client.emit(event, ...args) }
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
@@ -98,7 +98,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 			.on("end", () => {
 				bar.stop()
-				emitIfConnected("deleteProcessEnder", rand)
+				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(save){
 						webhookAlert(`Your video (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
@@ -108,7 +108,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 		videoCreator.on("error", function(err) {
 			console.log("An error occurred: " + err.message)
-			emitIfConnected("deleteProcessEnder", rand)
+			emitToMemory("deleteProcessEnder", rand)
 			if(!save){
 				if(!res.headersSent) res.status(500).end()
 				else res.destroy(err)
@@ -121,7 +121,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 		})
 
-		emitIfConnected("saveProcessEnder", rand, (cancel) => {
+		emitToMemory("saveProcessEnder", rand, (cancel) => {
 			if(!cancel) return
 			cancelled = true
 			videoCreator.kill()
