@@ -179,6 +179,33 @@ describe("ensureModel", () => {
 		jest.useRealTimers()
 	})
 
+	test("aborts a body read that never finishes within the download timeout", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		fetch.mockImplementationOnce((url, { signal }) => Promise.resolve({
+			ok: true,
+			status: 200,
+			arrayBuffer: () => new Promise((resolve, reject) => {
+				signal.addEventListener("abort", () => {
+					const err = new Error("The operation was aborted")
+					err.name = "AbortError"
+					reject(err)
+				})
+			})
+		}))
+
+		const promise = ensureModel()
+		await Promise.resolve()
+		await Promise.resolve()
+
+		jest.advanceTimersByTime(10 * 60 * 1000)
+
+		await expect(promise).rejects.toThrow(/aborted/i)
+
+		jest.useRealTimers()
+	})
+
 	test("default path: returns existing file if it matches DEFAULT_SHA256", async () => {
 		fs.existsSync.mockReturnValue(true)
 		const buffer = Buffer.from("default data")

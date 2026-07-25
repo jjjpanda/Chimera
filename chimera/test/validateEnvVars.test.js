@@ -285,6 +285,12 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.stdout).not.toContain("command_COOKIE_SECURE")
 		expect(res.status).toBe(0)
 	})
+
+	test("allows a blank command_COOKIE_SECURE on a public gateway_HOST when the command service is off", () => {
+		const res = run({ command_ON: "false", command_PROXY_ON: "true", command_COOKIE_SECURE: "", gateway_ON: "true", gateway_HOST: "example.com" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars memory_ON cluster override", () => {

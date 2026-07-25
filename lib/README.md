@@ -10,7 +10,7 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 **Middleware**
 - `auth` — session/JWT-cookie guard + `requireAdmin` RBAC; scheduler bypass requires all three of `scheduler_AUTH`, a path in `schedulableUrls`, and a socket peer address matching `scheduler_TRUSTED_SOURCES` (proxy-addr list, defaults to `loopback`). Invalid values are rejected by preflight — `proxy-addr.compile` throws at import and would crash-loop every service.
 - `validateBody` — rejects empty bodies (`400`).
-- `tracker` — admin webhook alert per request.
+- `tracker` — admin webhook alert on high-impact paths only (auth, camera, convert, file, task); `GET` on the users/sessions list endpoints is excluded. Capped at 30 alerts globally and 10 per IP each minute.
 - `tempMiddleware` — `deprecation` / `construction` stubs.
 - `helmetOptions` — CSP for `helmet`.
 
