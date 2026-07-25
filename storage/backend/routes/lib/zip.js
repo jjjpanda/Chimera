@@ -6,11 +6,11 @@ const {
 	generateID,
 	filterList,
 	fileName,
+	memoryEmitter,
 }              = require("./converter.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
-const client = require("memory").client("ZIP PROCESS")
-const emitToMemory = (event, ...args) => { if(process.env.memory_ON == "true") client.emit(event, ...args) }
+const emitToMemory = memoryEmitter("ZIP PROCESS")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 

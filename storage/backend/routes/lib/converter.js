@@ -3,12 +3,19 @@ var path       = require("path")
 var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 var {randomID, gatewayHost}    = require("lib")
+var memory     = require("memory")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
-module.exports = {   
+module.exports = {
 	generateID: () => {
 		return randomID.generate() + "-" + moment.utc().format(dateFormat)
+	},
+
+	/** Emits only while `memory_ON`, so an ack is never registered with no server to answer it. */
+	memoryEmitter: (label) => {
+		const client = memory.client(label)
+		return (event, ...args) => { if(process.env.memory_ON == "true") client.emit(event, ...args) }
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {

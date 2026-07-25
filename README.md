@@ -55,6 +55,8 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 > **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
 
+**On the host you need:** Docker with Compose, plus Node >= 22 and npm >= 7. The image builds and runs the services, but preflight runs on the host before every build — and it needs the dependencies `npm install` puts there.
+
 ```bash
 npm install                            # install the tools the build uses
 cp env.example .env                    # fill in values

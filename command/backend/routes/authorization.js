@@ -72,23 +72,27 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
 const THROTTLE_WINDOW_MS = 10000
 
-const accountKeyFn = (req) => `user:${String(req.body?.username ?? "")}`
+const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
 
 const accountLimiter = (() => {
 	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
 	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
 	return async (req, res, next) => {
-		if (await knownDevice(req)) return next()
-		budget.reserve(req, (blocked, release) => {
-			req.accountThrottled = blocked
-			if (!blocked) {
-				budget.releaseOnSuccess(res, release)
-				return next()
-			}
-			throttle.reserve(req, (tooSoon) => tooSoon
-				? res.status(429).json({ error: true, errors: "Too many attempts" })
-				: next())
-		})
+		try {
+			if (await knownDevice(req)) return next()
+			budget.reserve(req, (blocked, release) => {
+				req.accountThrottled = blocked
+				if (!blocked) {
+					budget.releaseOnSuccess(res, release)
+					return next()
+				}
+				throttle.reserve(req, (tooSoon) => tooSoon
+					? res.status(429).json({ error: true, errors: "Too many attempts" })
+					: next())
+			})
+		} catch (e) {
+			next(e)
+		}
 	}
 })()
 

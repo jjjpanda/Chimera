@@ -287,6 +287,13 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 		})
+
+		test("answers a username that cannot be coerced to a string", async () => {
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.send({ username: { toString: 1 }, password: "x" })
+			expect(res.status).toBe(400)
+		})
 	})
 
 	describe("POST /authorization/verify", () => {
