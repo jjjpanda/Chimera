@@ -41,8 +41,8 @@ const resolveCall = (urlSubstr, matcher, data) => {
 	call.resolve(data)
 }
 
-const resolveDetections = (camId) => act(async () => {
-	resolveCall("/object/detections", (c) => c.url.includes(`camera=${camId}`), [])
+const resolveDetections = (camId, data = []) => act(async () => {
+	resolveCall("/object/detections", (c) => c.url.includes(`camera=${camId}`), data)
 	await Promise.resolve()
 })
 
@@ -68,6 +68,35 @@ const renderClipMaker = (wrap = (el) => el) => {
 	const future = { v7_startTransition: true, v7_relativeSplatPath: true }
 	return render(wrap(React.createElement(MemoryRouter, { future }, React.createElement(ClipMaker))))
 }
+
+// the Boxes toggle only renders once a camera has detections and its frames have finished decoding
+const loadBoxesToggle = async () => {
+	renderClipMaker()
+
+	await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+	await act(async () => { screen.getByText("CamA").click() })
+	await act(async () => { screen.getByText("Load Images").click() })
+
+	await resolveDetections(101, [{ timestamp: "2024-01-01T00:00:00Z" }])
+	await resolveFrames(101, framesFor(3, 101))
+	await settleAllImages()
+}
+
+test("the Boxes toggle is a switch that its label names", async () => {
+	await loadBoxesToggle()
+
+	expect(screen.getByRole("switch", { name: "Boxes" })).toBeTruthy()
+})
+
+test("activating the Boxes toggle turns boxes on", async () => {
+	await loadBoxesToggle()
+	const toggle = screen.getByRole("switch", { name: "Boxes" })
+	expect(toggle.getAttribute("aria-checked")).toBe("false")
+
+	await act(async () => { toggle.click() })
+
+	expect(toggle.getAttribute("aria-checked")).toBe("true")
+})
 
 test("decodes still start after StrictMode's remount", async () => {
 	renderClipMaker(el => React.createElement(React.StrictMode, null, el))

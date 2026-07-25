@@ -1083,6 +1083,17 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 		})
 
+		test("a successful login refunds its slot, so correct logins never spend the per-username budget", async () => {
+			let res
+			for (let i = 0; i < 12; i++) {
+				res = await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.117.${10 + i}`)
+					.send({ username: "refundcredit", password: "mockedPassword" })
+			}
+			expect(res.status).toBe(200)
+		})
+
 		test("a successful login does not refund a guess to an exhausted per-username budget", async () => {
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)
