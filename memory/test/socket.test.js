@@ -53,7 +53,7 @@ describe("memory socket converter process wiring", () => {
 		expect(keptMsg).toBe("Your archive (v2) was cancelled.")
 	})
 
-	test("deleteProcessEnder drops the ender without running it", () => {
+	test("deleteProcessEnder releases the ack without cancelling", () => {
 		const a = fakeClient("sockA")
 		connect(a)
 		const ender = jest.fn()
@@ -62,7 +62,8 @@ describe("memory socket converter process wiring", () => {
 
 		let msg
 		a.handlers.cancelProcess("v1", "mp4", (m) => { msg = m })
-		expect(ender).not.toHaveBeenCalled()
+		expect(ender).toHaveBeenCalledTimes(1)
+		expect(ender).toHaveBeenCalledWith(false)
 		expect(msg).toBe("not cancelled")
 	})
 })

@@ -442,16 +442,23 @@ describe("Convert Routes", () => {
 		const memory = require("memory")
 		const { zip } = require("../backend/routes/lib/zip.js")
 
-		const startZip = () => {
+		afterEach(() => { memory.__client.connected = true })
+
+		const runZip = () => {
 			memory.__emitted.length = 0
 			const output = new EventEmitter()
 			jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
 			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+			return { output, archive }
+		}
+
+		const startZip = () => {
+			const { output, archive } = runZip()
 			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
 			expect(saved).toBeDefined()
-			return { output, archive, id: saved.args[0] }
+			return { output, archive, id: saved.args[0], ender: saved.args[1] }
 		}
 
 		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
@@ -473,6 +480,23 @@ describe("Convert Routes", () => {
 			archive.emit("error", new Error("EPIPE"))
 			expect(deletedIds()).toContain(id)
 		})
+
+		test("releasing the ender does not abort the archive, cancelling does", () => {
+			const { archive, ender } = startZip()
+			ender(false)
+			expect(archive.abort).not.toHaveBeenCalled()
+			ender(true)
+			expect(archive.abort).toHaveBeenCalledTimes(1)
+		})
+
+		test("registers no ender while the memory client is disconnected", () => {
+			memory.__client.connected = false
+			const { output } = runZip()
+			output.emit("close")
+			const events = memory.__emitted.map(e => e.event)
+			expect(events).not.toContain("saveProcessEnder")
+			expect(events).not.toContain("deleteProcessEnder")
+		})
 	})
 
 	describe("createVideo ender cleanup", () => {
@@ -481,7 +505,9 @@ describe("Convert Routes", () => {
 		const ffmpeg = require("fluent-ffmpeg")
 		const { createVideo } = require("../backend/routes/lib/video.js")
 
-		const startVideo = () => {
+		afterEach(() => { memory.__client.connected = true })
+
+		const runVideo = () => {
 			memory.__emitted.length = 0
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
@@ -490,10 +516,14 @@ describe("Convert Routes", () => {
 			createVideo(req, res)
 
 			writeFileSpy.mockRestore()
+			return ffmpeg.mock.results[ffmpeg.mock.results.length - 1].value
+		}
+
+		const startVideo = () => {
+			const command = runVideo()
 			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
 			expect(saved).toBeDefined()
-			const command = ffmpeg.mock.results[ffmpeg.mock.results.length - 1].value
-			return { command, id: saved.args[0] }
+			return { command, id: saved.args[0], ender: saved.args[1] }
 		}
 
 		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
@@ -508,6 +538,22 @@ describe("Convert Routes", () => {
 			const { command, id } = startVideo()
 			command.emit("error", new Error("ffmpeg exited with code 1"))
 			expect(deletedIds()).toContain(id)
+		})
+
+		test("releasing the ender does not kill ffmpeg, cancelling does", () => {
+			const { command, ender } = startVideo()
+			ender(false)
+			expect(command.kill).not.toHaveBeenCalled()
+			ender(true)
+			expect(command.kill).toHaveBeenCalledTimes(1)
+		})
+
+		test("registers no ender while the memory client is disconnected", () => {
+			memory.__client.connected = false
+			runVideo().emit("end")
+			const events = memory.__emitted.map(e => e.event)
+			expect(events).not.toContain("saveProcessEnder")
+			expect(events).not.toContain("deleteProcessEnder")
 		})
 	})
 

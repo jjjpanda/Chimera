@@ -7,6 +7,7 @@ module.exports = () => ({
 	},
 
 	deleteProcessEnder: (id, callback=()=>{}) => {
+		converterProcesses.get(id)?.end(false)
 		converterProcesses.delete(id)
 		callback(id)
 	},
@@ -18,7 +19,7 @@ module.exports = () => ({
 	cancelProcess: (id, type, callback=()=>{}) => {
 		let msg = "not cancelled"
 		try{
-			converterProcesses.get(id).end()
+			converterProcesses.get(id).end(true)
 			if(type == "mp4"){
 				msg = `Your video (${id}) was cancelled.`
 			}
