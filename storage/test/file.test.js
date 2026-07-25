@@ -202,6 +202,18 @@ describe("File Routes", () => {
 			expect(bulkQuery.mock.calls[0][0]).toMatch(/DELETE FROM frame_files WHERE camera=\$1 RETURNING/)
 			expect(query).not.toHaveBeenCalled()
 		})
+
+		test("guards the delete record so wiping an already-empty camera logs no (0,0) row", async () => {
+			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+			await supertest(app)
+				.post("/file/pathDelete")
+				.send({ camera: 1 })
+				.set("Cookie", cookieWithBearerToken)
+			const [sql, values] = bulkQuery.mock.calls[0]
+			expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$2::timestamp AT TIME ZONE 'UTC'\)/)
+			expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
+			expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+		})
 	})
 
 	describe("/file/pathClean", () => {
