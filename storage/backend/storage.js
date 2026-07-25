@@ -34,8 +34,9 @@ app.use("/shared", express.static(path.join(process.env.storage_FOLDERPATH, "sha
 const fs = require("fs")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
+const ORPHAN_SWEEP_MS = 30 * 60 * 1000
 try { fs.mkdirSync(imgDir, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
-fs.readdir(imgDir, (err, files) => {
+const sweepOrphanLocks = () => fs.readdir(imgDir, (err, files) => {
 	if (!err) {
 		const orphans = []
 		files.forEach(file => {
@@ -58,6 +59,8 @@ fs.readdir(imgDir, (err, files) => {
 		})
 	}
 })
+sweepOrphanLocks()
+setInterval(sweepOrphanLocks, ORPHAN_SWEEP_MS).unref()
 
 app.startDbPruning = () => pruneInterval(pool, "DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'")
 
