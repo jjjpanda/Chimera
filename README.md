@@ -53,7 +53,7 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 ## Quick start
 
-> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
+> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container. Needs Docker Compose v2.23.1 or newer for the `secrets.environment` source.
 
 **On the host you need:** Docker with Compose, plus Node >= 22 and npm >= 7. The image builds and runs the services, but preflight runs on the host before every build — and it needs the dependencies `npm install` puts there.
 

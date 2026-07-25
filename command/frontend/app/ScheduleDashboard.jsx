@@ -112,7 +112,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 									onCheckedChange={() => { setBusyId(item.id); item.running ? stopTask(item.id) : restartTask(item.id) }}
 								/>
 								{!item.protected && (
-									<Button variant="ghost" size="icon" className="size-7 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => setDeleteTarget(item)}>
+									<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11 text-danger hover:text-danger" disabled={busyId === item.id} onClick={() => setDeleteTarget(item)}>
 										<Trash2 className="size-3.5" />
 									</Button>
 								)}
@@ -225,7 +225,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
-													<Button variant="ghost" size="icon" className="size-7" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
+													<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
 														<Trash2 className="size-3.5 text-danger" />
 													</Button>
 												)}
@@ -318,7 +318,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							<div className="flex items-center justify-between">
 								<Label className="text-xs text-muted">Skip</Label>
 								<div className="flex items-center gap-1">
-									<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
+									<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
 										<Minus className="size-3" />
 									</Button>
 									<Input
@@ -328,7 +328,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 										onChange={e => setSchedSkip(Math.max(1, parseInt(e.target.value) || 1))}
 										className="w-12 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 									/>
-									<Button variant="ghost" size="icon" className="size-7" onClick={() => setSchedSkip(s => s + 1)}>
+									<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setSchedSkip(s => s + 1)}>
 										<Plus className="size-3" />
 									</Button>
 								</div>
@@ -351,11 +351,11 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 								<div className="flex items-center justify-between">
 									<Label className="text-xs text-muted">FPS</Label>
 									<div className="flex items-center gap-1">
-										<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => Math.max(1, f - 5))}>
+										<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setFps(f => Math.max(1, f - 5))}>
 											<Minus className="size-3" />
 										</Button>
 										<span className="w-8 text-center text-sm">{fps}</span>
-										<Button variant="ghost" size="icon" className="size-7" onClick={() => setFps(f => f + 5)}>
+										<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setFps(f => f + 5)}>
 											<Plus className="size-3" />
 										</Button>
 									</div>

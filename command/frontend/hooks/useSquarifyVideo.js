@@ -9,14 +9,12 @@ const getNumberOfRowsAndCols = (numberOfVideos) => {
 }
 
 const squarifyVideoList = (videos) => {
-	if(!videos){ 
-		console.log("SQUARED", videos, [])
+	if(!videos){
 		return []
 	}
 
 	let numberOfVideos = videos.length
-	if(numberOfVideos == 0){ 
-		console.log("SQUARED", videos, [])
+	if(numberOfVideos == 0){
 		return []
 	}
 
@@ -36,11 +34,9 @@ const squarifyVideoList = (videos) => {
 			}
 		}
 		if(i >= numberOfVideos){
-			console.log("SQUARED", videos, squaredVideoList)
 			return squaredVideoList
 		}
 	}
-	console.log("SQUARED", videos, squaredVideoList)
 	return squaredVideoList
 }
 
