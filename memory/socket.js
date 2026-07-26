@@ -18,7 +18,7 @@ module.exports = () => {
 		})
 
 		const {createTask, startTask, stopTask, destroyTask, listTasks} = require("./lib/scheduledTasks.js")(io)
-		const {saveProcessEnder, cancelProcess} = require("./lib/converterProcesses.js")()
+		const {saveProcessEnder, deleteProcessEnder, deleteClientProcesses, cancelProcess} = require("./lib/converterProcesses.js")()
 		const {loginReserve, loginRelease} = require("./lib/loginAttempts.js")()
 		const sessionSync = require("./lib/sessionSync.js")
 
@@ -39,7 +39,8 @@ module.exports = () => {
 			client.on("destroyTask", destroyTask)
 			client.on("listTask", listTasks)
 
-			client.on("saveProcessEnder", saveProcessEnder)
+			client.on("saveProcessEnder", (id, ender, callback) => saveProcessEnder(client.id, id, ender, callback))
+			client.on("deleteProcessEnder", deleteProcessEnder)
 			client.on("cancelProcess", cancelProcess)
 
 			client.on("loginReserve", loginReserve)
@@ -50,6 +51,7 @@ module.exports = () => {
 			client.on("sessionInvalidateAll", sessionInvalidateAll)
 
 			client.on("disconnect", () => {
+				deleteClientProcesses(client.id)
 				console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)
 			})
 		})

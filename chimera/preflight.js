@@ -1,9 +1,22 @@
 const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
-const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
-const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
-const { validTrustedSources } = require("../lib/utils/trustedSources.js")
+
+let loadCameras, multiInstanceLib, trustedSourcesLib
+try {
+	loadCameras = require("../lib/utils/loadCameras.js")
+	multiInstanceLib = require("../lib/utils/multiInstance.js")
+	trustedSourcesLib = require("../lib/utils/trustedSources.js")
+} catch (e) {
+	if (e.code === "MODULE_NOT_FOUND") {
+		console.error("Missing dependencies — run `npm install` first.")
+		process.exit(1)
+	}
+	throw e
+}
+const { parseConf, buildFullUrl, urlProblem } = loadCameras
+const { multiInstance, validInstances } = multiInstanceLib
+const { validTrustedSources } = trustedSourcesLib
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -18,7 +31,7 @@ const OK = "✓", BAD = "✗"
 const parseSchema = () =>
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).reduce((acc, line) => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (m) acc.push({ key: m[1], placeholder: m[2].split("#")[0].trim(), desc: m[2].split("#")[0].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
+		if (m) acc.push({ key: m[1], placeholder: m[2].split("#")[0].trim(), desc: m[2].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
 		return acc
 	}, [])
 
