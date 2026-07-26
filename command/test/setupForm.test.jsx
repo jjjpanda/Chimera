@@ -44,7 +44,6 @@ test("a password/confirm mismatch blocks submission and shows an error", () => {
 
 test("submit does not trigger native page navigation", () => {
 	const trySetup = jest.fn()
-	const submitSpy = jest.spyOn(window.HTMLFormElement.prototype, "requestSubmit")
 	render(React.createElement(SetupForm, { trySetup, tokenRequired: true }))
 
 	const form = screen.getByText("Create Account").closest("form")
@@ -52,7 +51,6 @@ test("submit does not trigger native page navigation", () => {
 	fireEvent(form, submitEvent)
 
 	expect(submitEvent.defaultPrevented).toBe(true)
-	submitSpy.mockRestore()
 })
 
 test("does not render the setup form when no token is configured", () => {

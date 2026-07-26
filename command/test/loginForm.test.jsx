@@ -28,7 +28,6 @@ test("clicking Sign In submits the form via type=submit", () => {
 
 test("submit does not trigger native page navigation", () => {
 	const tryLogin = jest.fn()
-	const submitSpy = jest.spyOn(window.HTMLFormElement.prototype, "requestSubmit")
 	render(React.createElement(LoginForm, { tryLogin }))
 
 	const form = screen.getByText("Sign In").closest("form")
@@ -36,5 +35,4 @@ test("submit does not trigger native page navigation", () => {
 	fireEvent(form, submitEvent)
 
 	expect(submitEvent.defaultPrevented).toBe(true)
-	submitSpy.mockRestore()
 })
