@@ -37,6 +37,9 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
+const releaseOnSuccess = (res, release) =>
+	res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
+
 const makeReserve = ({ windowMs, max, keyFn }) => {
 	const local = memory.loginAttempts()
 	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
@@ -52,13 +55,11 @@ const makeReserve = ({ windowMs, max, keyFn }) => {
 			cb(blocked, () => memoryClient.emit("loginRelease", key))
 		})
 	}
-	const releaseOnSuccess = (res, release) =>
-		res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
-	return { reserve: (req, cb) => reserve(getKey(req), cb), releaseOnSuccess }
+	return (req, cb) => reserve(getKey(req), cb)
 }
 
 const rateLimit = (opts) => {
-	const { reserve, releaseOnSuccess } = makeReserve(opts)
+	const reserve = makeReserve(opts)
 	return (req, res, next) => {
 		reserve(req, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
@@ -77,23 +78,20 @@ const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? r
 const accountLimiter = (() => {
 	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
 	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
-	return async (req, res, next) => {
-		try {
-			if (await knownDevice(req)) return next()
-			budget.reserve(req, (blocked, release) => {
-				req.accountThrottled = blocked
-				if (!blocked) {
-					budget.releaseOnSuccess(res, release)
-					return next()
-				}
-				throttle.reserve(req, (tooSoon) => tooSoon
-					? res.status(429).json({ error: true, errors: "Too many attempts" })
-					: next())
-			})
-		} catch (e) {
-			next(e)
-		}
-	}
+	// knownDevice never rejects — it answers false for a bad token, a bad signature or a failed query
+	return (req, res, next) => knownDevice(req).then((known) => {
+		if (known) return next()
+		budget(req, (blocked, release) => {
+			req.accountThrottled = blocked
+			if (!blocked) {
+				releaseOnSuccess(res, release)
+				return next()
+			}
+			throttle(req, (tooSoon) => tooSoon
+				? res.status(429).json({ error: true, errors: "Too many attempts" })
+				: next())
+		})
+	})
 })()
 
 app.get("/status", async (req, res) => {

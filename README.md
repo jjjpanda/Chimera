@@ -67,11 +67,13 @@ npm run docker:build                   # runs preflight first — missing/mistyp
 npm run docker:up
 ```
 
-Preflight checks your config before the build. It finds values that are missing, of the wrong type, or in the wrong format. Some checks run later, inside the container at boot: the length of `SECRETKEY`, the `*_URL` addresses, and file paths. A build can pass preflight and still stop at startup.
+Preflight checks your config before the build. It finds values that are missing, of the wrong type, or in the wrong format, and it rejects a `setup_TOKEN` shorter than 32 characters. Some checks run later, inside the container at boot: the length of `SECRETKEY`, the `*_URL` addresses, and file paths. A build can pass preflight and still stop at startup.
 
 **`.env` and `motion.conf` permissions:** the app reads both files from inside the container and fails to start if it cannot open one. Keep them readable — `cp` gives you the right permissions. Do not `chmod 600` them or create them as a different user (for example with `sudo`): the container reads them as uid 1000, not root, and the boot check stops with `CANNOT READ`.
 
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
+
+**Signing in:** a successful login leaves a second cookie on that device for one year. It only tells the login limits that the device is known, so a password-guessing attack cannot lock you out of it. Changing that user's password clears the cookie on every device — do that if a device is lost. See [login limits](command#login-limits).
 
 <details>
 <summary><b>Commands</b></summary>
