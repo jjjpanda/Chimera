@@ -53,22 +53,29 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 ## Quick start
 
-> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container.
+> **Docker only.** The image bundles motion, ffmpeg, Node, pm2 and pins `TZ=UTC` (required — non-UTC misaligns clips/frames). Postgres runs as a side container. Needs Docker Compose v2.23.1 or newer for the `secrets.environment` source.
+
+**On the host you need:** Docker, plus Node >= 22 and npm >= 7. The image builds and runs the services, but preflight runs on the host before every build — and it needs the dependencies `npm install` puts there.
 
 ```bash
+npm install                            # install the tools the build uses
 cp env.example .env                    # fill in values
 cp motion.conf.example motion.conf
 # add cameraconf/camN.conf per camera  (see cameraconf/camera.conf.example)
 
-npm run docker:build                   # runs preflight first — bad config blocks the build
+npm run docker:build                   # runs preflight first — missing/mistyped config blocks the build
 npm run docker:up
 ```
+
+Preflight checks your config before the build. It finds values that are missing, of the wrong type, or in the wrong format, and it rejects a `setup_TOKEN` shorter than 32 characters. Some checks run later, inside the container at boot: the length of `SECRETKEY`, the `*_URL` addresses, and file paths. A build can pass preflight and still stop at startup.
 
 **`.env` and `motion.conf` permissions:** the app runs as a non-root user inside the container, so it must be able to read both files. It stops with `CANNOT READ` if it cannot open one. Use `cp` — it sets the right permissions. Do not run `chmod 600` on them, and do not create them with `sudo`.
 
 This applies when the project folder is on a Linux file system: a native Linux host, or a folder inside a WSL distro such as `\\wsl$\Ubuntu\home\you\chimera`. It does not apply when the folder is on a Mac or Windows drive, such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera`, because Docker Desktop gives the container its own ownership for those files.
 
 **First run:** no users exist yet. Open the gateway and create the first admin from the setup screen.
+
+**Signing in:** a successful login leaves a second cookie on that device for one year. It only tells the login limits that the device is known, so a password-guessing attack cannot lock you out of it. Changing that user's password clears the cookie on every device — do that if a device is lost. See [login limits](command#login-limits).
 
 <details>
 <summary><b>Commands</b></summary>

@@ -35,13 +35,18 @@ const useChimeraStatus = () => {
 			{}
 		))
 
-		for (const { statusType, url } of allUrls) {
-			request(url, getOptions, (prom) => {
-				statusProcessing(prom, 200, (successful) => {
-					setStatus((prev) => ({ ...prev, [statusType]: successful ? "up" : "down" }))
+		const poll = () => {
+			for (const { statusType, url } of allUrls) {
+				request(url, getOptions, (prom) => {
+					statusProcessing(prom, 200, (successful) => {
+						setStatus((prev) => ({ ...prev, [statusType]: successful ? "up" : "down" }))
+					})
 				})
-			})
+			}
 		}
+		poll()
+		const id = setInterval(poll, 5000)
+		return () => clearInterval(id)
 	}, [cameras])
 
 	return [status]

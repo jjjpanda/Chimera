@@ -39,6 +39,20 @@ jest.mock("lib")
 jest.mock("fs")
 jest.mock("memory")
 jest.mock("pm2")
+jest.mock("cli-progress")
+jest.mock("fluent-ffmpeg", () => {
+	const { EventEmitter } = require("events")
+	const chainable = ["inputFormat", "outputFPS", "videoBitrate", "videoCodec", "toFormat", "mergeToFile", "outputOptions", "pipe"]
+	const factory = jest.fn(() => {
+		const command = new EventEmitter()
+		chainable.forEach((method) => { command[method] = jest.fn(() => command) })
+		command.kill = jest.fn()
+		return command
+	})
+	factory.setFfmpegPath = jest.fn()
+	factory.setFfprobePath = jest.fn()
+	return factory
+})
 
 describe("Convert Routes", () => {
 	let cookieWithBearerToken = "validCookie"
@@ -419,6 +433,153 @@ describe("Convert Routes", () => {
 			expect(() => archive.emit("error", err)).not.toThrow()
 			expect(res.destroy).toHaveBeenCalledWith(err)
 			expect(res.status).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("converter ender cleanup", () => {
+		const { EventEmitter } = require("events")
+		const fs = require("fs")
+		const memory = require("memory")
+		const { zip } = require("../backend/routes/lib/zip.js")
+
+		beforeEach(() => { process.env.memory_ON = "true" })
+		afterEach(() => { memory.__client.connected = true })
+
+		const runZip = () => {
+			memory.__emitted.length = 0
+			const output = new EventEmitter()
+			jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
+			jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
+			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+			return { output, archive }
+		}
+
+		const startZip = () => {
+			const { output, archive } = runZip()
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			return { output, archive, id: saved.args[0], ender: saved.args[1] }
+		}
+
+		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
+
+		test("deletes the ender when the archive finishes", () => {
+			const { output, id } = startZip()
+			output.emit("close")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when the output stream errors", () => {
+			const { output, id } = startZip()
+			output.emit("error", new Error("ENOSPC"))
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when the archive errors", () => {
+			const { archive, id } = startZip()
+			archive.emit("error", new Error("EPIPE"))
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("releasing the ender does not abort the archive, cancelling does", () => {
+			const { archive, ender } = startZip()
+			ender(false)
+			expect(archive.abort).not.toHaveBeenCalled()
+			ender(true)
+			expect(archive.abort).toHaveBeenCalledTimes(1)
+		})
+
+		test("buffers the ender registration while disconnected and flushes it on reconnect", () => {
+			memory.__client.connected = false
+			const { archive } = runZip()
+			expect(memory.__emitted.map(e => e.event)).not.toContain("saveProcessEnder")
+
+			memory.__client.connected = true
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			saved.args[1](true)
+			expect(archive.abort).toHaveBeenCalledTimes(1)
+		})
+
+		test("registers no ender while memory is off", () => {
+			process.env.memory_ON = "false"
+			const { output } = runZip()
+			output.emit("close")
+			const events = memory.__emitted.map(e => e.event)
+			expect(events).not.toContain("saveProcessEnder")
+			expect(events).not.toContain("deleteProcessEnder")
+		})
+	})
+
+	describe("createVideo ender cleanup", () => {
+		const fs = require("fs")
+		const memory = require("memory")
+		const ffmpeg = require("fluent-ffmpeg")
+		const { createVideo } = require("../backend/routes/lib/video.js")
+
+		beforeEach(() => { process.env.memory_ON = "true" })
+		afterEach(() => { memory.__client.connected = true })
+
+		const runVideo = () => {
+			memory.__emitted.length = 0
+			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
+			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
+			const res = { send: jest.fn() }
+
+			createVideo(req, res)
+
+			writeFileSpy.mockRestore()
+			return ffmpeg.mock.results[ffmpeg.mock.results.length - 1].value
+		}
+
+		const startVideo = () => {
+			const command = runVideo()
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			return { command, id: saved.args[0], ender: saved.args[1] }
+		}
+
+		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
+
+		test("deletes the ender when ffmpeg finishes", () => {
+			const { command, id } = startVideo()
+			command.emit("end")
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("deletes the ender when ffmpeg errors", () => {
+			const { command, id } = startVideo()
+			command.emit("error", new Error("ffmpeg exited with code 1"))
+			expect(deletedIds()).toContain(id)
+		})
+
+		test("releasing the ender does not kill ffmpeg, cancelling does", () => {
+			const { command, ender } = startVideo()
+			ender(false)
+			expect(command.kill).not.toHaveBeenCalled()
+			ender(true)
+			expect(command.kill).toHaveBeenCalledTimes(1)
+		})
+
+		test("buffers the ender registration while disconnected and flushes it on reconnect", () => {
+			memory.__client.connected = false
+			const command = runVideo()
+			expect(memory.__emitted.map(e => e.event)).not.toContain("saveProcessEnder")
+
+			memory.__client.connected = true
+			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+			expect(saved).toBeDefined()
+			saved.args[1](true)
+			expect(command.kill).toHaveBeenCalledTimes(1)
+		})
+
+		test("registers no ender while memory is off", () => {
+			process.env.memory_ON = "false"
+			runVideo().emit("end")
+			const events = memory.__emitted.map(e => e.event)
+			expect(events).not.toContain("saveProcessEnder")
+			expect(events).not.toContain("deleteProcessEnder")
 		})
 	})
 

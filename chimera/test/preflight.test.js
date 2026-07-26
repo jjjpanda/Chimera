@@ -8,7 +8,8 @@ jest.mock("fs", () => {
 				"SECRETKEY = Auth secret key",
 				"gateway_PORT = Port number",
 				"command_ON = (true | false)",
-				"alert_TZ = IANA tz ***"
+				"alert_TZ = IANA tz ***",
+				"storage_FOLDERPATH = Base shared file path  # Docker: /mnt/storage/"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
@@ -39,6 +40,13 @@ describe("parseSchema", () => {
 		const sk = schema.find(v => v.key === "SECRETKEY")
 		expect(sk.optional).toBe(false)
 	})
+
+	test("keeps the # Docker hint in desc but strips it from placeholder", () => {
+		const schema = parseSchema()
+		const fp = schema.find(v => v.key === "storage_FOLDERPATH")
+		expect(fp.placeholder).toBe("Base shared file path")
+		expect(fp.desc).toContain("# Docker: /mnt/storage/")
+	})
 })
 
 describe("typeOf", () => {
@@ -66,6 +74,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -120,6 +129,14 @@ describe("varProblem", () => {
 	test("storage_HOST: explicit protocol → null", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+
+	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
+		expect(varProblem(tokenVar, "too-short-a-token")).toBeTruthy()
+	})
+
+	test("setup_TOKEN: at least 32 characters → null", () => {
+		expect(varProblem(tokenVar, "a".repeat(32))).toBeNull()
 	})
 })
 
