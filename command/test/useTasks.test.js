@@ -10,8 +10,7 @@ jest.mock("../frontend/js/request.js", () => {
 			calls.push({ url, opts, resolve })
 			cb(promise)
 		},
-		jsonProcessing: (prom, cb) => { prom.then(cb) },
-		statusProcessing: (prom, code, cb) => { prom.then((res) => cb(res.status === code)).catch(() => cb(false)) }
+		jsonProcessing: (prom, cb) => { prom.then(cb).catch(() => cb(undefined)) }
 	}
 })
 
@@ -76,21 +75,24 @@ test("a response without a tasks key empties the list and clears loading", async
 	expect(result.current[0].loading).toBe(false)
 })
 
-test("a non-200 mutate response toasts and still schedules a reload", async () => {
+const mutate = async (result, index, url, body) => {
+	act(() => { result.current[index](1) })
+	const call = calls.find((c) => c.url === url && !c.resolved)
+	expect(call).toBeDefined()
+	call.resolved = true
+	await act(async () => {
+		call.resolve(body)
+		await Promise.resolve()
+	})
+}
+
+test("an error-body mutate response toasts and still schedules a reload", async () => {
 	jest.useFakeTimers()
 	try {
 		const { result } = renderHook(() => useTasks())
 		await resolveList([task(1, true)])
 
-		act(() => { result.current[1](1) })
-
-		const call = calls.find((c) => c.url === "/task/start")
-		expect(call).toBeDefined()
-
-		await act(async () => {
-			call.resolve({ status: 500 })
-			await Promise.resolve()
-		})
+		await mutate(result, 1, "/task/start", { error: "Failed to update task in DB" })
 		expect(toast).toHaveBeenCalledWith("Couldn't restart task")
 
 		act(() => { jest.advanceTimersByTime(1500) })
@@ -100,19 +102,33 @@ test("a non-200 mutate response toasts and still schedules a reload", async () =
 	}
 })
 
-test("a 200 mutate response does not toast", async () => {
+test("a 200 body that reports the change was not applied still toasts", async () => {
 	jest.useFakeTimers()
 	try {
 		const { result } = renderHook(() => useTasks())
 		await resolveList([task(1, true)])
 
-		act(() => { result.current[2](1) })
+		await mutate(result, 2, "/task/stop", { stopped: false })
+		expect(toast).toHaveBeenCalledWith("Couldn't stop task")
 
-		const call = calls.find((c) => c.url === "/task/stop")
-		await act(async () => {
-			call.resolve({ status: 200 })
-			await Promise.resolve()
-		})
+		toast.mockClear()
+		await mutate(result, 3, "/task/destroy", { destroyed: false })
+		expect(toast).toHaveBeenCalledWith("Couldn't delete task")
+	} finally {
+		jest.useRealTimers()
+	}
+})
+
+test("a 200 body that reports the change was applied does not toast", async () => {
+	jest.useFakeTimers()
+	try {
+		const { result } = renderHook(() => useTasks())
+		await resolveList([task(1, true)])
+
+		await mutate(result, 1, "/task/start", { running: true })
+		await mutate(result, 2, "/task/stop", { stopped: true })
+		await mutate(result, 3, "/task/destroy", { destroyed: true })
+
 		expect(toast).not.toHaveBeenCalled()
 	} finally {
 		jest.useRealTimers()

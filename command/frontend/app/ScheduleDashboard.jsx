@@ -201,7 +201,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 			<div className={cn("flex gap-6", mobile ? "flex-col" : "flex-col xl:flex-row")}>
 				<Card className="flex-1 bg-surface border-border">
 					<CardHeader>
-						<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
+						<div className="flex items-center justify-between">
+							<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
+							<Button variant="ghost" size="icon" onClick={reloadTasks} disabled={loading} title="Refresh tasks">
+								<RefreshCw className="size-4" />
+							</Button>
+						</div>
 					</CardHeader>
 					<CardContent>
 						{loading ? (
@@ -377,7 +382,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 				<CardHeader>
 					<div className="flex items-center justify-between">
 						<CardTitle className="text-primary">Run History</CardTitle>
-						<Button variant="ghost" size="icon" onClick={reloadRuns} disabled={runsLoading} title="Refresh">
+						<Button variant="ghost" size="icon" onClick={reloadRuns} disabled={runsLoading} title="Refresh run history">
 							<RefreshCw className="size-4" />
 						</Button>
 					</div>

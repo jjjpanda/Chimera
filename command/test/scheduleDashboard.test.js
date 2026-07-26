@@ -10,8 +10,7 @@ jest.mock("../frontend/js/request.js", () => {
 			calls.push({ url, opts, resolve })
 			cb(promise)
 		},
-		jsonProcessing: (prom, cb) => { prom.then(cb) },
-		statusProcessing: (prom, code, cb) => { prom.then((res) => cb(res.status === code)).catch(() => cb(false)) }
+		jsonProcessing: (prom, cb) => { prom.then(cb).catch(() => cb(undefined)) }
 	}
 })
 
@@ -64,7 +63,16 @@ describe("run-history refresh wiring", () => {
 		await mount([{ id: "a", running: true }])
 		expect(callsTo("/task/runs")).toHaveLength(1)
 
-		await act(async () => { fireEvent.click(screen.getByTitle("Refresh")) })
+		await act(async () => { fireEvent.click(screen.getByTitle("Refresh run history")) })
 		expect(callsTo("/task/runs")).toHaveLength(2)
+	})
+
+	test("the refresh button refetches the task list", async () => {
+		await mount([{ id: "a", running: true }])
+		expect(callsTo("/task/list")).toHaveLength(1)
+
+		await act(async () => { fireEvent.click(screen.getByTitle("Refresh tasks")) })
+		expect(callsTo("/task/list")).toHaveLength(2)
+		expect(callsTo("/task/runs")).toHaveLength(1)
 	})
 })

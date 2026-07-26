@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 
-import {request, jsonProcessing, statusProcessing} from "../js/request.js"
+import {request, jsonProcessing} from "../js/request.js"
 import toast from "../js/toast.js"
 
 const listTasks = (setState) => {
@@ -23,7 +23,7 @@ const listTasks = (setState) => {
 	})
 }
 
-const mutateTaskGenerator = (setKey, url, action) => (id) => {
+const mutateTaskGenerator = (setKey, url, action, applied) => (id) => {
 	request(url, {
 		method: "POST",
 		headers: {
@@ -33,8 +33,8 @@ const mutateTaskGenerator = (setKey, url, action) => (id) => {
 			id
 		})
 	}, (prom) => {
-		statusProcessing(prom, 200, (ok) => {
-			if (!ok) toast(`Couldn't ${action} task`)
+		jsonProcessing(prom, (data) => {
+			if (!data?.[applied]) toast(`Couldn't ${action} task`)
 			setTimeout(() => {
 				setKey(k => k + 1)
 			}, 1500)
@@ -58,9 +58,9 @@ const useTasks = () => {
 
 	return [
 		state,
-		mutateTaskGenerator(setKey, "/task/start", "restart"),
-		mutateTaskGenerator(setKey, "/task/stop", "stop"),
-		mutateTaskGenerator(setKey, "/task/destroy", "delete"),
+		mutateTaskGenerator(setKey, "/task/start", "restart", "running"),
+		mutateTaskGenerator(setKey, "/task/stop", "stop", "stopped"),
+		mutateTaskGenerator(setKey, "/task/destroy", "delete", "destroyed"),
 		reload
 	]
 }
