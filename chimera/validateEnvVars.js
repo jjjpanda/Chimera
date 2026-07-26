@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, objectFeedProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -161,18 +161,14 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
-const protocolOf = (url) => { try { return new URL(url).protocol } catch { return "" } }
 
-const gwUrl = gatewayHost()
-const gwHost = hostnameOf(gwUrl) || (process.env.gateway_HOST || "").trim()
-const httpsExpected = protocolOf(gwUrl) === "https:" || process.env.gateway_HTTPS_Redirect === "true" || process.env.certbot_ON === "true"
-if (!isServiceOff(envLines, "command_COOKIE_SECURE") && gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
-	if (httpsExpected) {
-		console.log("command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins")
-		allEnvPresent = false
-	} else {
-		console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
-	}
+const cookieProblem = cookieSecureProblem(envLines)
+if (cookieProblem) {
+	console.log(cookieProblem)
+	allEnvPresent = false
+}
+else if (insecureCookie(envLines)) {
+	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
 
 const scheduleOn = process.env.schedule_ON === "true"

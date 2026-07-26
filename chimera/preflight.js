@@ -4,6 +4,7 @@ const readline = require("readline")
 const { parseConf, buildFullUrl, urlProblem } = require("../lib/utils/loadCameras.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
+const normalizeHost = require("../lib/utils/normalizeHost.js")
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -121,6 +122,21 @@ const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestre
 	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
 	: null
 
+const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
+const urlPart = (url, part) => { try { return new URL(url)[part] } catch { return "" } }
+const gatewayUrl = (lines) => normalizeHost(getVal(lines, "gateway_HOST"))
+
+const insecureCookie = (lines) => {
+	if (isServiceOff(lines, "command_COOKIE_SECURE") || getVal(lines, "command_COOKIE_SECURE") === "true") return false
+	const host = urlPart(gatewayUrl(lines), "hostname") || (getVal(lines, "gateway_HOST") || "").trim()
+	return !!host && !LOOPBACK.includes(host)
+}
+
+const cookieSecureProblem = (lines) =>
+	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
+		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
+		: null
+
 const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
@@ -135,6 +151,8 @@ const envProblems = (schema, lines) => {
 	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, keyProblem(lines, v)]).filter(([, p]) => p)
 	const feedProb = objectFeedProblem(lines)
 	if (feedProb) probs.push(["object_ON", feedProb])
+	const cookieProb = cookieSecureProblem(lines)
+	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
 	return probs
 }
 
@@ -226,6 +244,18 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		const cookieProb = cookieSecureProblem(lines)
+		if (cookieProb) {
+			console.log(`\n  command_COOKIE_SECURE ${BAD} ${cookieProb}`)
+			for (const key of ["gateway_HOST", "command_COOKIE_SECURE"]) {
+				if (!cookieSecureProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
 	} while (answered)
 	fs.writeFileSync(ENV, lines.join("\n"))
 	const probs = envProblems(schema, lines)
@@ -282,4 +312,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
