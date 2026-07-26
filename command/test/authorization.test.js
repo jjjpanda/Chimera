@@ -1083,6 +1083,38 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(429)
 		})
 
+		test("a device token with a bad signature does not skip the throttle", async () => {
+			for (let i = 0; i < 11; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.118.${10 + i}`)
+					.send({ username: "forgeddevice", password: "wrongpassword" })
+			}
+			const forged = jwt.sign({ username: "forgeddevice", device: true, dk: "anything" }, "wrong-secret", { expiresIn: "365d" })
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.118.90")
+				.set("Cookie", [`devicetoken=${forged}`])
+				.send({ username: "forgeddevice", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
+		test("a correctly signed non-device token does not skip the throttle", async () => {
+			for (let i = 0; i < 11; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.119.${10 + i}`)
+					.send({ username: "notadevice", password: "wrongpassword" })
+			}
+			const notDevice = jwt.sign({ username: "notadevice", role: "user", jti: "jti-notdevice" }, process.env.SECRETKEY, { expiresIn: "365d" })
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.119.90")
+				.set("Cookie", [`devicetoken=${notDevice}`])
+				.send({ username: "notadevice", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
 		test("a successful login refunds its slot, so correct logins never spend the per-username budget", async () => {
 			let res
 			for (let i = 0; i < 12; i++) {
