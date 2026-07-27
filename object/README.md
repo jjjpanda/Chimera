@@ -24,4 +24,4 @@ Session-guarded (`authorize`) except `/object/health`; config updates and on-dem
 ---
 # Config
 
-`object_*` keys in [env.example](../env.example). Loads cameras via `storage_MOTION_CONF_FILEPATH`; reuses `livestream_FOLDERPATH` (feed input — required here even with `livestream_ON=false`) and `storage_FOLDERPATH` (holds `objectCaptures/`, required even with `storage_ON=false`), plus `ffmpeg_FILEPATH`, `alert_URL`, `database_*`.
+`object_*` keys in [env.example](../env.example). Loads cameras via `storage_MOTION_CONF_FILEPATH`; reads feeds from `livestream_FOLDERPATH` and writes `objectCaptures/` under `storage_FOLDERPATH` — the latter is required even when `storage_ON=false`. Plus `ffmpeg_FILEPATH`, `alert_URL`, `database_*`.

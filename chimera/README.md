@@ -20,7 +20,7 @@ Preflight is not in this chain; it runs on the host before `docker compose up`.
 Checks every required env var — all checks run (no short-circuit), so one run reports every problem, then `exit(1)` if anything failed.
 
 - Optional keys (`***` in [env.example](../env.example)) skipped; disabled services skip their `<prefix>_*` keys (the `<prefix>_ON` toggle is always checked), except where a cross-service rule below overrides.
-- `object_ON=true` requires `livestream_ON=true` — object's only frame source is `livestream_FOLDERPATH/feed/<id>/video.m3u8`, and pm2 starts the per-camera ffmpeg writers only for livestream. `livestream_PROXY_ON` is gateway routing and does not satisfy it.
+- `object_ON=true` requires `livestream_ON=true` (why: [object](../object)); `livestream_PROXY_ON` is gateway routing and does not satisfy it.
 - `storage_MOTION_CONF_FILEPATH` required only when storage/object/livestream is on.
 - `storage_FOLDERPATH` (`objectCaptures/` out) and `livestream_FOLDERPATH` (frames in) are also required when `object_ON=true`, even with their own service off.
 - Re-reads the raw `.env` file (not `process.env`) for every key to catch a `#` dotenv already silently truncated before parsing — see `preflight.js` below.

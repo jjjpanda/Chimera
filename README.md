@@ -77,7 +77,7 @@ You fill in three things: `.env`, `motion.conf`, and one file per camera in `cam
 npm run preflight
 ```
 
-**By hand** — same three files, you edit them yourself:
+**By hand** — same three files, you edit them yourself. In the copied `.env` every right-hand side is a description of the value, not a value:
 
 ```bash
 cp env.example .env
@@ -85,7 +85,9 @@ cp motion.conf.example motion.conf
 cp cameraconf/camera.conf.example cameraconf/cam1.conf   # one per camera
 ```
 
-A camera's file holds its address, username and password. Every `.env` value is explained beside it in [env.example](env.example), including the value to use when it runs under Docker.
+A camera's file holds its address, username and password. Every `.env` value is explained beside it in [env.example](env.example), and a `# Docker:` note marks the ones the container fixes for you.
+
+Every service shares one container, so each `<prefix>_HOST` is just loopback plus that service's own port — the `http://127.0.0.1:8081` half of the example, not the domain half. `gateway_HOST` is the exception: it is the address you type in a browser.
 
 ### 3 · Build and start
 
@@ -109,11 +111,13 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
 
-**Plain HTTP on your own network.** Set `command_COOKIE_SECURE=false`, and give `gateway_HOST` an explicit `http://` prefix — `http://192.168.1.50:8080`. Leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`. An HTTPS port still gets published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
+Set `command_COOKIE_SECURE=true` if browsers reach you over HTTPS, however the certificate gets there. Set it `false` for plain HTTP. Browsers drop a `Secure` cookie on a plain-HTTP origin, so the wrong answer breaks login and nothing else.
 
-**Reachable over HTTPS**, however the certificate gets there. Set `command_COOKIE_SECURE=true`.
+On plain HTTP, also give `gateway_HOST` an explicit `http://` prefix — `http://192.168.1.50:8080` — and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`. An HTTPS port still gets published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
 
-Preflight stops the build if the two disagree — that is, `command_COOKIE_SECURE=false` while something says HTTPS: an `https://` (or prefix-less) `gateway_HOST`, `gateway_HTTPS_Redirect=true`, or `certbot_ON=true`. It skips the check when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`), so a local test box never trips it.
+Preflight catches only one of the two mistakes: `command_COOKIE_SECURE=false` while something says HTTPS. It then lists the three things that could have said so — an `https://` or prefix-less `gateway_HOST`, `gateway_HTTPS_Redirect=true`, `certbot_ON=true` — without saying which one did. The opposite mistake, `true` on a plain-HTTP deploy, passes the check and still breaks login. Nothing is checked at all when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`).
+
+Why the cookie can't just read the request: [command](command#config).
 
 </details>
 
