@@ -67,7 +67,7 @@ npm run docker:build                   # runs preflight first — missing/mistyp
 npm run docker:up
 ```
 
-Preflight checks your config before the build. It finds values that are missing, of the wrong type, or in the wrong format, and it rejects a `setup_TOKEN` shorter than 32 characters. Some checks run later, inside the container at boot: the length of `SECRETKEY`, the `*_URL` addresses, and file paths. A build can pass preflight and still stop at startup.
+Preflight checks your config before the build. It finds values that are missing, of the wrong type, or in the wrong format, and it rejects a `setup_TOKEN` shorter than 32 characters. It also hard-fails the build if `gateway_HOST` names a non-loopback HTTPS host and `command_COOKIE_SECURE` is not `true` — set it to `true`, or give `gateway_HOST` an explicit `http://` scheme for a plain-HTTP deploy. The same check runs again at container boot, in case `.env` changed after the build. Some checks run later, inside the container at boot: the length of `SECRETKEY`, the `*_URL` addresses, and file paths. A build can pass preflight and still stop at startup.
 
 **`.env` and `motion.conf` permissions:** the app runs as a non-root user inside the container, so it must be able to read both files. It stops with `CANNOT READ` if it cannot open one. Use `cp` — it sets the right permissions. Do not run `chmod 600` on them, and do not create them with `sudo`.
 
