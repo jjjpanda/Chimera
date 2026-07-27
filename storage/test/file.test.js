@@ -357,6 +357,24 @@ describe("File Routes", () => {
 				expect(bulkQuery).not.toHaveBeenCalled()
 				expect(unlinkSpy).not.toHaveBeenCalled()
 			})
+
+			test("defers while an export lock is fresh, before deleting any database rows", async () => {
+				const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["zip_abc.txt"])
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deferred: true })
+					expect(bulkQuery).not.toHaveBeenCalled()
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
 		})
 	})
 
@@ -567,6 +585,42 @@ describe("File Routes", () => {
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(500)
+			})
+
+			test("defers while an export lock is fresh, before touching the frame table", async () => {
+				process.env.storage_MAX_GB = "1"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["mp4_abc.txt"])
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deferred: true })
+					expect(bulkQuery).not.toHaveBeenCalled()
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("does not defer for a stale export lock, so a crashed export cannot block cap enforcement", async () => {
+				process.env.storage_MAX_GB = "10"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
+					Promise.resolve(opts && opts.withFileTypes ? [] : ["mp4_abc.txt"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() - 60 * 60 * 1000 })
+				bulkQuery.mockResolvedValueOnce({ rows: [{ total: "1000000" }] })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
 			})
 		})
 	})

@@ -14,17 +14,18 @@ const {
 	fileStats,
 	dailyStats,
 	cameraMetrics,
-	autoClean
+	autoClean,
+	deferIfExporting
 } = require("./lib/file.js")
 
 app.post("/pathSize", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("size")) 
 app.post("/pathFileCount", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("count"))
 app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPath, updateDeletionOfFiles("directory"), deleteFileDirectory)
-app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, updateDeletionOfFiles("files"), deleteFilesBeforeDateGlob)
+app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, deferIfExporting, updateDeletionOfFiles("files"), deleteFilesBeforeDateGlob)
 
 app.get("/pathStats", fileStats)
 app.get("/dailyStats", dailyStats)
 app.post("/pathMetrics", cameraMetrics)
-app.post("/pathAutoClean", requireAdmin, autoClean)
+app.post("/pathAutoClean", requireAdmin, deferIfExporting, autoClean)
 
 module.exports = app

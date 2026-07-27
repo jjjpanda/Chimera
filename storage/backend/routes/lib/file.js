@@ -11,10 +11,21 @@ const MAX_STUCK_BATCHES = 3
 
 const STATS_WINDOW_DAYS = 32
 
+const EXPORT_LOCK_ACTIVE_MS = 5 * 60 * 1000
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
 })
+
+const exportInProgress = async () => {
+	const entries = await fs.promises.readdir(CAPTURES_DIR).catch(() => [])
+	const cutoff = Date.now() - EXPORT_LOCK_ACTIVE_MS
+	const active = await mapLimit(entries.filter(f => /^(mp4|zip)_.+\.txt$/.test(f)), FS_CONCURRENCY, f =>
+		fs.promises.stat(path.join(CAPTURES_DIR, f)).then(s => s.mtimeMs > cutoff).catch(() => false)
+	)
+	return active.some(Boolean)
+}
 
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
@@ -129,6 +140,11 @@ module.exports = {
 			console.log("err", err)
 			res.status(500).send({ error: true })
 		})
+	},
+
+	deferIfExporting: async (req, res, next) => {
+		if (await exportInProgress()) return res.send({ deferred: true })
+		next()
 	},
 
 	autoClean: async (req, res) => {
