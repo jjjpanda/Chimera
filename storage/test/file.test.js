@@ -214,6 +214,23 @@ describe("File Routes", () => {
 			expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
 			expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 		})
+
+		test("defers while an export lock is fresh, before deleting any database rows", async () => {
+			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["zip_abc.txt"])
+			const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+			try {
+				const res = await supertest(app)
+					.post("/file/pathDelete")
+					.send({ camera: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deferred: true })
+				expect(bulkQuery).not.toHaveBeenCalled()
+			} finally {
+				readdir.mockRestore()
+				stat.mockRestore()
+			}
+		})
 	})
 
 	describe("/file/pathClean", () => {
