@@ -41,9 +41,9 @@ const CAM = "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 
 const envText = (env) => Object.entries(env).map(([k, v]) => `${k} = ${v}`).join("\n")
 
-const setup = ({ env, answers, noEnv = false }) => {
+const setup = ({ env, answers, noEnv = false, example = EXAMPLE }) => {
 	mockState.files = {
-		"env.example": EXAMPLE,
+		"env.example": example,
 		"motion.conf": "",
 		"motion.conf.example": "",
 		"cameraconf/cam1.conf": CAM,
@@ -183,6 +183,28 @@ describe("runInteractive objectFeedProblem", () => {
 		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true"] })
 		const { out, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
+		expect(exitCode).toBe(0)
+	})
+})
+
+describe("runInteractive cookieSecureProblem", () => {
+	const EXAMPLE_WITH_GATEWAY = `${EXAMPLE}\ngateway_HOST = Gateway host\ncommand_COOKIE_SECURE = (true | false)`
+	// every key holds a valid value except the insecure-cookie pair, so only the forced re-ask can fix it
+	const COOKIE_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: "a-real-secret", gateway_HOST: "https://example.com", command_COOKIE_SECURE: "false" }
+
+	test("prompts gateway_HOST instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
+		setup({ env: COOKIE_BROKEN, answers: ["127.0.0.1"], example: EXAMPLE_WITH_GATEWAY })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(env).toContain("gateway_HOST = 127.0.0.1")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("falls through to command_COOKIE_SECURE when gateway_HOST stays public — setting the cookie flag resolves it too", async () => {
+		setup({ env: COOKIE_BROKEN, answers: ["https://example.com", "true"], example: EXAMPLE_WITH_GATEWAY })
+		const { env, exitCode } = await run()
+		expect(env).toContain("command_COOKIE_SECURE = true")
 		expect(exitCode).toBe(0)
 	})
 })
