@@ -76,6 +76,9 @@ describe("varProblem", () => {
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
 	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
+	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
+	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
+	const dbPasswordVar = { key: "database_PASSWORD", placeholder: "postgres password", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -146,6 +149,22 @@ describe("varProblem", () => {
 
 	test("SECRETKEY: at least 32 characters → null", () => {
 		expect(varProblem(secretVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("scheduler_AUTH: under 32 characters → error, since a match grants role admin on the schedulable routes", () => {
+		expect(varProblem(schedulerAuthVar, "short-scheduler-auth")).toBeTruthy()
+		expect(varProblem(schedulerAuthVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("the length floor covers every key isSecret matches, not just SECRETKEY and setup_TOKEN", () => {
+		expect(varProblem(memoryTokenVar, "short-memory-token")).toBeTruthy()
+		expect(varProblem(dbPasswordVar, "postgres")).toBeTruthy()
+		expect(varProblem(memoryTokenVar, "a".repeat(32))).toBeNull()
+		expect(varProblem(dbPasswordVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("a short non-secret is untouched by the floor", () => {
+		expect(varProblem(strVar, "chimera")).toBeNull()
 	})
 })
 

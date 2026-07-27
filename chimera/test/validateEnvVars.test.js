@@ -111,6 +111,23 @@ describe("validateEnvVars placeholder-secret gate", () => {
 		expect(res.stdout).not.toContain("setup_TOKEN TOO SHORT")
 		expect(res.status).toBe(0)
 	})
+
+	test("blocks boot when scheduler_AUTH is shorter than 32 characters — a match sets role admin on the schedulable routes", () => {
+		const res = run({ scheduler_AUTH: "short-scheduler-auth" })
+		expect(res.stdout).toContain("scheduler_AUTH TOO SHORT — must be at least 32 characters: scheduler_AUTH")
+		expect(res.status).toBe(1)
+	})
+
+	test("blocks boot when memory_AUTH_TOKEN or database_PASSWORD is shorter than 32 characters", () => {
+		expect(run({ memory_AUTH_TOKEN: "short-memory-token" }).stdout).toContain("memory_AUTH_TOKEN TOO SHORT")
+		expect(run({ database_PASSWORD: "postgres" }).stdout).toContain("database_PASSWORD TOO SHORT")
+	})
+
+	test("skips the length floor for a disabled service, matching the presence check", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "short" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars confirmURL gate", () => {

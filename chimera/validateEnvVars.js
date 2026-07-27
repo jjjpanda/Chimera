@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -11,7 +11,6 @@ let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
-const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 
 const instances = (process.env.chimeraInstances || "").trim()
 if (instances !== "" && !validInstances(instances)) {
@@ -72,7 +71,7 @@ const checkVar = (varName) => {
 		allEnvPresent = false
 		return false
 	}
-	if ((varName === "SECRETKEY" || varName === "setup_TOKEN") && val.trim().length < 32) {
+	if (isSecret(varName) && val.trim().length < 32) {
 		console.log(varName, "TOO SHORT — must be at least 32 characters:", varName)
 		allEnvPresent = false
 		return false
