@@ -95,6 +95,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			.toFormat("mp4")
 			.on("progress", function(progress) {
 				bar.update(Math.round((progress.frames/frames)*100))
+				fs.utimes(txtPath, new Date(), new Date(), () => {})
 			})
 			.on("end", () => {
 				bar.stop()

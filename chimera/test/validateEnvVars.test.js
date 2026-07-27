@@ -238,8 +238,14 @@ describe("validateEnvVars certbot port warning", () => {
 })
 
 describe("validateEnvVars insecure-cookie warning", () => {
-	test("warns (non-fatal) on a public gateway_HOST with insecure cookie flags", () => {
+	test("fails on an HTTPS-resolved public gateway_HOST with an insecure cookie", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("warns (non-fatal) on a plain-HTTP public gateway_HOST with an insecure cookie", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
@@ -268,15 +274,45 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("warns when only gateway_HTTPS_Redirect is set (command_COOKIE_SECURE still false)", () => {
-		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
-		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
-		expect(res.status).toBe(0)
+	test("fails when gateway_HTTPS_Redirect is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("fails when certbot_ON is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false", certbot_ON: "true", gateway_PORT: "80" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
 	})
 
 	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {
 		const res = run({ gateway_HOST: "not a valid host", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("fails on a public gateway_HOST with an insecure cookie when gateway_ON is false — storage still builds webhook links from it", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("no warning on a loopback gateway_HOST when gateway_ON is false", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "127.0.0.1", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a public gateway_HOST when both the gateway and the command service are off", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "false", command_PROXY_ON: "false", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("allows a blank command_COOKIE_SECURE on a public gateway_HOST when the command service is off", () => {
+		const res = run({ command_ON: "false", command_PROXY_ON: "true", command_COOKIE_SECURE: "", gateway_ON: "true", gateway_HOST: "example.com" })
+		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
 })

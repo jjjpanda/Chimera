@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 
 import {request, jsonProcessing} from "../js/request.js"
+import toast from "../js/toast.js"
 
 const listTasks = (setState) => {
 	setState(() => ({
@@ -14,65 +15,31 @@ const listTasks = (setState) => {
 		}
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
-			if(data && "tasks" in data){
-				const {tasks} = data
-				setState(() => ({
-					processList: tasks,
-					loading: false 
-				}))
-			}
-			else{
-				setState(() => ({
-					processList: [],
-					loading: false
-				}))
-			}
+			setState(() => ({
+				processList: data?.tasks ?? [],
+				loading: false
+			}))
 		})
 	})
 }
 
-const afterRequestCallbackGenerator = (key, setKey) => (prom) => {
-	jsonProcessing(prom, () => {
-		setTimeout(() => {
-			setKey(k => k + 1)
-		}, 1500)
+const mutateTaskGenerator = (setKey, url, action, applied) => (id) => {
+	request(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			id
+		})
+	}, (prom) => {
+		jsonProcessing(prom, (data) => {
+			if (!data?.[applied]) toast(`Couldn't ${action} task`)
+			setTimeout(() => {
+				setKey(k => k + 1)
+			}, 1500)
+		})
 	})
-}
-
-const restartTasksGenerator = (key, setKey) => (id) => {
-	request("/task/start", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
-
-const stopTasksGenerator = (key, setKey) => (id) => {
-	request("/task/stop", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
-}
-
-const deleteTasksGenerator = (key, setKey) => (id) => {
-	request("/task/destroy", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			id
-		})
-	}, afterRequestCallbackGenerator(key, setKey))
 }
 
 const useTasks = () => {
@@ -91,9 +58,9 @@ const useTasks = () => {
 
 	return [
 		state,
-		restartTasksGenerator(key, setKey),
-		stopTasksGenerator(key, setKey),
-		deleteTasksGenerator(key, setKey),
+		mutateTaskGenerator(setKey, "/task/start", "restart", "running"),
+		mutateTaskGenerator(setKey, "/task/stop", "stop", "stopped"),
+		mutateTaskGenerator(setKey, "/task/destroy", "delete", "destroyed"),
 		reload
 	]
 }

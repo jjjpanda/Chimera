@@ -57,7 +57,7 @@ const App = () => {
 	}, [loggedIn])
 
 	return (
-		<ThemeProvider serverTheme={serverTheme}>
+		<ThemeProvider serverTheme={serverTheme} loggedIn={loggedIn}>
 			<ToastContainer />
 			<AppInner
 				loaded={loaded}

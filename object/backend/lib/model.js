@@ -6,6 +6,8 @@ const MODEL_DIR = path.join(__dirname, "..", "model")
 const MODEL_PATH = path.join(MODEL_DIR, "yolox_tiny.onnx")
 const DEFAULT_URL = "https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx"
 const DEFAULT_SHA256 = "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7"
+const CONNECT_TIMEOUT_MS = 60000
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000
 
 const getFileHash = (filePath) => new Promise((resolve, reject) => {
 	const hash = crypto.createHash("sha256")
@@ -39,9 +41,22 @@ const ensureModel = async () => {
 	}
 	const url = customUrl || DEFAULT_URL
 	console.log("🔍 Downloading YOLOX model from", url)
-	const res = await fetch(url)
+	const controller = new AbortController()
+	const timer = setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS)
+	let res
+	try {
+		res = await fetch(url, { signal: controller.signal })
+	} finally {
+		clearTimeout(timer)
+	}
 	if (!res.ok) throw new Error(`model download failed: ${res.status}`)
-	const buffer = Buffer.from(await res.arrayBuffer())
+	const bodyTimer = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS)
+	let buffer
+	try {
+		buffer = Buffer.from(await res.arrayBuffer())
+	} finally {
+		clearTimeout(bodyTimer)
+	}
 
 	if (getHash(buffer) !== expectedSha256) throw new Error("downloaded model failed SHA256 integrity check")
 

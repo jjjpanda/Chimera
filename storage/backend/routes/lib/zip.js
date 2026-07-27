@@ -93,6 +93,10 @@ const zip = (archive, camera, frames, start, end, save, req, res) => {
 
 			fs.writeFile(txtPath, "progress", () => {})
 
+			archive.on("progress", () => {
+				fs.utimes(txtPath, new Date(), new Date(), () => {})
+			})
+
 			archive.pipe(output)
 
 			emitToMemory("saveProcessEnder", rand, (cancel) => {

@@ -48,11 +48,12 @@ for (const { name, instances } of services) {
 }
 
 if(!isDev){
-	config.apps.push({
+	if(process.env.alert_URL) config.apps.push({
 		script: "npx heartbeat",
 		name: "heartbeat",
 		...logging("heartbeat.dev.log"),
 	})
+	else console.log("↷ skipping heartbeat (alert_URL is unset — the webhook is its only output)")
 }
 
 if(process.env.storage_ON === "true"){

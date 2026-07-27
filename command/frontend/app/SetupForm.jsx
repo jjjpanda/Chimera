@@ -13,7 +13,8 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [confirmPassword, setConfirmPassword] = useState("")
 	const [token, setToken] = useState("")
 
-	const onSubmit = () => {
+	const onSubmit = (e) => {
+		e.preventDefault()
 		const invalid = validatePassword(password)
 		if (invalid) {
 			setStatus("failed")
@@ -29,10 +30,6 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 			setStatus(success ? "done" : "failed")
 			setMessage(success ? null : errors)
 		})
-	}
-
-	const handleKeyDown = (e) => {
-		if (e.key === "Enter") onSubmit()
 	}
 
 	if (!tokenRequired) {
@@ -60,68 +57,66 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 					<CardTitle className="text-primary text-xl">Chimera</CardTitle>
 					<p className="text-muted text-sm">Create your account</p>
 				</CardHeader>
-				<CardContent className="flex flex-col gap-4">
-					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Username</Label>
-						<Input
-							className="bg-surface-raised border-border text-primary placeholder:text-muted"
-							placeholder="username"
-							value={username}
-							onChange={e => setUsername(e.target.value)}
-							onKeyDown={handleKeyDown}
-							autoComplete="username"
-						/>
-					</div>
-					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Password</Label>
-						<Input
-							className="bg-surface-raised border-border text-primary placeholder:text-muted"
-							type="password"
-							placeholder="password"
-							value={password}
-							onChange={e => setPassword(e.target.value)}
-							onKeyDown={handleKeyDown}
-							autoComplete="new-password"
-						/>
-					</div>
-					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Confirm Password</Label>
-						<Input
-							className="bg-surface-raised border-border text-primary placeholder:text-muted"
-							type="password"
-							placeholder="confirm password"
-							value={confirmPassword}
-							onChange={e => setConfirmPassword(e.target.value)}
-							onKeyDown={handleKeyDown}
-							autoComplete="new-password"
-						/>
-					</div>
-					{tokenRequired && (
+				<CardContent>
+					<form onSubmit={onSubmit} className="flex flex-col gap-4">
 						<div className="flex flex-col gap-1">
-							<Label className="text-muted">Setup Token</Label>
+							<Label className="text-muted">Username</Label>
+							<Input
+								className="bg-surface-raised border-border text-primary placeholder:text-muted"
+								placeholder="username"
+								value={username}
+								onChange={e => setUsername(e.target.value)}
+								autoComplete="username"
+							/>
+						</div>
+						<div className="flex flex-col gap-1">
+							<Label className="text-muted">Password</Label>
 							<Input
 								className="bg-surface-raised border-border text-primary placeholder:text-muted"
 								type="password"
-								placeholder="setup token"
-								value={token}
-								onChange={e => setToken(e.target.value)}
-								onKeyDown={handleKeyDown}
+								placeholder="password"
+								value={password}
+								onChange={e => setPassword(e.target.value)}
+								autoComplete="new-password"
 							/>
 						</div>
-					)}
-					{status === "failed" && (
-						<p className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
-					)}
-					{status === "done" && (
-						<p className="text-accent text-sm">Account created — redirecting to login…</p>
-					)}
-					<Button
-						className="bg-accent text-accent-foreground hover:opacity-90 w-full"
-						onClick={onSubmit}
-						disabled={status === "done"}
-					>
-						Create Account
-					</Button>
+						<div className="flex flex-col gap-1">
+							<Label className="text-muted">Confirm Password</Label>
+							<Input
+								className="bg-surface-raised border-border text-primary placeholder:text-muted"
+								type="password"
+								placeholder="confirm password"
+								value={confirmPassword}
+								onChange={e => setConfirmPassword(e.target.value)}
+								autoComplete="new-password"
+							/>
+						</div>
+						{tokenRequired && (
+							<div className="flex flex-col gap-1">
+								<Label className="text-muted">Setup Token</Label>
+								<Input
+									className="bg-surface-raised border-border text-primary placeholder:text-muted"
+									type="password"
+									placeholder="setup token"
+									value={token}
+									onChange={e => setToken(e.target.value)}
+								/>
+							</div>
+						)}
+						{status === "failed" && (
+							<p className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
+						)}
+						{status === "done" && (
+							<p className="text-accent text-sm">Account created — redirecting to login…</p>
+						)}
+						<Button
+							type="submit"
+							className="bg-accent text-accent-foreground hover:opacity-90 w-full"
+							disabled={status === "done"}
+						>
+							Create Account
+						</Button>
+					</form>
 				</CardContent>
 			</Card>
 		</div>

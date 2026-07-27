@@ -20,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems, hashTruncated } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -70,7 +70,8 @@ describe("typeOf", () => {
 describe("varProblem", () => {
 	const boolVar = { key: "command_ON", placeholder: "(true | false)", optional: false }
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
-	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
+	const strVar = { key: "database_NAME", placeholder: "postgres database name", optional: false }
+	const secretVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
@@ -138,6 +139,14 @@ describe("varProblem", () => {
 	test("setup_TOKEN: at least 32 characters → null", () => {
 		expect(varProblem(tokenVar, "a".repeat(32))).toBeNull()
 	})
+
+	test("SECRETKEY: under 32 characters → error, matching the boot check instead of crash-looping there", () => {
+		expect(varProblem(secretVar, "short-signing-key")).toBeTruthy()
+	})
+
+	test("SECRETKEY: at least 32 characters → null", () => {
+		expect(varProblem(secretVar, "a".repeat(32))).toBeNull()
+	})
 })
 
 describe("objectFeedProblem", () => {
@@ -168,9 +177,48 @@ describe("objectFeedProblem", () => {
 	})
 })
 
+describe("cookieSecureProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("a scheme-less public gateway_HOST resolves to https, so an insecure cookie is fatal", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))).toMatch(/command_COOKIE_SECURE MUST BE true/)
+	})
+
+	test("gateway_HTTPS_Redirect makes it fatal even on a plain-http gateway_HOST", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" }))).toBeTruthy()
+	})
+
+	test("certbot_ON makes it fatal even on a plain-http gateway_HOST", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", certbot_ON: "true" }))).toBeTruthy()
+	})
+
+	test("a plain-http gateway_HOST with no HTTPS signal warns instead of failing", () => {
+		const l = lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false" })
+		expect(cookieSecureProblem(l)).toBeNull()
+		expect(insecureCookie(l)).toBe(true)
+	})
+
+	test("loopback passes", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "127.0.0.1", command_COOKIE_SECURE: "false" }))).toBe(false)
+	})
+
+	test("a set cookie flag passes", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true" }))).toBe(false)
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_ON: "false", command_COOKIE_SECURE: "false" }))).toBe(false)
+	})
+})
+
 describe("envProblems", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 	const SCHEMA = [{ key: "storage_FOLDERPATH", placeholder: "Base shared file path", desc: "Base shared file path", optional: false }]
+
+	test("the insecure-cookie gate blocks preflight, matching the boot check", () => {
+		const probs = envProblems([], lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))
+		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE true/)]])
+	})
 
 	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {
 		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "true", storage_FOLDERPATH: "" })))

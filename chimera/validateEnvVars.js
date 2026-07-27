@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, objectFeedProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -162,8 +162,12 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 
-const gwHost = hostnameOf(gatewayHost()) || (process.env.gateway_HOST || "").trim()
-if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+const cookieProblem = cookieSecureProblem(envLines)
+if (cookieProblem) {
+	console.log(cookieProblem)
+	allEnvPresent = false
+}
+else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
 
