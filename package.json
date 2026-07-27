@@ -34,14 +34,14 @@
     "setup": "npm install && npm run build",
     "preflight": "node chimera/preflight.js",
     "predocker:build": "node chimera/preflight.js --check",
-    "docker:build": "docker compose build",
+    "docker:build": "node chimera/compose.js build",
     "predocker:up": "node chimera/preflight.js --check",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "docker:restart": "docker compose restart",
+    "docker:up": "node chimera/compose.js up -d",
+    "docker:down": "node chimera/compose.js down",
+    "docker:logs": "node chimera/compose.js logs -f",
+    "docker:restart": "node chimera/compose.js restart",
     "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
-    "docker:delete": "docker compose down -v"
+    "docker:delete": "node chimera/compose.js down -v"
   },
   "dependencies": {
     "command": "file:./command",

@@ -70,7 +70,8 @@ describe("typeOf", () => {
 describe("varProblem", () => {
 	const boolVar = { key: "command_ON", placeholder: "(true | false)", optional: false }
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
-	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
+	const strVar = { key: "database_NAME", placeholder: "postgres database name", optional: false }
+	const secretVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
@@ -137,6 +138,14 @@ describe("varProblem", () => {
 
 	test("setup_TOKEN: at least 32 characters → null", () => {
 		expect(varProblem(tokenVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("SECRETKEY: under 32 characters → error, matching the boot check instead of crash-looping there", () => {
+		expect(varProblem(secretVar, "short-signing-key")).toBeTruthy()
+	})
+
+	test("SECRETKEY: at least 32 characters → null", () => {
+		expect(varProblem(secretVar, "a".repeat(32))).toBeNull()
 	})
 })
 

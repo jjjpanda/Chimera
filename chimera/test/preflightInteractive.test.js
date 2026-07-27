@@ -54,6 +54,7 @@ const setup = ({ env, answers, noEnv = false, example = EXAMPLE }) => {
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
+const SECRET = "a-real-secret-padded-to-32-chars!"
 
 const load = () => {
 	let mod
@@ -86,7 +87,7 @@ describe("runInteractive re-walk", () => {
 		setup({
 			env: BLANK,
 			// storage_ON, livestream_ON, livestream_FOLDERPATH, livestream_PROXY_ON, object_ON, SECRETKEY, then the second-pass storage_FOLDERPATH
-			answers: ["false", "true", "/mnt/live", "false", "true", "a-real-secret", "/mnt/storage"]
+			answers: ["false", "true", "/mnt/live", "false", "true", SECRET, "/mnt/storage"]
 		})
 		const { out, exitCode, env } = await run()
 		expect(env).toContain("storage_FOLDERPATH = /mnt/storage")
@@ -99,7 +100,7 @@ describe("runInteractive re-walk", () => {
 		setup({
 			// livestream off also skips livestream_FOLDERPATH and livestream_PROXY_ON
 			env: BLANK,
-			answers: ["false", "false", "false", "a-real-secret"]
+			answers: ["false", "false", "false", SECRET]
 		})
 		const { env, exitCode } = await run()
 		expect(env).toContain("storage_FOLDERPATH = \n")
@@ -109,7 +110,7 @@ describe("runInteractive re-walk", () => {
 	test("re-prompts until the answer validates instead of writing a bad value", async () => {
 		setup({
 			env: BLANK,
-			answers: ["", "yes", "false", "false", "false", "a-real-secret"]
+			answers: ["", "yes", "false", "false", "false", SECRET]
 		})
 		const { env, exitCode } = await run()
 		expect(env).toContain("storage_ON = false")
@@ -119,22 +120,22 @@ describe("runInteractive re-walk", () => {
 	test("rejects a # in the answer instead of re-walking forever — dotenv drops everything after it, so the value would never read back", async () => {
 		setup({
 			env: BLANK,
-			answers: ["false", "false", "false", "#Hunter2", "Hunter2"]
+			answers: ["false", "false", "false", "#Hunter2", SECRET]
 		})
 		const { out, env, exitCode } = await run()
 		expect(out).toContain("cannot contain #")
-		expect(env).toContain("SECRETKEY = Hunter2")
+		expect(env).toContain(`SECRETKEY = ${SECRET}`)
 		expect(exitCode).toBe(0)
 	})
 
 	test("re-asks a pre-existing hand-edited value that already has a # — its truncated remainder looked valid, so nothing would otherwise catch it", async () => {
 		setup({
-			env: { ...BLANK, SECRETKEY: "a-real-secret#leftover" },
-			answers: ["false", "false", "false", "another-real-secret"]
+			env: { ...BLANK, SECRETKEY: `${SECRET}#leftover` },
+			answers: ["false", "false", "false", SECRET]
 		})
 		const { out, env, exitCode } = await run()
 		expect(out).toContain("cannot contain #")
-		expect(env).toContain("SECRETKEY = another-real-secret")
+		expect(env).toContain(`SECRETKEY = ${SECRET}`)
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})
@@ -143,17 +144,17 @@ describe("runInteractive re-walk", () => {
 		setup({
 			env: {},
 			noEnv: true,
-			answers: ["false", "false", "false", "a-real-secret"]
+			answers: ["false", "false", "false", SECRET]
 		})
 		const { env, exitCode } = await run()
-		expect(env).toContain("SECRETKEY = a-real-secret")
+		expect(env).toContain(`SECRETKEY = ${SECRET}`)
 		expect(exitCode).toBe(0)
 	})
 })
 
 describe("runInteractive objectFeedProblem", () => {
 	// every key holds a valid value, so the schema walk asks nothing at all
-	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: "a-real-secret" }
+	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: SECRET }
 
 	test("prompts livestream_ON instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
 		setup({ env: BROKEN, answers: ["true"] })
@@ -190,7 +191,7 @@ describe("runInteractive objectFeedProblem", () => {
 describe("runInteractive cookieSecureProblem", () => {
 	const EXAMPLE_WITH_GATEWAY = `${EXAMPLE}\ngateway_HOST = Gateway host\ncommand_COOKIE_SECURE = (true | false)`
 	// every key holds a valid value except the insecure-cookie pair, so only the forced re-ask can fix it
-	const COOKIE_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: "a-real-secret", gateway_HOST: "https://example.com", command_COOKIE_SECURE: "false" }
+	const COOKIE_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HOST: "https://example.com", command_COOKIE_SECURE: "false" }
 
 	test("prompts gateway_HOST instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
 		setup({ env: COOKIE_BROKEN, answers: ["127.0.0.1"], example: EXAMPLE_WITH_GATEWAY })
