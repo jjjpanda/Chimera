@@ -127,6 +127,8 @@ const isServiceOff = (lines, key) => {
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
+	// scheduler_AUTH arms the storage bypass whenever it is set, regardless of schedule_ON — validate it whenever present
+	if (key === "scheduler_AUTH" && getVal(lines, key)) return false
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
 	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false

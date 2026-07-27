@@ -123,8 +123,14 @@ describe("validateEnvVars placeholder-secret gate", () => {
 		expect(run({ database_PASSWORD: "postgres" }).stdout).toContain("database_PASSWORD TOO SHORT")
 	})
 
-	test("skips the length floor for a disabled service, matching the presence check", () => {
+	test("blocks boot when scheduler_AUTH is short even with the schedule service off — the storage bypass arms whenever it is set", () => {
 		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "short" })
+		expect(res.stdout).toContain("scheduler_AUTH TOO SHORT")
+		expect(res.status).toBe(1)
+	})
+
+	test("skips the length floor for a disabled service, matching the presence check", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "1", memory_AUTH_TOKEN: "short" })
 		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
