@@ -203,7 +203,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 					<CardHeader>
 						<div className="flex items-center justify-between">
 							<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
-							<Button variant="ghost" size="icon" onClick={reloadTasks} disabled={loading} title="Refresh tasks">
+							<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadTasks} disabled={loading} title="Refresh tasks">
 								<RefreshCw className="size-4" />
 							</Button>
 						</div>
@@ -382,7 +382,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 				<CardHeader>
 					<div className="flex items-center justify-between">
 						<CardTitle className="text-primary">Run History</CardTitle>
-						<Button variant="ghost" size="icon" onClick={reloadRuns} disabled={runsLoading} title="Refresh run history">
+						<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadRuns} disabled={runsLoading} title="Refresh run history">
 							<RefreshCw className="size-4" />
 						</Button>
 					</div>

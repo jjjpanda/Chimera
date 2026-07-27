@@ -36,6 +36,7 @@ const useChimeraStatus = () => {
 		))
 
 		const poll = () => {
+			if (document.hidden) return
 			for (const { statusType, url } of allUrls) {
 				request(url, getOptions, (prom) => {
 					statusProcessing(prom, 200, (successful) => {

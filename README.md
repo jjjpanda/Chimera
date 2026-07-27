@@ -71,7 +71,7 @@ npm install
 
 You fill in three things: `.env`, `motion.conf`, and one file per camera in `cameraconf/`.
 
-**Guided** — asks you for every value, then writes all three:
+**Guided** — asks for values that need one and skips blank optional keys; writes `motion.conf` / `cameraconf/` only if storage, livestream, or object is on, otherwise just `.env`. Piped or non-interactive stdin runs report-only and writes nothing:
 
 ```bash
 npm run preflight
