@@ -95,7 +95,7 @@ module.exports = {
 		let deferred = false
 
 		for (let i = 0; i < names.length; i += UNLINK_BATCH) {
-			if (i && await exportInProgress()) {
+			if (await exportInProgress()) {
 				deferred = true
 				break
 			}

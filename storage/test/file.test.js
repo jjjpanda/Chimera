@@ -391,12 +391,32 @@ describe("File Routes", () => {
 				}
 			})
 
+			test("defers before the first unlink batch when an export starts during the database delete", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
+					Promise.resolve(++exportChecks <= 1 ? [] : ["mp4_abc.txt"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
 			test("skips the orphan sweep when an export starts after the tracked unlinks", async () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
 				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				let exportChecks = 0
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
-					Promise.resolve(++exportChecks <= 1 ? [] : ["mp4_abc.txt", "20200101-000000-00.jpg"]))
+					Promise.resolve(++exportChecks <= 2 ? [] : ["mp4_abc.txt", "20200101-000000-00.jpg"]))
 				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
 				try {
 					const res = await supertest(app)
