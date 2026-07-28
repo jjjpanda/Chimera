@@ -438,7 +438,7 @@ describe("File Routes", () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
 					Promise.resolve(String(p).endsWith("captures")
-						? [{ name: "big.mp4", isFile: () => true }]
+						? [{ name: "big.mp4", isFile: () => true, isDirectory: () => false }]
 						: []))
 				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 2000000000 })
 				try {
@@ -448,6 +448,65 @@ describe("File Routes", () => {
 					expect(res.status).toBe(200)
 					expect(res.body).toEqual({ cleaned: false })
 					expect(bulkQuery).toHaveBeenCalledTimes(1)
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("counts untracked per-camera leftovers toward the cap and cleans", async () => {
+				process.env.storage_MAX_GB = "1"
+				const cameraDir = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
+					if (String(p) === cameraDir) return Promise.resolve([
+						{ name: "tracked.jpg", isFile: () => true, isDirectory: () => false },
+						{ name: "orphan.jpg", isFile: () => true, isDirectory: () => false }
+					])
+					if (String(p).endsWith("captures")) return Promise.resolve([{ name: "1", isFile: () => false, isDirectory: () => true }])
+					return Promise.resolve([])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 600000000 })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "tracked.jpg", size: "500000000" }
+					] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 1 })
+					expect(bulkQuery.mock.calls[1]).toEqual(["SELECT name FROM frame_files WHERE camera=$1", ["1"]])
+					expect(stat).toHaveBeenCalledWith(path.join(cameraDir, "orphan.jpg"))
+					expect(stat).not.toHaveBeenCalledWith(path.join(cameraDir, "tracked.jpg"))
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("does not double-count tracked frames sitting in per-camera directories", async () => {
+				process.env.storage_MAX_GB = "1"
+				const cameraDir = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
+					if (String(p) === cameraDir) return Promise.resolve([{ name: "tracked.jpg", isFile: () => true, isDirectory: () => false }])
+					if (String(p).endsWith("captures")) return Promise.resolve([{ name: "1", isFile: () => false, isDirectory: () => true }])
+					return Promise.resolve([])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 500000000 })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "500000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg" }] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+					expect(stat).not.toHaveBeenCalled()
 					expect(unlinkSpy).not.toHaveBeenCalled()
 				} finally {
 					readdir.mockRestore()

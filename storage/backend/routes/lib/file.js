@@ -5,7 +5,7 @@ const moment = require("moment")
 const { loadCameras, webhookAlert, mapLimit } = require("lib")
 
 const { pool, bulkPool } = require("../../lib/pool")
-const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../../lib/fsUsage")
+const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes, untrackedSubdirBytes } = require("../../lib/fsUsage")
 
 const MAX_STUCK_BATCHES = 3
 
@@ -142,8 +142,9 @@ module.exports = {
 			const frameTotal = parseInt(frameTotalRows[0].total) || 0
 
 			const nonFrameBytes = await dirFileBytes(CAPTURES_DIR)
+			const untrackedBytes = await untrackedSubdirBytes(CAPTURES_DIR, trackedFrameNames)
 			const usedObjectBytes = await dirFileBytes(OBJECT_CAPTURES_DIR)
-			const totalUsedBytes = frameTotal + nonFrameBytes + usedObjectBytes
+			const totalUsedBytes = frameTotal + nonFrameBytes + untrackedBytes + usedObjectBytes
 
 			const targetBytes = maxGb * 0.9 * 1e9
 			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
@@ -226,6 +227,12 @@ module.exports = {
 			res.status(500).send({ error: true })
 		})
 	}
+}
+
+const trackedFrameNames = async (camera) => {
+	if (!/^\d+$/.test(camera)) return new Set()
+	const { rows } = await bulkPool.query("SELECT name FROM frame_files WHERE camera=$1", [camera])
+	return new Set(rows.map((row) => path.basename(row.name || "")))
 }
 
 const queryForMetric = (camera, metric) => {
