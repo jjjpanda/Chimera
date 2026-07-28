@@ -34,25 +34,29 @@ const createFrameList = (camera, start, end, limit, callback) => {
 
 const createVideoList = (camera, start, end, skip, callback) => {
 	const rand = generateID()
+	const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
 
-	filterList(camera, start, end, skip, (filteredList) => {
-		const frames = filteredList.length    
+	fs.writeFile(txtPath, "", () => {
+		filterList(camera, start, end, skip, (filteredList) => {
+			const frames = filteredList.length
 
-		let files = ""
-	
-		console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
-		
-		for (const file of filteredList){
-			files += `file '${camera}/${file}'\r\n` 
-		}
-		
-		fs.writeFile(path.join(imgDir, `mp4_${rand}.txt`), files, (err) => {
-			if(err){
-				callback(err, undefined)
+			let files = ""
+
+			console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
+
+			for (const file of filteredList){
+				files += `file '${camera}/${file}'\r\n`
 			}
-			else{
-				callback(false, { rand, frames })
-			}
+
+			fs.writeFile(txtPath, files, (err) => {
+				if(err){
+					fs.unlink(txtPath, () => {})
+					callback(err, undefined)
+				}
+				else{
+					callback(false, { rand, frames })
+				}
+			})
 		})
 	})
 }
