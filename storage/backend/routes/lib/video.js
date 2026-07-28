@@ -9,6 +9,7 @@ const {
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
+const { EXPORT_LOCK_REFRESH_MS } = require("./file.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
@@ -91,6 +92,11 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 		const mp4Path = path.join(imgDir, fileName(camera, start, end, rand, "mp4"))
 		let cancelled = false
 
+		const refreshLock = setInterval(() => {
+			fs.utimes(txtPath, new Date(), new Date(), () => {})
+		}, EXPORT_LOCK_REFRESH_MS)
+		refreshLock.unref()
+
 		let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
 			.inputFormat("concat") //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
 			.outputFPS(fps)
@@ -99,9 +105,9 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			.toFormat("mp4")
 			.on("progress", function(progress) {
 				bar.update(Math.round((progress.frames/frames)*100))
-				fs.utimes(txtPath, new Date(), new Date(), () => {})
 			})
 			.on("end", () => {
+				clearInterval(refreshLock)
 				bar.stop()
 				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
@@ -112,6 +118,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 
 		videoCreator.on("error", function(err) {
+			clearInterval(refreshLock)
 			console.log("An error occurred: " + err.message)
 			emitToMemory("deleteProcessEnder", rand)
 			if(!save){
@@ -129,6 +136,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 		emitToMemory("saveProcessEnder", rand, (cancel) => {
 			if(!cancel) return
 			cancelled = true
+			clearInterval(refreshLock)
 			videoCreator.kill()
 		})
 

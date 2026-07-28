@@ -13,6 +13,8 @@ const STATS_WINDOW_DAYS = 32
 
 const EXPORT_LOCK_ACTIVE_MS = 5 * 60 * 1000
 
+const EXPORT_LOCK_REFRESH_MS = EXPORT_LOCK_ACTIVE_MS / 3
+
 const UNLINK_BATCH = 500
 
 const camerasOrFail = (res) => loadCameras().catch(() => {
@@ -30,6 +32,9 @@ const exportInProgress = async () => {
 }
 
 module.exports = {
+	EXPORT_LOCK_ACTIVE_MS,
+	EXPORT_LOCK_REFRESH_MS,
+
 	validateCameraAndAppendToPath: (req, res, next) => {
 		const camera = parseInt(req.body.camera)
 		if(camera == req.body.camera){
