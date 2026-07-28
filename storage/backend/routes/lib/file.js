@@ -176,9 +176,13 @@ module.exports = {
 			let stuckBatches = 0
 			let page = []
 			let cursor = 0
+			let deferred = false
 
 			while (freed < toFree) {
-				if (await exportInProgress()) break
+				if (await exportInProgress()) {
+					deferred = true
+					break
+				}
 
 				if (cursor >= page.length) {
 					const { rows } = await bulkPool.query(
@@ -219,8 +223,8 @@ module.exports = {
 			if (stuck.length) {
 				webhookAlert(`⚠️ Storage auto-clean could not unlink ${stuck.length} frame file(s); their rows were left intact. Check permissions on ${CAPTURES_DIR}.`, "admin")
 			}
-			if (deleted === 0) return res.send({ cleaned: false })
-			res.send({ cleaned: true, deleted })
+			if (deleted === 0) return res.send({ cleaned: false, ...(deferred && { deferred: true }) })
+			res.send({ cleaned: true, deleted, ...(deferred && { deferred: true }) })
 		} catch (err) {
 			res.status(500).send({ error: "cleanup failed" })
 		}

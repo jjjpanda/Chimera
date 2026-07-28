@@ -659,11 +659,52 @@ describe("File Routes", () => {
 						.post("/file/pathAutoClean")
 						.set("Cookie", cookieWithBearerToken)
 					expect(res.status).toBe(200)
-					expect(res.body).toEqual({ cleaned: true, deleted: 1 })
+					expect(res.body).toEqual({ cleaned: true, deleted: 1, deferred: true })
 					expect(bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(1)
 				} finally {
 					readdir.mockRestore()
 					stat.mockRestore()
+				}
+			})
+
+			test("marks a run deferred when an export starts before anything could be freed", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 1 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false, deferred: true })
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("omits deferred when the pass ends for any reason other than an export", async () => {
+				process.env.storage_MAX_GB = "1"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
+					Promise.resolve(opts && opts.withFileTypes ? [] : []))
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+				} finally {
+					readdir.mockRestore()
 				}
 			})
 		})
