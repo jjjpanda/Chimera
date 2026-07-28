@@ -30,10 +30,8 @@ const useClearFootage = (cameras, onDone) => {
 			const deferred = results.filter(r => r?.deferred).length
 			const total = results.length
 			const suffix = deferred ? ` — ${deferred} Deferred, Export Running` : ""
-			toast(deferred && deferred === total ? "Deferred — Export Running"
-				: deleted === 0 ? `None Deleted${suffix}`
-				: deleted === total ? "Files Deleted"
-				: `${deleted}/${total} Deleted${suffix}`)
+			const counted = deleted === 0 ? `None Deleted${suffix}` : deleted === total ? "Files Deleted" : `${deleted}/${total} Deleted${suffix}`
+			toast(deferred && deferred === total ? "Deferred — Export Running" : counted)
 			setDeleting(false)
 			onDone()
 		})
