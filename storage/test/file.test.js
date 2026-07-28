@@ -432,6 +432,31 @@ describe("File Routes", () => {
 					stat.mockRestore()
 				}
 			})
+
+			test("rechecks the export lock between orphan-sweep batches instead of once for the whole sweep", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
+				const stale = Array.from({ length: 501 }, (_, i) => `20200101-000000-${String(i).padStart(3, "0")}.jpg`)
+				let lockChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
+					if (p === dir) return Promise.resolve(stale)
+					lockChecks++
+					return Promise.resolve(lockChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledTimes(500)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
 		})
 	})
 

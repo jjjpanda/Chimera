@@ -105,15 +105,17 @@ module.exports = {
 		}
 
 		if (req.beforeDate && !deferred) {
-			if (await exportInProgress()) {
-				deferred = true
-			}
-			else {
-				const cutoff = moment.utc(req.beforeDate).valueOf()
-				const known = new Set(names.map(n => path.basename(n)))
-				const entries = await fs.promises.readdir(dir).catch(() => [])
-				const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
-				await mapLimit(stale, FS_CONCURRENCY, async (f) => {
+			const cutoff = moment.utc(req.beforeDate).valueOf()
+			const known = new Set(names.map(n => path.basename(n)))
+			const entries = await fs.promises.readdir(dir).catch(() => [])
+			const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
+
+			for (let i = 0; i < stale.length; i += UNLINK_BATCH) {
+				if (await exportInProgress()) {
+					deferred = true
+					break
+				}
+				await mapLimit(stale.slice(i, i + UNLINK_BATCH), FS_CONCURRENCY, async (f) => {
 					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
 					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
 				})
