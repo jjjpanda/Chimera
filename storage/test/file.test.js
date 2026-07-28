@@ -639,6 +639,33 @@ describe("File Routes", () => {
 					stat.mockRestore()
 				}
 			})
+
+			test("stops paging once an export starts mid-run, instead of deleting through the whole pass", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "400000000" }
+					] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 1 })
+					expect(bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(1)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
 		})
 	})
 })

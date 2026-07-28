@@ -178,6 +178,8 @@ module.exports = {
 			let cursor = 0
 
 			while (freed < toFree) {
+				if (await exportInProgress()) break
+
 				if (cursor >= page.length) {
 					const { rows } = await bulkPool.query(
 						"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
