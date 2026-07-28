@@ -1,11 +1,13 @@
 const path = require("path")
 
+const mockOutputHandlers = {}
+
 const mockFs = {
 	utimes: jest.fn((p, atime, mtime, cb) => cb && cb(null)),
 	writeFile: jest.fn((p, data, cb) => cb && cb(null)),
 	unlink: jest.fn((p, cb) => cb && cb(null)),
 	readdir: jest.fn((p, cb) => cb(null, ["20210101-000000-00.jpg", "20210101-120000-00.jpg"])),
-	createWriteStream: jest.fn(() => ({ on: () => {} }))
+	createWriteStream: jest.fn(() => ({ on: (event, cb) => { mockOutputHandlers[event] = cb } }))
 }
 
 const mockFfmpegHandlers = {}
@@ -55,27 +57,50 @@ jest.mock("memory")
 
 const { createVideo } = require("../backend/routes/lib/video.js")
 const { createZip } = require("../backend/routes/lib/zip.js")
+const { EXPORT_LOCK_ACTIVE_MS, EXPORT_LOCK_REFRESH_MS } = require("../backend/routes/lib/file.js")
+const memory = require("memory")
 
 const START = "20210101-000000"
 const END = "20210102-000000"
 
 const lockWrites = () => mockFs.writeFile.mock.calls.map(([p]) => p)
 
+const zipLockPath = () => lockWrites().find(p => /zip_.+\.txt$/.test(p))
+
+const cancelEnder = () => {
+	const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
+	saved.args[1](true)
+}
+
 beforeEach(() => {
+	jest.useFakeTimers()
 	for (const fn of Object.values(mockFs)) fn.mockClear()
 	for (const key of Object.keys(mockFfmpegHandlers)) delete mockFfmpegHandlers[key]
 	for (const key of Object.keys(mockArchiveHandlers)) delete mockArchiveHandlers[key]
+	for (const key of Object.keys(mockOutputHandlers)) delete mockOutputHandlers[key]
+	memory.__emitted.length = 0
+	process.env.memory_ON = "true"
+})
+
+afterEach(() => {
+	jest.useRealTimers()
+	delete process.env.memory_ON
 })
 
 describe("convert lock refresh", () => {
-	test("a video progress event touches the same lock file the sweep ages out", (done) => {
+	test("the refresh period comfortably undercuts the active-lock threshold", () => {
+		expect(EXPORT_LOCK_REFRESH_MS).toBeLessThan(EXPORT_LOCK_ACTIVE_MS)
+		expect(EXPORT_LOCK_REFRESH_MS * 2).toBeLessThan(EXPORT_LOCK_ACTIVE_MS)
+	})
+
+	test("a video job with no progress events still gets its lock refreshed by the interval", (done) => {
 		createVideo({ body: { camera: "1", start: START, end: END } }, {
 			send: ({ id }) => {
 				const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", `mp4_${id}.txt`)
 				expect(lockWrites()).toContain(lockPath)
 				expect(mockFs.utimes).not.toHaveBeenCalled()
 
-				mockFfmpegHandlers.progress({ frames: 1 })
+				jest.advanceTimersByTime(EXPORT_LOCK_REFRESH_MS)
 
 				expect(mockFs.utimes).toHaveBeenCalledWith(lockPath, expect.any(Date), expect.any(Date), expect.any(Function))
 				done()
@@ -83,7 +108,7 @@ describe("convert lock refresh", () => {
 		})
 	})
 
-	test("a zip progress event touches the same lock file the sweep ages out", () => {
+	test("a zip job with no progress events still gets its lock refreshed by the interval", () => {
 		let sent
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: (body) => { sent = body } })
 
@@ -91,16 +116,47 @@ describe("convert lock refresh", () => {
 		expect(lockWrites()).toContain(lockPath)
 		expect(mockFs.utimes).not.toHaveBeenCalled()
 
-		mockArchiveHandlers.progress({ entries: { processed: 1, total: 2 } })
+		jest.advanceTimersByTime(EXPORT_LOCK_REFRESH_MS)
 
 		expect(mockFs.utimes).toHaveBeenCalledWith(lockPath, expect.any(Date), expect.any(Date), expect.any(Function))
+	})
+
+	test("a streaming zip (save:false) also gets its lock refreshed by the interval", () => {
+		createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
+			attachment: () => {},
+			on: () => {},
+			send: () => {}
+		})
+
+		const lockPath = zipLockPath()
+		expect(lockPath).toBeDefined()
+		expect(mockFs.utimes).not.toHaveBeenCalled()
+
+		jest.advanceTimersByTime(EXPORT_LOCK_REFRESH_MS)
+
+		expect(mockFs.utimes).toHaveBeenCalledWith(lockPath, expect.any(Date), expect.any(Date), expect.any(Function))
+	})
+
+	test("video progress events no longer touch the lock file directly", (done) => {
+		createVideo({ body: { camera: "1", start: START, end: END } }, {
+			send: () => {
+				mockFfmpegHandlers.progress({ frames: 1 })
+				expect(mockFs.utimes).not.toHaveBeenCalled()
+				done()
+			}
+		})
+	})
+
+	test("zip no longer registers a progress handler for lock refresh", () => {
+		createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+		expect(mockArchiveHandlers.progress).toBeUndefined()
 	})
 
 	test("the refreshed mtime is newer than the orphan-sweep threshold", () => {
 		const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
 
-		mockArchiveHandlers.progress({ entries: { processed: 1, total: 2 } })
+		jest.advanceTimersByTime(EXPORT_LOCK_REFRESH_MS)
 
 		const [, , mtime] = mockFs.utimes.mock.calls[0]
 		expect(Date.now() - mtime.getTime()).toBeLessThan(ORPHAN_AGE_MS)
@@ -116,9 +172,116 @@ describe("convert lock refresh", () => {
 
 		expect(sent).toBeUndefined()
 		expect(lockWrites().filter(p => /zip_.+\.txt$/.test(p))).toHaveLength(1)
+	})
 
-		mockArchiveHandlers.progress({ entries: { processed: 1, total: 2 } })
+	describe("interval cleared on terminal paths, so a finished export cannot keep its lock alive", () => {
+		test("stops refreshing the video lock once ffmpeg ends", (done) => {
+			createVideo({ body: { camera: "1", start: START, end: END } }, {
+				send: () => {
+					mockFfmpegHandlers.end()
+					mockFs.utimes.mockClear()
 
-		expect(mockFs.utimes).toHaveBeenCalledWith(lockWrites()[0], expect.any(Date), expect.any(Date), expect.any(Function))
+					jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+					expect(mockFs.utimes).not.toHaveBeenCalled()
+					done()
+				}
+			})
+		})
+
+		test("stops refreshing the video lock once ffmpeg errors", (done) => {
+			createVideo({ body: { camera: "1", start: START, end: END } }, {
+				send: () => {
+					mockFfmpegHandlers.error(new Error("ffmpeg exited with code 1"))
+					mockFs.utimes.mockClear()
+
+					jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+					expect(mockFs.utimes).not.toHaveBeenCalled()
+					done()
+				}
+			})
+		})
+
+		test("stops refreshing the video lock once the export is cancelled", (done) => {
+			createVideo({ body: { camera: "1", start: START, end: END } }, {
+				send: () => {
+					cancelEnder()
+					mockFs.utimes.mockClear()
+
+					jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+					expect(mockFs.utimes).not.toHaveBeenCalled()
+					done()
+				}
+			})
+		})
+
+		test("stops refreshing the zip (save) lock once the output stream closes", () => {
+			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+
+			mockOutputHandlers.close()
+			mockFs.utimes.mockClear()
+
+			jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		test("stops refreshing the zip (save) lock once the archive errors", () => {
+			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+
+			mockArchiveHandlers.error(new Error("archive error"))
+			mockFs.utimes.mockClear()
+
+			jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		test("stops refreshing the zip (save) lock once the export is cancelled", () => {
+			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+
+			cancelEnder()
+			mockFs.utimes.mockClear()
+
+			jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		test("stops refreshing the streaming zip lock once the archive errors", () => {
+			let resHandlers = {}
+			createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
+				attachment: () => {},
+				on: (event, cb) => { resHandlers[event] = cb },
+				send: () => {},
+				headersSent: false,
+				status: () => ({ end: () => {} })
+			})
+
+			mockArchiveHandlers.error(new Error("archive error"))
+			mockFs.utimes.mockClear()
+
+			jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
+
+		test("stops refreshing the streaming zip lock once the response closes", () => {
+			let resHandlers = {}
+			createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
+				attachment: () => {},
+				on: (event, cb) => { resHandlers[event] = cb },
+				send: () => {}
+			})
+
+			resHandlers.close()
+			mockFs.utimes.mockClear()
+
+			jest.advanceTimersByTime(EXPORT_LOCK_ACTIVE_MS * 2)
+
+			expect(mockFs.utimes).not.toHaveBeenCalled()
+		})
 	})
 })

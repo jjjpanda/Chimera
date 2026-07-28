@@ -8,6 +8,7 @@ const {
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
+const { EXPORT_LOCK_REFRESH_MS } = require("./file.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 const emitToMemory = memoryEmitter("ZIP PROCESS")
@@ -48,9 +49,10 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 		res.send({ id: rand, url: undefined })
 	}
 	else{
-		archive.on("progress", () => {
+		const refreshLock = setInterval(() => {
 			fs.utimes(txtPath, new Date(), new Date(), () => {})
-		})
+		}, EXPORT_LOCK_REFRESH_MS)
+		refreshLock.unref()
 
 		if(save){
 			const zipPath = path.join(imgDir, fileName(camera, start, end, rand, "zip"))
@@ -64,6 +66,7 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 			}
 
 			output.on("error", (err) => {
+				clearInterval(refreshLock)
 				cancelled = true
 				console.log("ZIP OUTPUT ERROR: " + err.message)
 				emitToMemory("deleteProcessEnder", rand)
@@ -76,6 +79,7 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 			webhookAlert(`ZIP Started:\nID: ${rand}\nCamera: ${camera}\nFrames: ${frames}\nStart: ${alertTime(start, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}\nEnd: ${alertTime(end, dateFormat).format("dddd, MMMM Do YYYY, h:mm:ss a z")}`)
 
 			output.on("close", () => {
+				clearInterval(refreshLock)
 				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(cancelled){
@@ -89,6 +93,7 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 			})
 
 			archive.on("error", function(err) {
+				clearInterval(refreshLock)
 				console.log("An error occurred: " + err.message)
 				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
@@ -104,6 +109,7 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 			emitToMemory("saveProcessEnder", rand, (cancel) => {
 				if(!cancel) return
 				cancelled = true
+				clearInterval(refreshLock)
 				archive.abort()
 			})
 
@@ -115,12 +121,16 @@ const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 		}
 		else{
 			archive.on("error", function(err) {
+				clearInterval(refreshLock)
 				console.log("An error occurred: " + err.message)
 				fs.unlink(txtPath, () => {})
 				if(!res.headersSent) return res.status(500).end()
 				res.destroy(err)
 			})
-			res.on("close", () => fs.unlink(txtPath, () => {}))
+			res.on("close", () => {
+				clearInterval(refreshLock)
+				fs.unlink(txtPath, () => {})
+			})
 			res.attachment(fileName(camera, start, end, rand, "zip"))
 			archive.pipe(res, {end: true})
 		}
