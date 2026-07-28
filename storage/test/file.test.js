@@ -404,7 +404,7 @@ describe("File Routes", () => {
 						.send({ camera: 1, days: 1 })
 						.set("Cookie", cookieWithBearerToken)
 					expect(res.status).toBe(200)
-					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(res.body).toEqual({ deleted: true, deferred: true })
 					expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "a.jpg"))
 					expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
 				} finally {

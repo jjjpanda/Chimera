@@ -77,6 +77,11 @@ test("reports a clean sweep when every camera deleted", async () => {
 	expect(lastToast()).toBe("Files Deleted")
 })
 
+test("counts a camera as deleted when its files were removed and only the orphan sweep deferred", async () => {
+	await clearAll([{ deleted: true, deferred: true }, { deleted: true }, { deleted: true }])
+	expect(lastToast()).toBe("Files Deleted")
+})
+
 test("clears the deleting flag and calls onDone once a deferred run settles", async () => {
 	const onDone = jest.fn()
 	const { result } = renderHook(() => useClearFootage(cameras, onDone))

@@ -123,7 +123,7 @@ module.exports = {
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
 		if (deferred) console.log(`STORAGE CLEAN DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared, ${names.length - tracked.length} file(s) left for the next clean`)
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && !deferred, ...(deferred && { deferred: true }) })
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && tracked.length === names.length, ...(deferred && { deferred: true }) })
 	},
 
 	dailyStats: async (req, res) => {
