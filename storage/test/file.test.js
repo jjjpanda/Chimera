@@ -1,5 +1,3 @@
-process.env.storage_FOLDERPATH = "/tmp/storage-file-test"
-
 const supertest = require("supertest")
 
 jest.mock("lib")
@@ -264,7 +262,7 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: true })
-				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "b.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
@@ -302,14 +300,14 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: true })
-				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledTimes(1)
 			})
 
 			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
-				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
 				const res = await supertest(app)
@@ -328,7 +326,7 @@ describe("File Routes", () => {
 
 			test("sweeps orphans past the cutoff even when the database delete matched no rows", async () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
-				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["20200101-000000-00.jpg", "20991231-235959-00.jpg"])
 				const res = await supertest(app)
@@ -387,6 +385,28 @@ describe("File Routes", () => {
 					expect(res.body).toEqual({ deferred: true })
 					expect(bulkQuery).not.toHaveBeenCalled()
 					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("skips the orphan sweep when an export starts after the tracked unlinks", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
+					Promise.resolve(++exportChecks <= 1 ? [] : ["mp4_abc.txt", "20200101-000000-00.jpg"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "a.jpg"))
+					expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
 				} finally {
 					readdir.mockRestore()
 					stat.mockRestore()
@@ -474,7 +494,7 @@ describe("File Routes", () => {
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
-				const base = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "shared/captures", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "passwd.jpg"))
 				unlinkSpy.mock.calls.forEach(([p]) => {
 					expect(path.resolve(String(p)).startsWith(path.resolve(base) + path.sep)).toBe(true)

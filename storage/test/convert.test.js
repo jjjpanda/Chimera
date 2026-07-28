@@ -393,7 +393,7 @@ describe("Convert Routes", () => {
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
 
-			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", "zip-id", true, { body: {} }, { send: jest.fn() })
 
 			output.emit("error", new Error("ENOSPC: no space left on device"))
 			output.emit("error", new Error("ENOSPC: no space left on device"))
@@ -413,9 +413,9 @@ describe("Convert Routes", () => {
 		test("sends a 500 on archive error when nothing has been written yet", () => {
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
 			const end = jest.fn()
-			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: false, status: jest.fn(() => ({ end })) }
+			const res = { attachment: jest.fn(), on: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: false, status: jest.fn(() => ({ end })) }
 
-			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", "zip-id", false, { body: {} }, res)
 
 			expect(() => archive.emit("error", new Error("EPIPE"))).not.toThrow()
 			expect(res.status).toHaveBeenCalledWith(500)
@@ -425,10 +425,10 @@ describe("Convert Routes", () => {
 
 		test("destroys the response on archive error once headers are already sent so the client does not hang", () => {
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
-			const res = { attachment: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: true, status: jest.fn() }
+			const res = { attachment: jest.fn(), on: jest.fn(), send: jest.fn(), destroy: jest.fn(), headersSent: true, status: jest.fn() }
 			const err = new Error("EPIPE")
 
-			zip(archive, 1, 5, "20210101-000000", "20210102-000000", false, { body: {} }, res)
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", "zip-id", false, { body: {} }, res)
 
 			expect(() => archive.emit("error", err)).not.toThrow()
 			expect(res.destroy).toHaveBeenCalledWith(err)
@@ -451,7 +451,7 @@ describe("Convert Routes", () => {
 			jest.spyOn(fs, "createWriteStream").mockReturnValue(output)
 			jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const archive = Object.assign(new EventEmitter(), { pipe: jest.fn(), finalize: jest.fn(), abort: jest.fn() })
-			zip(archive, 1, 5, "20210101-000000", "20210102-000000", true, { body: {} }, { send: jest.fn() })
+			zip(archive, 1, 5, "20210101-000000", "20210102-000000", "zip-id", true, { body: {} }, { send: jest.fn() })
 			return { output, archive }
 		}
 
