@@ -479,7 +479,10 @@ describe("File Routes", () => {
 						.set("Cookie", cookieWithBearerToken)
 					expect(res.status).toBe(200)
 					expect(res.body).toEqual({ cleaned: true, deleted: 1 })
-					expect(bulkQuery.mock.calls[1]).toEqual(["SELECT name FROM frame_files WHERE camera=$1", ["1"]])
+					expect(bulkQuery.mock.calls[1]).toEqual([
+						"SELECT name FROM frame_files WHERE camera=$1 AND name = ANY($2::text[])",
+						["1", ["tracked.jpg", "orphan.jpg"]]
+					])
 					expect(stat).toHaveBeenCalledWith(path.join(cameraDir, "orphan.jpg"))
 					expect(stat).not.toHaveBeenCalledWith(path.join(cameraDir, "tracked.jpg"))
 				} finally {
@@ -508,6 +511,30 @@ describe("File Routes", () => {
 					expect(res.body).toEqual({ cleaned: false })
 					expect(stat).not.toHaveBeenCalled()
 					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("counts an entire non-numeric capture subdirectory as untracked", async () => {
+				process.env.storage_MAX_GB = "10"
+				const strayDir = path.join(process.env.storage_FOLDERPATH, "shared/captures", "lost+found")
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
+					if (String(p) === strayDir) return Promise.resolve([{ name: "stray.jpg", isFile: () => true, isDirectory: () => false }])
+					if (String(p).endsWith("captures")) return Promise.resolve([{ name: "lost+found", isFile: () => false, isDirectory: () => true }])
+					return Promise.resolve([])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 2000000 })
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1000000" }] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+					expect(bulkQuery).toHaveBeenCalledTimes(1)
+					expect(stat).toHaveBeenCalledWith(path.join(strayDir, "stray.jpg"))
 				} finally {
 					readdir.mockRestore()
 					stat.mockRestore()

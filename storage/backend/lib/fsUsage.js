@@ -21,8 +21,11 @@ const untrackedSubdirBytes = async (dir, trackedNames) => {
 	const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [])
 	const subdirs = entries.filter((entry) => entry.isDirectory())
 	const totals = await mapLimit(subdirs, FS_CONCURRENCY, async (entry) => {
-		const tracked = await trackedNames(entry.name)
-		return dirFileBytes(path.join(dir, entry.name), (name) => !tracked.has(name))
+		const subDir = path.join(dir, entry.name)
+		const subEntries = await fs.promises.readdir(subDir, { withFileTypes: true }).catch(() => [])
+		const fileNames = subEntries.filter((e) => e.isFile()).map((e) => e.name)
+		const tracked = await trackedNames(entry.name, fileNames)
+		return dirFileBytes(subDir, (name) => !tracked.has(name))
 	})
 	return totals.reduce((sum, bytes) => sum + bytes, 0)
 }

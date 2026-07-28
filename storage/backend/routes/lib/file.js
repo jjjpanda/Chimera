@@ -229,9 +229,12 @@ module.exports = {
 	}
 }
 
-const trackedFrameNames = async (camera) => {
-	if (!/^\d+$/.test(camera)) return new Set()
-	const { rows } = await bulkPool.query("SELECT name FROM frame_files WHERE camera=$1", [camera])
+const trackedFrameNames = async (camera, fileNames) => {
+	if (!/^\d+$/.test(camera) || fileNames.length === 0) return new Set()
+	const { rows } = await bulkPool.query(
+		"SELECT name FROM frame_files WHERE camera=$1 AND name = ANY($2::text[])",
+		[camera, fileNames]
+	)
 	return new Set(rows.map((row) => path.basename(row.name || "")))
 }
 
