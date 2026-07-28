@@ -135,6 +135,12 @@ const isServiceOff = (lines, key) => {
 	return getVal(lines, `${prefix}_ON`) === "false"
 }
 
+const blankDisables = (lines, key) => {
+	const copy = [...lines]
+	setVal(copy, key, "")
+	return isServiceOff(copy, key)
+}
+
 const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
 	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
 	: null
@@ -232,7 +238,7 @@ const runInteractive = async () => {
 		let val, ap
 		do {
 			val = await ask(`    ${v.key} = `)
-			ap = answerProblem(v, val)
+			ap = val === "" && blankDisables(lines, v.key) ? null : answerProblem(v, val)
 			if (ap) console.log(`    ${BAD} ${ap}`)
 		} while (ap)
 		setVal(lines, v.key, val)
@@ -329,4 +335,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
