@@ -13,6 +13,8 @@ const STATS_WINDOW_DAYS = 32
 
 const EXPORT_LOCK_ACTIVE_MS = 5 * 60 * 1000
 
+const UNLINK_BATCH = 500
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
@@ -89,22 +91,38 @@ module.exports = {
 	deleteFilesBeforeDateGlob: async (req, res) => {
 		const dir = req.body.appendedPath
 		const names = (req.deletedFileNames || []).filter(Boolean)
-		const tracked = await mapLimit(names, FS_CONCURRENCY, name =>
-			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
-		)
-		if (req.beforeDate) {
-			const cutoff = moment.utc(req.beforeDate).valueOf()
-			const known = new Set(names.map(n => path.basename(n)))
-			const entries = await fs.promises.readdir(dir).catch(() => [])
-			const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
-			await mapLimit(stale, FS_CONCURRENCY, async (f) => {
-				const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
-				if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
-			})
+		const tracked = []
+		let deferred = false
+
+		for (let i = 0; i < names.length; i += UNLINK_BATCH) {
+			if (i && await exportInProgress()) {
+				deferred = true
+				break
+			}
+			tracked.push(...await mapLimit(names.slice(i, i + UNLINK_BATCH), FS_CONCURRENCY, name =>
+				fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
+			))
 		}
+
+		if (req.beforeDate && !deferred) {
+			if (await exportInProgress()) {
+				deferred = true
+			}
+			else {
+				const cutoff = moment.utc(req.beforeDate).valueOf()
+				const known = new Set(names.map(n => path.basename(n)))
+				const entries = await fs.promises.readdir(dir).catch(() => [])
+				const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
+				await mapLimit(stale, FS_CONCURRENCY, async (f) => {
+					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
+					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
+				})
+			}
+		}
+
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 })
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && !deferred, ...(deferred && { deferred: true }) })
 	},
 
 	dailyStats: async (req, res) => {
