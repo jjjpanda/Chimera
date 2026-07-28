@@ -12,10 +12,10 @@ module.exports = {
 		return randomID.generate() + "-" + moment.utc().format(dateFormat)
 	},
 
-	/** Emits only while `memory_ON`, so an ack is never registered with no server to answer it. */
+	/** Emits only while `memory_ON` and connected, so ender packets and their acks never buffer during a memory outage; the 24h orphan sweep reconciles drops. */
 	memoryEmitter: (label) => {
 		const client = memory.client(label)
-		return (event, ...args) => { if(process.env.memory_ON == "true") client.emit(event, ...args) }
+		return (event, ...args) => { if(process.env.memory_ON == "true" && client.connected) client.emit(event, ...args) }
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {
