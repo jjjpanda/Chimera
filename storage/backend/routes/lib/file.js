@@ -122,6 +122,7 @@ module.exports = {
 
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
+		if (deferred) console.log(`STORAGE CLEAN DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared, ${names.length - tracked.length} file(s) left for the next clean`)
 		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && !deferred, ...(deferred && { deferred: true }) })
 	},
 
@@ -214,7 +215,7 @@ module.exports = {
 
 				let planned = freed
 				const batch = []
-				while (cursor < page.length && planned < toFree) {
+				while (cursor < page.length && planned < toFree && batch.length < UNLINK_BATCH) {
 					const row = page[cursor++]
 					batch.push(row)
 					planned += parseInt(row.size) || 0
@@ -241,6 +242,7 @@ module.exports = {
 			if (stuck.length) {
 				webhookAlert(`⚠️ Storage auto-clean could not unlink ${stuck.length} frame file(s); their rows were left intact. Check permissions on ${CAPTURES_DIR}.`, "admin")
 			}
+			if (deferred) console.log(`STORAGE AUTO-CLEAN DEFERRED mid-run after freeing ${freed} of ${toFree} bytes; a fresh export lock appeared`)
 			if (deleted === 0) return res.send({ cleaned: false, ...(deferred && { deferred: true }) })
 			res.send({ cleaned: true, deleted, ...(deferred && { deferred: true }) })
 		} catch (err) {

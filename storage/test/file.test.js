@@ -710,6 +710,31 @@ describe("File Routes", () => {
 				}
 			})
 
+			test("rechecks for exports between bounded unlink batches instead of once per page", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: Array.from({ length: 600 }, (_, i) => ({ id: i + 1, camera: "1", name: `${i}.jpg`, size: "1000" })) }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 500, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledTimes(500)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
 			test("omits deferred when the pass ends for any reason other than an export", async () => {
 				process.env.storage_MAX_GB = "1"
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
