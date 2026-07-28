@@ -173,7 +173,7 @@ module.exports = {
 					id,
 					url: "/file/pathAutoClean",
 					body: {},
-					cronString: "0 * * * *",
+					cronString: "37 * * * *",
 					running: true,
 					protected: true
 				})
