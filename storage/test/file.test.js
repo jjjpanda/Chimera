@@ -1,5 +1,3 @@
-process.env.storage_FOLDERPATH = "/tmp/storage-file-test"
-
 const supertest = require("supertest")
 
 jest.mock("lib")
@@ -214,6 +212,23 @@ describe("File Routes", () => {
 			expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
 			expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 		})
+
+		test("defers while an export lock is fresh, before deleting any database rows", async () => {
+			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["zip_abc.txt"])
+			const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+			try {
+				const res = await supertest(app)
+					.post("/file/pathDelete")
+					.send({ camera: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(200)
+				expect(res.body).toEqual({ deferred: true })
+				expect(bulkQuery).not.toHaveBeenCalled()
+			} finally {
+				readdir.mockRestore()
+				stat.mockRestore()
+			}
+		})
 	})
 
 	describe("/file/pathClean", () => {
@@ -247,7 +262,7 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: true })
-				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "b.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledTimes(2)
@@ -285,14 +300,14 @@ describe("File Routes", () => {
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
 				expect(res.body).toEqual({ deleted: true })
-				const base = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "a.jpg"))
 				expect(unlinkSpy).toHaveBeenCalledTimes(1)
 			})
 
 			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
-				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
 				const res = await supertest(app)
@@ -311,7 +326,7 @@ describe("File Routes", () => {
 
 			test("sweeps orphans past the cutoff even when the database delete matched no rows", async () => {
 				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
-				const dir = path.join("/tmp/storage-file-test", "./shared/captures/", "1")
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["20200101-000000-00.jpg", "20991231-235959-00.jpg"])
 				const res = await supertest(app)
@@ -356,6 +371,91 @@ describe("File Routes", () => {
 				expect(res.body).toEqual({ error: "number of days not provided" })
 				expect(bulkQuery).not.toHaveBeenCalled()
 				expect(unlinkSpy).not.toHaveBeenCalled()
+			})
+
+			test("defers while an export lock is fresh, before deleting any database rows", async () => {
+				const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["zip_abc.txt"])
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deferred: true })
+					expect(bulkQuery).not.toHaveBeenCalled()
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("defers before the first unlink batch when an export starts during the database delete", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
+					Promise.resolve(++exportChecks <= 1 ? [] : ["mp4_abc.txt"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("skips the orphan sweep when an export starts after the tracked unlinks", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
+					Promise.resolve(++exportChecks <= 2 ? [] : ["mp4_abc.txt", "20200101-000000-00.jpg"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: true, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledWith(path.join(dir, "a.jpg"))
+					expect(unlinkSpy).not.toHaveBeenCalledWith(path.join(dir, "20200101-000000-00.jpg"))
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("rechecks the export lock between orphan-sweep batches instead of once for the whole sweep", async () => {
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
+				const stale = Array.from({ length: 501 }, (_, i) => `20200101-000000-${String(i).padStart(3, "0")}.jpg`)
+				let lockChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
+					if (p === dir) return Promise.resolve(stale)
+					lockChecks++
+					return Promise.resolve(lockChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathClean")
+						.send({ camera: 1, days: 1 })
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deleted: false, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledTimes(500)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
 			})
 		})
 	})
@@ -439,7 +539,7 @@ describe("File Routes", () => {
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(200)
-				const base = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const base = path.join(process.env.storage_FOLDERPATH, "shared/captures", "1")
 				expect(unlinkSpy).toHaveBeenCalledWith(path.join(base, "passwd.jpg"))
 				unlinkSpy.mock.calls.forEach(([p]) => {
 					expect(path.resolve(String(p)).startsWith(path.resolve(base) + path.sep)).toBe(true)
@@ -567,6 +667,135 @@ describe("File Routes", () => {
 					.post("/file/pathAutoClean")
 					.set("Cookie", cookieWithBearerToken)
 				expect(res.status).toBe(500)
+			})
+
+			test("defers while an export lock is fresh, before touching the frame table", async () => {
+				process.env.storage_MAX_GB = "1"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["mp4_abc.txt"])
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ deferred: true })
+					expect(bulkQuery).not.toHaveBeenCalled()
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("does not defer for a stale export lock, so a crashed export cannot block cap enforcement", async () => {
+				process.env.storage_MAX_GB = "10"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
+					Promise.resolve(opts && opts.withFileTypes ? [] : ["mp4_abc.txt"]))
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() - 60 * 60 * 1000 })
+				bulkQuery.mockResolvedValueOnce({ rows: [{ total: "1000000" }] })
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("stops paging once an export starts mid-run, instead of deleting through the whole pass", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [
+						{ id: 1, camera: "1", name: "a.jpg", size: "400000000" }
+					] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 1, deferred: true })
+					expect(bulkQuery.mock.calls.filter(([sql]) => sql.startsWith("SELECT id"))).toHaveLength(1)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("marks a run deferred when an export starts before anything could be freed", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 1 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false, deferred: true })
+					expect(unlinkSpy).not.toHaveBeenCalled()
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("rechecks for exports between bounded unlink batches instead of once per page", async () => {
+				process.env.storage_MAX_GB = "1"
+				let exportChecks = 0
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) => {
+					if (opts && opts.withFileTypes) return Promise.resolve([])
+					exportChecks++
+					return Promise.resolve(exportChecks <= 2 ? [] : ["mp4_abc.txt"])
+				})
+				const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: Array.from({ length: 600 }, (_, i) => ({ id: i + 1, camera: "1", name: `${i}.jpg`, size: "1000" })) }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: true, deleted: 500, deferred: true })
+					expect(unlinkSpy).toHaveBeenCalledTimes(500)
+				} finally {
+					readdir.mockRestore()
+					stat.mockRestore()
+				}
+			})
+
+			test("omits deferred when the pass ends for any reason other than an export", async () => {
+				process.env.storage_MAX_GB = "1"
+				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
+					Promise.resolve(opts && opts.withFileTypes ? [] : []))
+				bulkQuery
+					.mockImplementationOnce(() => Promise.resolve({ rows: [{ total: "1800000000" }] }))
+					.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				try {
+					const res = await supertest(app)
+						.post("/file/pathAutoClean")
+						.set("Cookie", cookieWithBearerToken)
+					expect(res.status).toBe(200)
+					expect(res.body).toEqual({ cleaned: false })
+				} finally {
+					readdir.mockRestore()
+				}
 			})
 		})
 	})

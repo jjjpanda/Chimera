@@ -27,8 +27,11 @@ const useClearFootage = (cameras, onDone) => {
 		Promise.all(targets.map(cam => deleteCamera(cam.id))).then((results) => {
 			remove()
 			const deleted = results.filter(r => r?.deleted).length
+			const deferred = results.filter(r => r?.deferred && !r?.deleted).length
 			const total = results.length
-			toast(deleted === 0 ? "None Deleted" : deleted === total ? "Files Deleted" : `${deleted}/${total} Deleted`)
+			const suffix = deferred ? ` — ${deferred} Deferred, Export Running` : ""
+			const counted = deleted === 0 ? `None Deleted${suffix}` : deleted === total ? "Files Deleted" : `${deleted}/${total} Deleted${suffix}`
+			toast(deferred && deferred === total ? "Deferred — Export Running" : counted)
 			setDeleting(false)
 			onDone()
 		})

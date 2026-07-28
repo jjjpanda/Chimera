@@ -11,10 +11,23 @@ const MAX_STUCK_BATCHES = 3
 
 const STATS_WINDOW_DAYS = 32
 
+const EXPORT_LOCK_ACTIVE_MS = 5 * 60 * 1000
+
+const UNLINK_BATCH = 500
+
 const camerasOrFail = (res) => loadCameras().catch(() => {
 	res.status(500).send({ error: true })
 	return null
 })
+
+const exportInProgress = async () => {
+	const entries = await fs.promises.readdir(CAPTURES_DIR).catch(() => [])
+	const cutoff = Date.now() - EXPORT_LOCK_ACTIVE_MS
+	const active = await mapLimit(entries.filter(f => /^(mp4|zip)_.+\.txt$/.test(f)), FS_CONCURRENCY, f =>
+		fs.promises.stat(path.join(CAPTURES_DIR, f)).then(s => s.mtimeMs > cutoff).catch(() => false)
+	)
+	return active.some(Boolean)
+}
 
 module.exports = {
 	validateCameraAndAppendToPath: (req, res, next) => {
@@ -78,22 +91,41 @@ module.exports = {
 	deleteFilesBeforeDateGlob: async (req, res) => {
 		const dir = req.body.appendedPath
 		const names = (req.deletedFileNames || []).filter(Boolean)
-		const tracked = await mapLimit(names, FS_CONCURRENCY, name =>
-			fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
-		)
-		if (req.beforeDate) {
+		const tracked = []
+		let deferred = false
+
+		for (let i = 0; i < names.length; i += UNLINK_BATCH) {
+			if (await exportInProgress()) {
+				deferred = true
+				break
+			}
+			tracked.push(...await mapLimit(names.slice(i, i + UNLINK_BATCH), FS_CONCURRENCY, name =>
+				fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
+			))
+		}
+
+		if (req.beforeDate && !deferred) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
 			const known = new Set(names.map(n => path.basename(n)))
 			const entries = await fs.promises.readdir(dir).catch(() => [])
 			const stale = entries.filter(f => f.endsWith(".jpg") && !known.has(f))
-			await mapLimit(stale, FS_CONCURRENCY, async (f) => {
-				const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
-				if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
-			})
+
+			for (let i = 0; i < stale.length; i += UNLINK_BATCH) {
+				if (await exportInProgress()) {
+					deferred = true
+					break
+				}
+				await mapLimit(stale.slice(i, i + UNLINK_BATCH), FS_CONCURRENCY, async (f) => {
+					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
+					if (captured.isValid() && captured.valueOf() < cutoff) await fs.promises.unlink(path.join(dir, f)).catch(() => {})
+				})
+			}
 		}
+
 		const failed = tracked.filter(ok => !ok).length
 		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 })
+		if (deferred) console.log(`STORAGE CLEAN DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared, ${names.length - tracked.length} file(s) left for the next clean`)
+		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && tracked.length === names.length, ...(deferred && { deferred: true }) })
 	},
 
 	dailyStats: async (req, res) => {
@@ -131,6 +163,11 @@ module.exports = {
 		})
 	},
 
+	deferIfExporting: async (req, res, next) => {
+		if (await exportInProgress()) return res.send({ deferred: true })
+		next()
+	},
+
 	autoClean: async (req, res) => {
 		try {
 			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
@@ -160,8 +197,14 @@ module.exports = {
 			let stuckBatches = 0
 			let page = []
 			let cursor = 0
+			let deferred = false
 
 			while (freed < toFree) {
+				if (await exportInProgress()) {
+					deferred = true
+					break
+				}
+
 				if (cursor >= page.length) {
 					const { rows } = await bulkPool.query(
 						"SELECT id, camera, name, size FROM frame_files WHERE size IS NOT NULL AND size > 0 AND NOT (id = ANY($1::int[])) ORDER BY timestamp ASC LIMIT 10000",
@@ -174,7 +217,7 @@ module.exports = {
 
 				let planned = freed
 				const batch = []
-				while (cursor < page.length && planned < toFree) {
+				while (cursor < page.length && planned < toFree && batch.length < UNLINK_BATCH) {
 					const row = page[cursor++]
 					batch.push(row)
 					planned += parseInt(row.size) || 0
@@ -201,8 +244,9 @@ module.exports = {
 			if (stuck.length) {
 				webhookAlert(`⚠️ Storage auto-clean could not unlink ${stuck.length} frame file(s); their rows were left intact. Check permissions on ${CAPTURES_DIR}.`, "admin")
 			}
-			if (deleted === 0) return res.send({ cleaned: false })
-			res.send({ cleaned: true, deleted })
+			if (deferred) console.log(`STORAGE AUTO-CLEAN DEFERRED mid-run after freeing ${freed} of ${toFree} bytes; a fresh export lock appeared`)
+			if (deleted === 0) return res.send({ cleaned: false, ...(deferred && { deferred: true }) })
+			res.send({ cleaned: true, deleted, ...(deferred && { deferred: true }) })
 		} catch (err) {
 			res.status(500).send({ error: "cleanup failed" })
 		}

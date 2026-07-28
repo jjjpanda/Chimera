@@ -20,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -331,8 +331,27 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_AUTH")).toBe(false)
 	})
 
-	test("scheduler_AUTH follows schedule service (off)", () => {
+	test("scheduler_AUTH is skipped when blank and schedule is off", () => {
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("scheduler_AUTH is validated whenever it holds a value, because the storage bypass arms on it alone", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "a".repeat(32) }), "scheduler_AUTH")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(false)
+	})
+
+	test("blanking scheduler_AUTH is a valid interactive answer when schedule is off, so the wizard cannot demand a token the deploy does not need", () => {
+		expect(blankDisables(lines({ schedule_ON: "false", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("blanking scheduler_AUTH is rejected while schedule is on", () => {
+		expect(blankDisables(lines({ schedule_ON: "true", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(false)
+	})
+
+	test("blankDisables leaves the caller's lines untouched", () => {
+		const input = lines({ schedule_ON: "false", scheduler_AUTH: "short" })
+		blankDisables(input, "scheduler_AUTH")
+		expect(input).toContain("scheduler_AUTH = short")
 	})
 
 	test("ffmpeg_FILEPATH / ffprobe_FILEPATH skipped when no camera service is on", () => {

@@ -127,11 +127,18 @@ const isServiceOff = (lines, key) => {
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
+	if (key === "scheduler_AUTH" && getVal(lines, key)) return false
 	const prefix = key.startsWith("scheduler_") ? "schedule" : SERVICE_PREFIXES.find(s => key.startsWith(s + "_"))
 	if (!prefix || key === `${prefix}_ON`) return false
 	if (/_HOST$/.test(key) && getVal(lines, `${prefix}_PROXY_ON`) === "true") return false
 	if (prefix === "memory" && multiInstance(getVal(lines, "chimeraInstances"))) return false
 	return getVal(lines, `${prefix}_ON`) === "false"
+}
+
+const blankDisables = (lines, key) => {
+	const copy = [...lines]
+	setVal(copy, key, "")
+	return isServiceOff(copy, key)
 }
 
 const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
@@ -231,7 +238,7 @@ const runInteractive = async () => {
 		let val, ap
 		do {
 			val = await ask(`    ${v.key} = `)
-			ap = answerProblem(v, val)
+			ap = val === "" && blankDisables(lines, v.key) ? null : answerProblem(v, val)
 			if (ap) console.log(`    ${BAD} ${ap}`)
 		} while (ap)
 		setVal(lines, v.key, val)
@@ -328,4 +335,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
