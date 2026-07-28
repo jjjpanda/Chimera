@@ -331,8 +331,13 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_AUTH")).toBe(false)
 	})
 
-	test("scheduler_AUTH follows schedule service (off)", () => {
+	test("scheduler_AUTH is skipped when blank and schedule is off", () => {
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("scheduler_AUTH is validated whenever it holds a value, because the storage bypass arms on it alone", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "a".repeat(32) }), "scheduler_AUTH")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(false)
 	})
 
 	test("ffmpeg_FILEPATH / ffprobe_FILEPATH skipped when no camera service is on", () => {
