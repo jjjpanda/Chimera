@@ -457,7 +457,7 @@ describe("File Routes", () => {
 
 			test("counts untracked per-camera leftovers toward the cap and cleans", async () => {
 				process.env.storage_MAX_GB = "1"
-				const cameraDir = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const cameraDir = path.join(process.env.storage_FOLDERPATH, "shared/captures", "1")
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
 					if (String(p) === cameraDir) return Promise.resolve([
 						{ name: "tracked.jpg", isFile: () => true, isDirectory: () => false },
@@ -490,7 +490,7 @@ describe("File Routes", () => {
 
 			test("does not double-count tracked frames sitting in per-camera directories", async () => {
 				process.env.storage_MAX_GB = "1"
-				const cameraDir = path.join("/tmp/storage-file-test", "shared/captures", "1")
+				const cameraDir = path.join(process.env.storage_FOLDERPATH, "shared/captures", "1")
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) => {
 					if (String(p) === cameraDir) return Promise.resolve([{ name: "tracked.jpg", isFile: () => true, isDirectory: () => false }])
 					if (String(p).endsWith("captures")) return Promise.resolve([{ name: "1", isFile: () => false, isDirectory: () => true }])
