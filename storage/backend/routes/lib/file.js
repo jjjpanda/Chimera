@@ -13,7 +13,6 @@ const STATS_WINDOW_DAYS = 32
 
 const EXPORT_LOCK_ACTIVE_MS = 5 * 60 * 1000
 
-// Comfortably under a third of EXPORT_LOCK_ACTIVE_MS, so a couple of missed ticks can't cross the threshold.
 const EXPORT_LOCK_REFRESH_MS = EXPORT_LOCK_ACTIVE_MS / 3
 
 const UNLINK_BATCH = 500
