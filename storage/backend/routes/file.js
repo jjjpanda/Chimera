@@ -26,6 +26,6 @@ app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath
 app.get("/pathStats", fileStats)
 app.get("/dailyStats", dailyStats)
 app.post("/pathMetrics", cameraMetrics)
-app.post("/pathAutoClean", requireAdmin, deferIfExporting, autoClean)
+app.post("/pathAutoClean", requireAdmin, autoClean)
 
 module.exports = app

@@ -5,6 +5,7 @@ const {
 	parseFileName,
 	findFile
 }              = require("./converter.js")
+const { exportLockName } = require("./file.js")
 const {webhookAlert} = require("lib")
 
 const client = require("memory").client("PROCESS")
@@ -16,10 +17,10 @@ module.exports = {
 		const { id } = req.body
 
 		findFile(id, (fileName) => {
-			const { type } = parseFileName(fileName)
+			const { type, camera } = parseFileName(fileName)
 
 			console.log(id)
-			fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
+			fs.stat(path.join(imgDir, exportLockName(type, camera, id)), (err) => {
 				res.send({
 					running: !err,
 					id
@@ -55,8 +56,8 @@ module.exports = {
 			Promise.all(list.map(file => {
 				const parsed = parseFileName(file)
 				if (parsed.error) return Promise.resolve(null)
-				const { id, type } = parsed
-				return new Promise((resolve) => fs.stat(path.join(imgDir, `${type}_${id}.txt`), (err) => {
+				const { id, type, camera } = parsed
+				return new Promise((resolve) => fs.stat(path.join(imgDir, exportLockName(type, camera, id)), (err) => {
 					fs.stat(path.join(imgDir, file), (statErr, stats) => {
 						resolve({
 							...parsed,

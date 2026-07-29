@@ -25,10 +25,10 @@ describe("prepareDatabase migration tasks", () => {
 	})
 
 	test("builds the indexes idempotently and without CONCURRENTLY", () => {
-		const idx = creationTasks.filter(t => /CREATE INDEX/.test(t.query))
-		expect(idx).toHaveLength(6)
+		const idx = creationTasks.filter(t => /CREATE (UNIQUE )?INDEX/.test(t.query))
+		expect(idx).toHaveLength(7)
 		for (const t of idx) {
-			expect(t.query).toMatch(/CREATE INDEX IF NOT EXISTS/)
+			expect(t.query).toMatch(/CREATE (UNIQUE )?INDEX IF NOT EXISTS/)
 			expect(t.query).not.toMatch(/CONCURRENTLY/)
 		}
 	})
@@ -123,6 +123,44 @@ describe("runCreationTasks", () => {
 		poolInstance.query.mockRejectedValue(Object.assign(new Error("permission denied for schema public"), { code: "42501" }))
 		await expect(runCreationTasks()).resolves.toBe(true)
 		expect(log).toHaveBeenCalledWith(expect.stringContaining("permission denied for schema public"))
+		log.mockRestore()
+	})
+
+	test("a unique index blocked by duplicate rows (23505) dedupes and retries", async () => {
+		let attempts = 0
+		poolInstance.query.mockImplementation((query) => {
+			if (/CREATE UNIQUE INDEX/.test(query)) {
+				attempts++
+				return attempts === 1 ? Promise.reject({ code: "23505" }) : Promise.resolve({ rows: [] })
+			}
+			return Promise.resolve({ rows: [] })
+		})
+		await expect(runCreationTasks()).resolves.toBe(false)
+		expect(attempts).toBe(2)
+		expect(poolInstance.query).toHaveBeenCalledWith(expect.stringContaining("a.id > b.id"))
+	})
+
+	test("a dedupe failure after 23505 reports issues instead of throwing", async () => {
+		const log = jest.spyOn(console, "log").mockImplementation(() => {})
+		poolInstance.query.mockImplementation((query) => {
+			if (/CREATE UNIQUE INDEX/.test(query)) return Promise.reject({ code: "23505" })
+			if (/^DELETE FROM frame_files/.test(query)) return Promise.reject(new Error("permission denied for table frame_files"))
+			return Promise.resolve({ rows: [] })
+		})
+		await expect(runCreationTasks()).resolves.toBe(true)
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("permission denied for table frame_files"))
+		log.mockRestore()
+	})
+
+	test("a retried index creation that still fails after a successful dedupe reports issues instead of throwing", async () => {
+		const log = jest.spyOn(console, "log").mockImplementation(() => {})
+		poolInstance.query.mockImplementation((query) => {
+			if (/CREATE UNIQUE INDEX/.test(query)) return Promise.reject({ code: "23505", message: "duplicate key value violates unique constraint" })
+			if (/^DELETE FROM frame_files/.test(query)) return Promise.resolve({ rowCount: 2 })
+			return Promise.resolve({ rows: [] })
+		})
+		await expect(runCreationTasks()).resolves.toBe(true)
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("duplicate rows removed but index creation still failed: duplicate key value violates unique constraint"))
 		log.mockRestore()
 	})
 

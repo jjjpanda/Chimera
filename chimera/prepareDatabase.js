@@ -61,6 +61,11 @@ const creationTasks = [
 		description: "frame files (timestamp) index"
 	},
 	{
+		query: "CREATE UNIQUE INDEX IF NOT EXISTS idx_frame_files_camera_name ON frame_files(camera, name);",
+		description: "frame files (camera, name) unique index",
+		dedupe: "DELETE FROM frame_files a USING frame_files b WHERE a.id > b.id AND a.camera = b.camera AND a.name = b.name;"
+	},
+	{
 		query: "CREATE INDEX IF NOT EXISTS idx_objects_detected_camera_timestamp ON objects_detected(camera, timestamp);",
 		description: "objects detected (camera, timestamp) index"
 	},
@@ -89,7 +94,7 @@ async function missingColumns(table, columns) {
 
 async function runCreationTasks() {
 	let issues = false
-	for (const { query, description, table, columns } of creationTasks) {
+	for (const { query, description, table, columns, dedupe } of creationTasks) {
 		let ok
 		let detail = ""
 		try {
@@ -104,6 +109,21 @@ async function runCreationTasks() {
 				} catch (schemaError) {
 					ok = false
 					detail = ` — failed to verify schema: ${schemaError.message}`
+				}
+			} else if (e && e.code == "23505" && dedupe) {
+				try {
+					const dedupeResult = await pool.query(dedupe)
+					try {
+						await pool.query(query)
+						ok = true
+						detail = ` — removed ${dedupeResult.rowCount} duplicate row(s) before creating index`
+					} catch (retryError) {
+						ok = false
+						detail = ` — duplicate rows removed but index creation still failed: ${retryError.message}`
+					}
+				} catch (dedupeError) {
+					ok = false
+					detail = ` — failed to remove duplicate rows: ${dedupeError.message}`
 				}
 			} else {
 				ok = false

@@ -18,11 +18,11 @@ describe("Storage startup", () => {
 			}),
 			readdir: jest.fn((path, cb) => {
 				cb(null, [
-					"mp4_old_orphan.txt",
+					"mp4_1_old_orphan.txt",
 					"output_1_start_end_old_orphan.mp4",
-					"zip_new_orphan.txt",
+					"zip_1_new_orphan.txt",
 					"output_1_start_end_new_orphan.zip",
-					"mp4_error_orphan.txt"
+					"mp4_1_error_orphan.txt"
 				])
 			})
 		}
@@ -40,11 +40,11 @@ describe("Storage startup", () => {
 
 		setTimeout(() => {
 			try {
-				expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringContaining("mp4_old_orphan.txt"), expect.any(Function))
+				expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringContaining("mp4_1_old_orphan.txt"), expect.any(Function))
 				expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringContaining("output_1_start_end_old_orphan.mp4"), expect.any(Function))
-				expect(mockFs.unlink).not.toHaveBeenCalledWith(expect.stringContaining("zip_new_orphan.txt"), expect.any(Function))
+				expect(mockFs.unlink).not.toHaveBeenCalledWith(expect.stringContaining("zip_1_new_orphan.txt"), expect.any(Function))
 				expect(mockFs.unlink).not.toHaveBeenCalledWith(expect.stringContaining("output_1_start_end_new_orphan.zip"), expect.any(Function))
-				expect(mockFs.unlink).not.toHaveBeenCalledWith(expect.stringContaining("mp4_error_orphan.txt"), expect.any(Function))
+				expect(mockFs.unlink).not.toHaveBeenCalledWith(expect.stringContaining("mp4_1_error_orphan.txt"), expect.any(Function))
 				done()
 			} catch(e) {
 				done(e)
@@ -65,8 +65,25 @@ describe("Storage startup", () => {
 		jest.advanceTimersByTime(30 * 60 * 1000)
 
 		expect(mockFs.readdir).toHaveBeenCalledTimes(2)
-		expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringContaining("mp4_old_orphan.txt"), expect.any(Function))
+		expect(mockFs.unlink).toHaveBeenCalledWith(expect.stringContaining("mp4_1_old_orphan.txt"), expect.any(Function))
 
+		jest.useRealTimers()
+	})
+
+	test("reclaims untracked frames on its own hourly schedule, at boot and on the interval", () => {
+		jest.useFakeTimers()
+		mockSweepableFs()
+
+		const file = require("../backend/routes/lib/file.js")
+		const sweep = jest.spyOn(file, "sweepOrphanFrames").mockResolvedValue(0)
+		require("../backend/storage.js")
+
+		expect(sweep).toHaveBeenCalledTimes(1)
+
+		jest.advanceTimersByTime(60 * 60 * 1000)
+		expect(sweep).toHaveBeenCalledTimes(2)
+
+		sweep.mockRestore()
 		jest.useRealTimers()
 	})
 })
