@@ -263,6 +263,22 @@ describe("File Routes", () => {
 			}
 		})
 
+		test("returns 500 when the directory cannot be removed, so a failure is not read as an empty camera", async () => {
+			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue([])
+			const rm = jest.spyOn(fs.promises, "rm").mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }))
+			try {
+				const res = await supertest(app)
+					.post("/file/pathDelete")
+					.send({ camera: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(500)
+				expect(bulkQuery).not.toHaveBeenCalled()
+			} finally {
+				readdir.mockRestore()
+				rm.mockRestore()
+			}
+		})
+
 		test("does not defer for an export on a different camera", async () => {
 			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 			const readdir = jest.spyOn(fs.promises, "readdir").mockResolvedValue(["zip_2_abc.txt"])

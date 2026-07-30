@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls } = require("lib")
+const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls, isPrimeInstance } = require("lib")
 const helmet = require("helmet")
 const memory = require("memory")
 const { pool } = require("./lib/pool")
@@ -65,8 +65,10 @@ sweepOrphanLocks()
 setInterval(sweepOrphanLocks, ORPHAN_SWEEP_MS).unref()
 
 const sweepFrames = () => sweepOrphanFrames().catch((e) => console.log("STORAGE FRAME SWEEP FAILED", e.message))
-sweepFrames()
-setInterval(sweepFrames, FRAME_SWEEP_MS).unref()
+if (isPrimeInstance) {
+	sweepFrames()
+	setInterval(sweepFrames, FRAME_SWEEP_MS).unref()
+}
 
 app.startDbPruning = () => pruneInterval(pool, "DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'")
 

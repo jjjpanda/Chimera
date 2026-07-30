@@ -261,10 +261,15 @@ module.exports = {
 	},
 
 	deleteFileDirectory: async (req, res) => {
-		const outcome = await removeCameraDirectory(req.body.camera, req.body.appendedPath).catch(() => null)
-		const deferred = !!outcome && outcome.deferred
+		let outcome
+		try {
+			outcome = await removeCameraDirectory(req.body.camera, req.body.appendedPath)
+		} catch {
+			return res.status(500).send({ error: true })
+		}
+		const { deferred } = outcome
 		if (deferred) console.log(`STORAGE DIRECTORY DELETE DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared after ${outcome.removed} file(s), the rest will be swept on the next clean`)
-		const cleared = outcome && !deferred ? await clearCameraRows(req.body.camera) : { count: 0, size: 0 }
+		const cleared = deferred ? { count: 0, size: 0 } : await clearCameraRows(req.body.camera)
 		if (!cleared) return res.status(500).send({ error: true })
 		await recordDeletions(req.body.camera, cleared)
 		await settleDeferral(req, deferred)
