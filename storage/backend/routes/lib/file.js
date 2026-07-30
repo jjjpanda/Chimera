@@ -21,7 +21,7 @@ const camerasOrFail = (res) => loadCameras().catch(() => {
 	return null
 })
 
-const EXPORT_LOCK_PATTERN = /^(mp4|zip)_(\d+)_(.+)\.txt$/
+const EXPORT_LOCK_PATTERN = /^(mp4|zip)_(?:(\d+)_)?(.+)\.txt$/
 
 const exportLockName = (type, camera, id) => `${type}_${camera}_${id}.txt`
 
@@ -386,9 +386,13 @@ module.exports = {
 	},
 
 	autoClean: async (req, res) => {
+		const sendSettled = async (body) => {
+			await settleDeferral(req, false)
+			return res.send(body)
+		}
 		try {
 			const maxGb = parseFloat(process.env.storage_MAX_GB) || 0
-			if (!maxGb) return res.send({ skipped: true })
+			if (!maxGb) return sendSettled({ skipped: true })
 
 			const { rows: frameTotalRows } = await bulkPool.query(
 				"SELECT COALESCE(SUM(size), 0) AS total FROM frame_files WHERE size IS NOT NULL AND size > 0"
@@ -400,12 +404,12 @@ module.exports = {
 			const totalUsedBytes = frameTotal + nonFrameBytes + usedObjectBytes
 
 			const targetBytes = maxGb * 0.9 * 1e9
-			if (totalUsedBytes <= targetBytes) return res.send({ cleaned: false })
+			if (totalUsedBytes <= targetBytes) return sendSettled({ cleaned: false })
 
 			const toFree = totalUsedBytes - targetBytes
 			if (toFree >= frameTotal) {
 				webhookAlert(`⚠️ Storage over ${maxGb}GB cap but non-frame artifacts (videos/zips) dominate — deleting all frames would not reach target, so auto-clean was skipped.`, "admin")
-				return res.send({ cleaned: false })
+				return sendSettled({ cleaned: false })
 			}
 
 			let freed = 0
