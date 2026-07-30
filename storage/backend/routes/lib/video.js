@@ -9,7 +9,7 @@ const {
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
-const { EXPORT_LOCK_REFRESH_MS } = require("./file.js")
+const { EXPORT_LOCK_REFRESH_MS, exportLockName } = require("./file.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
@@ -35,7 +35,7 @@ const createFrameList = (camera, start, end, limit, callback) => {
 
 const createVideoList = (camera, start, end, skip, callback) => {
 	const rand = generateID()
-	const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
+	const txtPath = path.join(imgDir, exportLockName("mp4", camera, rand))
 
 	fs.writeFile(txtPath, "", () => {
 		filterList(camera, start, end, skip, (filteredList) => {
@@ -71,7 +71,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
 		webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
-		fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {})
+		fs.unlink(path.join(imgDir, exportLockName("mp4", camera, rand)), () => {})
 		res.send({ id: rand, url: undefined })
 	}
 	else {
@@ -88,7 +88,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			noTTYOutput: true,
 		}, cliProgress.Presets.shades_classic)
 
-		const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
+		const txtPath = path.join(imgDir, exportLockName("mp4", camera, rand))
 		const mp4Path = path.join(imgDir, fileName(camera, start, end, rand, "mp4"))
 		let cancelled = false
 
@@ -97,7 +97,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 		}, EXPORT_LOCK_REFRESH_MS)
 		refreshLock.unref()
 
-		let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
+		let videoCreator = ffmpeg(txtPath)
 			.inputFormat("concat") //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
 			.outputFPS(fps)
 			.videoBitrate(Math.pow(2, 14))

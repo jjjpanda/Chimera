@@ -57,7 +57,7 @@ jest.mock("memory")
 
 const { createVideo } = require("../backend/routes/lib/video.js")
 const { createZip } = require("../backend/routes/lib/zip.js")
-const { EXPORT_LOCK_ACTIVE_MS, EXPORT_LOCK_REFRESH_MS } = require("../backend/routes/lib/file.js")
+const { EXPORT_LOCK_ACTIVE_MS, EXPORT_LOCK_REFRESH_MS, exportLockName } = require("../backend/routes/lib/file.js")
 const memory = require("memory")
 
 const START = "20210101-000000"
@@ -96,7 +96,7 @@ describe("convert lock refresh", () => {
 	test("a video job with no progress events still gets its lock refreshed by the interval", (done) => {
 		createVideo({ body: { camera: "1", start: START, end: END } }, {
 			send: ({ id }) => {
-				const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", `mp4_${id}.txt`)
+				const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", exportLockName("mp4", "1", id))
 				expect(lockWrites()).toContain(lockPath)
 				expect(mockFs.utimes).not.toHaveBeenCalled()
 
@@ -112,7 +112,7 @@ describe("convert lock refresh", () => {
 		let sent
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: (body) => { sent = body } })
 
-		const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", `zip_${sent.id}.txt`)
+		const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", exportLockName("zip", "1", sent.id))
 		expect(lockWrites()).toContain(lockPath)
 		expect(mockFs.utimes).not.toHaveBeenCalled()
 

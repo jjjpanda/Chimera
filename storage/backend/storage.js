@@ -1,6 +1,6 @@
 var path       = require("path")
 var express    = require("express")
-const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls } = require("lib")
+const { auth, helmetOptions, tracker, pruneInterval, schedulableUrls, isPrimeInstance } = require("lib")
 const helmet = require("helmet")
 const memory = require("memory")
 const { pool } = require("./lib/pool")
@@ -32,21 +32,23 @@ app.use("/file", require("./routes/file.js"))
 app.use("/shared", express.static(path.join(process.env.storage_FOLDERPATH, "shared")))
 
 const fs = require("fs")
+const { EXPORT_LOCK_PATTERN, sweepOrphanFrames } = require("./routes/lib/file.js")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
 const ORPHAN_SWEEP_MS = 30 * 60 * 1000
+const FRAME_SWEEP_MS = 60 * 60 * 1000
 try { fs.mkdirSync(imgDir, { recursive: true }) } catch (e) { console.error("❌ Failed to create storage directory:", e.message) }
 const sweepOrphanLocks = () => fs.readdir(imgDir, (err, files) => {
 	if (!err) {
 		const orphans = []
 		files.forEach(file => {
-			const match = file.match(/^(mp4|zip)_(.+)\.txt$/)
+			const match = file.match(EXPORT_LOCK_PATTERN)
 			if (match) {
 				const lockPath = path.join(imgDir, file)
 				let stat
 				try { stat = fs.statSync(lockPath) } catch { return }
 				if (Date.now() - stat.mtimeMs < ORPHAN_AGE_MS) return
-				orphans.push({ type: match[1], id: match[2] })
+				orphans.push({ type: match[1], id: match[3] })
 				fs.unlink(lockPath, () => {})
 			}
 		})
@@ -61,6 +63,12 @@ const sweepOrphanLocks = () => fs.readdir(imgDir, (err, files) => {
 })
 sweepOrphanLocks()
 setInterval(sweepOrphanLocks, ORPHAN_SWEEP_MS).unref()
+
+const sweepFrames = () => sweepOrphanFrames().catch((e) => console.log("STORAGE FRAME SWEEP FAILED", e.message))
+if (isPrimeInstance) {
+	sweepFrames()
+	setInterval(sweepFrames, FRAME_SWEEP_MS).unref()
+}
 
 app.startDbPruning = () => pruneInterval(pool, "DELETE FROM frame_deletes WHERE timestamp < NOW() - INTERVAL '30 days'")
 

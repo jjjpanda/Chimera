@@ -8,7 +8,7 @@ const {
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
-const { EXPORT_LOCK_REFRESH_MS } = require("./file.js")
+const { EXPORT_LOCK_REFRESH_MS, exportLockName } = require("./file.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 const emitToMemory = memoryEmitter("ZIP PROCESS")
@@ -22,7 +22,7 @@ const createZipList = (camera, start, end, skip, callback) => {
 
 	const rand = generateID()
 
-	fs.writeFile(path.join(imgDir, `zip_${rand}.txt`), "progress", () => {
+	fs.writeFile(path.join(imgDir, exportLockName("zip", camera, rand)), "progress", () => {
 		filterList(camera, start, end, skip, (filteredList) => {
 			const frames = filteredList.length
 
@@ -41,7 +41,7 @@ const createZipList = (camera, start, end, skip, callback) => {
 
 const zip = (archive, camera, frames, start, end, rand, save, req, res) => {
 
-	const txtPath = path.join(imgDir, `zip_${rand}.txt`)
+	const txtPath = path.join(imgDir, exportLockName("zip", camera, rand))
 
 	if(frames == 0){
 		webhookAlert(`Zip Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
