@@ -213,10 +213,7 @@ describe("File Routes", () => {
 				.post("/file/pathDelete")
 				.send({ camera: 1 })
 				.set("Cookie", cookieWithBearerToken)
-			const [sql, values] = bulkQuery.mock.calls[0]
-			expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$2::timestamp AT TIME ZONE 'UTC'\)/)
-			expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
-			expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+			expect(bulkQuery.mock.calls.some(([sql]) => sql.startsWith("INSERT INTO frame_deletes"))).toBe(false)
 		})
 
 		test("defers while an export lock is fresh, before deleting any database rows", async () => {
@@ -303,13 +300,22 @@ describe("File Routes", () => {
 
 		describe("as admin", () => {
 			let unlinkSpy
+			const defaultBulk = (sql) => Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] })
+			const mockPrune = (rows) => bulkQuery.mockImplementation((sql, params) => {
+				if (sql.startsWith("SELECT name FROM frame_files")) return Promise.resolve({ rows })
+				if (sql.startsWith("DELETE FROM frame_files")) return Promise.resolve({ rows: params[1].map(() => ({ size: "100" })) })
+				return defaultBulk(sql)
+			})
 			beforeEach(() => {
 				unlinkSpy = jest.spyOn(fs.promises, "unlink").mockResolvedValue(undefined)
 			})
-			afterEach(() => { unlinkSpy.mockRestore() })
+			afterEach(() => {
+				unlinkSpy.mockRestore()
+				bulkQuery.mockImplementation(defaultBulk)
+			})
 
 			test("deletes the exact filenames returned from the database", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }] }))
+				mockPrune([{ name: "a.jpg", size: "100" }, { name: "b.jpg", size: "200" }])
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -333,21 +339,21 @@ describe("File Routes", () => {
 			})
 
 			test("builds the delete cutoff and recorded timestamp in UTC regardless of session timezone", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				mockPrune([{ name: "a.jpg", size: "100" }])
 				await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
 					.set("Cookie", cookieWithBearerToken)
-				const [sql, values] = bulkQuery.mock.calls[0]
-				expect(sql).toMatch(/AND timestamp<=\(\$2::timestamp AT TIME ZONE 'UTC'\)/)
-				expect(sql).toMatch(/INSERT INTO frame_deletes\(timestamp, camera, size, count\) SELECT \(\$3::timestamp AT TIME ZONE 'UTC'\)/)
-				expect(sql).toMatch(/FROM deleted HAVING COUNT\(\*\) > 0\) SELECT name FROM deleted/)
-				expect(values[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
-				expect(values[2]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+				const [selectSql, selectValues] = bulkQuery.mock.calls[0]
+				expect(selectSql).toMatch(/AND timestamp<=\(\$2::timestamp AT TIME ZONE 'UTC'\)/)
+				expect(selectValues[1]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+				const [recordSql, recordValues] = bulkQuery.mock.calls.find(([sql]) => sql.startsWith("INSERT INTO frame_deletes"))
+				expect(recordSql).toMatch(/VALUES \(\(\$1::timestamp AT TIME ZONE 'UTC'\)/)
+				expect(recordValues[0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
 			})
 
 			test("skips null filenames without throwing", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }, { name: null, size: "200" }] }))
+				mockPrune([{ name: "a.jpg", size: "100" }, { name: null, size: "200" }])
 				const res = await supertest(app)
 					.post("/file/pathClean")
 					.send({ camera: 1, days: 1 })
@@ -360,7 +366,7 @@ describe("File Routes", () => {
 			})
 
 			test("sweeps untracked .jpg orphans whose captured timestamp is older than the cutoff", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "tracked.jpg", size: "100" }] }))
+				mockPrune([{ name: "tracked.jpg", size: "100" }])
 				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdirSpy = jest.spyOn(fs.promises, "readdir")
 					.mockResolvedValue(["tracked.jpg", "20200101-000000-00.jpg", "20991231-235959-00.jpg", "garbage.jpg", "note.txt"])
@@ -446,7 +452,7 @@ describe("File Routes", () => {
 			})
 
 			test("cleans camera 1 while camera 2 is exporting, since their frame sets are disjoint", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				mockPrune([{ name: "a.jpg", size: "100" }])
 				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p) =>
 					Promise.resolve(p === dir ? [] : ["mp4_2_abc.txt"]))
@@ -486,7 +492,7 @@ describe("File Routes", () => {
 			})
 
 			test("skips the orphan sweep when an export starts after the tracked unlinks", async () => {
-				bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] }))
+				mockPrune([{ name: "a.jpg", size: "100" }])
 				const dir = path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1")
 				let exportChecks = 0
 				const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation(() =>
@@ -1008,6 +1014,50 @@ describe("File Routes", () => {
 			expect(JSON.parse(fs.readFileSync(DEFERRAL_STATE_PATH, "utf8"))).toEqual({ "/file/pathClean:1": 1 })
 			expect(fs.existsSync(lockPath)).toBe(false)
 		})
+
+		const autoCleanWithExportOn = () => {
+			const readdir = jest.spyOn(fs.promises, "readdir").mockImplementation((p, opts) =>
+				Promise.resolve(opts && opts.withFileTypes ? [] : ["mp4_1_abc.txt"]))
+			const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ mtimeMs: Date.now() })
+			bulkQuery.mockImplementation((sql) => {
+				if (sql.startsWith("SELECT COALESCE")) return Promise.resolve({ rows: [{ total: "1800000000" }] })
+				if (sql.startsWith("SELECT id")) return Promise.resolve({ rows: [] })
+				if (sql.startsWith("SELECT 1")) return Promise.resolve({ rows: [{ camera: "1" }] })
+				return Promise.resolve({ rows: [] })
+			})
+			return supertest(app)
+				.post("/file/pathAutoClean")
+				.set("Cookie", cookieWithBearerToken)
+				.then((res) => {
+					readdir.mockRestore()
+					stat.mockRestore()
+					return res
+				})
+		}
+
+		test("alerts with the cap-enforcement note when pathAutoClean itself defers too many runs in a row", async () => {
+			process.env.storage_MAX_GB = "1"
+			try {
+				for (let run = 1; run < MAX_CONSECUTIVE_DEFERRALS; run++) {
+					const res = await autoCleanWithExportOn()
+					expect(res.body).toEqual({ cleaned: false, deferred: true })
+				}
+				expect(webhookAlert).not.toHaveBeenCalledWith(expect.stringContaining("Cap enforcement is stalled"), "admin")
+
+				const res = await autoCleanWithExportOn()
+				expect(res.body).toEqual({ cleaned: false, deferred: true })
+				expect(webhookAlert).toHaveBeenCalledWith(
+					expect.stringContaining(`/file/pathAutoClean has deferred ${MAX_CONSECUTIVE_DEFERRALS} runs in a row`),
+					"admin"
+				)
+				expect(webhookAlert).toHaveBeenCalledWith(
+					expect.stringContaining("Cap enforcement is stalled and disk may grow past storage_MAX_GB."),
+					"admin"
+				)
+			} finally {
+				delete process.env.storage_MAX_GB
+			}
+		})
 	})
 
 	describe("orphan frame sweep", () => {
@@ -1109,6 +1159,38 @@ describe("File Routes", () => {
 				log.mockRestore()
 				readdir.mockRestore()
 				stat.mockRestore()
+			}
+		})
+
+		test("leaves a frame alone while its camera's clean is mid-run, because the row outlives the file", async () => {
+			const readdir = mockCameraDir([stale])
+			const stat = jest.spyOn(fs.promises, "stat").mockResolvedValue({ size: 4096, mtimeMs: Date.now() - 60 * 60 * 1000 })
+			let arrived, release
+			const atSelect = new Promise((r) => { arrived = r })
+			const gate = new Promise((r) => { release = r })
+			bulkQuery.mockImplementation((sql) => {
+				if (sql.startsWith("SELECT name FROM frame_files WHERE camera=$1 AND timestamp")) {
+					arrived()
+					return gate.then(() => ({ rows: [{ name: stale }] }))
+				}
+				if (sql.includes("name = ANY($2::varchar[])")) return Promise.resolve({ rows: [{ name: stale, size: "4096" }] })
+				return Promise.resolve({ rows: [] })
+			})
+			try {
+				const clean = supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+					.then((r) => r)
+				await atSelect
+				expect(await sweepOrphanFrames()).toBe(0)
+				expect(insertCall()).toBeUndefined()
+				release()
+				await clean
+			} finally {
+				readdir.mockRestore()
+				stat.mockRestore()
+				bulkQuery.mockImplementation((sql) => Promise.resolve(/COUNT/.test(sql) ? { rows: [{ count: "0" }] } : { rows: [] }))
 			}
 		})
 	})

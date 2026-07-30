@@ -8,7 +8,7 @@ const {
 	validateCameraAndAppendToPath,
 	validateDays,
 	getCameraMetricFromDatabase,
-	updateDeletionOfFiles,
+	selectFilesBeforeDate,
 	deleteFileDirectory,
 	deleteFilesBeforeDateGlob,
 	fileStats,
@@ -20,8 +20,8 @@ const {
 
 app.post("/pathSize", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("size")) 
 app.post("/pathFileCount", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("count"))
-app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPath, deferIfExporting, updateDeletionOfFiles("directory"), deleteFileDirectory)
-app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, deferIfExporting, updateDeletionOfFiles("files"), deleteFilesBeforeDateGlob)
+app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPath, deferIfExporting, deleteFileDirectory)
+app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, deferIfExporting, selectFilesBeforeDate, deleteFilesBeforeDateGlob)
 
 app.get("/pathStats", fileStats)
 app.get("/dailyStats", dailyStats)

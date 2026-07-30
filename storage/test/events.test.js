@@ -226,13 +226,11 @@ describe("Events Routes", () => {
 			expect(res.body).toEqual({ deferred: true })
 			expect(fs.promises.unlink).toHaveBeenCalledTimes(500)
 			expect(fs.promises.rm).not.toHaveBeenCalled()
-			expect(bulkQuery.mock.calls.map((c) => c[0])).toEqual([
-				"DELETE FROM frame_files WHERE camera = $1 AND name = ANY($2::varchar[])"
-			])
+			expect(bulkQuery).not.toHaveBeenCalled()
 			expect(pm2.restart).not.toHaveBeenCalled()
 		})
 
-		test("returns 500 and touches nothing for the batch when the batched frame_files delete fails", async () => {
+		test("returns 500 when the frame_files wipe fails, leaving the rows for a retry to clear", async () => {
 			fs.promises.readdir.mockImplementation((p) =>
 				Promise.resolve(p.endsWith("captures") ? [] : ["a.jpg", "b.jpg"]))
 			bulkQuery.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
@@ -241,13 +239,8 @@ describe("Events Routes", () => {
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-			expect(bulkQuery).toHaveBeenCalledTimes(1)
-			expect(bulkQuery).toHaveBeenCalledWith(
-				"DELETE FROM frame_files WHERE camera = $1 AND name = ANY($2::varchar[])",
-				["1", ["a.jpg", "b.jpg"]]
-			)
-			expect(fs.promises.unlink).not.toHaveBeenCalled()
-			expect(fs.promises.rm).not.toHaveBeenCalled()
+			expect(bulkQuery).toHaveBeenCalledWith("DELETE FROM frame_files WHERE camera = $1", ["1"])
+			expect(fs.promises.unlink).toHaveBeenCalledTimes(2)
 			expect(pm2.restart).not.toHaveBeenCalled()
 		})
 

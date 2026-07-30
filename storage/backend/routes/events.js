@@ -104,8 +104,7 @@ app.delete("/camera/:id", requireAdmin, deferIfExporting, async (req, res) => {
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
 	try {
 		const confFiles = await cameraConfFiles(id)
-		const { deferred, failed } = await removeCameraDirectory(id, path.join(CAPTURES_DIR, id))
-		if (failed) return res.status(500).json({ error: true })
+		const { deferred } = await removeCameraDirectory(id, path.join(CAPTURES_DIR, id))
 		if (deferred) return res.json({ deferred: true })
 		await bulkPool.query("DELETE FROM frame_files WHERE camera = $1", [id])
 		const objectFiles = await fs.promises.readdir(OBJECT_CAPTURES_DIR).catch(() => [])

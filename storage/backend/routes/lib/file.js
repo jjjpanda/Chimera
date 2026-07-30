@@ -111,16 +111,22 @@ const settleDeferral = (req, deferred) => {
 	return run
 }
 
-const removeCameraDirectory = async (camera, dir, { clearRows = true } = {}) => {
+const clearedTotals = (rows) => ({ count: rows.length, size: rows.reduce((sum, r) => sum + (parseInt(r.size) || 0), 0) })
+
+const clearRowsFor = (camera, names) =>
+	names.length === 0
+		? Promise.resolve({ count: 0, size: 0 })
+		: bulkPool.query("DELETE FROM frame_files WHERE camera = $1 AND name = ANY($2::varchar[]) RETURNING size", [camera, names]).then((r) => clearedTotals(r.rows)).catch(() => null)
+
+const clearCameraRows = (camera) =>
+	bulkPool.query("DELETE FROM frame_files WHERE camera=$1 RETURNING size", [camera]).then((r) => clearedTotals(r.rows)).catch(() => null)
+
+const removeCameraDirectory = async (camera, dir) => {
 	const entries = await fs.promises.readdir(dir).catch(() => [])
 
 	for (let i = 0; i < entries.length; i += UNLINK_BATCH) {
 		if (await exportInProgress(camera)) return { deferred: true, removed: i }
 		const batch = entries.slice(i, i + UNLINK_BATCH)
-		if (clearRows) {
-			const rowsCleared = await bulkPool.query("DELETE FROM frame_files WHERE camera = $1 AND name = ANY($2::varchar[])", [camera, batch]).then(() => true).catch(() => false)
-			if (!rowsCleared) return { failed: true, removed: i }
-		}
 		await mapLimit(batch, FS_CONCURRENCY, (f) =>
 			fs.promises.unlink(path.join(dir, f)).catch(() => {})
 		)
@@ -241,16 +247,11 @@ module.exports = {
 			})
 	},
 
-	updateDeletionOfFiles: (filesOrDirectory) => (req, res, next) => {
-		const {camera} = req.body
-		let beforeDate = ""
-		if(filesOrDirectory == "files"){
-			let {days} = req.body
-			beforeDate = moment.utc().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
-		}
-		queryToDeleteAndRecord(camera, filesOrDirectory, beforeDate).then(deletedValues => {
-			req.numberOfFilesDeletedInDatabase = deletedValues.rows.length
-			req.deletedFileNames = deletedValues.rows.map(row => row.name)
+	selectFilesBeforeDate: (req, res, next) => {
+		const { camera, days } = req.body
+		const beforeDate = moment.utc().subtract(days, "days").format("YYYY-MM-DD HH:mm:ss")
+		bulkPool.query("SELECT name FROM frame_files WHERE camera=$1 AND timestamp<=($2::timestamp AT TIME ZONE 'UTC')", [camera, beforeDate]).then(({ rows }) => {
+			req.deletedFileNames = rows.map(row => row.name)
 			req.beforeDate = beforeDate
 			next()
 		}).catch(err => {
@@ -260,35 +261,44 @@ module.exports = {
 	},
 
 	deleteFileDirectory: async (req, res) => {
-		const outcome = await removeCameraDirectory(req.body.camera, req.body.appendedPath, { clearRows: false }).catch(() => null)
-		if (outcome && outcome.failed) return res.status(500).send({ error: true })
+		const outcome = await removeCameraDirectory(req.body.camera, req.body.appendedPath).catch(() => null)
 		const deferred = !!outcome && outcome.deferred
 		if (deferred) console.log(`STORAGE DIRECTORY DELETE DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared after ${outcome.removed} file(s), the rest will be swept on the next clean`)
+		const cleared = outcome && !deferred ? await clearCameraRows(req.body.camera) : { count: 0, size: 0 }
+		if (!cleared) return res.status(500).send({ error: true })
+		await recordDeletions(req.body.camera, cleared)
 		await settleDeferral(req, deferred)
-		res.send({ deleted: !!outcome && !deferred && req.numberOfFilesDeletedInDatabase > 0, ...(deferred && { deferred: true }) })
+		res.send({ deleted: cleared.count > 0, ...(deferred && { deferred: true }) })
 	},
 
 	deleteFilesBeforeDateGlob: async (req, res) => {
 		const dir = req.body.appendedPath
 		const names = (req.deletedFileNames || []).filter(Boolean)
 		const tracked = []
+		const totals = { count: 0, size: 0 }
 		let deferred = false
+		let clearFailed = false
 
 		for (let i = 0; i < names.length; i += UNLINK_BATCH) {
 			if (await exportInProgress(req.body.camera)) {
 				deferred = true
 				break
 			}
-			const batch = names.slice(i, i + UNLINK_BATCH)
+			const batch = names.slice(i, i + UNLINK_BATCH).map(name => path.basename(name))
 			const results = await mapLimit(batch, FS_CONCURRENCY, name =>
-				fs.promises.unlink(path.join(dir, path.basename(name))).then(() => true).catch((e) => e.code === "ENOENT")
+				fs.promises.unlink(path.join(dir, name)).then(() => true).catch((e) => e.code === "ENOENT")
 			)
 			tracked.push(...results)
+			const cleared = await clearRowsFor(req.body.camera, batch.filter((f, idx) => results[idx]))
+			if (!cleared) {
+				clearFailed = true
+				break
+			}
+			totals.count += cleared.count
+			totals.size += cleared.size
 		}
 
-		let staleClearFailed = false
-
-		if (req.beforeDate && !deferred) {
+		if (req.beforeDate && !deferred && !clearFailed) {
 			const cutoff = moment.utc(req.beforeDate).valueOf()
 			const known = new Set(names.map(n => path.basename(n)))
 			const entries = await fs.promises.readdir(dir).catch(() => [])
@@ -308,22 +318,23 @@ module.exports = {
 					}
 					return null
 				})).filter(Boolean)
-				if (removedStale.length) {
-					const cleared = await bulkPool.query("DELETE FROM frame_files WHERE camera = $1 AND name = ANY($2::varchar[])", [req.body.camera, removedStale]).then(() => true).catch(() => false)
-					if (!cleared) {
-						staleClearFailed = true
-						break
-					}
+				const cleared = await clearRowsFor(req.body.camera, removedStale)
+				if (!cleared) {
+					clearFailed = true
+					break
 				}
+				totals.count += cleared.count
+				totals.size += cleared.size
 			}
 		}
 
 		const failed = tracked.filter(ok => !ok).length
-		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s) after DB rows deleted; orphans will be swept on next clean`)
+		if (failed) console.log(`STORAGE FILE UNLINK FAILED for ${failed} file(s); their rows were left intact for the next clean`)
 		if (deferred) console.log(`STORAGE CLEAN DEFERRED mid-run for camera ${req.body.camera}; a fresh export lock appeared, ${names.length - tracked.length} file(s) left for the next clean`)
+		await recordDeletions(req.body.camera, totals)
 		await settleDeferral(req, deferred)
-		if (staleClearFailed) return res.status(500).send({ error: true })
-		res.send({ deleted: req.numberOfFilesDeletedInDatabase > 0 && failed === 0 && tracked.length === names.length, ...(deferred && { deferred: true }) })
+		if (clearFailed) return res.status(500).send({ error: true })
+		res.send({ deleted: totals.count > 0 && failed === 0 && tracked.length === names.length, ...(deferred && { deferred: true }) })
 	},
 
 	dailyStats: async (req, res) => {
@@ -491,18 +502,12 @@ const queryForMetric = (camera, metric) => {
 	return pool.query(`SELECT ${metric == "count" ? "COUNT(*)" : "SUM(size)"} FROM frame_files WHERE camera=$1;`, [camera])
 }
 
-const queryToDeleteAndRecord = (camera, deleting, before="") => {
-	const now = moment.utc().format("YYYY-MM-DD HH:mm:ss")
-	if (deleting == "files") {
-		return bulkPool.query(
-			"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 AND timestamp<=($2::timestamp AT TIME ZONE 'UTC') RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($3::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted HAVING COUNT(*) > 0) SELECT name FROM deleted;",
-			[camera, before, now]
-		)
-	}
+const recordDeletions = (camera, { count, size }) => {
+	if (count === 0) return Promise.resolve()
 	return bulkPool.query(
-		"WITH deleted AS (DELETE FROM frame_files WHERE camera=$1 RETURNING name, size), inserted AS (INSERT INTO frame_deletes(timestamp, camera, size, count) SELECT ($2::timestamp AT TIME ZONE 'UTC'), $1, COALESCE(SUM(size), 0), COUNT(*) FROM deleted HAVING COUNT(*) > 0) SELECT name FROM deleted;",
-		[camera, now]
-	)
+		"INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES (($1::timestamp AT TIME ZONE 'UTC'), $2, $3, $4);",
+		[moment.utc().format("YYYY-MM-DD HH:mm:ss"), camera, size, count]
+	).catch(() => {})
 }
 
 const escapeIdent = (name) => name.replace(/"/g, "\"\"")
