@@ -571,6 +571,23 @@ describe("File Routes", () => {
 					readdirSpy.mockRestore()
 				}
 			})
+
+			test("still settles the deferral streak when the tracked-file delete query fails", async () => {
+				fs.writeFileSync(DEFERRAL_STATE_PATH, JSON.stringify({ "/file/pathClean:1": 3 }))
+				bulkQuery.mockImplementation((sql) => {
+					if (sql.startsWith("SELECT name FROM frame_files")) return Promise.resolve({ rows: [{ name: "a.jpg", size: "100" }] })
+					if (sql.startsWith("DELETE FROM frame_files")) return Promise.reject(new Error("deadlock detected"))
+					return defaultBulk(sql)
+				})
+				const res = await supertest(app)
+					.post("/file/pathClean")
+					.send({ camera: 1, days: 1 })
+					.set("Cookie", cookieWithBearerToken)
+				expect(res.status).toBe(500)
+				expect(res.body).toEqual({ error: true })
+				expect(unlinkSpy).toHaveBeenCalledWith(path.join(process.env.storage_FOLDERPATH, "./shared/captures/", "1", "a.jpg"))
+				expect(JSON.parse(fs.readFileSync(DEFERRAL_STATE_PATH, "utf8"))).toEqual({})
+			})
 		})
 	})
 

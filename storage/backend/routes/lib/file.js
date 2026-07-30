@@ -318,8 +318,7 @@ module.exports = {
 				const removedStale = (await mapLimit(staleBatch, FS_CONCURRENCY, async (f) => {
 					const captured = moment.utc(f.slice(0, 15), "YYYYMMDD-HHmmss", true)
 					if (captured.isValid() && captured.valueOf() < cutoff) {
-						await fs.promises.unlink(path.join(dir, f)).catch(() => {})
-						return f
+						return fs.promises.unlink(path.join(dir, f)).then(() => f).catch((e) => e.code === "ENOENT" ? f : null)
 					}
 					return null
 				})).filter(Boolean)
