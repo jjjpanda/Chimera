@@ -52,8 +52,11 @@ const DEFERRAL_LOCK_RETRY_MS = 25
 
 const DEFERRAL_LOCK_STALE_MS = 10000
 
+const DEFERRAL_LOCK_TIMEOUT_MS = DEFERRAL_LOCK_STALE_MS * 3
+
 const acquireDeferralLock = async () => {
-	for (;;) {
+	const deadline = Date.now() + DEFERRAL_LOCK_TIMEOUT_MS
+	do {
 		try {
 			fs.closeSync(fs.openSync(DEFERRAL_LOCK_PATH, "wx"))
 			return
@@ -63,11 +66,11 @@ const acquireDeferralLock = async () => {
 			try { stat = fs.statSync(DEFERRAL_LOCK_PATH) } catch { stat = null }
 			if (stat && Date.now() - stat.mtimeMs > DEFERRAL_LOCK_STALE_MS) {
 				try { fs.unlinkSync(DEFERRAL_LOCK_PATH) } catch { /* raced another releaser */ }
-				continue
 			}
 			await new Promise((r) => setTimeout(r, DEFERRAL_LOCK_RETRY_MS))
 		}
-	}
+	} while (Date.now() < deadline)
+	throw new Error(`deferral lock ${DEFERRAL_LOCK_PATH} unavailable after ${DEFERRAL_LOCK_TIMEOUT_MS}ms`)
 }
 
 const releaseDeferralLock = () => {
@@ -106,7 +109,7 @@ const settleDeferral = (req, deferred) => {
 	const camera = req.body?.camera ?? req.params?.id
 	const key = camera == null ? route : `${route}:${camera}`
 
-	const run = deferralChain.then(() => applyDeferral(key, deferred)).catch(() => {})
+	const run = deferralChain.then(() => applyDeferral(key, deferred)).catch((e) => console.log("STORAGE DEFERRAL STATE ERROR", key, e.message))
 	deferralChain = run
 	return run
 }
@@ -206,6 +209,7 @@ module.exports = {
 	EXPORT_LOCK_PATTERN,
 	MAX_CONSECUTIVE_DEFERRALS,
 	DEFERRAL_STATE_PATH,
+	DEFERRAL_LOCK_RETRY_MS,
 	FRAME_SWEEP_GRACE_MS,
 	exportLockName,
 	exportingCameras,
@@ -515,7 +519,7 @@ const recordDeletions = (camera, { count, size }) => {
 	return bulkPool.query(
 		"INSERT INTO frame_deletes(timestamp, camera, size, count) VALUES (($1::timestamp AT TIME ZONE 'UTC'), $2, $3, $4);",
 		[moment.utc().format("YYYY-MM-DD HH:mm:ss"), camera, size, count]
-	).catch(() => {})
+	).catch((err) => console.log("STORAGE FRAME_DELETES AUDIT INSERT FAILED", camera, err.message))
 }
 
 const escapeIdent = (name) => name.replace(/"/g, "\"\"")

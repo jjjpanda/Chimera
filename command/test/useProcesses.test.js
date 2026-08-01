@@ -34,7 +34,7 @@ const resolveList = (list) => act(async () => {
 
 beforeEach(() => { calls.length = 0 })
 
-test("no poll starts when nothing is running", async () => {
+test("an idle list still polls, slowly, so an export started elsewhere shows up", async () => {
 	jest.useFakeTimers()
 	try {
 		renderHook(() => useProcesses())
@@ -42,12 +42,18 @@ test("no poll starts when nothing is running", async () => {
 
 		act(() => { jest.advanceTimersByTime(15000) })
 		expect(listCalls()).toHaveLength(1)
+
+		await act(async () => {
+			jest.advanceTimersByTime(15000)
+			await Promise.resolve()
+		})
+		expect(listCalls()).toHaveLength(2)
 	} finally {
 		jest.useRealTimers()
 	}
 })
 
-test("a running process starts a 5s poll, and it stops once nothing is running", async () => {
+test("a running process polls every 5s, and drops back to the idle cadence once nothing is running", async () => {
 	jest.useFakeTimers()
 	try {
 		renderHook(() => useProcesses())
@@ -64,6 +70,12 @@ test("a running process starts a 5s poll, and it stops once nothing is running",
 
 		act(() => { jest.advanceTimersByTime(15000) })
 		expect(listCalls()).toHaveLength(2)
+
+		await act(async () => {
+			jest.advanceTimersByTime(15000)
+			await Promise.resolve()
+		})
+		expect(listCalls()).toHaveLength(3)
 	} finally {
 		jest.useRealTimers()
 	}

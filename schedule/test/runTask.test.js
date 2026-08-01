@@ -54,7 +54,7 @@ describe("registerTaskRunner", () => {
 		)
 		expect(mockedPool.query).toHaveBeenCalledWith(
 			expect.stringContaining("INSERT INTO task_runs"),
-			["task-abc", "/file/pathClean"]
+			["task-abc", "/file/pathClean", "success"]
 		)
 	})
 
@@ -65,5 +65,18 @@ describe("registerTaskRunner", () => {
 
 		expect(mockPost).not.toHaveBeenCalled()
 		expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("not schedulable"))
+	})
+
+	test("marks the run deferred and warns the webhook when storage responds deferred:true", async () => {
+		const { webhookAlert } = require("lib")
+		mockPost.mockResolvedValueOnce({ data: { deferred: true } })
+		runner()({ id: "task-abc", url: "/file/pathClean", body: { camera: 1 } })
+		await new Promise(process.nextTick)
+
+		expect(webhookAlert).toHaveBeenCalledWith(expect.stringContaining("⚠️ deferred"))
+		expect(mockedPool.query).toHaveBeenCalledWith(
+			expect.stringContaining("INSERT INTO task_runs"),
+			["task-abc", "/file/pathClean", "deferred"]
+		)
 	})
 })

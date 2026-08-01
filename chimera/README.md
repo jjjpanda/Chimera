@@ -25,6 +25,7 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 - `storage_FOLDERPATH` (`objectCaptures/` out) and `livestream_FOLDERPATH` (frames in) are also required when `object_ON=true`, even with their own service off.
 - Re-reads the raw `.env` file (not `process.env`) for every key to catch a `#` dotenv already silently truncated before parsing — see `preflight.js` below.
 - Absolute-path checks: key/cert/ffmpeg/ffprobe files; `storage_FOLDERPATH` / `livestream_FOLDERPATH` folders.
+- Upgrading a deployment where `database_PASSWORD` is under 32 characters: this now blocks boot. Postgres only reads `POSTGRES_PASSWORD_FILE` on first init of an empty `chimera-pgdata` volume, so lengthening `database_PASSWORD` in `.env` alone desyncs it from the password already stored in Postgres. Rotate the stored password to match first (e.g. `docker compose exec postgres psql -U "$database_USER" -c "ALTER USER \"$database_USER\" WITH PASSWORD '<new value>'"`) before restarting with the new value — `npm run docker:delete` also wipes the `chimera-storage` footage volume.
 
 ---
 # prepareDatabase.js

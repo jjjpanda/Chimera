@@ -399,7 +399,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 									<div className="min-w-0 flex-1">
 										<div className="flex items-center gap-2">
 											<p className="truncate font-mono text-sm text-primary">{run.task_id}</p>
-											<Badge className={cn("shrink-0 text-xs", run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white")}>
+											<Badge className={cn("shrink-0 text-xs", run.status === "success" ? "bg-accent text-accent-foreground" : run.status === "deferred" ? "bg-surface-raised text-muted" : "bg-danger text-white")}>
 												{run.status}
 											</Badge>
 										</div>
@@ -429,7 +429,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 											<TableCell className="text-primary font-mono text-sm">{run.task_id}</TableCell>
 											<TableCell className="text-muted text-sm max-w-40 truncate" title={run.url}>{run.url}</TableCell>
 											<TableCell>
-												<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : "bg-danger text-white"}>
+												<Badge className={run.status === "success" ? "bg-accent text-accent-foreground" : run.status === "deferred" ? "bg-surface-raised text-muted" : "bg-danger text-white"}>
 													{run.status}
 												</Badge>
 											</TableCell>

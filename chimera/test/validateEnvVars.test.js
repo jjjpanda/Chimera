@@ -90,42 +90,42 @@ describe("validateEnvVars placeholder-secret gate", () => {
 
 	test("blocks boot when SECRETKEY is shorter than 32 characters", () => {
 		const res = run({ SECRETKEY: "too-short-a-secret" })
-		expect(res.stdout).toContain("SECRETKEY TOO SHORT — must be at least 32 characters: SECRETKEY")
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: SECRETKEY")
 		expect(res.status).toBe(1)
 	})
 
 	test("accepts SECRETKEY at least 32 characters long", () => {
 		const res = run({ SECRETKEY: "a".repeat(32) })
-		expect(res.stdout).not.toContain("SECRETKEY TOO SHORT")
+		expect(res.stdout).not.toContain("TOO SHORT — must be at least 32 characters: SECRETKEY")
 		expect(res.status).toBe(0)
 	})
 
 	test("blocks boot when setup_TOKEN is shorter than 32 characters — it is the admin-recovery credential", () => {
 		const res = run({ setup_TOKEN: "too-short-a-token" })
-		expect(res.stdout).toContain("setup_TOKEN TOO SHORT — must be at least 32 characters: setup_TOKEN")
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: setup_TOKEN")
 		expect(res.status).toBe(1)
 	})
 
 	test("accepts setup_TOKEN at least 32 characters long", () => {
 		const res = run({ setup_TOKEN: "a".repeat(32) })
-		expect(res.stdout).not.toContain("setup_TOKEN TOO SHORT")
+		expect(res.stdout).not.toContain("TOO SHORT — must be at least 32 characters: setup_TOKEN")
 		expect(res.status).toBe(0)
 	})
 
 	test("blocks boot when scheduler_AUTH is shorter than 32 characters — a match sets role admin on the schedulable routes", () => {
 		const res = run({ scheduler_AUTH: "short-scheduler-auth" })
-		expect(res.stdout).toContain("scheduler_AUTH TOO SHORT — must be at least 32 characters: scheduler_AUTH")
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: scheduler_AUTH")
 		expect(res.status).toBe(1)
 	})
 
 	test("blocks boot when memory_AUTH_TOKEN or database_PASSWORD is shorter than 32 characters", () => {
-		expect(run({ memory_AUTH_TOKEN: "short-memory-token" }).stdout).toContain("memory_AUTH_TOKEN TOO SHORT")
-		expect(run({ database_PASSWORD: "postgres" }).stdout).toContain("database_PASSWORD TOO SHORT")
+		expect(run({ memory_AUTH_TOKEN: "short-memory-token" }).stdout).toContain("TOO SHORT — must be at least 32 characters: memory_AUTH_TOKEN")
+		expect(run({ database_PASSWORD: "postgres" }).stdout).toContain("TOO SHORT — must be at least 32 characters: database_PASSWORD")
 	})
 
 	test("blocks boot when scheduler_AUTH is short even with the schedule service off — the storage bypass arms whenever it is set", () => {
 		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "short" })
-		expect(res.stdout).toContain("scheduler_AUTH TOO SHORT")
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: scheduler_AUTH")
 		expect(res.status).toBe(1)
 	})
 

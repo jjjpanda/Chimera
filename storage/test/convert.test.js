@@ -513,6 +513,7 @@ describe("Convert Routes", () => {
 
 	describe("createVideo ender cleanup", () => {
 		const fs = require("fs")
+		const lib = require("lib")
 		const memory = require("memory")
 		const ffmpeg = require("fluent-ffmpeg")
 		const { createVideo } = require("../backend/routes/lib/video.js")
@@ -551,6 +552,28 @@ describe("Convert Routes", () => {
 			const { command, id } = startVideo()
 			command.emit("error", new Error("ffmpeg exited with code 1"))
 			expect(deletedIds()).toContain(id)
+		})
+
+		test("alerts about storage cleanup when ffmpeg reports a missing concat input", () => {
+			const { command, id } = startVideo()
+
+			lib.webhookAlert.mockClear()
+			command.emit("error", new Error("1/frame2.jpg: No such file or directory"))
+
+			expect(lib.webhookAlert).toHaveBeenCalledWith(
+				expect.stringContaining(`Your video (${id}) was interrupted by storage cleanup`)
+			)
+		})
+
+		test("alerts a generic failure for any other ffmpeg error", () => {
+			const { command, id } = startVideo()
+
+			lib.webhookAlert.mockClear()
+			command.emit("error", new Error("ffmpeg exited with code 1"))
+
+			expect(lib.webhookAlert).toHaveBeenCalledWith(
+				expect.stringContaining(`Your video (${id}) could not be completed.`)
+			)
 		})
 
 		test("releasing the ender does not kill ffmpeg, cancelling does", () => {

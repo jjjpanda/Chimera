@@ -5,6 +5,8 @@ import toast from "../js/toast.js"
 
 const POLL_MS = 5000
 
+const IDLE_POLL_MS = 30000
+
 let requestSeq = 0
 
 const listProcesses = (setState, silent = false) => {
@@ -65,8 +67,7 @@ const useProcesses = () => {
 
 	const anyRunning = state.processList.some((p) => p.running)
 	useEffect(() => {
-		if (!anyRunning) return
-		const timer = setInterval(() => listProcesses(setState, true), POLL_MS)
+		const timer = setInterval(() => listProcesses(setState, true), anyRunning ? POLL_MS : IDLE_POLL_MS)
 		return () => clearInterval(timer)
 	}, [anyRunning])
 

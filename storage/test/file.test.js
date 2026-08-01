@@ -24,7 +24,7 @@ const path = require("path")
 const moment = require("moment")
 
 const { BULK_TIMEOUT_MS } = require("../backend/lib/pool.js")
-const { MAX_CONSECUTIVE_DEFERRALS, DEFERRAL_STATE_PATH, FRAME_SWEEP_GRACE_MS, sweepOrphanFrames } = require("../backend/routes/lib/file.js")
+const { MAX_CONSECUTIVE_DEFERRALS, DEFERRAL_STATE_PATH, DEFERRAL_LOCK_RETRY_MS, FRAME_SWEEP_GRACE_MS, sweepOrphanFrames } = require("../backend/routes/lib/file.js")
 const pools = require("pg").__pools
 const { query } = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
 const { query: bulkQuery } = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
@@ -1046,6 +1046,35 @@ describe("File Routes", () => {
 			expect(res.body).toEqual({ deferred: true })
 			expect(JSON.parse(fs.readFileSync(DEFERRAL_STATE_PATH, "utf8"))).toEqual({ "/file/pathClean:1": 1 })
 			expect(fs.existsSync(lockPath)).toBe(false)
+		})
+
+		test("yields between retries when a stale lock cannot be unlinked, so the event loop keeps serving", async () => {
+			const lockPath = `${DEFERRAL_STATE_PATH}.lock`
+			fs.writeFileSync(lockPath, "")
+			const stale = new Date(Date.now() - 60000)
+			fs.utimesSync(lockPath, stale, stale)
+
+			const realUnlinkSync = fs.unlinkSync
+			const readOnlyMs = 200
+			const readOnlyUntil = Date.now() + readOnlyMs
+			let refusals = 0
+			const unlinkSync = jest.spyOn(fs, "unlinkSync").mockImplementation((p) => {
+				if (p === lockPath && Date.now() < readOnlyUntil) {
+					refusals++
+					throw Object.assign(new Error("EROFS"), { code: "EROFS" })
+				}
+				return realUnlinkSync.call(fs, p)
+			})
+
+			try {
+				const res = await cleanWithExportOn(1, 1)
+				expect(refusals).toBeGreaterThan(1)
+				expect(refusals).toBeLessThan(readOnlyMs / DEFERRAL_LOCK_RETRY_MS * 4)
+				expect(res.body).toEqual({ deferred: true })
+				expect(JSON.parse(fs.readFileSync(DEFERRAL_STATE_PATH, "utf8"))).toEqual({ "/file/pathClean:1": 1 })
+			} finally {
+				unlinkSync.mockRestore()
+			}
 		})
 
 		const autoCleanWithExportOn = () => {

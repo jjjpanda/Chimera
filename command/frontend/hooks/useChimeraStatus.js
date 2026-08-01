@@ -35,11 +35,16 @@ const useChimeraStatus = () => {
 			{}
 		))
 
+		let pollSeq = 0
+		const applied = {}
 		const poll = () => {
 			if (document.hidden) return
+			const seq = ++pollSeq
 			for (const { statusType, url } of allUrls) {
 				request(url, getOptions, (prom) => {
 					statusProcessing(prom, 200, (successful) => {
+						if (seq <= (applied[statusType] || 0)) return
+						applied[statusType] = seq
 						setStatus((prev) => ({ ...prev, [statusType]: successful ? "up" : "down" }))
 					})
 				})

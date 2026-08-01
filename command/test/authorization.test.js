@@ -1014,6 +1014,35 @@ describe("Authorization Routes", () => {
 			expect(stranger.status).toBe(429)
 		})
 
+		test("a known device still has to pass the password check", async () => {
+			const agent = supertest.agent(app)
+			const enrol = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.117.5")
+				.send({ username: "wrongpwdevice", password: "mockedPassword" })
+			expect(enrol.status).toBe(200)
+
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `203.0.117.${10 + i}`)
+					.send({ username: "wrongpwdevice", password: "wrongpassword" })
+			}
+			const stranger = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.117.90")
+				.send({ username: "wrongpwdevice", password: "wrongpassword" })
+			expect(stranger.status).toBe(429)
+
+			const known = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "203.0.117.91")
+				.send({ username: "wrongpwdevice", password: "wrongpassword" })
+			expect(known.status).toBe(400)
+			expect(known.body).toEqual({ error: true, errors: "Invalid username or password" })
+			expect(known.headers["set-cookie"]).toBeUndefined()
+		})
+
 		test("a device token for another username does not skip the throttle", async () => {
 			const agent = supertest.agent(app)
 			await agent

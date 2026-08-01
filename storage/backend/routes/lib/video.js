@@ -125,9 +125,12 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				if(!res.headersSent) res.status(500).end()
 				else res.destroy(err)
 			}
+			const pruned = /No such file or directory/.test(err.message)
 			fs.unlink(txtPath, () => {
 				if(save && !cancelled){
-					webhookAlert(`Your video (${rand}) could not be completed.`)
+					webhookAlert(pruned
+						? `Your video (${rand}) was interrupted by storage cleanup removing frames mid-export. Try again.`
+						: `Your video (${rand}) could not be completed.`)
 				}
 				fs.unlink(mp4Path, () => {})
 			})

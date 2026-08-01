@@ -72,7 +72,7 @@ const checkVar = (varName) => {
 		return false
 	}
 	if (isSecret(varName) && val.trim().length < 32) {
-		console.log(varName, "TOO SHORT — must be at least 32 characters:", varName)
+		console.log("TOO SHORT — must be at least 32 characters:", varName)
 		allEnvPresent = false
 		return false
 	}

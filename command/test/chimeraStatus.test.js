@@ -39,4 +39,42 @@ describe("useChimeraStatus", () => {
 		act(() => jest.advanceTimersByTime(20000))
 		expect(request).not.toHaveBeenCalled()
 	})
+
+	const deferredPolls = () => {
+		const { statusProcessing } = require("../frontend/js/request.js")
+		statusProcessing.mockImplementation((prom, code, cb) => prom.then((res) => cb(res.status === code)))
+
+		const resolvers = []
+		request.mockImplementation((url, opt, callback) => {
+			callback(new Promise((resolve) => resolvers.push(resolve)))
+		})
+		return resolvers
+	}
+
+	const settle = (resolve, status) => act(async () => {
+		resolve({ status })
+		await Promise.resolve()
+	})
+
+	test("a stale response from an earlier poll cannot overwrite a fresher one", async () => {
+		const resolvers = deferredPolls()
+		const { result } = renderHook(() => useChimeraStatus())
+		act(() => jest.advanceTimersByTime(5000))
+
+		await settle(resolvers[8], 200)
+		await settle(resolvers[0], 500)
+
+		expect(result.current[0].command).toBe("up")
+	})
+
+	test("a response slower than the poll interval still applies, so the tile does not starve at loading", async () => {
+		const resolvers = deferredPolls()
+		const { result } = renderHook(() => useChimeraStatus())
+		act(() => jest.advanceTimersByTime(5000))
+		expect(result.current[0].command).toBe("loading")
+
+		await settle(resolvers[0], 200)
+
+		expect(result.current[0].command).toBe("up")
+	})
 })

@@ -1,11 +1,13 @@
 const ioClient = require("socket.io-client")
+const crypto = require("crypto")
 
 module.exports = (clientName) => {
 	const socket = ioClient(process.env.memory_HOST, {
 		withCredentials: true,
 		extraHeaders: {
 			"Authorization": process.env.memory_AUTH_TOKEN
-		}
+		},
+		auth: { ownerID: crypto.randomUUID() }
 	})
 
 	socket.on("connect", () => {

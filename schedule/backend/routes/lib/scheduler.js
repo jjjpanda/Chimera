@@ -231,11 +231,12 @@ const runTask = ({ id, url, body }) => {
 	axios.post(`${storageHost()}${url}`, body, {
 		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
-		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ✅ \nresponse ${JSON.stringify(data, null, 2)}`)
+		const deferred = !!data?.deferred
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ${deferred ? "⚠️ deferred" : "✅"} \nresponse ${JSON.stringify(data, null, 2)}`)
 		console.log(data)
 		pool.query(
-			"INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, 'success', 200)",
-			[id, url]
+			"INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, $3, 200)",
+			[id, url, deferred ? "deferred" : "success"]
 		).catch(err => console.log("RUN INSERT ERROR", err))
 	}).catch(({response, message}) => {
 		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
