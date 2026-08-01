@@ -2,8 +2,6 @@ const { Server } = require("socket.io")
 
 const { isPrimeInstance, timingSafeCompare } = require("lib")
 
-const DISCONNECT_GRACE_MS = 10000
-
 module.exports = () => {
 	if(process.env.memory_ON == "true" && isPrimeInstance){
         
@@ -26,15 +24,7 @@ module.exports = () => {
 
 		console.log(`🧠 Memory On ▶ PORT ${process.env.memory_PORT}`)
 
-		const pendingCleanup = new Map()
-		const activeClients = new Map()
-
 		io.on("connection", client => {
-			const owner = client.handshake?.auth?.ownerID || client.id
-			clearTimeout(pendingCleanup.get(owner))
-			pendingCleanup.delete(owner)
-			activeClients.set(owner, client.id)
-
 			const {sessionInvalidate, sessionInvalidateUser, sessionInvalidateAll} = sessionSync(client)
 
 			client.on("log", data => console.log(data))
@@ -49,7 +39,7 @@ module.exports = () => {
 			client.on("destroyTask", destroyTask)
 			client.on("listTask", listTasks)
 
-			client.on("saveProcessEnder", (id, ender, callback) => saveProcessEnder(owner, id, ender, callback))
+			client.on("saveProcessEnder", (id, ender, callback) => saveProcessEnder(client.id, id, ender, callback))
 			client.on("deleteProcessEnder", deleteProcessEnder)
 			client.on("cancelProcess", cancelProcess)
 
@@ -61,12 +51,7 @@ module.exports = () => {
 			client.on("sessionInvalidateAll", sessionInvalidateAll)
 
 			client.on("disconnect", () => {
-				const timeout = setTimeout(() => {
-					pendingCleanup.delete(owner)
-					if (activeClients.get(owner) === client.id) deleteClientProcesses(owner)
-				}, DISCONNECT_GRACE_MS)
-				timeout.unref()
-				pendingCleanup.set(owner, timeout)
+				deleteClientProcesses(client.id)
 				console.log(`▶ 🧠 CLIENT WITH ID: ${client.id} DISCONNECTED`)
 			})
 		})

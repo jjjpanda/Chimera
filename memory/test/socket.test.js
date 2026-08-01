@@ -1,8 +1,8 @@
 let connect
 
-const fakeClient = (id, ownerID) => {
+const fakeClient = (id) => {
 	const handlers = {}
-	return { id, handshake: { auth: { ownerID } }, handlers, on: (event, fn) => { handlers[event] = fn } }
+	return { id, handlers, on: (event, fn) => { handlers[event] = fn } }
 }
 
 beforeEach(() => {
@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe("memory socket converter process wiring", () => {
 	test("saveProcessEnder keys the ender by id so cancelProcess can run it", () => {
-		const a = fakeClient("sockA", "ownerA")
+		const a = fakeClient("sockA")
 		connect(a)
 		const ender = jest.fn()
 		a.handlers.saveProcessEnder("v1", ender)
@@ -37,9 +37,9 @@ describe("memory socket converter process wiring", () => {
 		expect(msg).toBe("Your video (v1) was cancelled.")
 	})
 
-	test("a disconnect drops only the enders saved by that client once the grace period elapses", () => {
-		const a = fakeClient("sockA", "ownerA")
-		const b = fakeClient("sockB", "ownerB")
+	test("a disconnect drops only the enders saved by that client", () => {
+		const a = fakeClient("sockA")
+		const b = fakeClient("sockB")
 		connect(a)
 		connect(b)
 		const gone = jest.fn()
@@ -48,7 +48,6 @@ describe("memory socket converter process wiring", () => {
 		b.handlers.saveProcessEnder("v2", kept)
 
 		a.handlers.disconnect()
-		jest.advanceTimersByTime(10000)
 
 		let goneMsg, keptMsg
 		b.handlers.cancelProcess("v1", "mp4", (m) => { goneMsg = m })
@@ -59,26 +58,25 @@ describe("memory socket converter process wiring", () => {
 		expect(keptMsg).toBe("Your archive (v2) was cancelled.")
 	})
 
-	test("a reconnect under the same owner within the grace period keeps enders cancellable", () => {
-		const a1 = fakeClient("sockA1", "ownerA")
+	test("a reconnect does not resurrect enders whose ack died with the old socket", () => {
+		const a1 = fakeClient("sockA1")
 		connect(a1)
 		const ender = jest.fn()
 		a1.handlers.saveProcessEnder("v1", ender)
 
 		a1.handlers.disconnect()
 
-		const a2 = fakeClient("sockA2", "ownerA")
+		const a2 = fakeClient("sockA2")
 		connect(a2)
-		jest.advanceTimersByTime(10000)
 
 		let msg
 		a2.handlers.cancelProcess("v1", "mp4", (m) => { msg = m })
-		expect(ender).toHaveBeenCalledWith(true)
-		expect(msg).toBe("Your video (v1) was cancelled.")
+		expect(ender).not.toHaveBeenCalled()
+		expect(msg).toBe("not cancelled")
 	})
 
 	test("deleteProcessEnder releases the ack without cancelling", () => {
-		const a = fakeClient("sockA", "ownerA")
+		const a = fakeClient("sockA")
 		connect(a)
 		const ender = jest.fn()
 		a.handlers.saveProcessEnder("v1", ender)
