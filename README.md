@@ -126,7 +126,13 @@ Why the cookie can't just read the request: [command](command#config).
 
 A few checks wait until the container starts: the `*_URL` addresses and the file paths. The cookie check runs again there too, in case `.env` changed after the build. So a build can pass and still fail on startup — the container then restarts over and over, and `npm run docker:logs` shows which value it stopped on.
 
-**Or it says `CANNOT READ`.** The app reads `.env` and `motion.conf` from inside the container as a normal user, not root. Copy them with plain `cp`, which leaves them readable — no `sudo`, and no `chmod 600`. If you already used `sudo`, `sudo chmod 644 .env motion.conf` undoes it.
+**Or it says `CANNOT READ`.** The app reads `.env` and `motion.conf` from inside the container as the user `node`, which is uid 1000. Copy them with plain `cp`, not `sudo`, so they stay yours. `motion.conf` holds no secret and is fine at the default `644`. `.env` holds your passwords and tokens, so give it to group 1000 and nobody else:
+
+```sh
+sudo chown "$USER":1000 .env && sudo chmod 640 .env
+```
+
+`chmod 644 .env` also clears the error, but then every account on the machine can read your secrets. With `640` only you and group 1000 can. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
 
 This only matters when the project folder lives on Linux — a Linux host, or a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Mac or Windows drive, such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera`, Docker Desktop sets the ownership for you.
 

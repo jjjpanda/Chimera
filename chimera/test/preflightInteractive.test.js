@@ -1,8 +1,9 @@
-const mockState = { files: {}, dirs: [], answers: [] }
+const mockState = { files: {}, dirs: [], answers: [], modes: {} }
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
 	const find = (p) => Object.keys(mockState.files).find(k => norm(p).endsWith(k))
+	const key = (p) => find(p) ?? norm(p).split("/").slice(norm(p).includes("/cameraconf/") ? -2 : -1).join("/")
 	return {
 		existsSync: jest.fn((p) => find(p) !== undefined || mockState.dirs.some(d => norm(p).endsWith(d))),
 		readFileSync: jest.fn((p) => {
@@ -10,7 +11,8 @@ jest.mock("fs", () => {
 			if (k === undefined) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
 			return mockState.files[k]
 		}),
-		writeFileSync: jest.fn((p, data) => { mockState.files[find(p) ?? norm(p).split("/").pop()] = data }),
+		writeFileSync: jest.fn((p, data) => { mockState.files[key(p)] = data }),
+		chmodSync: jest.fn((p, mode) => { mockState.modes[key(p)] = mode }),
 		copyFileSync: jest.fn((from, to) => { mockState.files[norm(to).split("/").pop()] = mockState.files[find(from)] }),
 		readdirSync: jest.fn(() => Object.keys(mockState.files).filter(k => k.startsWith("cameraconf/")).map(k => k.slice("cameraconf/".length))),
 		mkdirSync: jest.fn()
@@ -41,16 +43,17 @@ const CAM = "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 
 const envText = (env) => Object.entries(env).map(([k, v]) => `${k} = ${v}`).join("\n")
 
-const setup = ({ env, answers, noEnv = false, example = EXAMPLE }) => {
+const setup = ({ env, answers, noEnv = false, noCams = false, example = EXAMPLE }) => {
 	mockState.files = {
 		"env.example": example,
 		"motion.conf": "",
 		"motion.conf.example": "",
-		"cameraconf/cam1.conf": CAM,
+		...(noCams ? {} : { "cameraconf/cam1.conf": CAM }),
 		...(noEnv ? {} : { ".env": envText(env) })
 	}
 	mockState.dirs = ["cameraconf"]
 	mockState.answers = [...answers]
+	mockState.modes = {}
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -79,7 +82,7 @@ const run = async () => {
 		exit.mockRestore()
 	}
 	expect(mockState.answers).toHaveLength(0)
-	return { out: out.join("\n"), exitCode, env: mockState.files[".env"] ?? "" }
+	return { out: out.join("\n"), exitCode, env: mockState.files[".env"] ?? "", modes: mockState.modes }
 }
 
 describe("runInteractive re-walk", () => {
@@ -158,6 +161,50 @@ describe("runInteractive re-walk", () => {
 		})
 		const { env, exitCode } = await run()
 		expect(env).toContain(`SECRETKEY = ${SECRET}`)
+		expect(exitCode).toBe(0)
+	})
+})
+
+describe("runInteractive secret file modes", () => {
+	// 0640 keeps .env off world-read while still letting the container's uid 1000 read it through group 1000
+	test("a seeded .env lands at 0640, not the umask default", async () => {
+		setup({ env: {}, noEnv: true, answers: ["false", "false", "false", SECRET] })
+		const { modes, exitCode } = await run()
+		expect(modes[".env"]).toBe(0o640)
+		expect(exitCode).toBe(0)
+	})
+
+	// preflight is unprivileged, so it cannot chgrp — the printed command is the only thing that makes 0640 readable to the container
+	const withGid = async (gid) => {
+		const had = Object.prototype.hasOwnProperty.call(process, "getgid")
+		const original = process.getgid
+		if (gid === undefined) delete process.getgid
+		else process.getgid = () => gid
+		try { return await run() }
+		finally { if (had) process.getgid = original; else delete process.getgid }
+	}
+
+	test("tells the user to chgrp when their gid is not 1000", async () => {
+		setup({ env: {}, noEnv: true, answers: ["false", "false", "false", SECRET] })
+		const { out } = await withGid(1001)
+		expect(out).toContain("sudo chown \"$USER\":1000 .env")
+	})
+
+	test("says nothing when the gid already is 1000, or when the host has no gids at all", async () => {
+		setup({ env: {}, noEnv: true, answers: ["false", "false", "false", SECRET] })
+		expect((await withGid(1000)).out).not.toContain("sudo chown")
+		setup({ env: {}, noEnv: true, answers: ["false", "false", "false", SECRET] })
+		expect((await withGid(undefined)).out).not.toContain("sudo chown")
+	})
+
+	test("a camera conf lands at 0640 — it carries netcam_userpass", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			noCams: true,
+			answers: ["y", "2", "back", "rtsp://1.1.1.1/cam", "user:pass", "n"]
+		})
+		const { modes, exitCode } = await run()
+		expect(modes["cameraconf/cam2.conf"]).toBe(0o640)
 		expect(exitCode).toBe(0)
 	})
 })
