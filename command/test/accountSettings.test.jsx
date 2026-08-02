@@ -30,6 +30,18 @@ test("submits the current password alongside the new one", () => {
 	)
 })
 
+test("ignores a second submit while a change is in flight", () => {
+	const changePassword = jest.fn()
+	renderForm(changePassword)
+
+	fill()
+	const button = screen.getByText("Change Password", { selector: "button" })
+	fireEvent.click(button)
+	fireEvent.click(button)
+
+	expect(changePassword).toHaveBeenCalledTimes(1)
+})
+
 test("blocks submission when the current password is blank", () => {
 	const changePassword = jest.fn()
 	renderForm(changePassword)

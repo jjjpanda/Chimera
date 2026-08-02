@@ -561,8 +561,8 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
-				"UPDATE auth SET hash = $1, force_password_change = TRUE WHERE username = $2",
-				expect.arrayContaining(["bob"])
+				"UPDATE auth SET hash = $1, force_password_change = $2 WHERE username = $3",
+				[expect.any(String), true, "bob"]
 			)
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
 			expect(spy).toHaveBeenCalled()
@@ -578,8 +578,8 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
-				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
-				expect.arrayContaining(["admin"])
+				"UPDATE auth SET hash = $1, force_password_change = $2 WHERE username = $3",
+				[expect.any(String), false, "admin"]
 			)
 		})
 
@@ -823,6 +823,30 @@ describe("Authorization Routes", () => {
 				.send({ password: "newpassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+		})
+
+		test("locks the account out after repeated wrong current-password guesses", async () => {
+			const token = jwt.sign({ username: "guessme", role: "user", jti: "jti-guess" }, "test-secret")
+			let res
+			for (let i = 0; i < 6; i++) {
+				res = await supertest(app)
+					.post("/authorization/password")
+					.set("Cookie", `bearertoken=Bearer%20${token}`)
+					.send({ password: "newpassword", currentPassword: `wrong${i}` })
+			}
+			expect(res.status).toBe(429)
+			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+		})
+
+		test("does not hash the new password when the current password is wrong", async () => {
+			const spy = jest.spyOn(bcrypt, "genSalt")
+			const token = jwt.sign({ username: "unhashed", role: "user", jti: "jti-unhashed" }, "test-secret")
+			const res = await supertest(app)
+				.post("/authorization/password")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword", currentPassword: "wrongpass" })
+			expect(res.status).toBe(400)
+			expect(spy).not.toHaveBeenCalled()
 		})
 	})
 

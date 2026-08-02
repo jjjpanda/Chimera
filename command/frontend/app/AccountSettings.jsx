@@ -12,14 +12,18 @@ const emptyForm = { currentPassword: "", password: "", confirm: "" }
 const AccountSettings = () => {
 	const changePassword = useChangePassword()
 	const [form, setForm] = useState(emptyForm)
+	const [pending, setPending] = useState(false)
 
 	const submit = (e) => {
 		e.preventDefault()
+		if (pending) return
 		if (!form.currentPassword) return toast("Enter your current password")
 		if (form.password !== form.confirm) return toast("Passwords do not match")
 		const invalid = validatePassword(form.password)
 		if (invalid) return toast(invalid)
+		setPending(true)
 		changePassword({ password: form.password, currentPassword: form.currentPassword }, (success, errors) => {
+			setPending(false)
 			if (!success) return toast(errors || "Failed to change password")
 			setForm(emptyForm)
 			toast("Password changed")
@@ -51,7 +55,7 @@ const AccountSettings = () => {
 					{field("password", "New Password", "new password", "new-password")}
 					{field("confirm", "Confirm Password", "re-enter new password", "new-password")}
 					<p className="text-xs text-muted">Changing your password signs you out of every other session.</p>
-					<Button type="submit" className="self-start bg-accent text-accent-foreground hover:bg-accent/80">Change Password</Button>
+					<Button type="submit" disabled={pending} className="self-start bg-accent text-accent-foreground hover:bg-accent/80">Change Password</Button>
 				</form>
 			</CardContent>
 		</Card>
