@@ -59,7 +59,24 @@ const setVal = (lines, key, value) => {
 	else lines.push(`${key} = ${value}`)
 }
 
-const seedEnv = () => fs.writeFileSync(ENV,
+const SECRET_MODE = 0o640
+const CONTAINER_GID = 1000
+const secretsWritten = []
+const writeSecret = (file, data) => {
+	fs.writeFileSync(file, data, { mode: SECRET_MODE })
+	fs.chmodSync(file, SECRET_MODE)
+	if (!secretsWritten.includes(file)) secretsWritten.push(file)
+}
+const groupHint = () => {
+	const gid = process.getgid?.()
+	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
+	const file = path.relative(ROOT, ENV)
+	return `Wrote ${file} mode 0640 — only your account can read it right now.\n`
+		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
+		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
+}
+
+const seedEnv = () => writeSecret(ENV,
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).map(line => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
 		if (!m) return line
@@ -320,7 +337,7 @@ const runInteractive = async () => {
 				const p = urlProblem(url, buildFullUrl(url, userpass))
 				if (p) console.log(`    ${BAD} ${p}`)
 			} while (urlProblem(url, buildFullUrl(url, userpass)))
-			fs.writeFileSync(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
+			writeSecret(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
 			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
 			if (!(await confirm("  Add another camera?", false))) break
 		}
@@ -329,6 +346,8 @@ const runInteractive = async () => {
 	}
 
 	rl.close()
+	const hint = groupHint()
+	if (hint) console.log(hint)
 	if (motionOk && camOk && envOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
 	else { console.log(`Still incomplete ${BAD}  Docker blocked.`); process.exit(1) }
 }
