@@ -25,6 +25,13 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 	})
 }
 
+// load-bearing: strips Authorization before it reaches any proxy target, so scheduler_AUTH's bearer bypass
+// can never be triggered by traffic that transited the gateway — only direct-to-storage traffic carries it
+app.use((req, res, next) => {
+	delete req.headers.authorization
+	next()
+})
+
 const services = require("./services.js")
 for(const apiService of services){
 	const {serviceOn, log, postPathRegex, getPathRegex, deletePathRegex, putPathRegex, patchPathRegex, baseURL} = apiService
@@ -51,7 +58,6 @@ for(const apiService of services){
 			target: baseURL,
 			logLevel: "silent",
 			xfwd: true,
-			onProxyReq: (proxyReq) => proxyReq.removeHeader("authorization"),
 		}))
 	}
 }

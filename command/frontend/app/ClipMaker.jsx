@@ -856,11 +856,12 @@ const ClipMakerFull = () => {
 							<Input
 								type="number"
 								min="1"
+								max="1000"
 								value={number}
-								onChange={e => setNumber(Math.max(1, parseInt(e.target.value) || 1))}
+								onChange={e => setNumber(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
 								className="flex-1 text-center text-sm font-medium px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 							/>
-							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => n + 10)}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.min(1000, n + 10))}>
 								<Plus className="size-4" />
 							</Button>
 						</div>

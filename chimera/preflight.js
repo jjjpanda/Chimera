@@ -1,6 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
+const crypto = require("crypto")
 
 let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost
 try {
@@ -235,9 +236,11 @@ const runInteractive = async () => {
 	const asked = new Set()
 	const askKey = async (v) => {
 		if (v.desc) console.log(`    ${v.desc}`)
+		const secretDefault = isSecret(v.key) ? crypto.randomBytes(32).toString("base64url") : null
 		let val, ap
 		do {
-			val = await ask(`    ${v.key} = `)
+			val = await ask(secretDefault ? `    ${v.key} [${secretDefault}] = ` : `    ${v.key} = `)
+			if (val === "" && secretDefault && !blankDisables(lines, v.key)) val = secretDefault
 			ap = val === "" && blankDisables(lines, v.key) ? null : answerProblem(v, val)
 			if (ap) console.log(`    ${BAD} ${ap}`)
 		} while (ap)

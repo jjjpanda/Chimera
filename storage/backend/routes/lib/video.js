@@ -67,6 +67,11 @@ const clampFPS = (fps) => {
 	return Number.isFinite(fps) ? Math.min(Math.max(fps, 1), 60) : 20
 }
 
+const clampFrames = (frames) => {
+	frames = Number(frames)
+	return Number.isFinite(frames) ? Math.min(Math.max(frames, 1), 1000) : 10
+}
+
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
@@ -169,6 +174,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 module.exports = {
 	clampFPS,
+	clampFrames,
 
 	createVideo: (req, res) => {
 		//console.log(req)
@@ -205,9 +211,7 @@ module.exports = {
 
 		let { camera, start, end, frames } = req.body
 
-		if(frames == undefined){
-			frames = 10
-		}
+		frames = clampFrames(frames)
 
 		createFrameList(camera, start, end, frames, (list) => {
 			res.send({
