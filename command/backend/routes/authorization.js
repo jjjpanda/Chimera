@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare } = require("lib")
+var { validateBody, auth, password, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -8,7 +8,6 @@ const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).s
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
-const memory = require("memory")
 
 const app = express.Router()
 
@@ -34,41 +33,10 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const sharedAttempts = process.env.memory_ON == "true"
-const memoryClient = sharedAttempts ? memory.client("AUTH") : null
+const { makeReserve, rateLimit: baseRateLimit, releaseOnSuccess, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const releaseOnSuccess = (res, release) =>
-	res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
-
-const makeReserve = ({ windowMs, max, keyFn }) => {
-	const local = memory.loginAttempts()
-	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
-	const reserveLocal = (key, cb) =>
-		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
-	const reserve = (key, cb) => {
-		if (!sharedAttempts || !memoryClient.connected) return reserveLocal(key, cb)
-		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => {
-			if (err) {
-				memoryClient.emit("loginRelease", key)
-				return reserveLocal(key, cb)
-			}
-			cb(blocked, () => memoryClient.emit("loginRelease", key))
-		})
-	}
-	return (req, cb) => reserve(getKey(req), cb)
-}
-
-const rateLimit = (opts) => {
-	const reserve = makeReserve(opts)
-	return (req, res, next) => {
-		reserve(req, (blocked, release) => {
-			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
-			releaseOnSuccess(res, release)
-			next()
-		})
-	}
-}
+const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 

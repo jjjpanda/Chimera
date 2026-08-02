@@ -1,36 +1,16 @@
 var express    = require("express")
 const path = require("path")
-const { subprocess } = require("lib")
-const memory = require("memory")
+const { subprocess, rateLimiter } = require("lib")
 
 const app = express.Router()
 
-const RESTART_MAX = 20
+const RESTART_MAX = 3
 const RESTART_WINDOW = 60 * 1000
-const sharedAttempts = process.env.memory_ON == "true"
-const restartClient = sharedAttempts ? memory.client("LIVESTREAM_RESTART") : null
-const localAttempts = memory.loginAttempts()
 
 const isCameraId = (camera) => /^\d{1,10}$/.test(String(camera))
 
-const reserveRestart = (key, cb) => {
-	if (!sharedAttempts || !restartClient.connected) return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
-	restartClient.timeout(1000).emit("loginReserve", key, RESTART_MAX, RESTART_WINDOW, (err, blocked) => {
-		if (err) {
-			restartClient.emit("loginRelease", key)
-			return localAttempts.loginReserve(key, RESTART_MAX, RESTART_WINDOW, cb)
-		}
-		cb(blocked)
-	})
-}
-
-const restartLimiter = (req, res, next) => {
-	const key = `${req.ip || ""}:${req.path}:${req.body.camera}`
-	reserveRestart(key, (blocked) => {
-		if(blocked) return res.status(429).send({})
-		next()
-	})
-}
+const { rateLimit } = rateLimiter("LIVESTREAM_RESTART")
+const restartLimiter = rateLimit({ windowMs: RESTART_WINDOW, max: RESTART_MAX, keyFn: (req) => `${req.body.camera}` })
 
 subprocess.checkProcess("live_stream_cam", () => {
 	console.log("▶ Livestream process detected ✅")
