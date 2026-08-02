@@ -197,6 +197,15 @@ describe("runInteractive secret file modes", () => {
 		expect((await withGid(undefined)).out).not.toContain("sudo chown")
 	})
 
+	// `cp env.example .env` by hand, or any run predating 0640, leaves a 0644 .env that seedEnv never revisits
+	test("an existing .env is tightened to 0640, and still earns the chgrp hint", async () => {
+		setup({ env: BLANK, answers: ["false", "false", "false", SECRET] })
+		const { modes, out, exitCode } = await withGid(1001)
+		expect(modes[".env"]).toBe(0o640)
+		expect(out).toContain("sudo chown \"$USER\":1000 .env")
+		expect(exitCode).toBe(0)
+	})
+
 	test("a camera conf lands at 0640 — it carries netcam_userpass", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },

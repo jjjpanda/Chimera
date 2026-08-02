@@ -300,7 +300,7 @@ const runInteractive = async () => {
 			answered = true
 		}
 	} while (answered)
-	fs.writeFileSync(ENV, lines.join("\n"))
+	writeSecret(ENV, lines.join("\n"))
 	const probs = envProblems(schema, lines)
 	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
 	const envOk = !probs.length
