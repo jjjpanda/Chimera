@@ -25,24 +25,24 @@ describe("Livestream restart cap under cluster mode", () => {
 		delete globalThis.__memoryDisconnected
 	})
 
-	test("caps an ip across workers through the shared memory store", async () => {
+	test("caps a camera across workers through the shared memory store", async () => {
 		const workers = [spawnWorker(), spawnWorker()]
 
-		for(let i = 0; i < 20; i++){
+		for(let i = 0; i < 3; i++){
 			await restart(workers[i % 2], "10.0.1.1").expect(200)
 		}
 
 		for(const worker of workers){
 			await restart(worker, "10.0.1.1").expect(429)
 		}
-		await restart(workers[0], "10.0.1.2").expect(200)
+		await restart(workers[0], "10.0.1.2").expect(429)
 	})
 
 	test("falls back to a per-worker cap when the memory socket is down", async () => {
 		globalThis.__memoryDisconnected = true
 		const workers = [spawnWorker(), spawnWorker()]
 
-		for(let i = 0; i < 20; i++){
+		for(let i = 0; i < 3; i++){
 			await restart(workers[0], "10.0.1.3").expect(200)
 		}
 		await restart(workers[0], "10.0.1.3").expect(429)
