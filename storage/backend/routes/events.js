@@ -7,6 +7,7 @@ const { requireAdmin } = auth
 
 const { pool, bulkPool } = require("../lib/pool")
 const { FS_CONCURRENCY, CAPTURES_DIR, OBJECT_CAPTURES_DIR, dirFileBytes } = require("../lib/fsUsage")
+const { deferIfExporting, removeCameraDirectory } = require("./lib/file.js")
 
 const app = express.Router()
 
@@ -98,36 +99,42 @@ app.get("/usage", async (req, res) => {
 	}
 })
 
-app.delete("/camera/:id", requireAdmin, async (req, res) => {
+const restartMotion = () => new Promise((resolve) => pm2.restart("motion", (err) => {
+	if (err) console.log("STORAGE: motion restart failed after camera delete; camera may resurrect until motion is restarted", err.message || err)
+	resolve(!err)
+}))
+
+app.delete("/camera/:id", requireAdmin, deferIfExporting, async (req, res) => {
 	const { id } = req.params
 	if (!/^\d+$/.test(id)) return res.status(400).json({ error: "invalid id" })
+	let motionRestarted = false
 	try {
 		const confFiles = await cameraConfFiles(id)
-		await fs.promises.rm(path.join(CAPTURES_DIR, id), { recursive: true, force: true })
+		for (const file of confFiles) {
+			await fs.promises.unlink(file).catch((e) => {
+				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
+			})
+		}
+		motionRestarted = await restartMotion()
+
+		const { deferred, removed } = await removeCameraDirectory(id, path.join(CAPTURES_DIR, id))
+		if (deferred) console.log(`STORAGE CAMERA DELETE DEFERRED mid-run for camera ${id} after ${removed} file(s); the camera is gone but a fresh export lock appeared, so every frame_files row for it stays — including the ${removed} whose files are already gone — until the delete is retried or auto-clean reclaims them under cap pressure`)
+
 		const objectFiles = await fs.promises.readdir(OBJECT_CAPTURES_DIR).catch(() => [])
 		await mapLimit(
 			objectFiles.filter((f) => f.startsWith(`${id}-`)),
 			FS_CONCURRENCY,
 			(f) => fs.promises.unlink(path.join(OBJECT_CAPTURES_DIR, f)).catch(() => {})
 		)
+
 		await withTransaction(bulkPool, async (client) => {
-			await client.query("DELETE FROM frame_files WHERE camera = $1", [id])
+			if (!deferred) await client.query("DELETE FROM frame_files WHERE camera = $1", [id])
 			await client.query("DELETE FROM objects_detected WHERE camera = $1", [id])
 		})
-		for (const file of confFiles) {
-			await fs.promises.unlink(file).catch((e) => {
-				if (e.code !== "ENOENT") console.log(`STORAGE: failed to remove ${path.basename(file)}; camera may resurrect on reload`, e.message)
-			})
-		}
-		pm2.restart("motion", (err) => {
-			if (err) {
-				console.log("STORAGE: motion restart failed after camera delete; camera may resurrect until motion is restarted", err.message || err)
-				return res.status(502).json({ deleted: true, motionRestarted: false })
-			}
-			res.json({ deleted: true, motionRestarted: true })
-		})
+
+		res.status(motionRestarted ? 200 : 502).json({ deleted: true, motionRestarted, ...(deferred && { deferred: true }) })
 	} catch (e) {
-		res.status(500).json({ error: true })
+		res.status(500).json({ error: true, motionRestarted })
 	}
 })
 

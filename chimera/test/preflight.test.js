@@ -8,7 +8,8 @@ jest.mock("fs", () => {
 				"SECRETKEY = Auth secret key",
 				"gateway_PORT = Port number",
 				"command_ON = (true | false)",
-				"alert_TZ = IANA tz ***"
+				"alert_TZ = IANA tz ***",
+				"storage_FOLDERPATH = Base shared file path  # Docker: /mnt/storage/"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
@@ -19,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, objectFeedProblem, envProblems, hashTruncated } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -38,6 +39,13 @@ describe("parseSchema", () => {
 		const schema = parseSchema()
 		const sk = schema.find(v => v.key === "SECRETKEY")
 		expect(sk.optional).toBe(false)
+	})
+
+	test("keeps the # Docker hint in desc but strips it from placeholder", () => {
+		const schema = parseSchema()
+		const fp = schema.find(v => v.key === "storage_FOLDERPATH")
+		expect(fp.placeholder).toBe("Base shared file path")
+		expect(fp.desc).toContain("# Docker: /mnt/storage/")
 	})
 })
 
@@ -62,10 +70,15 @@ describe("typeOf", () => {
 describe("varProblem", () => {
 	const boolVar = { key: "command_ON", placeholder: "(true | false)", optional: false }
 	const portVar = { key: "gateway_PORT", placeholder: "Port number", optional: false }
-	const strVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
+	const strVar = { key: "database_NAME", placeholder: "postgres database name", optional: false }
+	const secretVar = { key: "SECRETKEY", placeholder: "Auth secret key", optional: false }
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
+	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
+	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
+	const dbPasswordVar = { key: "database_PASSWORD", placeholder: "postgres password", optional: false }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -121,6 +134,38 @@ describe("varProblem", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
 	})
+
+	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
+		expect(varProblem(tokenVar, "too-short-a-token")).toBeTruthy()
+	})
+
+	test("setup_TOKEN: at least 32 characters → null", () => {
+		expect(varProblem(tokenVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("SECRETKEY: under 32 characters → error, matching the boot check instead of crash-looping there", () => {
+		expect(varProblem(secretVar, "short-signing-key")).toBeTruthy()
+	})
+
+	test("SECRETKEY: at least 32 characters → null", () => {
+		expect(varProblem(secretVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("scheduler_AUTH: under 32 characters → error, since a match grants role admin on the schedulable routes", () => {
+		expect(varProblem(schedulerAuthVar, "short-scheduler-auth")).toBeTruthy()
+		expect(varProblem(schedulerAuthVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("the length floor covers every key isSecret matches, not just SECRETKEY and setup_TOKEN", () => {
+		expect(varProblem(memoryTokenVar, "short-memory-token")).toBeTruthy()
+		expect(varProblem(dbPasswordVar, "postgres")).toBeTruthy()
+		expect(varProblem(memoryTokenVar, "a".repeat(32))).toBeNull()
+		expect(varProblem(dbPasswordVar, "a".repeat(32))).toBeNull()
+	})
+
+	test("a short non-secret is untouched by the floor", () => {
+		expect(varProblem(strVar, "chimera")).toBeNull()
+	})
 })
 
 describe("objectFeedProblem", () => {
@@ -151,9 +196,48 @@ describe("objectFeedProblem", () => {
 	})
 })
 
+describe("cookieSecureProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("a scheme-less public gateway_HOST resolves to https, so an insecure cookie is fatal", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))).toMatch(/command_COOKIE_SECURE MUST BE true/)
+	})
+
+	test("gateway_HTTPS_Redirect makes it fatal even on a plain-http gateway_HOST", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" }))).toBeTruthy()
+	})
+
+	test("certbot_ON makes it fatal even on a plain-http gateway_HOST", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", certbot_ON: "true" }))).toBeTruthy()
+	})
+
+	test("a plain-http gateway_HOST with no HTTPS signal warns instead of failing", () => {
+		const l = lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false" })
+		expect(cookieSecureProblem(l)).toBeNull()
+		expect(insecureCookie(l)).toBe(true)
+	})
+
+	test("loopback passes", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "127.0.0.1", command_COOKIE_SECURE: "false" }))).toBe(false)
+	})
+
+	test("a set cookie flag passes", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true" }))).toBe(false)
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_ON: "false", command_COOKIE_SECURE: "false" }))).toBe(false)
+	})
+})
+
 describe("envProblems", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 	const SCHEMA = [{ key: "storage_FOLDERPATH", placeholder: "Base shared file path", desc: "Base shared file path", optional: false }]
+
+	test("the insecure-cookie gate blocks preflight, matching the boot check", () => {
+		const probs = envProblems([], lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))
+		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE true/)]])
+	})
 
 	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {
 		expect(envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "true", storage_FOLDERPATH: "" })))
@@ -247,8 +331,27 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_AUTH")).toBe(false)
 	})
 
-	test("scheduler_AUTH follows schedule service (off)", () => {
+	test("scheduler_AUTH is skipped when blank and schedule is off", () => {
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("scheduler_AUTH is validated whenever it holds a value, because the storage bypass arms on it alone", () => {
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "a".repeat(32) }), "scheduler_AUTH")).toBe(false)
+		expect(isServiceOff(lines({ schedule_ON: "false", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(false)
+	})
+
+	test("blanking scheduler_AUTH is a valid interactive answer when schedule is off, so the wizard cannot demand a token the deploy does not need", () => {
+		expect(blankDisables(lines({ schedule_ON: "false", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(true)
+	})
+
+	test("blanking scheduler_AUTH is rejected while schedule is on", () => {
+		expect(blankDisables(lines({ schedule_ON: "true", scheduler_AUTH: "short" }), "scheduler_AUTH")).toBe(false)
+	})
+
+	test("blankDisables leaves the caller's lines untouched", () => {
+		const input = lines({ schedule_ON: "false", scheduler_AUTH: "short" })
+		blankDisables(input, "scheduler_AUTH")
+		expect(input).toContain("scheduler_AUTH = short")
 	})
 
 	test("ffmpeg_FILEPATH / ffprobe_FILEPATH skipped when no camera service is on", () => {

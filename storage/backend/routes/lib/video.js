@@ -7,13 +7,15 @@ const {
 	generateID,
 	filterList,
 	fileName,
+	memoryEmitter,
 }              = require("./converter.js")
+const { EXPORT_LOCK_REFRESH_MS, exportLockName } = require("./file.js")
 const {webhookAlert, alertTime, gatewayHost} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
 
-const client = require("memory").client("VIDEO PROCESS")
+const emitToMemory = memoryEmitter("VIDEO PROCESS")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
@@ -33,25 +35,29 @@ const createFrameList = (camera, start, end, limit, callback) => {
 
 const createVideoList = (camera, start, end, skip, callback) => {
 	const rand = generateID()
+	const txtPath = path.join(imgDir, exportLockName("mp4", camera, rand))
 
-	filterList(camera, start, end, skip, (filteredList) => {
-		const frames = filteredList.length    
+	fs.writeFile(txtPath, "", () => {
+		filterList(camera, start, end, skip, (filteredList) => {
+			const frames = filteredList.length
 
-		let files = ""
-	
-		console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
-		
-		for (const file of filteredList){
-			files += `file '${camera}/${file}'\r\n` 
-		}
-		
-		fs.writeFile(path.join(imgDir, `mp4_${rand}.txt`), files, (err) => {
-			if(err){
-				callback(err, undefined)
+			let files = ""
+
+			console.log(start.split("-")[0], start.split("-")[1], end.split("-")[0], end.split("-")[1])
+
+			for (const file of filteredList){
+				files += `file '${camera}/${file}'\r\n`
 			}
-			else{
-				callback(false, { rand, frames })
-			}
+
+			fs.writeFile(txtPath, files, (err) => {
+				if(err){
+					fs.unlink(txtPath, () => {})
+					callback(err, undefined)
+				}
+				else{
+					callback(false, { rand, frames })
+				}
+			})
 		})
 	})
 }
@@ -65,7 +71,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 	if(frames == 0){
 		webhookAlert(`Video Process:\nID: ${rand}\nCamera: ${camera}\nNot started: has ${frames} frames`)
-		fs.unlink(path.join(imgDir, `mp4_${rand}.txt`), () => {})
+		fs.unlink(path.join(imgDir, exportLockName("mp4", camera, rand)), () => {})
 		res.send({ id: rand, url: undefined })
 	}
 	else {
@@ -82,11 +88,16 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			noTTYOutput: true,
 		}, cliProgress.Presets.shades_classic)
 
-		const txtPath = path.join(imgDir, `mp4_${rand}.txt`)
+		const txtPath = path.join(imgDir, exportLockName("mp4", camera, rand))
 		const mp4Path = path.join(imgDir, fileName(camera, start, end, rand, "mp4"))
 		let cancelled = false
 
-		let videoCreator = ffmpeg(imgDir+`/mp4_${rand}.txt`)
+		const refreshLock = setInterval(() => {
+			fs.utimes(txtPath, new Date(), new Date(), () => {})
+		}, EXPORT_LOCK_REFRESH_MS)
+		refreshLock.unref()
+
+		let videoCreator = ffmpeg(txtPath)
 			.inputFormat("concat") //ffmpeg(slash(path.join(imgDir,"img.txt"))).inputFormat('concat');
 			.outputFPS(fps)
 			.videoBitrate(Math.pow(2, 14))
@@ -96,7 +107,9 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 				bar.update(Math.round((progress.frames/frames)*100))
 			})
 			.on("end", () => {
+				clearInterval(refreshLock)
 				bar.stop()
+				emitToMemory("deleteProcessEnder", rand)
 				fs.unlink(txtPath, () => {
 					if(save){
 						webhookAlert(`Your video (${rand}) is finished. Download it at: ${gatewayHost()}/shared/captures/${fileName(camera, start, end, rand, "mp4")}`)
@@ -105,21 +118,28 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 			})
 
 		videoCreator.on("error", function(err) {
+			clearInterval(refreshLock)
 			console.log("An error occurred: " + err.message)
+			emitToMemory("deleteProcessEnder", rand)
 			if(!save){
 				if(!res.headersSent) res.status(500).end()
 				else res.destroy(err)
 			}
+			const pruned = /No such file or directory/.test(err.message)
 			fs.unlink(txtPath, () => {
 				if(save && !cancelled){
-					webhookAlert(`Your video (${rand}) could not be completed.`)
+					webhookAlert(pruned
+						? `Your video (${rand}) was interrupted by storage cleanup removing frames mid-export. Try again.`
+						: `Your video (${rand}) could not be completed.`)
 				}
 				fs.unlink(mp4Path, () => {})
 			})
 		})
 
-		client.emit("saveProcessEnder", rand, () => {
+		emitToMemory("saveProcessEnder", rand, (cancel) => {
+			if(!cancel) return
 			cancelled = true
+			clearInterval(refreshLock)
 			videoCreator.kill()
 		})
 

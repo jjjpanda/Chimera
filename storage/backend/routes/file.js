@@ -8,19 +8,20 @@ const {
 	validateCameraAndAppendToPath,
 	validateDays,
 	getCameraMetricFromDatabase,
-	updateDeletionOfFiles,
+	selectFilesBeforeDate,
 	deleteFileDirectory,
 	deleteFilesBeforeDateGlob,
 	fileStats,
 	dailyStats,
 	cameraMetrics,
-	autoClean
+	autoClean,
+	deferIfExporting
 } = require("./lib/file.js")
 
 app.post("/pathSize", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("size")) 
 app.post("/pathFileCount", validateBody, validateCameraAndAppendToPath, getCameraMetricFromDatabase("count"))
-app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPath, updateDeletionOfFiles("directory"), deleteFileDirectory)
-app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, updateDeletionOfFiles("files"), deleteFilesBeforeDateGlob)
+app.post("/pathDelete", requireAdmin, validateBody, validateCameraAndAppendToPath, deferIfExporting, deleteFileDirectory)
+app.post("/pathClean", requireAdmin, validateBody, validateCameraAndAppendToPath, validateDays, deferIfExporting, selectFilesBeforeDate, deleteFilesBeforeDateGlob)
 
 app.get("/pathStats", fileStats)
 app.get("/dailyStats", dailyStats)

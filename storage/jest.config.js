@@ -5,6 +5,6 @@ module.exports = {
 		"js",
 		"json"
 	],
-	setupFiles: ["dotenv/config"],
+	setupFiles: ["dotenv/config", "<rootDir>/test/setupEnv.js"],
 	testTimeout: 10000
 }

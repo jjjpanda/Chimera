@@ -42,6 +42,7 @@ services:
   # HTTP-01 issuance/renewal; owns the RW cert store so the gateway (ro mount) never writes
   certbot:
     build: ./certbot
+    # npm scripts scale this to 0 when certbot_ON=false (chimera/compose.js)
     environment:
       gateway_HOST: ${gateway_HOST}
       gateway_PORT: ${gateway_PORT}

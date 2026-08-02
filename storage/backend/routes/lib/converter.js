@@ -3,12 +3,19 @@ var path       = require("path")
 var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 var {randomID, gatewayHost}    = require("lib")
+var memory     = require("memory")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
-module.exports = {   
+module.exports = {
 	generateID: () => {
 		return randomID.generate() + "-" + moment.utc().format(dateFormat)
+	},
+
+	/** Emits only while `memory_ON` and connected, so ender packets and their acks never buffer during a memory outage; the 24h orphan sweep reconciles drops. */
+	memoryEmitter: (label) => {
+		const client = memory.client(label)
+		return (event, ...args) => { if(process.env.memory_ON == "true" && client.connected) client.emit(event, ...args) }
 	},
     
 	filterList: (camera, start, end, skipEvery=1, callback) => {

@@ -3,13 +3,22 @@ import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 import toast from "../js/toast.js"
 
-const listProcesses = (setState) => {
-	setState((s) => ({ ...s, processList: [], loading: true }))
+const POLL_MS = 5000
+
+const IDLE_POLL_MS = 30000
+
+let requestSeq = 0
+
+const listProcesses = (setState, silent = false) => {
+	if (!silent) setState((s) => ({ ...s, processList: [], loading: true }))
+	const seq = ++requestSeq
 	request("/convert/listProcess", {
 		method: "GET",
 		headers: { "Content-Type": "application/json" }
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
+			if (seq !== requestSeq) return
+			if (silent && !Array.isArray(data?.list)) return
 			setState((s) => ({
 				...s,
 				processList: [...(data?.list ?? []).sort((a, b) =>
@@ -55,6 +64,12 @@ const useProcesses = () => {
 	useEffect(() => {
 		listProcesses(setState)
 	}, [])
+
+	const anyRunning = state.processList.some((p) => p.running)
+	useEffect(() => {
+		const timer = setInterval(() => listProcesses(setState, true), anyRunning ? POLL_MS : IDLE_POLL_MS)
+		return () => clearInterval(timer)
+	}, [anyRunning])
 
 	return [
 		state,

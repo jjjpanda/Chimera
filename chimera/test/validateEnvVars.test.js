@@ -90,13 +90,48 @@ describe("validateEnvVars placeholder-secret gate", () => {
 
 	test("blocks boot when SECRETKEY is shorter than 32 characters", () => {
 		const res = run({ SECRETKEY: "too-short-a-secret" })
-		expect(res.stdout).toContain("SECRETKEY TOO SHORT — must be at least 32 characters: SECRETKEY")
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: SECRETKEY")
 		expect(res.status).toBe(1)
 	})
 
 	test("accepts SECRETKEY at least 32 characters long", () => {
 		const res = run({ SECRETKEY: "a".repeat(32) })
-		expect(res.stdout).not.toContain("SECRETKEY TOO SHORT")
+		expect(res.stdout).not.toContain("TOO SHORT — must be at least 32 characters: SECRETKEY")
+		expect(res.status).toBe(0)
+	})
+
+	test("blocks boot when setup_TOKEN is shorter than 32 characters — it is the admin-recovery credential", () => {
+		const res = run({ setup_TOKEN: "too-short-a-token" })
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: setup_TOKEN")
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts setup_TOKEN at least 32 characters long", () => {
+		const res = run({ setup_TOKEN: "a".repeat(32) })
+		expect(res.stdout).not.toContain("TOO SHORT — must be at least 32 characters: setup_TOKEN")
+		expect(res.status).toBe(0)
+	})
+
+	test("blocks boot when scheduler_AUTH is shorter than 32 characters — a match sets role admin on the schedulable routes", () => {
+		const res = run({ scheduler_AUTH: "short-scheduler-auth" })
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: scheduler_AUTH")
+		expect(res.status).toBe(1)
+	})
+
+	test("blocks boot when memory_AUTH_TOKEN or database_PASSWORD is shorter than 32 characters", () => {
+		expect(run({ memory_AUTH_TOKEN: "short-memory-token" }).stdout).toContain("TOO SHORT — must be at least 32 characters: memory_AUTH_TOKEN")
+		expect(run({ database_PASSWORD: "postgres" }).stdout).toContain("TOO SHORT — must be at least 32 characters: database_PASSWORD")
+	})
+
+	test("blocks boot when scheduler_AUTH is short even with the schedule service off — the storage bypass arms whenever it is set", () => {
+		const res = run({ schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "short" })
+		expect(res.stdout).toContain("TOO SHORT — must be at least 32 characters: scheduler_AUTH")
+		expect(res.status).toBe(1)
+	})
+
+	test("skips the length floor for a disabled service, matching the presence check", () => {
+		const res = run({ memory_ON: "false", chimeraInstances: "1", memory_AUTH_TOKEN: "short" })
+		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
 })
@@ -226,8 +261,14 @@ describe("validateEnvVars certbot port warning", () => {
 })
 
 describe("validateEnvVars insecure-cookie warning", () => {
-	test("warns (non-fatal) on a public gateway_HOST with insecure cookie flags", () => {
+	test("fails on an HTTPS-resolved public gateway_HOST with an insecure cookie", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("warns (non-fatal) on a plain-HTTP public gateway_HOST with an insecure cookie", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
 		expect(res.status).toBe(0)
 	})
@@ -256,15 +297,45 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("warns when only gateway_HTTPS_Redirect is set (command_COOKIE_SECURE still false)", () => {
-		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
-		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
-		expect(res.status).toBe(0)
+	test("fails when gateway_HTTPS_Redirect is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("fails when certbot_ON is set on a plain-http gateway_HOST but command_COOKIE_SECURE is still false", () => {
+		const res = run({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false", certbot_ON: "true", gateway_PORT: "80" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
 	})
 
 	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {
 		const res = run({ gateway_HOST: "not a valid host", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
+		expect(res.status).toBe(0)
+	})
+
+	test("fails on a public gateway_HOST with an insecure cookie when gateway_ON is false — storage still builds webhook links from it", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
+		expect(res.status).toBe(1)
+	})
+
+	test("no warning on a loopback gateway_HOST when gateway_ON is false", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "127.0.0.1", command_ON: "true", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a public gateway_HOST when both the gateway and the command service are off", () => {
+		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "false", command_PROXY_ON: "false", command_COOKIE_SECURE: "false" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+
+	test("allows a blank command_COOKIE_SECURE on a public gateway_HOST when the command service is off", () => {
+		const res = run({ command_ON: "false", command_PROXY_ON: "true", command_COOKIE_SECURE: "", gateway_ON: "true", gateway_HOST: "example.com" })
+		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
 })

@@ -31,7 +31,9 @@ const pools = require("pg").__pools
 const requestPool = pools.find((p) => p.config.statement_timeout !== BULK_TIMEOUT_MS)
 const bulkPool = pools.find((p) => p.config.statement_timeout === BULK_TIMEOUT_MS)
 const { query } = requestPool
-const { query: bulkQuery, release } = bulkPool
+const { query: bulkQuery } = bulkPool
+
+const bulkSql = () => bulkQuery.mock.calls.map((c) => typeof c[0] === "string" ? c[0] : c[0].text)
 
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
 
@@ -140,7 +142,7 @@ describe("Events Routes", () => {
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, motionRestarted: false })
 			expect(fs.promises.rm).not.toHaveBeenCalled()
 			expect(bulkQuery).not.toHaveBeenCalled()
 		})
@@ -156,18 +158,29 @@ describe("Events Routes", () => {
 			expect(unlinked).toContain("/etc/motion/cameraconf/frontdoor.conf")
 		})
 
-		test("deletes both row sets in one transaction and holds no client across the filesystem work", async () => {
+		test("wipes both tables in one transaction, once every file for the camera is already gone", async () => {
+			fs.promises.readdir.mockImplementation((p) =>
+				Promise.resolve(String(p).includes("objectCaptures") ? ["1-100.jpg"] : []))
 			await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
-			expect(bulkQuery.mock.calls.map((c) => c[0])).toEqual([
+			expect(bulkSql()).toEqual([
 				"BEGIN",
 				"DELETE FROM frame_files WHERE camera = $1",
 				"DELETE FROM objects_detected WHERE camera = $1",
 				"COMMIT"
 			])
 			expect(fs.promises.rm.mock.invocationCallOrder[0]).toBeLessThan(bulkQuery.mock.invocationCallOrder[0])
-			expect(release).toHaveBeenCalledWith(undefined)
+			expect(fs.promises.unlink.mock.invocationCallOrder.at(-1)).toBeLessThan(bulkQuery.mock.invocationCallOrder[0])
+		})
+
+		test("removes the conf and restarts motion before the deferrable file removal, so a mid-run defer cannot leave the camera recording", async () => {
+			lib.cameraConfFiles.mockResolvedValueOnce(["/etc/motion/cameraconf/frontdoor.conf"])
+			await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(fs.promises.unlink.mock.invocationCallOrder[0]).toBeLessThan(pm2.restart.mock.invocationCallOrder[0])
+			expect(pm2.restart.mock.invocationCallOrder[0]).toBeLessThan(fs.promises.rm.mock.invocationCallOrder[0])
 		})
 
 		test("runs the deletes on the bulk pool, whose budget outlasts the request pool's", async () => {
@@ -184,42 +197,119 @@ describe("Events Routes", () => {
 			expect(bulkPool.config.connectionTimeoutMillis).toBeLessThanOrEqual(requestPool.config.statement_timeout)
 		})
 
-		test("keeps the rows when the captures directory cannot be removed, so the frames stay accounted for", async () => {
+		test("defers instead of deleting frames an export of that camera is still reading", async () => {
+			fs.promises.readdir.mockImplementation((p) =>
+				Promise.resolve(p.endsWith("captures") ? ["mp4_1_abc.txt"] : []))
+			fs.promises.stat = jest.fn().mockResolvedValue({ mtimeMs: Date.now() })
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deferred: true })
+			expect(fs.promises.rm).not.toHaveBeenCalled()
+			expect(bulkQuery).not.toHaveBeenCalled()
+			expect(pm2.restart).not.toHaveBeenCalled()
+		})
+
+		test("proceeds when the live export belongs to a different camera", async () => {
+			fs.promises.readdir.mockImplementation((p) =>
+				Promise.resolve(p.endsWith("captures") ? ["mp4_2_abc.txt"] : []))
+			fs.promises.stat = jest.fn().mockResolvedValue({ mtimeMs: Date.now() })
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deleted: true, motionRestarted: true })
+			expect(fs.promises.rm).toHaveBeenCalled()
+		})
+
+		test("finishes the camera teardown when an export starts after the pre-check, leaving frame_files rows until the delete is retried", async () => {
+			const frames = Array.from({ length: 600 }, (_, i) => `2020010${i % 10}-000000-00.jpg`)
+			let lockChecks = 0
+			fs.promises.readdir.mockImplementation((p) => {
+				if (!p.endsWith("captures")) return Promise.resolve(frames)
+				lockChecks++
+				return Promise.resolve(lockChecks <= 2 ? [] : ["mp4_1_abc.txt"])
+			})
+			fs.promises.stat = jest.fn().mockResolvedValue({ mtimeMs: Date.now() })
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ deleted: true, motionRestarted: true, deferred: true })
+			expect(fs.promises.unlink).toHaveBeenCalledTimes(500)
+			expect(fs.promises.rm).not.toHaveBeenCalled()
+			expect(bulkSql()).toEqual([
+				"BEGIN",
+				"DELETE FROM objects_detected WHERE camera = $1",
+				"COMMIT"
+			])
+			expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
+		})
+
+		test("returns 500 and rolls back when the frame_files wipe fails after the captures directory is already gone", async () => {
+			fs.promises.readdir.mockImplementation((p) =>
+				Promise.resolve(p.endsWith("captures") ? [] : ["a.jpg", "b.jpg"]))
+			bulkQuery
+				.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
+			const res = await supertest(app)
+				.delete("/camera/1")
+				.set("Cookie", "validCookie")
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true, motionRestarted: true })
+			expect(bulkSql()).toEqual([
+				"BEGIN",
+				"DELETE FROM frame_files WHERE camera = $1",
+				"ROLLBACK"
+			])
+			expect(fs.promises.rm).toHaveBeenCalled()
+		})
+
+		test("returns 500 when the captures directory cannot be removed, leaving the frame_files rows in place until removal succeeds", async () => {
 			fs.promises.rm.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }))
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
 			expect(bulkQuery).not.toHaveBeenCalled()
-			expect(pm2.restart).not.toHaveBeenCalled()
+			expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
 		})
 
-		test("rolls the row deletes back when a delete fails", async () => {
-			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+		test("stops the camera and clears the captures directory before the frame_files delete, so a wipe failure still leaves motion restarted", async () => {
+			bulkQuery
+				.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 				.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
-			const sql = bulkQuery.mock.calls.map(([c]) => typeof c === "string" ? c : c.text)
-			expect(sql).toContain("ROLLBACK")
-			expect(sql).not.toContain("COMMIT")
-			expect(release).toHaveBeenCalledWith(undefined)
+			expect(bulkSql()).not.toContain("DELETE FROM objects_detected WHERE camera = $1")
+			expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
+			expect(fs.promises.rm).toHaveBeenCalled()
 		})
 
-		test("discards the client when the rollback itself fails", async () => {
-			bulkQuery.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+		test("rolls the frame_files wipe back when the objects_detected delete fails, so a retry can clear both", async () => {
+			bulkQuery
+				.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
+				.mockImplementationOnce(() => Promise.resolve({ rows: [] }))
 				.mockImplementationOnce(() => Promise.reject(new Error("deadlock detected")))
-				.mockImplementationOnce(() => Promise.reject(new Error("connection terminated")))
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")
 			expect(res.status).toBe(500)
-			expect(release).toHaveBeenCalledWith(expect.any(Error))
+			expect(bulkSql()).toEqual([
+				"BEGIN",
+				"DELETE FROM frame_files WHERE camera = $1",
+				"DELETE FROM objects_detected WHERE camera = $1",
+				"ROLLBACK"
+			])
+			expect(fs.promises.rm).toHaveBeenCalled()
 		})
 
 		test("clears objects_detected rows and prefixed objectCaptures files", async () => {
-			fs.promises.readdir.mockResolvedValueOnce(["1-100.jpg", "1-200.jpg", "12-300.jpg", "2-400.jpg"])
+			fs.promises.readdir.mockImplementation((p) =>
+				Promise.resolve(p.includes("objectCaptures") ? ["1-100.jpg", "1-200.jpg", "12-300.jpg", "2-400.jpg"] : []))
 			const res = await supertest(app)
 				.delete("/camera/1")
 				.set("Cookie", "validCookie")

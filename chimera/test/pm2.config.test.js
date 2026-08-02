@@ -31,6 +31,16 @@ describe("pm2.config production logging", () => {
 	})
 })
 
+describe("pm2.config heartbeat", () => {
+	test("runs when alert_URL is set", () => {
+		expect(appNamed(load({ alert_URL: "https://hook.example" }), "heartbeat")).toBeDefined()
+	})
+
+	test("skipped without alert_URL — heartbeat refuses to start with no webhook url, so pm2 would restart-loop it", () => {
+		expect(appNamed(load({}), "heartbeat")).toBeUndefined()
+	})
+})
+
 describe("pm2.config cluster gate", () => {
 	test.each(["max", "0", "-1", "4"])("chimeraInstances=%s forces memory on and scales the service", (chimeraInstances) => {
 		const config = load({ chimeraInstances, memory_ON: "false" })

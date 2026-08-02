@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, objectFeedProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -11,7 +11,6 @@ let allEnvPresent = true
 const schema = parseSchema()
 const optionalKeys = new Set(schema.filter(v => v.optional).map(v => v.key))
 const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
-const isSecret = (key) => /^SECRETKEY$|_(AUTH|TOKEN|PASSWORD)$/.test(key)
 
 const instances = (process.env.chimeraInstances || "").trim()
 if (instances !== "" && !validInstances(instances)) {
@@ -72,8 +71,8 @@ const checkVar = (varName) => {
 		allEnvPresent = false
 		return false
 	}
-	if (varName === "SECRETKEY" && val.trim().length < 32) {
-		console.log("SECRETKEY TOO SHORT — must be at least 32 characters:", varName)
+	if (isSecret(varName) && val.trim().length < 32) {
+		console.log("TOO SHORT — must be at least 32 characters:", varName)
 		allEnvPresent = false
 		return false
 	}
@@ -162,8 +161,12 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 
-const gwHost = hostnameOf(gatewayHost()) || (process.env.gateway_HOST || "").trim()
-if (gwHost && !LOOPBACK.includes(gwHost) && process.env.command_COOKIE_SECURE !== "true") {
+const cookieProblem = cookieSecureProblem(envLines)
+if (cookieProblem) {
+	console.log(cookieProblem)
+	allEnvPresent = false
+}
+else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
 

@@ -27,9 +27,6 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate test .env
-        run: cp .github/ci.env .env
-
       - name: Install root dependencies
         run: npm ci
 

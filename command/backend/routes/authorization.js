@@ -1,9 +1,10 @@
 var express = require("express")
 var { validateBody, auth, password, timingSafeCompare } = require("lib")
-const { requireAdmin } = auth
-const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE } = require("./lib/auth.js")
+const { requireAdmin, isCrossSite } = auth
+const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
+const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).send({ error: "forbidden" }) : next())
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
@@ -37,7 +38,10 @@ const sharedAttempts = process.env.memory_ON == "true"
 const memoryClient = sharedAttempts ? memory.client("AUTH") : null
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const rateLimit = ({ windowMs, max, keyFn }) => {
+const releaseOnSuccess = (res, release) =>
+	res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
+
+const makeReserve = ({ windowMs, max, keyFn }) => {
 	const local = memory.loginAttempts()
 	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
 	const reserveLocal = (key, cb) =>
@@ -52,20 +56,44 @@ const rateLimit = ({ windowMs, max, keyFn }) => {
 			cb(blocked, () => memoryClient.emit("loginRelease", key))
 		})
 	}
+	return (req, cb) => reserve(getKey(req), cb)
+}
+
+const rateLimit = (opts) => {
+	const reserve = makeReserve(opts)
 	return (req, res, next) => {
-		const key = getKey(req)
-		reserve(key, (blocked, release) => {
+		reserve(req, (blocked, release) => {
 			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
-			res.on("finish", () => {
-				if (res.statusCode < 400 || res.statusCode >= 500) release()
-			})
+			releaseOnSuccess(res, release)
 			next()
 		})
 	}
 }
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
-const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyFn: (req) => `user:${String(req.body?.username ?? "")}` })
+
+const THROTTLE_WINDOW_MS = 10000
+
+const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
+
+const accountLimiter = (() => {
+	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
+	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
+	// knownDevice never rejects — it answers false for a bad token, a bad signature or a failed query
+	return (req, res, next) => knownDevice(req).then((known) => {
+		if (known) return next()
+		budget(req, (blocked, release) => {
+			req.accountThrottled = blocked
+			if (!blocked) {
+				releaseOnSuccess(res, release)
+				return next()
+			}
+			throttle(req, (tooSoon) => tooSoon
+				? res.status(429).json({ error: true, errors: "Too many attempts" })
+				: next())
+		})
+	})
+})()
 
 app.get("/status", async (req, res) => {
 	try {
@@ -106,7 +134,7 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	}
 })
 
-app.post("/login", validateBody, loginLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, loginLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])

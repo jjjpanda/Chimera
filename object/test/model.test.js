@@ -113,15 +113,97 @@ describe("ensureModel", () => {
 
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
-		expect(fetch).toHaveBeenCalledWith("http://custom.url")
+		expect(fetch).toHaveBeenCalledWith("http://custom.url", expect.objectContaining({ signal: expect.anything() }))
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
 	})
 
 	test("throws error if fetch fails with HTTP error", async () => {
 		fs.existsSync.mockReturnValue(false)
 		mockFetch(Buffer.from(""), false, 404)
-		
+
 		await expect(ensureModel()).rejects.toThrow("model download failed: 404")
+	})
+
+	test("aborts the download once it stalls past the connect timeout", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		let capturedSignal
+		fetch.mockImplementationOnce((url, { signal }) => new Promise((resolve, reject) => {
+			capturedSignal = signal
+			signal.addEventListener("abort", () => {
+				const err = new Error("The operation was aborted")
+				err.name = "AbortError"
+				reject(err)
+			})
+		}))
+
+		const promise = ensureModel()
+		jest.advanceTimersByTime(60000)
+
+		await expect(promise).rejects.toThrow(/aborted/i)
+		expect(capturedSignal.aborted).toBe(true)
+
+		jest.useRealTimers()
+	})
+
+	test("lets a body read slower than the connect timeout finish", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		const goodBuffer = Buffer.from("slow model data")
+		process.env.object_MODEL_SHA256 = crypto.createHash("sha256").update(goodBuffer).digest("hex")
+
+		let capturedSignal
+		let releaseBody
+		fetch.mockImplementationOnce((url, { signal }) => {
+			capturedSignal = signal
+			return Promise.resolve({
+				ok: true,
+				status: 200,
+				arrayBuffer: () => new Promise((resolve) => { releaseBody = resolve })
+			})
+		})
+
+		const promise = ensureModel()
+		await Promise.resolve()
+		await Promise.resolve()
+
+		jest.advanceTimersByTime(120000)
+		expect(capturedSignal.aborted).toBe(false)
+
+		releaseBody(goodBuffer.buffer.slice(goodBuffer.byteOffset, goodBuffer.byteOffset + goodBuffer.byteLength))
+
+		await expect(promise).resolves.toBe(MODEL_PATH)
+
+		jest.useRealTimers()
+	})
+
+	test("aborts a body read that never finishes within the download timeout", async () => {
+		fs.existsSync.mockReturnValue(false)
+		jest.useFakeTimers()
+
+		fetch.mockImplementationOnce((url, { signal }) => Promise.resolve({
+			ok: true,
+			status: 200,
+			arrayBuffer: () => new Promise((resolve, reject) => {
+				signal.addEventListener("abort", () => {
+					const err = new Error("The operation was aborted")
+					err.name = "AbortError"
+					reject(err)
+				})
+			})
+		}))
+
+		const promise = ensureModel()
+		await Promise.resolve()
+		await Promise.resolve()
+
+		jest.advanceTimersByTime(10 * 60 * 1000)
+
+		await expect(promise).rejects.toThrow(/aborted/i)
+
+		jest.useRealTimers()
 	})
 
 	test("default path: returns existing file if it matches DEFAULT_SHA256", async () => {
@@ -165,7 +247,7 @@ describe("ensureModel", () => {
 			
 		const result = await ensureModel()
 		expect(result).toBe(MODEL_PATH)
-		expect(fetch).toHaveBeenCalledWith("https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx")
+		expect(fetch).toHaveBeenCalledWith("https://github.com/jjjpanda/Chimera/releases/download/v6_resources/yolox_tiny.onnx", expect.objectContaining({ signal: expect.anything() }))
 		expect(fs.writeFileSync).toHaveBeenCalledWith(MODEL_PATH, expect.any(Buffer))
 		
 		crypto.createHash.mockRestore()
