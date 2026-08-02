@@ -134,6 +134,12 @@ sudo chown "$USER":1000 .env && sudo chmod 640 .env
 
 `chmod 644 .env` also clears the error, but then every account on the machine can read your secrets. With `640` only you and group 1000 can. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
 
+Each `cameraconf/*.conf` holds `netcam_userpass`, a camera password, and `cp` leaves it at the same world-readable `644`. The container fixes its group on every start, so a hand-copied camera conf only needs the mode tightened, not the ownership:
+
+```sh
+chmod 640 cameraconf/*.conf
+```
+
 This only matters when the project folder lives on Linux — a Linux host, or a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Mac or Windows drive, such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera`, Docker Desktop sets the ownership for you.
 
 </details>

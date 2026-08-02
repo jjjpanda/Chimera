@@ -63,17 +63,17 @@ const SECRET_MODE = 0o640
 const CONTAINER_GID = 1000
 const secretsWritten = []
 const writeSecret = (file, data) => {
-	fs.writeFileSync(file, data)
+	fs.writeFileSync(file, data, { mode: SECRET_MODE })
 	fs.chmodSync(file, SECRET_MODE)
 	if (!secretsWritten.includes(file)) secretsWritten.push(file)
 }
 const groupHint = () => {
 	const gid = process.getgid?.()
-	if (!secretsWritten.length || gid === undefined || gid === CONTAINER_GID) return null
-	const files = secretsWritten.map(f => path.relative(ROOT, f)).join(" ")
-	return `Wrote ${files} mode 0640 — your account and group ${CONTAINER_GID} can read them, nobody else.\n`
+	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
+	const file = path.relative(ROOT, ENV)
+	return `Wrote ${file} mode 0640 — your account and group ${CONTAINER_GID} can read it, nobody else.\n`
 		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
-		+ `  sudo chown "$USER":${CONTAINER_GID} ${files} && sudo chmod 640 ${files}\n`
+		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
 }
 
 const seedEnv = () => writeSecret(ENV,
