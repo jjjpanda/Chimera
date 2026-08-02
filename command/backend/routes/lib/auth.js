@@ -51,13 +51,12 @@ module.exports = {
 			: res.status(400).json({ error: true, errors: "Invalid username or password" })
 		const serverError = () => res.status(500).json({ error: true })
 
-		pool.query("SELECT hash, role, force_password_change, temp_password_expires, theme FROM auth WHERE username = $1", [username], (err, values) => {
+		pool.query("SELECT hash, role, force_password_change, theme FROM auth WHERE username = $1", [username], (err, values) => {
 			if (err) return serverError()
 			const row = values.rows[0]
 			bcrypt.compare(password === undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
 				if (err) return serverError()
 				if (!success || !row || !row.hash) return deny()
-				if (row.force_password_change && row.temp_password_expires && new Date(row.temp_password_expires) < new Date()) return deny()
 				req.userRole = row.role
 				req.deviceKey = deviceKey(row.hash)
 				req.forcePasswordChange = row.force_password_change

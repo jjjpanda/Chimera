@@ -141,7 +141,7 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	try {
 		const tempPassword = randomBytes(16).toString("hex")
 		const hash = await hashPassword(tempPassword)
-		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
 		if (e.code === "23505") return sendError(res, new HttpError(400))
@@ -172,7 +172,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 			if (password !== undefined) {
 				values.push(hash)
 				updates.push(`hash = $${values.length}`)
-				updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
+				updates.push(`force_password_change = ${username === req.decoded.username ? "FALSE" : "TRUE"}`)
 			}
 			values.push(username)
 			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
@@ -237,7 +237,7 @@ app.post("/password", authorize, validateBody, async (req, res) => {
 			const current = (await client.query("SELECT hash, force_password_change FROM auth WHERE username = $1", [username])).rows[0]
 			if (!current) throw new HttpError(404)
 			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "Current password is incorrect")
-			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
 		auth.invalidateUser(username)

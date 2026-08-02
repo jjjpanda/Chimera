@@ -1,10 +1,12 @@
 import React from "react"
-import { Sun, Moon, Monitor } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Sun, Moon, Monitor, KeyRound } from "lucide-react"
 
 import SideMenu from "./SideMenu"
 import MobileView from "./MobileView"
 import SignOutButton from "./SignOutButton.jsx"
 import { useTheme } from "./ThemeContext.jsx"
+import { indexToRoute } from "../js/routeIndexMapping"
 import { cn } from "../lib/utils"
 
 const themeOptions = [
@@ -15,6 +17,7 @@ const themeOptions = [
 
 const MobileMain = ({ index }) => {
 	const { theme, applyTheme } = useTheme()
+	const navigate = useNavigate()
 
 	return (
 		<div className="min-h-screen bg-bg pb-24 pt-3 px-3">
@@ -40,6 +43,18 @@ const MobileMain = ({ index }) => {
 							</button>
 						))}
 					</div>
+					<div className="w-px self-stretch bg-border" />
+					<button
+						aria-label="account"
+						title="account"
+						onClick={() => { if (index !== "route-8") navigate(indexToRoute("route-8")) }}
+						className={cn(
+							"flex items-center justify-center px-2.5 py-1.5 transition-colors",
+							index === "route-8" ? "text-accent" : "hover:text-primary"
+						)}
+					>
+						<KeyRound className="size-4" />
+					</button>
 					<div className="w-px self-stretch bg-border" />
 					<SignOutButton className="flex items-center justify-center px-2.5 py-1.5 transition-colors hover:text-primary" iconOnly />
 				</div>

@@ -22,7 +22,7 @@ const ChangePasswordForm = ({ changePassword }) => {
 			setMessage(invalid)
 			return
 		}
-		changePassword(password, (success, errors) => {
+		changePassword({ password }, (success, errors) => {
 			setStatus(success ? "done" : "failed")
 			setMessage(success ? null : errors)
 		})

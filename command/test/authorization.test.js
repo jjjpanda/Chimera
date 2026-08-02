@@ -230,23 +230,10 @@ describe("Authorization Routes", () => {
 			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
 		})
 
-		test("rejects login when a forced temp password has expired", async () => {
+		test("allows login with a forced temp password regardless of age", async () => {
 			const hash = bcrypt.hashSync("temppass123", 10)
 			mockedPool.query.mockImplementationOnce((str, params, cb) => {
-				const result = { rows: [{ hash, role: "user", force_password_change: true, temp_password_expires: new Date(Date.now() - 60000) }], rowCount: 1 }
-				cb(null, result)
-				return Promise.resolve(result)
-			})
-			const res = await supertest(app)
-				.post("/authorization/login")
-				.send({ username: "bob", password: "temppass123" })
-			expect(res.status).toBe(400)
-		})
-
-		test("allows login when a forced temp password has not expired", async () => {
-			const hash = bcrypt.hashSync("temppass123", 10)
-			mockedPool.query.mockImplementationOnce((str, params, cb) => {
-				const result = { rows: [{ hash, role: "user", force_password_change: true, temp_password_expires: new Date(Date.now() + 3600000) }], rowCount: 1 }
+				const result = { rows: [{ hash, role: "user", force_password_change: true }], rowCount: 1 }
 				cb(null, result)
 				return Promise.resolve(result)
 			})
@@ -255,6 +242,7 @@ describe("Authorization Routes", () => {
 				.send({ username: "bob", password: "temppass123" })
 			expect(res.status).toBe(200)
 			expect(res.body.error).toBe(false)
+			expect(res.body.forcePasswordChange).toBe(true)
 		})
 
 		test("returns 500 when token signing fails", async () => {
@@ -562,7 +550,7 @@ describe("Authorization Routes", () => {
 			expect(spy).toHaveBeenCalled()
 		})
 
-		test("returns 200 when updating password", async () => {
+		test("returns 200 when updating password and forces a change on next login", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const spy = jest.spyOn(auth, "invalidateUser")
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
@@ -572,8 +560,27 @@ describe("Authorization Routes", () => {
 				.send({ password: "newpassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith(
+				"UPDATE auth SET hash = $1, force_password_change = TRUE WHERE username = $2",
+				expect.arrayContaining(["bob"])
+			)
 			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", ["bob", "jti-admin"])
 			expect(spy).toHaveBeenCalled()
+		})
+
+		test("does not force a change when an admin updates their own password", async () => {
+			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
+			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
+			const res = await supertest(app)
+				.patch("/authorization/users/admin")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ password: "newpassword" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+			expect(mockedPool.query).toHaveBeenCalledWith(
+				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
+				expect.arrayContaining(["admin"])
+			)
 		})
 
 		test("returns 400 for a password shorter than 8 characters", async () => {
@@ -780,7 +787,7 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
-				"UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2",
+				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
 				expect.arrayContaining(["bob"])
 			)
 			expect(mockedPool.query).toHaveBeenCalledWith(
@@ -799,7 +806,7 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Current password is incorrect" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(
-				"UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2",
+				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
 				expect.anything()
 			)
 		})

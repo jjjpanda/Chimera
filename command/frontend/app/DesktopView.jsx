@@ -13,6 +13,7 @@ import Status from "./StatusTree"
 import AdminPanel from "./AdminPanel"
 import ScheduleDashboard from "./ScheduleDashboard.jsx"
 import ObjectDetections from "./ObjectDetections.jsx"
+import AccountSettings from "./AccountSettings.jsx"
 
 const DesktopView = ({ index }) => {
 	const role = useRole()
@@ -32,6 +33,8 @@ const DesktopView = ({ index }) => {
 	if (index === "route-7") return <ObjectDetections />
 
 	if (index === "route-6") return <AdminPanel />
+
+	if (index === "route-8") return <AccountSettings />
 
 	return (
 		<div className="space-y-4">
