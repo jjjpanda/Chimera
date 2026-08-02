@@ -18,6 +18,7 @@ import ResizeHandle from "../components/ResizeHandle.jsx"
 import CameraGridMini from "../components/CameraGridMini.jsx"
 import usePreviewHeight from "../hooks/usePreviewHeight"
 import { padSlots, gridShape } from "../js/grid.js"
+import frameLimits from "lib/utils/frames.json"
 import { nearestFrameIndex, frameSpacingMs, boxesForScrub, fuseMarkers } from "../js/detections.js"
 import toast from "../js/toast"
 import moment from "moment"
@@ -290,7 +291,7 @@ const ClipMakerFull = () => {
 	const [camera, setCamera] = useState(null)
 	const [startDate, setStartDate] = useState(moment().subtract(4, "hours"))
 	const [endDate, setEndDate] = useState(moment())
-	const [number, setNumber] = useState(10)
+	const [number, setNumber] = useState(frameLimits.default)
 	const [fps, setFps] = useState(20)
 	const [skip, setSkip] = useState(1)
 	const [scrubIdx, setScrubIdx] = useState(0)
@@ -850,17 +851,18 @@ const ClipMakerFull = () => {
 					<div className="flex flex-col gap-1.5">
 						<Label>Frames</Label>
 						<div className="flex items-center gap-2">
-							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(1, n - 10))}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(frameLimits.min, n - 10))}>
 								<Minus className="size-4" />
 							</Button>
 							<Input
 								type="number"
-								min="1"
+								min={frameLimits.min}
+								max={frameLimits.max}
 								value={number}
-								onChange={e => setNumber(Math.max(1, parseInt(e.target.value) || 1))}
+								onChange={e => setNumber(Math.min(frameLimits.max, Math.max(frameLimits.min, parseInt(e.target.value) || frameLimits.min)))}
 								className="flex-1 text-center text-sm font-medium px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 							/>
-							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => n + 10)}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.min(frameLimits.max, n + 10))}>
 								<Plus className="size-4" />
 							</Button>
 						</div>

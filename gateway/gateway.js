@@ -25,6 +25,11 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 	})
 }
 
+app.use((req, res, next) => {
+	delete req.headers.authorization
+	next()
+})
+
 const services = require("./services.js")
 for(const apiService of services){
 	const {serviceOn, log, postPathRegex, getPathRegex, deletePathRegex, putPathRegex, patchPathRegex, baseURL} = apiService
@@ -51,7 +56,6 @@ for(const apiService of services){
 			target: baseURL,
 			logLevel: "silent",
 			xfwd: true,
-			onProxyReq: (proxyReq) => proxyReq.removeHeader("authorization"),
 		}))
 	}
 }

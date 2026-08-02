@@ -85,6 +85,17 @@ describe("Convert Routes", () => {
 	})
 
 	describe("/convert/listFramesVideo", () => {
+		test("clamps out-of-range and non-numeric frames", () => {
+			const { clampFrames } = require("../backend/routes/lib/video.js")
+			const { min, max, default: fallback } = require("lib").frames
+			expect(clampFrames(max + 1)).toBe(max)
+			expect(clampFrames(0)).toBe(min)
+			expect(clampFrames(-5)).toBe(min)
+			expect(clampFrames(250)).toBe(250)
+			expect(clampFrames("abc")).toBe(fallback)
+			expect(clampFrames(undefined)).toBe(fallback)
+		})
+
 		test("get list of frame with a camera number", (done) => {
 			supertest(app)
 				.post("/convert/listFramesVideo")

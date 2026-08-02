@@ -140,6 +140,16 @@ describe("runInteractive re-walk", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	test("blank SECRETKEY answer fills in the generated default instead of leaving it blank", async () => {
+		setup({
+			env: BLANK,
+			answers: ["false", "false", "false", ""]
+		})
+		const { env, exitCode } = await run()
+		expect(env).toMatch(/SECRETKEY = [A-Za-z0-9_-]{32,}/)
+		expect(exitCode).toBe(0)
+	})
+
 	test("seeds .env from env.example when it is missing", async () => {
 		setup({
 			env: {},
