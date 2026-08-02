@@ -71,7 +71,7 @@ const groupHint = () => {
 	const gid = process.getgid?.()
 	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
 	const file = path.relative(ROOT, ENV)
-	return `Wrote ${file} mode 0640 — your account and group ${CONTAINER_GID} can read it, nobody else.\n`
+	return `Wrote ${file} mode 0640 — only your account can read it right now.\n`
 		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
 		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
 }
