@@ -111,7 +111,7 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
 
-Set `command_COOKIE_SECURE=true` if browsers reach you over HTTPS, however the certificate gets there. Set it `false` for plain HTTP. `true` on a plain-HTTP origin breaks login outright — browsers drop the `Secure` cookie. `false` on an HTTPS deploy fails silently instead: login still works, but the 30-day session cookie and the 365-day device token both ship without `Secure`.
+Set `command_COOKIE_SECURE=true` if browsers reach you over HTTPS, however the certificate gets there. Set it `false` for plain HTTP. Wrong either way costs you something: `true` on plain HTTP breaks login outright, `false` on HTTPS silently drops the `Secure` flag from your login cookies.
 
 On plain HTTP, also give `gateway_HOST` an explicit `http://` prefix — `http://192.168.1.50:8080` — and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`. An HTTPS port still gets published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
 

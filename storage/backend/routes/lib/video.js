@@ -10,7 +10,7 @@ const {
 	memoryEmitter,
 }              = require("./converter.js")
 const { EXPORT_LOCK_REFRESH_MS, exportLockName } = require("./file.js")
-const {webhookAlert, alertTime, gatewayHost} = require("lib")
+const {webhookAlert, alertTime, gatewayHost, frames: frameLimits} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
@@ -69,7 +69,7 @@ const clampFPS = (fps) => {
 
 const clampFrames = (frames) => {
 	frames = Number(frames)
-	return Number.isFinite(frames) ? Math.min(Math.max(frames, 1), 1000) : 10
+	return Number.isFinite(frames) ? Math.min(Math.max(frames, frameLimits.min), frameLimits.max) : frameLimits.default
 }
 
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {

@@ -25,8 +25,6 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 	})
 }
 
-// load-bearing: strips Authorization before it reaches any proxy target, so scheduler_AUTH's bearer bypass
-// can never be triggered by traffic that transited the gateway — only direct-to-storage traffic carries it
 app.use((req, res, next) => {
 	delete req.headers.authorization
 	next()
