@@ -5,9 +5,14 @@
 DOMAIN=$(echo "$gateway_HOST" | sed -e 's|^http://||' -e 's|^https://||' | awk -F/ '{print $1}' | awk -F: '{print $1}')
 mkdir -p /webroot/.well-known/acme-challenge
 
+LE_DIR="${LE_DIR:-/etc/letsencrypt}"
+
 grant_gateway_read() {
-	chgrp -R 1000 /etc/letsencrypt/live /etc/letsencrypt/archive 2>/dev/null || true
-	chmod -R g+rX /etc/letsencrypt/live /etc/letsencrypt/archive 2>/dev/null || true
+	[ -n "$DOMAIN" ] || return 0
+	chgrp 1000 "$LE_DIR/live" "$LE_DIR/archive" 2>/dev/null || true
+	chmod g+X "$LE_DIR/live" "$LE_DIR/archive" 2>/dev/null || true
+	chgrp -R 1000 "$LE_DIR/live/$DOMAIN" "$LE_DIR/archive/$DOMAIN" 2>/dev/null || true
+	chmod -R g+rX "$LE_DIR/live/$DOMAIN" "$LE_DIR/archive/$DOMAIN" 2>/dev/null || true
 }
 
 if [ -n "$DOMAIN" ]; then
@@ -22,7 +27,7 @@ fi
 
 fails=0
 while true; do
-	if [ -n "$DOMAIN" ] && [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+	if [ -n "$DOMAIN" ] && [ ! -d "$LE_DIR/live/$DOMAIN" ]; then
 		if certbot certonly --webroot -w /webroot -d "$DOMAIN" --register-unsafely-without-email --agree-tos --non-interactive; then
 			grant_gateway_read
 			fails=0
