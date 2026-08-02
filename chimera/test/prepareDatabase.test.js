@@ -12,10 +12,12 @@ describe("prepareDatabase migration tasks", () => {
 		expect(poolConfig.connectionTimeoutMillis).toBe(5000)
 	})
 
-	test("creates the auth table with temp_password_expires", () => {
+	test("creates the auth table without temp_password_expires", () => {
 		const t = find(/CREATE TABLE auth\b/)
 		expect(t).toBeDefined()
-		expect(t.query).toMatch(/temp_password_expires TIMESTAMPTZ/)
+		expect(t.query).toMatch(/force_password_change BOOLEAN/)
+		expect(t.query).not.toMatch(/temp_password_expires/)
+		expect(t.columns).not.toContain("temp_password_expires")
 	})
 
 	test("all CREATE TABLE timestamp columns are timestamptz, not naive", () => {

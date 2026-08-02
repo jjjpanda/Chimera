@@ -40,6 +40,8 @@ const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
+const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (req) => `password:${req.decoded?.username ?? ""}` })
+
 const THROTTLE_WINDOW_MS = 10000
 
 const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
@@ -141,7 +143,7 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	try {
 		const tempPassword = randomBytes(16).toString("hex")
 		const hash = await hashPassword(tempPassword)
-		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
 		if (e.code === "23505") return sendError(res, new HttpError(400))
@@ -172,7 +174,8 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 			if (password !== undefined) {
 				values.push(hash)
 				updates.push(`hash = $${values.length}`)
-				updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
+				values.push(username !== req.decoded.username)
+				updates.push(`force_password_change = $${values.length}`)
 			}
 			values.push(username)
 			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
@@ -227,17 +230,17 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	}
 })
 
-app.post("/password", authorize, validateBody, async (req, res) => {
+app.post("/password", authorize, validateBody, passwordLimiter, async (req, res) => {
 	const { password, currentPassword } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
-		const hash = await hashPassword(password)
 		await withTransaction(async (client) => {
 			const current = (await client.query("SELECT hash, force_password_change FROM auth WHERE username = $1", [username])).rows[0]
 			if (!current) throw new HttpError(404)
 			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "Current password is incorrect")
-			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+			const hash = await hashPassword(password)
+			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
 		auth.invalidateUser(username)

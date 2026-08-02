@@ -21,11 +21,11 @@ const attemptLogin = (username, password) =>
 		body: JSON.stringify({ username, password })
 	}, authPromiseHandler)
 
-const attemptPasswordChange = (password) =>
+const attemptPasswordChange = (password, currentPassword) =>
 	request("/authorization/password", {
 		method: "POST",
 		headers: { "Accept": "application/json", "Content-Type": "application/json" },
-		body: JSON.stringify({ password })
+		body: JSON.stringify({ password, currentPassword })
 	}, authPromiseHandler)
 
 const attemptSetup = (username, password, token) =>
@@ -108,8 +108,8 @@ const useAuth = () => {
 		})
 	}
 
-	const changePassword = (password, callback) => {
-		attemptPasswordChange(password).then(res => {
+	const changePassword = ({ password, currentPassword }, callback) => {
+		attemptPasswordChange(password, currentPassword).then(res => {
 			if (!res.error) setState(s => ({ ...s, forcePasswordChange: false }))
 			callback(!res.error, res.errors)
 		})
