@@ -67,8 +67,25 @@ const writeSecret = (file, data) => {
 	fs.chmodSync(file, SECRET_MODE)
 	if (!secretsWritten.includes(file)) secretsWritten.push(file)
 }
+const modesSupported = (() => {
+	let cached
+	return () => {
+		if (cached !== undefined) return cached
+		const probe = path.join(ROOT, `.preflight-mode-${process.pid}`)
+		try {
+			fs.writeFileSync(probe, "", { mode: 0o600 })
+			cached = (fs.statSync(probe).mode & 0o777) === 0o600
+		} catch {
+			cached = false
+		} finally {
+			try { fs.unlinkSync(probe) } catch { /* nothing to remove */ }
+		}
+		return cached
+	}
+})()
 const looseMode = (file) => {
 	try {
+		if (!modesSupported()) return null
 		const mode = fs.statSync(file).mode & 0o777
 		return mode & 0o037 ? `0${mode.toString(8).padStart(3, "0")}` : null
 	} catch {

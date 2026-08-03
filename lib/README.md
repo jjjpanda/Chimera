@@ -36,6 +36,7 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 - `formatBytes` — human-readable byte sizes.
 - `randomID` — `nanoid` generator.
 - `password` — shared password-policy JSON.
+- `frames` — shared video-export frame-count limits JSON (`min` / `max` / `default`).
 - `jsonFileHanding` — JSON read/write/validate (key spelled `jsonFileHanding`).
 - `mapLimit` — run an async fn over items with bounded concurrency.
 

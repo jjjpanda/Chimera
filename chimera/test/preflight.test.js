@@ -442,16 +442,19 @@ describe("looseMode", () => {
 
 	afterAll(() => fs.rmSync(dir, { recursive: true, force: true }))
 
-	test("names the mode of a world-readable secret", () => {
+	// win32 and WSL's /mnt/c report a fixed mode whatever chmod does, and looseMode opts out there
+	const onModes = (fs.statSync(at("probe", 0o600)).mode & 0o777) === 0o600 ? test : test.skip
+
+	onModes("names the mode of a world-readable secret", () => {
 		expect(looseMode(at("world", 0o644))).toBe("0644")
 	})
 
-	test("accepts the modes preflight itself writes", () => {
+	onModes("accepts the modes preflight itself writes", () => {
 		expect(looseMode(at("tight", 0o640))).toBeNull()
 		expect(looseMode(at("owner", 0o600))).toBeNull()
 	})
 
-	test("flags group-write — group 1000 could rewrite the secret, not just read it", () => {
+	onModes("flags group-write — group 1000 could rewrite the secret, not just read it", () => {
 		expect(looseMode(at("groupwrite", 0o660))).toBe("0660")
 	})
 

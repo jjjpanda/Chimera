@@ -11,7 +11,16 @@ jest.mock("fs", () => {
 			if (k === undefined) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
 			return mockState.files[k]
 		}),
-		writeFileSync: jest.fn((p, data) => { mockState.files[key(p)] = data }),
+		writeFileSync: jest.fn((p, data, opts) => {
+			const k = key(p)
+			mockState.files[k] = data
+			if (opts?.mode !== undefined) mockState.modes[k] = opts.mode
+		}),
+		unlinkSync: jest.fn((p) => {
+			const k = key(p)
+			delete mockState.files[k]
+			delete mockState.modes[k]
+		}),
 		chmodSync: jest.fn((p, mode) => {
 			const k = key(p)
 			if (mockState.chmodFail.has(k)) throw Object.assign(new Error("EPERM"), { code: "EPERM" })
