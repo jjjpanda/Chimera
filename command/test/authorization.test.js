@@ -54,12 +54,12 @@ describe("Authorization Routes", () => {
 			expect(spy).toHaveBeenCalled()
 		})
 
-		test("refuses setup when setup_TOKEN is not configured", async () => {
+		test("refuses setup without disclosing that setup_TOKEN is unconfigured", async () => {
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+			expect(res.body).toEqual({ error: true })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 

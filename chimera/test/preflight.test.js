@@ -20,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -264,6 +264,24 @@ describe("certbotPortProblem", () => {
 	test("a non-80 port passes with certbot off — BYO certs do not use HTTP-01", () => {
 		expect(certbotPortProblem(lines({ certbot_ON: "false", gateway_PORT: "8080" }))).toBeNull()
 		expect(certbotPortProblem(lines({ gateway_PORT: "8080" }))).toBeNull()
+	})
+
+	test("a non-80 port passes with gateway_ON=false — watchCertRenewal never runs without the gateway service", () => {
+		expect(certbotPortProblem(lines({ gateway_ON: "false", certbot_ON: "true", gateway_PORT: "8080" }))).toBeNull()
+	})
+})
+
+describe("setupTokenHint", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("names setup_TOKEN and how to read it back — the wizard only ever showed it as a default", () => {
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/setup_TOKEN/)
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/grep setup_TOKEN/)
+	})
+
+	test("no hint when the command service is off — there is no setup screen to reach", () => {
+		expect(setupTokenHint(lines({ command_ON: "false" }))).toBeNull()
+		expect(setupTokenHint(lines({}))).toBeNull()
 	})
 })
 

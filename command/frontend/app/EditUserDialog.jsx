@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
-import { validatePassword } from "../js/password.js"
+import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 
 const ROLES = ["user", "admin"]
 
@@ -70,6 +70,7 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 					<div className="flex flex-col gap-1">
 						<Label htmlFor={`${uid}-password`} className="text-primary">New Password</Label>
 						<Input id={`${uid}-password`} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="leave blank to keep current" />
+						<p className="text-muted text-xs">{PASSWORD_REQUIREMENT}</p>
 					</div>
 					<div className="flex flex-col gap-1">
 						<Label htmlFor={`${uid}-confirm`} className="text-primary">Confirm Password</Label>

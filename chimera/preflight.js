@@ -219,9 +219,13 @@ const cookieSecureProblem = (lines) =>
 		: null
 
 const certbotPortProblem = (lines) =>
-	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
-		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose publishes only gateway_PORT, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
+	!isServiceOff(lines, "gateway_PORT") && getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
+		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
 		: null
+
+const setupTokenHint = (lines) => on(lines, "command")
+	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
+	: null
 
 const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
@@ -416,6 +420,8 @@ const runInteractive = async () => {
 	}
 
 	rl.close()
+	const setupHint = setupTokenHint(lines)
+	if (setupHint) console.log(setupHint)
 	const hint = groupHint()
 	if (hint) console.log(hint)
 	if (motionOk && camOk && envOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
@@ -427,4 +433,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

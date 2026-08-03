@@ -20,7 +20,9 @@ const framesInWindow = (camera, from, to) => String(camera) !== "1" ? [] : frame
 
 const frameListRows = (sql, [camera, from, to, step, limit]) => {
 	const window = framesInWindow(camera, from, to)
-	const every = /COUNT\(\*\) OVER/.test(sql) ? Math.max(Math.ceil(window.length / Number(step)), 1) : Number(step)
+	const every = /GREATEST\(\$4,/.test(sql)
+		? Math.max(Number(step), Math.ceil(window.length / Number(limit)))
+		: Math.max(Math.ceil(window.length / Number(step)), 1)
 	return window.filter((name, index) => index % every === 0).slice(0, Number(limit)).map((name) => ({ name }))
 }
 

@@ -660,8 +660,22 @@ describe("Convert Routes", () => {
 
 			const [sql, params] = mockedPool.query.mock.calls.find(([q]) => /AS idx/.test(q))
 			expect(sql).toMatch(/ORDER BY timestamp ASC, name ASC/)
-			expect(sql).toMatch(/WHERE idx % \$4 = 0/)
+			expect(sql).toMatch(/WHERE idx % GREATEST\(\$4, CEIL\(total::numeric \/ \$5\)\) = 0/)
 			expect(params[3]).toBe(4)
+		})
+
+		test("a window larger than the cap widens the stride instead of dropping the newest frames", async () => {
+			mockedPool.query.mockClear()
+
+			await new Promise((resolve) => {
+				const { createVideo } = require("../backend/routes/lib/video.js")
+				createVideo({ body: { camera: "1", start: "20210101-000000", end: "20210108-000000" } }, { send: resolve })
+			})
+
+			const [sql, params] = mockedPool.query.mock.calls.find(([q]) => /AS idx/.test(q))
+			expect(sql).toMatch(/COUNT\(\*\) OVER \(\) AS total/)
+			expect(sql).toMatch(/GREATEST\(\$4, CEIL\(total::numeric \/ \$5\)\)/)
+			expect(params[4]).toBe(250000)
 		})
 
 		test("an unreadable database yields an empty list instead of a crash", async () => {

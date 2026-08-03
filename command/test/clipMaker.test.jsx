@@ -107,6 +107,28 @@ test("the Boxes toggle is a switch that its label names", async () => {
 	expect(screen.getByRole("switch", { name: "Boxes" })).toBeTruthy()
 })
 
+describe("clip parameters resolve by their visible labels", () => {
+	test.each(["Camera", "Frames", "Start", "End", "Start time", "End time"])("%s", (label) => {
+		renderClipMaker()
+
+		expect(screen.getByLabelText(label)).toBeTruthy()
+	})
+
+	test("the time-range presets are a group named by their label", () => {
+		renderClipMaker()
+
+		expect(screen.getByRole("group", { name: "Time Range" })).toBeTruthy()
+	})
+
+	test("the multi-camera buttons are a group named by the pluralised label", async () => {
+		renderClipMaker()
+
+		await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+
+		expect(screen.getByRole("group", { name: "Cameras" })).toBeTruthy()
+	})
+})
+
 test("activating the Boxes toggle turns boxes on", async () => {
 	await loadBoxesToggle()
 	const toggle = screen.getByRole("switch", { name: "Boxes" })

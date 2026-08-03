@@ -34,9 +34,9 @@ module.exports = {
 		return (event, ...args) => { if(process.env.memory_ON == "true" && client.connected) client.emit(event, ...args) }
 	},
     
-	/** Every `skipEvery`-th frame of the window, oldest first, for the ffmpeg concat manifest and zip archives. */
+	/** Every `skipEvery`-th frame of the window, oldest first, for the ffmpeg concat manifest and zip archives. Widens the stride past `skipEvery` when the window holds more than `FRAME_LIST_MAX` frames, so an oversized export still spans the requested range instead of stopping partway through it. */
 	filterList: (camera, start, end, skipEvery=1, callback) => frameNames(
-		`SELECT name FROM (SELECT name, row_number() OVER (ORDER BY timestamp ASC, name ASC) - 1 AS idx ${FRAME_WINDOW}) frames WHERE idx % $4 = 0 ORDER BY idx ASC LIMIT $5`,
+		`SELECT name FROM (SELECT name, row_number() OVER (ORDER BY timestamp ASC, name ASC) - 1 AS idx, COUNT(*) OVER () AS total ${FRAME_WINDOW}) frames WHERE idx % GREATEST($4, CEIL(total::numeric / $5)) = 0 ORDER BY idx ASC LIMIT $5`,
 		[camera, windowBound(start), windowBound(end), positiveInt(skipEvery), FRAME_LIST_MAX],
 		callback
 	),
