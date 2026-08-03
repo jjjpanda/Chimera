@@ -6,6 +6,9 @@
     "npm": ">=7.0.0",
     "node": ">=22.0.0"
   },
+  "overrides": {
+    "adm-zip": "^0.6.0"
+  },
   "workspaces": [
     "command",
     "gateway",
