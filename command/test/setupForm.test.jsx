@@ -48,12 +48,12 @@ test("every field is reachable by its visible label", () => {
 	render(React.createElement(SetupForm, { trySetup, tokenRequired: true }))
 
 	fireEvent.change(screen.getByLabelText("Username"), { target: { value: "alice" } })
-	fireEvent.change(screen.getByLabelText("Password"), { target: { value: "longenough1" } })
-	fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: "longenough1" } })
+	fireEvent.change(screen.getByLabelText("Password"), { target: { value: "longenough123" } })
+	fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: "longenough123" } })
 	fireEvent.change(screen.getByLabelText("Setup Token"), { target: { value: "topsecret" } })
 	fireEvent.click(screen.getByText("Create Account"))
 
-	expect(trySetup).toHaveBeenCalledWith("alice", "longenough1", "topsecret", expect.any(Function))
+	expect(trySetup).toHaveBeenCalledWith("alice", "longenough123", "topsecret", expect.any(Function))
 })
 
 test("states the password requirement before anything is submitted", () => {
