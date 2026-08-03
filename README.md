@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`, and separately routed through the gateway by `<prefix>_PROXY_ON`. The gateway is the only public port, so a service whose proxy is off is unreachable from a browser even while it runs — with `command_PROXY_ON=false` the site answers a bare `Cannot GET /` and logs nothing. Set both `true` for the standard single-container deploy.
+Each service is toggled by `<prefix>_ON` and served through the gateway by `<prefix>_PROXY_ON` — set both `true` on a single-machine install. The gateway is the only public port, so a service with its proxy off keeps running but no browser can reach it; with `command_PROXY_ON=false` the site answers a bare `Cannot GET /`.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres
@@ -106,7 +106,7 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 
 **Your footage** lives in a Docker volume, not in a folder you can browse. Pick a camera and a time range in the web app, and it builds an MP4 or a zip you download from the same page.
 
-**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every file in that folder at startup, so there is no second list to keep in step. The restart runs the same config check as the build, so a duplicate `camera_id` or a malformed `netcam_url` stops it there rather than leaving a camera that never appears.
+**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every file in that folder at startup, so there is no second list to keep in step. The restart re-runs the config check, so a bad camera file stops it there instead of quietly never appearing.
 
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
@@ -179,11 +179,11 @@ Your first successful login leaves a second cookie in that browser for a year. I
 
 Three things have to be true, or no certificate is ever issued:
 
-- **A public DNS name that resolves to this machine.** certbot takes the domain from `gateway_HOST`, minus the scheme and port. The `http://192.168.1.50:8080` above is a LAN address, so it asks Let's Encrypt for `192.168.1.50` — which is never issued.
-- **`gateway_PORT=80`, reachable from the internet.** The HTTP-01 challenge arrives as plain HTTP on port 80, and compose publishes only `gateway_PORT`, so your router and firewall have to forward it. The config check refuses any other port while certbot is on, so `docker:build`, `docker:up` and `docker:restart` all stop there.
-- **`gateway_HTTPS_Redirect=true`.** Port 80 stays open for the challenge either way; without the redirect it keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the `Secure` session cookie.
+- **`gateway_HOST` is a public domain name pointing at this machine.** certbot asks for that name without the scheme and port, so the LAN address `http://192.168.1.50:8080` above becomes a request for `192.168.1.50` — never issued.
+- **`gateway_PORT=80`, open through your router.** The challenge arrives as plain HTTP on port 80, and that is the only port published. The config check stops the build on any other port.
+- **`gateway_HTTPS_Redirect=true`.** Otherwise port 80 keeps serving the whole app, and the login form crosses the network in cleartext.
 
-Get any of them wrong and nothing says so in the web app: certbot retries quietly, burning Let's Encrypt's failed-validation limit, while the stack keeps serving plain HTTP. Set `alert_URL` if you want to hear about it.
+Nothing in the web app tells you when this fails — certbot retries quietly until Let's Encrypt rate-limits it, while the stack keeps serving plain HTTP. Set `alert_URL` to hear about it.
 
 certbot runs in its own container. Start the stack with `npm run docker:up` rather than a bare `docker compose up` — the script drops that container when `certbot_ON=false` ([chimera/compose.js](chimera/compose.js)), where compose alone would leave it sitting idle.
 
