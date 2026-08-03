@@ -6,6 +6,7 @@ const cliProgress = require("cli-progress")
 const {
 	generateID,
 	filterList,
+	sampleList,
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
@@ -20,16 +21,8 @@ const emitToMemory = memoryEmitter("VIDEO PROCESS")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const createFrameList = (camera, start, end, limit, callback) => {
-	filterList(camera, start, end, undefined, (filteredList) => {
-		const limitIteration = Math.ceil(filteredList.length/limit)
-
-		const limitedList = filteredList.filter((item, index) => {
-			return (index % limitIteration === 0)
-		}).map((item) => {
-			return `/shared/captures/${camera}/${item}`
-		})
-	
-		callback(limitedList)
+	sampleList(camera, start, end, limit, (sampledList) => {
+		callback(sampledList.map((item) => `/shared/captures/${camera}/${item}`))
 	})
 }
 

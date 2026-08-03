@@ -21,12 +21,14 @@ app.use("/command/health", require("heartbeat").heart)
 app.use("/authorization", require("./routes/authorization.js"))
 app.use("/cameras", auth.createAuthorize(pool), require("./routes/cameras.js"))
 app.use("/res", express.static(path.join(__dirname, "../frontend/res")))
-for(const webpath of ["/login", "/", "/clip", "/live", "/recordings", "/stats", "/schedule", "/admin", "/objects"]){
+const webAppRoutes = ["/login", "/", "/clip", "/live", "/recordings", "/stats", "/schedule", "/admin", "/objects", "/account"]
+for(const webpath of webAppRoutes){
 	app.use(webpath, express.static(path.join(__dirname, "../dist/"), {
 		index: "index.html"
 	}))
 }
 
 app.startDbPruning = () => pruneInterval(pool, "DELETE FROM sessions WHERE revoked = TRUE OR issued_at < NOW() - INTERVAL '30 days'")
+app.webAppRoutes = webAppRoutes
 
 module.exports = app

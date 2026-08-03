@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
+Each service is toggled by `<prefix>_ON` and served through the gateway by `<prefix>_PROXY_ON` — set both `true` on a single-machine install. The gateway is the only public port.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres
@@ -132,7 +132,7 @@ A few checks wait until the container starts: the `*_URL` addresses and the file
 sudo chown "$USER":1000 .env && sudo chmod 640 .env
 ```
 
-`chmod 644 .env` clears the error too, but it opens your passwords to every account on the machine — so `npm run docker:build` and `docker:up` both stop until you put it back. With `640` only you and group 1000 can read them. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
+`chmod 644 .env` clears the error too, but it opens your passwords to every account on the machine — so `npm run docker:build`, `docker:up` and `docker:restart` all stop until you put it back. With `640` only you and group 1000 can read them. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
 
 Each `cameraconf/*.conf` holds `netcam_userpass`, a camera password, and `cp` leaves it at the same world-readable `644`. The container fixes its group on every start, so a hand-copied camera conf only needs the mode tightened, not the ownership:
 
@@ -175,7 +175,13 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>TLS renewal</b></summary>
 
-`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01, which needs `gateway_PORT=80`; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+
+Three things have to be true, or no certificate is ever issued:
+
+- **`gateway_HOST` is a public domain name pointing at this machine.** certbot asks for that name without the scheme and port, so the LAN address `http://192.168.1.50:8080` above becomes a request for `192.168.1.50` — never issued.
+- **`gateway_PORT=80`, open through your router.** The challenge arrives as plain HTTP on port 80, and that is the only port published. The config check stops the build on any other port.
+- **`gateway_HTTPS_Redirect=true`.** Otherwise port 80 keeps serving the whole app, and the login form crosses the network in cleartext.
 
 certbot runs in its own container. Start the stack with `npm run docker:up` rather than a bare `docker compose up` — the script drops that container when `certbot_ON=false` ([chimera/compose.js](chimera/compose.js)), where compose alone would leave it sitting idle.
 

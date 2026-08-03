@@ -28,8 +28,9 @@ jest.mock("fs", () => {
 		}),
 		statSync: jest.fn((p) => {
 			const k = find(p)
-			if (k === undefined) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-			return { mode: mockState.modes[k] ?? 0o644 }
+			const isDir = k === undefined && mockState.dirs.some(d => norm(p).endsWith(d))
+			if (k === undefined && !isDir) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+			return { mode: mockState.modes[k] ?? 0o644, isFile: () => !isDir, isDirectory: () => isDir }
 		}),
 		copyFileSync: jest.fn((from, to) => { mockState.files[norm(to).split("/").pop()] = mockState.files[find(from)] }),
 		readdirSync: jest.fn(() => Object.keys(mockState.files).filter(k => k.startsWith("cameraconf/")).map(k => k.slice("cameraconf/".length))),
@@ -61,15 +62,15 @@ const CAM = "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 
 const envText = (env) => Object.entries(env).map(([k, v]) => `${k} = ${v}`).join("\n")
 
-const setup = ({ env, answers, noEnv = false, noCams = false, example = EXAMPLE }) => {
+const setup = ({ env, answers, noEnv = false, noCams = false, motionDir = false, example = EXAMPLE }) => {
 	mockState.files = {
 		"env.example": example,
-		"motion.conf": "",
+		...(motionDir ? {} : { "motion.conf": "" }),
 		"motion.conf.example": "",
 		...(noCams ? {} : { "cameraconf/cam1.conf": CAM }),
 		...(noEnv ? {} : { ".env": envText(env) })
 	}
-	mockState.dirs = ["cameraconf"]
+	mockState.dirs = motionDir ? ["cameraconf", "motion.conf"] : ["cameraconf"]
 	mockState.answers = [...answers]
 	mockState.modes = {}
 	mockState.chmodFail = new Set()
@@ -319,6 +320,42 @@ describe("runInteractive cookieSecureProblem", () => {
 	})
 })
 
+describe("runInteractive motion.conf directory", () => {
+	test("reports the directory instead of asking to copy over it — copyFileSync would only throw EISDIR", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			motionDir: true,
+			answers: []
+		})
+		const { out, exitCode } = await run()
+		expect(out).toContain("is a directory")
+		expect(out).toContain("Still incomplete")
+		expect(exitCode).toBe(1)
+	})
+})
+
+describe("runInteractive certbotPortProblem", () => {
+	const EXAMPLE_WITH_CERTBOT = `${EXAMPLE}\ncertbot_ON = (true | false)\ngateway_PORT = Port number`
+	// every key holds a valid value, so only the forced re-ask can fix the pair
+	const CERTBOT_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, certbot_ON: "true", gateway_PORT: "8080" }
+
+	test("prompts certbot_ON instead of dead-ending — turning certbot off resolves it", async () => {
+		setup({ env: CERTBOT_BROKEN, answers: ["false"], example: EXAMPLE_WITH_CERTBOT })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("gateway_PORT MUST BE 80")
+		expect(env).toContain("certbot_ON = false")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("falls through to gateway_PORT when certbot stays on — port 80 resolves it too", async () => {
+		setup({ env: CERTBOT_BROKEN, answers: ["true", "80"], example: EXAMPLE_WITH_CERTBOT })
+		const { env, exitCode } = await run()
+		expect(env).toContain("gateway_PORT = 80")
+		expect(exitCode).toBe(0)
+	})
+})
+
 const runCheckOnce = () => {
 	const out = []
 	const log = jest.spyOn(console, "log").mockImplementation((...a) => out.push(a.join(" ")))
@@ -366,6 +403,21 @@ describe("runCheck", () => {
 		mockState.modes[".env"] = 0o644
 		const { out, exitCode } = runCheckOnce()
 		expect(out).toContain(".env: mode 0644")
+		expect(exitCode).toBe(1)
+	})
+
+	// bringing the stack up with storage off makes Docker create a directory at the bind-mount path
+	test("a motion.conf directory fails and names the fix — existsSync alone reported it present", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			motionDir: true,
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.modes["cameraconf/cam1.conf"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("is a directory")
+		expect(out).toContain("rm -rf motion.conf")
 		expect(exitCode).toBe(1)
 	})
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -11,6 +11,7 @@ const emptyForm = { currentPassword: "", password: "", confirm: "" }
 
 const AccountSettings = () => {
 	const changePassword = useChangePassword()
+	const uid = useId()
 	const [form, setForm] = useState(emptyForm)
 	const [pending, setPending] = useState(false)
 
@@ -32,8 +33,9 @@ const AccountSettings = () => {
 
 	const field = (key, label, placeholder, autoComplete) => (
 		<div className="flex flex-col gap-1">
-			<Label className="text-primary">{label}</Label>
+			<Label htmlFor={`${uid}-${key}`} className="text-primary">{label}</Label>
 			<Input
+				id={`${uid}-${key}`}
 				type="password"
 				value={form[key]}
 				onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}

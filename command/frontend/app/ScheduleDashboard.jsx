@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useId, useState, useEffect } from "react"
 import { useRole } from "./AuthContext"
 import moment from "moment"
 import cronstrue from "cronstrue"
@@ -156,6 +156,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 const ScheduleDashboardFull = ({ mobile = false }) => {
 	const role = useRole()
 	const isAdmin = role === "admin"
+	const uid = useId()
 	const [{ processList, loading }, restartTask, stopTask, deleteTask, reloadTasks] = useTasks()
 	const [scheduleTask] = useScheduler()
 	const [cameras] = useCameras()
@@ -292,9 +293,9 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 						</CardHeader>
 						<CardContent className="flex flex-col gap-4">
 							<div className="flex flex-col gap-1.5">
-								<Label className="text-xs text-muted">Camera</Label>
+								<Label id={`${uid}-camera-label`} htmlFor={`${uid}-camera`} className="text-xs text-muted">Camera</Label>
 								<Select value={schedCamera == null ? "" : String(schedCamera)} onValueChange={v => setSchedCamera(parseInt(v))}>
-									<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
+									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder="Select camera" /></SelectTrigger>
 									<SelectContent>
 										{cameras.map((cam, i) => (
 											<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
@@ -304,8 +305,8 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							</div>
 
 							<div className="flex flex-col gap-1.5">
-								<Label className="text-xs text-muted">Window</Label>
-								<div className="flex gap-1">
+								<Label id={`${uid}-window-label`} className="text-xs text-muted">Window</Label>
+								<div role="group" aria-labelledby={`${uid}-window-label`} className="flex gap-1">
 									{SCHEDULE_PRESETS.map(p => (
 										<Button
 											key={p.label}
@@ -321,12 +322,13 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							</div>
 
 							<div className="flex items-center justify-between">
-								<Label className="text-xs text-muted">Skip</Label>
+								<Label htmlFor={`${uid}-skip`} className="text-xs text-muted">Skip</Label>
 								<div className="flex items-center gap-1">
 									<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
 										<Minus className="size-3" />
 									</Button>
 									<Input
+										id={`${uid}-skip`}
 										type="number"
 										min={1}
 										value={schedSkip}
@@ -354,8 +356,8 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 
 							{outputType === "video" && (
 								<div className="flex items-center justify-between">
-									<Label className="text-xs text-muted">FPS</Label>
-									<div className="flex items-center gap-1">
+									<Label id={`${uid}-fps-label`} className="text-xs text-muted">FPS</Label>
+									<div role="group" aria-labelledby={`${uid}-fps-label`} className="flex items-center gap-1">
 										<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setFps(f => Math.max(1, f - 5))}>
 											<Minus className="size-3" />
 										</Button>

@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -153,8 +153,10 @@ if (multiInstance(instances) && process.env.memory_ON !== "true") {
 	process.env.memory_ON = "true"
 }
 
-if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
-	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
+const certbotPort = certbotPortProblem(envLines)
+if (certbotPort) {
+	console.log(certbotPort)
+	allEnvPresent = false
 }
 
 if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {

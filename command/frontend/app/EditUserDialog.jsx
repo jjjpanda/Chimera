@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useId, useState, useEffect } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -11,6 +11,7 @@ import { validatePassword } from "../js/password.js"
 const ROLES = ["user", "admin"]
 
 const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
+	const uid = useId()
 	const [form, setForm] = useState({ role: "", password: "", confirm: "" })
 
 	useEffect(() => {
@@ -56,9 +57,9 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 				</DialogHeader>
 				<form onSubmit={updateUser} className="flex flex-col gap-4 pt-2">
 					<div className="flex flex-col gap-1">
-						<Label className="text-primary">Role</Label>
+						<Label id={`${uid}-role-label`} htmlFor={`${uid}-role`} className="text-primary">Role</Label>
 						<Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-							<SelectTrigger className="bg-surface-raised border-border text-primary">
+							<SelectTrigger id={`${uid}-role`} aria-labelledby={`${uid}-role-label ${uid}-role`} className="bg-surface-raised border-border text-primary">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent className="bg-surface-raised border-border text-primary">
@@ -67,12 +68,12 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 						</Select>
 					</div>
 					<div className="flex flex-col gap-1">
-						<Label className="text-primary">New Password</Label>
-						<Input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="leave blank to keep current" />
+						<Label htmlFor={`${uid}-password`} className="text-primary">New Password</Label>
+						<Input id={`${uid}-password`} type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="leave blank to keep current" />
 					</div>
 					<div className="flex flex-col gap-1">
-						<Label className="text-primary">Confirm Password</Label>
-						<Input type="password" value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="re-enter new password" />
+						<Label htmlFor={`${uid}-confirm`} className="text-primary">Confirm Password</Label>
+						<Input id={`${uid}-confirm`} type="password" value={form.confirm} onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="re-enter new password" />
 					</div>
 					<DialogFooter>
 						<DialogClose asChild>

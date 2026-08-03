@@ -59,7 +59,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
@@ -136,13 +136,13 @@ describe("Authorization Routes", () => {
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
-		test("rejects setup with an invalid setup_TOKEN", async () => {
+		test("rejects setup with an invalid setup_TOKEN and names the token", async () => {
 			process.env.setup_TOKEN = "right-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 		})
 
 		test("returns 400 when username or password is missing", async () => {

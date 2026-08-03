@@ -32,7 +32,7 @@ test("clicking Create Account submits the form via type=submit", () => {
 	expect(trySetup).toHaveBeenCalledWith("bob", "bobs-long-passphrase", "tok", expect.any(Function))
 })
 
-test("a password/confirm mismatch blocks submission and shows an error", () => {
+test("a password/confirm mismatch blocks submission and announces the error", () => {
 	const trySetup = jest.fn()
 	render(React.createElement(SetupForm, { trySetup, tokenRequired: true }))
 
@@ -40,7 +40,20 @@ test("a password/confirm mismatch blocks submission and shows an error", () => {
 	fireEvent.click(screen.getByText("Create Account"))
 
 	expect(trySetup).not.toHaveBeenCalled()
-	expect(screen.getByText("Passwords do not match.")).toBeTruthy()
+	expect(screen.getByRole("alert").textContent).toBe("Passwords do not match.")
+})
+
+test("every field is reachable by its visible label", () => {
+	const trySetup = jest.fn()
+	render(React.createElement(SetupForm, { trySetup, tokenRequired: true }))
+
+	fireEvent.change(screen.getByLabelText("Username"), { target: { value: "alice" } })
+	fireEvent.change(screen.getByLabelText("Password"), { target: { value: "longenough1" } })
+	fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: "longenough1" } })
+	fireEvent.change(screen.getByLabelText("Setup Token"), { target: { value: "topsecret" } })
+	fireEvent.click(screen.getByText("Create Account"))
+
+	expect(trySetup).toHaveBeenCalledWith("alice", "longenough1", "topsecret", expect.any(Function))
 })
 
 test("states the password requirement before anything is submitted", () => {

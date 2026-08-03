@@ -48,7 +48,6 @@ jest.mock("memory")
 const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
 const app = require("../backend/command.js")
-const camerasRoute = require("../backend/routes/cameras.js")
 
 const { mockedPool } = require("pg")
 
@@ -59,7 +58,7 @@ describe("Cameras Route", () => {
 			expect(res.status).toBe(401)
 		})
 
-		test("excludes cameras with embedded credentials and scrubs query-param creds", async () => {
+		test("returns only id and name, never the camera url", async () => {
 			const spy = jest.spyOn(console, "error").mockImplementation(() => {})
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "test", role: "user", jti: "jti-user" }, "test-secret")
@@ -68,11 +67,11 @@ describe("Cameras Route", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual([
-				{ id: 1, name: "indoor", rtsp_url: "rtsp://1.1.1.1/cam" },
-				{ id: 2, name: "outdoor", rtsp_url: "rtsp://2.2.2.2/cam" },
-				{ id: 4, name: "yard", rtsp_url: "rtsp://4.4.4.4/cam?user=***&p=***" },
-				{ id: 6, name: "front", rtsp_url: "rtsp://192.168.1.5/cam@1/stream" },
-				{ id: 7, name: "lab", rtsp_url: "rtsp://7.7.7.7/cam?access_token=***&api_key=***&passphrase=***" }
+				{ id: 1, name: "indoor" },
+				{ id: 2, name: "outdoor" },
+				{ id: 4, name: "yard" },
+				{ id: 6, name: "front" },
+				{ id: 7, name: "lab" }
 			])
 			spy.mockRestore()
 		})
@@ -87,12 +86,6 @@ describe("Cameras Route", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
-		})
-	})
-
-	describe("stripCreds", () => {
-		test("returns a placeholder instead of the raw url when parsing fails", () => {
-			expect(camerasRoute.stripCreds("not a valid url")).toBe("***")
 		})
 	})
 })

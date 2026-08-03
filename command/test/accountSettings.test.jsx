@@ -13,9 +13,9 @@ const renderForm = (changePassword) =>
 		React.createElement(AccountSettings)))
 
 const fill = ({ current = "oldpassword", password = "replacement-passphrase", confirm = "replacement-passphrase" } = {}) => {
-	fireEvent.change(screen.getByPlaceholderText("current password"), { target: { value: current } })
-	fireEvent.change(screen.getByPlaceholderText("new password"), { target: { value: password } })
-	fireEvent.change(screen.getByPlaceholderText("re-enter new password"), { target: { value: confirm } })
+	fireEvent.change(screen.getByLabelText("Current Password"), { target: { value: current } })
+	fireEvent.change(screen.getByLabelText("New Password"), { target: { value: password } })
+	fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: confirm } })
 }
 
 test("submits the current password alongside the new one", () => {
