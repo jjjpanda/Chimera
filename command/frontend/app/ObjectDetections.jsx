@@ -50,7 +50,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 					className="absolute inset-0 w-full h-full object-cover object-top"
 					onLoad={handleLoad}
 				/>
-				<DetectionOverlay boxes={boxes} dims={dims} pad={pad} fit="xMidYMin slice" />
+				<DetectionOverlay boxes={boxes} dims={dims} fit="xMidYMin slice" />
 			</div>
 		)
 	}
