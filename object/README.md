@@ -1,6 +1,10 @@
 # Object <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-Runs YOLOX inference on the camera HLS feeds, records detections to `objects_detected`, and fires webhook alerts (`alert_URL`) — each one carrying a JPEG of the frame that triggered it, unless `object_ALERT_ON=text`. `alert_URL` is shared with the heartbeat monitor and scheduled task results, so whoever reads those also sees the frames.
+Runs YOLOX detection on the camera HLS feeds and records what it finds to `objects_detected`.
+
+Each detection fires a webhook alert to `alert_URL`, carrying a JPEG of the frame. `object_ALERT_ON` controls that: `text` sends the summary without the image, `false` sends nothing.
+
+`alert_URL` is shared with the heartbeat monitor and scheduled task results, so anyone reading those sees the frames too.
 
 ---
 # API
