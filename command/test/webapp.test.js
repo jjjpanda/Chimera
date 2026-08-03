@@ -22,7 +22,7 @@ afterAll(() => {
 })
 
 describe("Web App Routes", () => {
-	const webAppRoutes = ["/", "/live/", "/schedule/", "/stats/", "/login/", "/clip/", "/recordings/", "/objects/", "/admin/"]
+	const webAppRoutes = app.webAppRoutes.map(route => route.endsWith("/") ? route : `${route}/`)
 
 	test("Web app routes respond with 200", () =>
 		Promise.all(webAppRoutes.map(route => new Promise((resolve, reject) => {
@@ -31,6 +31,12 @@ describe("Web App Routes", () => {
 				.expect(200, (err) => err ? reject(new Error(`route ${route} failed`)) : resolve())
 		})))
 	)
+
+	test("/account/ responds with 200", (done) => {
+		supertest(app)
+			.get("/account/")
+			.expect(200, done)
+	})
 
 	test("Nonexistent route responds with 404", (done) => {
 		supertest(app)
