@@ -26,6 +26,26 @@ test("clicking Sign In submits the form via type=submit", () => {
 	expect(tryLogin).toHaveBeenCalledWith("bob", "hunter2", expect.any(Function))
 })
 
+test("each field is reachable by its visible label", () => {
+	const tryLogin = jest.fn()
+	render(React.createElement(LoginForm, { tryLogin }))
+
+	fireEvent.change(screen.getByLabelText("Username"), { target: { value: "alice" } })
+	fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret" } })
+	fireEvent.click(screen.getByText("Sign In"))
+
+	expect(tryLogin).toHaveBeenCalledWith("alice", "secret", expect.any(Function))
+})
+
+test("a rejected login is announced rather than only shown", () => {
+	const tryLogin = jest.fn((username, password, cb) => cb(false, null))
+	render(React.createElement(LoginForm, { tryLogin }))
+
+	fireEvent.click(screen.getByText("Sign In"))
+
+	expect(screen.getByRole("alert").textContent).toBe("Invalid username or password.")
+})
+
 test("submit does not trigger native page navigation", () => {
 	const tryLogin = jest.fn()
 	render(React.createElement(LoginForm, { tryLogin }))
