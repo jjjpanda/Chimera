@@ -114,6 +114,14 @@ describe("varProblem", () => {
 		expect(varProblem(portVar, "8080")).toBeNull()
 	})
 
+	test("port: out of range → error, so it cannot reach listen() and throw ERR_SOCKET_BAD_PORT", () => {
+		expect(varProblem(portVar, "0")).toBeTruthy()
+		expect(varProblem(portVar, "65536")).toBeTruthy()
+		expect(varProblem(portVar, "99999")).toBeTruthy()
+		expect(varProblem(portVar, "1")).toBeNull()
+		expect(varProblem(portVar, "65535")).toBeNull()
+	})
+
 	test("string: set to non-placeholder → null", () => {
 		expect(varProblem(strVar, "mysecret")).toBeNull()
 	})
