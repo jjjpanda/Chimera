@@ -54,6 +54,9 @@ jest.mock("fluent-ffmpeg", () => {
 
 jest.mock("lib")
 jest.mock("memory")
+jest.mock("pg")
+
+const flush = async () => { for(let i = 0; i < 3; i++) await Promise.resolve() }
 
 const { createVideo } = require("../backend/routes/lib/video.js")
 const { createZip } = require("../backend/routes/lib/zip.js")
@@ -108,9 +111,10 @@ describe("convert lock refresh", () => {
 		})
 	})
 
-	test("a zip job with no progress events still gets its lock refreshed by the interval", () => {
+	test("a zip job with no progress events still gets its lock refreshed by the interval", async () => {
 		let sent
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: (body) => { sent = body } })
+		await flush()
 
 		const lockPath = path.join(process.env.storage_FOLDERPATH, "shared/captures", exportLockName("zip", "1", sent.id))
 		expect(lockWrites()).toContain(lockPath)
@@ -121,12 +125,13 @@ describe("convert lock refresh", () => {
 		expect(mockFs.utimes).toHaveBeenCalledWith(lockPath, expect.any(Date), expect.any(Date), expect.any(Function))
 	})
 
-	test("a streaming zip (save:false) also gets its lock refreshed by the interval", () => {
+	test("a streaming zip (save:false) also gets its lock refreshed by the interval", async () => {
 		createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
 			attachment: () => {},
 			on: () => {},
 			send: () => {}
 		})
+		await flush()
 
 		const lockPath = zipLockPath()
 		expect(lockPath).toBeDefined()
@@ -147,14 +152,16 @@ describe("convert lock refresh", () => {
 		})
 	})
 
-	test("zip no longer registers a progress handler for lock refresh", () => {
+	test("zip no longer registers a progress handler for lock refresh", async () => {
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+		await flush()
 		expect(mockArchiveHandlers.progress).toBeUndefined()
 	})
 
-	test("the refreshed mtime is newer than the orphan-sweep threshold", () => {
+	test("the refreshed mtime is newer than the orphan-sweep threshold", async () => {
 		const ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
 		createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+		await flush()
 
 		jest.advanceTimersByTime(EXPORT_LOCK_REFRESH_MS)
 
@@ -217,8 +224,9 @@ describe("convert lock refresh", () => {
 			})
 		})
 
-		test("stops refreshing the zip (save) lock once the output stream closes", () => {
+		test("stops refreshing the zip (save) lock once the output stream closes", async () => {
 			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+			await flush()
 
 			mockOutputHandlers.close()
 			mockFs.utimes.mockClear()
@@ -228,8 +236,9 @@ describe("convert lock refresh", () => {
 			expect(mockFs.utimes).not.toHaveBeenCalled()
 		})
 
-		test("stops refreshing the zip (save) lock once the archive errors", () => {
+		test("stops refreshing the zip (save) lock once the archive errors", async () => {
 			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+			await flush()
 
 			mockArchiveHandlers.error(new Error("archive error"))
 			mockFs.utimes.mockClear()
@@ -239,8 +248,9 @@ describe("convert lock refresh", () => {
 			expect(mockFs.utimes).not.toHaveBeenCalled()
 		})
 
-		test("stops refreshing the zip (save) lock once the export is cancelled", () => {
+		test("stops refreshing the zip (save) lock once the export is cancelled", async () => {
 			createZip({ body: { camera: "1", start: START, end: END } }, { send: () => {} })
+			await flush()
 
 			cancelEnder()
 			mockFs.utimes.mockClear()
@@ -250,7 +260,7 @@ describe("convert lock refresh", () => {
 			expect(mockFs.utimes).not.toHaveBeenCalled()
 		})
 
-		test("stops refreshing the streaming zip lock once the archive errors", () => {
+		test("stops refreshing the streaming zip lock once the archive errors", async () => {
 			let resHandlers = {}
 			createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
 				attachment: () => {},
@@ -259,6 +269,7 @@ describe("convert lock refresh", () => {
 				headersSent: false,
 				status: () => ({ end: () => {} })
 			})
+			await flush()
 
 			mockArchiveHandlers.error(new Error("archive error"))
 			mockFs.utimes.mockClear()
@@ -268,13 +279,14 @@ describe("convert lock refresh", () => {
 			expect(mockFs.utimes).not.toHaveBeenCalled()
 		})
 
-		test("stops refreshing the streaming zip lock once the response closes", () => {
+		test("stops refreshing the streaming zip lock once the response closes", async () => {
 			let resHandlers = {}
 			createZip({ body: { camera: "1", start: START, end: END, save: false } }, {
 				attachment: () => {},
 				on: (event, cb) => { resHandlers[event] = cb },
 				send: () => {}
 			})
+			await flush()
 
 			resHandlers.close()
 			mockFs.utimes.mockClear()
