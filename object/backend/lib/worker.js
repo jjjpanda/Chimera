@@ -181,7 +181,8 @@ const handleDetections = async (camera, detections, jpeg, era) => {
 	}
 	if (process.env.object_ALERT_ON === "false") return
 	const summary = detections.map((d) => `${d.class} (${Math.round(d.score * 100)}%)`).join(", ")
-	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, jpeg)
+	const textOnly = process.env.object_ALERT_ON === "text"
+	await sendWebhook(process.env.alert_URL, `🔍 Camera ${camera}: detected ${summary}`, textOnly ? null : jpeg)
 }
 
 const scan = async (id, era = epoch) => {

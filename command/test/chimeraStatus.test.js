@@ -7,7 +7,8 @@ jest.mock("../frontend/hooks/useCameras.js", () => {
 
 jest.mock("../frontend/js/request.js", () => ({
 	request: jest.fn(),
-	statusProcessing: jest.fn()
+	statusProcessing: jest.fn(),
+	jsonProcessing: jest.fn()
 }))
 
 const { renderHook, act } = require("@testing-library/react")

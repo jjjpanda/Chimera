@@ -157,6 +157,10 @@ if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
 	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
 }
 
+if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
+	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 stays open for HTTP-01 and keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the Secure session cookie, silently failing the login")
+}
+
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }

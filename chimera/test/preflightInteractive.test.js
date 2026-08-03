@@ -1,4 +1,4 @@
-const mockState = { files: {}, dirs: [], answers: [], modes: {} }
+const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set() }
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
@@ -12,7 +12,16 @@ jest.mock("fs", () => {
 			return mockState.files[k]
 		}),
 		writeFileSync: jest.fn((p, data) => { mockState.files[key(p)] = data }),
-		chmodSync: jest.fn((p, mode) => { mockState.modes[key(p)] = mode }),
+		chmodSync: jest.fn((p, mode) => {
+			const k = key(p)
+			if (mockState.chmodFail.has(k)) throw Object.assign(new Error("EPERM"), { code: "EPERM" })
+			mockState.modes[k] = mode
+		}),
+		statSync: jest.fn((p) => {
+			const k = find(p)
+			if (k === undefined) throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+			return { mode: mockState.modes[k] ?? 0o644 }
+		}),
 		copyFileSync: jest.fn((from, to) => { mockState.files[norm(to).split("/").pop()] = mockState.files[find(from)] }),
 		readdirSync: jest.fn(() => Object.keys(mockState.files).filter(k => k.startsWith("cameraconf/")).map(k => k.slice("cameraconf/".length))),
 		mkdirSync: jest.fn()
@@ -54,6 +63,7 @@ const setup = ({ env, answers, noEnv = false, noCams = false, example = EXAMPLE 
 	mockState.dirs = ["cameraconf"]
 	mockState.answers = [...answers]
 	mockState.modes = {}
+	mockState.chmodFail = new Set()
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -206,6 +216,30 @@ describe("runInteractive secret file modes", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	// `cp cameraconf/camera.conf.example cameraconf/cam1.conf` leaves 0644, and a valid conf is never rewritten
+	test("an existing camera conf is tightened to 0640 even when the wizard adds nothing", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		const { modes, exitCode } = await run()
+		expect(modes["cameraconf/cam1.conf"]).toBe(0o640)
+		expect(exitCode).toBe(0)
+	})
+
+	// preflight is unprivileged — when chmod itself fails, the conf stays loose and must be reported, not trusted
+	test("an existing camera conf that resists chmod stays loose and is reported", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.chmodFail.add("cameraconf/cam1.conf")
+		const { out, exitCode } = await run()
+		expect(out).toContain("cam1.conf mode 0644")
+		expect(out).toContain("Still incomplete")
+		expect(exitCode).toBe(1)
+	})
+
 	test("a camera conf lands at 0640 — it carries netcam_userpass", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
@@ -273,5 +307,68 @@ describe("runInteractive cookieSecureProblem", () => {
 		const { env, exitCode } = await run()
 		expect(env).toContain("command_COOKIE_SECURE = true")
 		expect(exitCode).toBe(0)
+	})
+})
+
+const runCheckOnce = () => {
+	const out = []
+	const log = jest.spyOn(console, "log").mockImplementation((...a) => out.push(a.join(" ")))
+	const exit = jest.spyOn(process, "exit").mockImplementation((code) => { throw Object.assign(new Error(EXITED.toString()), { code, [EXITED]: true }) })
+	let exitCode = 0
+	try {
+		load().runCheck()
+	} catch (e) {
+		if (!e[EXITED]) throw e
+		exitCode = e.code
+	} finally {
+		log.mockRestore()
+		exit.mockRestore()
+	}
+	return { out: out.join("\n"), exitCode }
+}
+
+describe("runCheck", () => {
+	// `--check` never prompts or writes — it only reports what's already on disk
+	test("passes when .env and cameraconf/ are already complete and tight", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.modes["cameraconf/cam1.conf"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports a missing .env and exits 1", () => {
+		setup({ env: {}, noEnv: true, answers: [] })
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain(".env")
+		expect(out).toContain("missing")
+		expect(exitCode).toBe(1)
+	})
+
+	test("flags a loose .env mode", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o644
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain(".env: mode 0644")
+		expect(exitCode).toBe(1)
+	})
+
+	test("flags a loose camera conf mode", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.modes["cameraconf/cam1.conf"] = 0o644
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("cam1.conf mode 0644")
+		expect(exitCode).toBe(1)
 	})
 })

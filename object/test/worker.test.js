@@ -173,6 +173,21 @@ describe("scan", () => {
 		delete process.env.object_ALERT_ON
 	})
 
+	// alert_URL is shared with the heartbeat monitor, so the frame lands wherever uptime alerts do
+	test("object_ALERT_ON=text keeps the alert but drops the frame", async () => {
+		process.env.object_ALERT_ON = "text"
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.scan(5)
+		expect(sendWebhook).toHaveBeenCalledWith("http://hook.test", expect.stringContaining("person"), null)
+		delete process.env.object_ALERT_ON
+	})
+
+	test("the default attaches the jpeg", async () => {
+		detector.detect.mockResolvedValue([{ class: "person", score: 0.9, box: [0, 0, 1, 1] }])
+		await worker.scan(5)
+		expect(sendWebhook).toHaveBeenCalledWith("http://hook.test", expect.stringContaining("person"), expect.any(Buffer))
+	})
+
 	test("records ffmpeg failure in a tracked camera's status and rejects", async () => {
 		detector.detect.mockResolvedValue([])
 		await worker.scan(4)
