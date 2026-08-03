@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button"
 import { validatePassword } from "../js/password.js"
 
 const SetupForm = ({ trySetup, tokenRequired }) => {
+	const uid = useId()
 	const [status, setStatus] = useState(null)
 	const [message, setMessage] = useState(null)
 	const [username, setUsername] = useState("")
@@ -60,8 +61,9 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 				<CardContent>
 					<form onSubmit={onSubmit} className="flex flex-col gap-4">
 						<div className="flex flex-col gap-1">
-							<Label className="text-muted">Username</Label>
+							<Label htmlFor={`${uid}-username`} className="text-muted">Username</Label>
 							<Input
+								id={`${uid}-username`}
 								className="bg-surface-raised border-border text-primary placeholder:text-muted"
 								placeholder="username"
 								value={username}
@@ -70,8 +72,9 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 							/>
 						</div>
 						<div className="flex flex-col gap-1">
-							<Label className="text-muted">Password</Label>
+							<Label htmlFor={`${uid}-password`} className="text-muted">Password</Label>
 							<Input
+								id={`${uid}-password`}
 								className="bg-surface-raised border-border text-primary placeholder:text-muted"
 								type="password"
 								placeholder="password"
@@ -81,8 +84,9 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 							/>
 						</div>
 						<div className="flex flex-col gap-1">
-							<Label className="text-muted">Confirm Password</Label>
+							<Label htmlFor={`${uid}-confirm`} className="text-muted">Confirm Password</Label>
 							<Input
+								id={`${uid}-confirm`}
 								className="bg-surface-raised border-border text-primary placeholder:text-muted"
 								type="password"
 								placeholder="confirm password"
@@ -93,8 +97,9 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 						</div>
 						{tokenRequired && (
 							<div className="flex flex-col gap-1">
-								<Label className="text-muted">Setup Token</Label>
+								<Label htmlFor={`${uid}-token`} className="text-muted">Setup Token</Label>
 								<Input
+									id={`${uid}-token`}
 									className="bg-surface-raised border-border text-primary placeholder:text-muted"
 									type="password"
 									placeholder="setup token"
@@ -104,10 +109,10 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 							</div>
 						)}
 						{status === "failed" && (
-							<p className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
+							<p role="alert" className="text-danger text-sm">{message || "Setup failed. Check your credentials."}</p>
 						)}
 						{status === "done" && (
-							<p className="text-accent text-sm">Account created — redirecting to login…</p>
+							<p role="status" className="text-accent text-sm">Account created — redirecting to login…</p>
 						)}
 						<Button
 							type="submit"

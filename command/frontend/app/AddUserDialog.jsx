@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -10,6 +10,7 @@ import toast from "../js/toast.js"
 const ROLES = ["user", "admin"]
 
 const AddUserDialog = ({ onAdded }) => {
+	const uid = useId()
 	const [open, setOpen] = useState(false)
 	const [form, setForm] = useState({ username: "", role: "user" })
 	const [tempPassword, setTempPassword] = useState(null)
@@ -82,13 +83,13 @@ const AddUserDialog = ({ onAdded }) => {
 				) : (
 					<form onSubmit={addUser} className="flex flex-col gap-4 pt-2">
 						<div className="flex flex-col gap-1">
-							<Label className="text-primary">Username</Label>
-							<Input required value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="username" />
+							<Label htmlFor={`${uid}-username`} className="text-primary">Username</Label>
+							<Input id={`${uid}-username`} required value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="bg-surface-raised border-border text-primary placeholder:text-muted" placeholder="username" />
 						</div>
 						<div className="flex flex-col gap-1">
-							<Label className="text-primary">Role</Label>
+							<Label id={`${uid}-role-label`} htmlFor={`${uid}-role`} className="text-primary">Role</Label>
 							<Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
-								<SelectTrigger className="bg-surface-raised border-border text-primary">
+								<SelectTrigger id={`${uid}-role`} aria-labelledby={`${uid}-role-label ${uid}-role`} className="bg-surface-raised border-border text-primary">
 									<SelectValue />
 								</SelectTrigger>
 								<SelectContent className="bg-surface-raised border-border text-primary">
