@@ -119,7 +119,7 @@ const varProblem = (v, val) => {
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
-	if (t === "port" && !/^\d+$/.test(val)) return `must be a number (got "${val}")`
+	if (t === "port" && !(/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 65535)) return `must be a port from 1 to 65535 (got "${val}")`
 	return null
 }
 
