@@ -20,3 +20,12 @@ describe("composeArgs", () => {
 		expect(composeArgs(lines({ certbot_ON: "false" }), ["logs", "-f"])).toEqual(["logs", "-f"])
 	})
 })
+
+// docker:restart is the documented add-a-camera step, so it needs the same gate as build and up
+describe("preflight hooks", () => {
+	const { scripts } = require("../../package.json")
+
+	test.each(["docker:build", "docker:up", "docker:restart"])("%s runs the check first", (script) => {
+		expect(scripts[`pre${script}`]).toBe("node chimera/preflight.js --check")
+	})
+})
