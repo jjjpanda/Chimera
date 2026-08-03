@@ -132,7 +132,7 @@ A few checks wait until the container starts: the `*_URL` addresses and the file
 sudo chown "$USER":1000 .env && sudo chmod 640 .env
 ```
 
-`chmod 644 .env` clears the error too, but it opens your passwords to every account on the machine — so `npm run docker:build` and `docker:up` both stop until you put it back. With `640` only you and group 1000 can read them. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
+`chmod 644 .env` clears the error too, but it opens your passwords to every account on the machine — so `npm run docker:build`, `docker:up` and `docker:restart` all stop until you put it back. With `640` only you and group 1000 can read them. If your own uid is already 1000 — most single-user installs — `.env` needs nothing.
 
 Each `cameraconf/*.conf` holds `netcam_userpass`, a camera password, and `cp` leaves it at the same world-readable `644`. The container fixes its group on every start, so a hand-copied camera conf only needs the mode tightened, not the ownership:
 
