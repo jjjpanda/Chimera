@@ -9,7 +9,8 @@ jest.mock("fs", () => {
 				"gateway_PORT = Port number",
 				"command_ON = (true | false)",
 				"alert_TZ = IANA tz ***",
-				"storage_FOLDERPATH = Base shared file path  # Docker: /mnt/storage/"
+				"storage_FOLDERPATH = /mnt/storage/  # default; base shared file path",
+				"livestream_FOLDERPATH = Base shared folder path  # frames live here"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
@@ -41,11 +42,18 @@ describe("parseSchema", () => {
 		expect(sk.optional).toBe(false)
 	})
 
-	test("keeps the # Docker hint in desc but strips it from placeholder", () => {
+	test("keeps a trailing # hint in desc but strips it from placeholder", () => {
+		const schema = parseSchema()
+		const fp = schema.find(v => v.key === "livestream_FOLDERPATH")
+		expect(fp.placeholder).toBe("Base shared folder path")
+		expect(fp.desc).toContain("# frames live here")
+	})
+
+	test("a # default line holds a real value, so nothing is treated as placeholder prose", () => {
 		const schema = parseSchema()
 		const fp = schema.find(v => v.key === "storage_FOLDERPATH")
-		expect(fp.placeholder).toBe("Base shared file path")
-		expect(fp.desc).toContain("# Docker: /mnt/storage/")
+		expect(fp.placeholder).toBe("")
+		expect(varProblem(fp, "/mnt/storage/")).toBeNull()
 	})
 })
 
@@ -332,15 +340,15 @@ describe("hashTruncated", () => {
 	})
 
 	test("does not flag a seeded key left blank with its example comment intact", () => {
-		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# Docker: /mnt/storage/" }), "livestream_FOLDERPATH")).toBeNull()
+		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# frames live here" }), "livestream_FOLDERPATH")).toBeNull()
 	})
 
 	test("does not flag a key that is not set at all", () => {
 		expect(hashTruncated(lines({}), "setup_TOKEN")).toBeNull()
 	})
 
-	test("does not flag a filled value that kept the env.example hint dotenv strips", () => {
-		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # Docker: /mnt/storage/" }), "storage_FOLDERPATH")).toBeNull()
+	test("does not flag a seeded default that kept the env.example comment dotenv strips", () => {
+		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # default; base shared file path" }), "storage_FOLDERPATH")).toBeNull()
 	})
 })
 
@@ -441,6 +449,17 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "false" }), "livestream_FOLDERPATH")).toBe(true)
 		expect(isServiceOff(lines({ livestream_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
 		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
+	})
+
+	test("object_MODEL_SHA256 required only once object_MODEL_URL is set", () => {
+		expect(isServiceOff(lines({ object_ON: "true" }), "object_MODEL_SHA256")).toBe(true)
+		expect(isServiceOff(lines({ object_ON: "true", object_MODEL_URL: "https://host/m.onnx" }), "object_MODEL_SHA256")).toBe(false)
+		expect(isServiceOff(lines({ object_ON: "false", object_MODEL_URL: "https://host/m.onnx" }), "object_MODEL_SHA256")).toBe(true)
+	})
+
+	test("object_MODEL_SHA256 stays skipped when object_MODEL_URL still holds its env.example prose", () => {
+		const prose = "Override URL to download the YOLOX ONNX model; requires object_MODEL_SHA256. Left blank, the first boot downloads yolox_tiny.onnx (~20 MB)"
+		expect(isServiceOff(lines({ object_ON: "true", object_MODEL_URL: prose }), "object_MODEL_SHA256")).toBe(true)
 	})
 
 	test("memory vars follow memory service when single-instance", () => {

@@ -183,6 +183,19 @@ describe("runInteractive re-walk", () => {
 		expect(env).toContain(`SECRETKEY = ${SECRET}`)
 		expect(exitCode).toBe(0)
 	})
+
+	test("seeding keeps a # default value verbatim, and the walk never asks for it", async () => {
+		setup({
+			env: {},
+			noEnv: true,
+			example: EXAMPLE.replace("storage_FOLDERPATH = Base shared file path", "storage_FOLDERPATH = /mnt/storage/  # default; base shared file path"),
+			// storage_ON, livestream_ON, object_ON, SECRETKEY — no prompt for storage_FOLDERPATH
+			answers: ["true", "false", "false", SECRET]
+		})
+		const { env, exitCode } = await run()
+		expect(env).toContain("storage_FOLDERPATH = /mnt/storage/  # default; base shared file path")
+		expect(exitCode).toBe(0)
+	})
 })
 
 describe("runInteractive secret file modes", () => {

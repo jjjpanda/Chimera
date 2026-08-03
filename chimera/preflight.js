@@ -30,10 +30,13 @@ const CAM_DIR = path.join(ROOT, "cameraconf")
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
 
+// a "# default" comment means the value shown is real, not prose to be replaced
+const hasDefault = (rest) => /^\s*default\b/i.test(rest.split("#")[1] || "")
+
 const parseSchema = () =>
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).reduce((acc, line) => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (m) acc.push({ key: m[1], placeholder: m[2].split("#")[0].trim(), desc: m[2].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
+		if (m) acc.push({ key: m[1], placeholder: hasDefault(m[2]) ? "" : m[2].split("#")[0].trim(), desc: m[2].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
 		return acc
 	}, [])
 
@@ -104,7 +107,7 @@ const groupHint = () => {
 const seedEnv = () => writeSecret(ENV,
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).map(line => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (!m) return line
+		if (!m || hasDefault(m[2])) return line
 		const h = m[2].indexOf("#")
 		return `${m[1]} =${h >= 0 ? " " + m[2].slice(h) : ""}`
 	}).join("\n"))
@@ -182,6 +185,7 @@ const isServiceOff = (lines, key) => {
 	// object needs both: writes storage_FOLDERPATH, reads livestream_FOLDERPATH
 	if (key === "storage_FOLDERPATH") return !on(lines, "storage") && !on(lines, "object")
 	if (key === "livestream_FOLDERPATH") return !on(lines, "livestream") && !on(lines, "object")
+	if (key === "object_MODEL_SHA256") return !on(lines, "object") || !/^https?:\/\//i.test(getVal(lines, "object_MODEL_URL") || "")
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false

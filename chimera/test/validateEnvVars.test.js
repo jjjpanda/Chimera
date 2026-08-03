@@ -44,6 +44,18 @@ describe("validateEnvVars against the CI env file", () => {
 		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
+
+	test("blocks boot when object_MODEL_URL is set without object_MODEL_SHA256 — object would fetch an unverified model", () => {
+		const res = run({ object_MODEL_URL: "https://host/m.onnx", object_MODEL_SHA256: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR object_MODEL_SHA256")
+		expect(res.status).toBe(1)
+	})
+
+	test("allows a blank object_MODEL_SHA256 when object_MODEL_URL is unset — the bundled default model has its own pinned hash", () => {
+		const res = run({ object_MODEL_URL: "", object_MODEL_SHA256: "" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars unreadable .env gate", () => {
