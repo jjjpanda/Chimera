@@ -4,7 +4,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import { useChangePassword } from "./AuthContext.jsx"
-import { validatePassword } from "../js/password.js"
+import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 import toast from "../js/toast.js"
 
 const emptyForm = { currentPassword: "", password: "", confirm: "" }
@@ -55,6 +55,7 @@ const AccountSettings = () => {
 				<form onSubmit={submit} className="flex flex-col gap-4 pt-2">
 					{field("currentPassword", "Current Password", "current password", "current-password")}
 					{field("password", "New Password", "new password", "new-password")}
+					<p className="text-xs text-muted -mt-3">{PASSWORD_REQUIREMENT}</p>
 					{field("confirm", "Confirm Password", "re-enter new password", "new-password")}
 					<p className="text-xs text-muted">Changing your password signs you out of every other session.</p>
 					<Button type="submit" disabled={pending} className="self-start bg-accent text-accent-foreground hover:bg-accent/80">Change Password</Button>

@@ -4,7 +4,7 @@ const React = require("react")
 const { render, screen, fireEvent } = require("@testing-library/react")
 const ChangePasswordForm = require("../frontend/app/ChangePasswordForm.jsx").default
 
-const fill = ({ password = "longenough1", confirm = "longenough1" } = {}) => {
+const fill = ({ password = "longenough123", confirm = "longenough123" } = {}) => {
 	fireEvent.change(screen.getByLabelText("New Password"), { target: { value: password } })
 	fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: confirm } })
 }
@@ -16,7 +16,7 @@ test("both fields are reachable by their visible labels", () => {
 	fill()
 	fireEvent.click(screen.getByText("Set Password"))
 
-	expect(changePassword).toHaveBeenCalledWith({ password: "longenough1" }, expect.any(Function))
+	expect(changePassword).toHaveBeenCalledWith({ password: "longenough123" }, expect.any(Function))
 })
 
 test("submitting two empty fields asks for a password instead of reporting a mismatch", () => {
