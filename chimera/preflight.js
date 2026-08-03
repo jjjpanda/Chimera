@@ -123,8 +123,14 @@ const varProblem = (v, val) => {
 	return null
 }
 
+const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+
+const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
+	? "is a directory — docker-compose bind-mounts ./motion.conf, and Docker creates a directory there when the file is missing; run `rm -rf motion.conf` then `cp motion.conf.example motion.conf`"
+	: null
+
 const getCamDir = () => {
-	if (fs.existsSync(MOTION)) {
+	if (isFile(MOTION)) {
 		const conf = parseConf(fs.readFileSync(MOTION, "utf8"))
 		if (conf.camera_dir && !path.isAbsolute(conf.camera_dir)) return path.resolve(ROOT, conf.camera_dir)
 	}
@@ -212,6 +218,11 @@ const cookieSecureProblem = (lines) =>
 		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
 		: null
 
+const certbotPortProblem = (lines) =>
+	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
+		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose publishes only gateway_PORT, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
+		: null
+
 const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
@@ -228,6 +239,8 @@ const envProblems = (schema, lines) => {
 	if (feedProb) probs.push(["object_ON", feedProb])
 	const cookieProb = cookieSecureProblem(lines)
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
+	const certbotProb = certbotPortProblem(lines)
+	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
 	return probs
 }
 
@@ -250,8 +263,8 @@ const runCheck = () => {
 	}
 
 	if (camerasNeeded(lines)) {
-		const motionOk = fs.existsSync(MOTION)
-		console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : "  missing"}`)
+		const motionOk = isFile(MOTION)
+		console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : `  ${motionDirProblem() || "missing"}`}`)
 		if (!motionOk) failed = true
 
 		const cam = cameraProblems()
@@ -337,6 +350,18 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		const certbotProb = certbotPortProblem(lines)
+		if (certbotProb) {
+			console.log(`\n  gateway_PORT ${BAD} ${certbotProb}`)
+			for (const key of ["certbot_ON", "gateway_PORT"]) {
+				if (!certbotPortProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
 	const probs = envProblems(schema, lines)
@@ -348,11 +373,13 @@ const runInteractive = async () => {
 	let motionOk = true, camOk = true
 	if (needCams) {
 		console.log("Checking motion.conf...")
-		if (!fs.existsSync(MOTION)) {
+		const dirProb = motionDirProblem()
+		if (dirProb) console.log(`  ${BAD} motion.conf ${dirProb}`)
+		else if (!fs.existsSync(MOTION)) {
 			if (await confirm("  motion.conf missing. Create from motion.conf.example?"))
 				fs.copyFileSync(MOTION_EXAMPLE, MOTION)
 		}
-		motionOk = fs.existsSync(MOTION)
+		motionOk = isFile(MOTION)
 		console.log(`motion.conf ${motionOk ? OK : BAD}\n`)
 
 		console.log("Checking cameraconf/...")
@@ -400,4 +427,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

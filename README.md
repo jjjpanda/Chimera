@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
+Each service is toggled by `<prefix>_ON`, and separately routed through the gateway by `<prefix>_PROXY_ON`. The gateway is the only public port, so a service whose proxy is off is unreachable from a browser even while it runs — with `command_PROXY_ON=false` the site answers a bare `Cannot GET /` and logs nothing. Set both `true` for the standard single-container deploy.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres
@@ -106,7 +106,7 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 
 **Your footage** lives in a Docker volume, not in a folder you can browse. Pick a camera and a time range in the web app, and it builds an MP4 or a zip you download from the same page.
 
-**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every file in that folder at startup, so there is no second list to keep in step.
+**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every file in that folder at startup, so there is no second list to keep in step. The restart runs the same config check as the build, so a duplicate `camera_id` or a malformed `netcam_url` stops it there rather than leaving a camera that never appears.
 
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
@@ -175,7 +175,15 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>TLS renewal</b></summary>
 
-`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01, which needs `gateway_PORT=80`; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+
+Three things have to be true, or no certificate is ever issued:
+
+- **A public DNS name that resolves to this machine.** certbot takes the domain from `gateway_HOST`, minus the scheme and port. The `http://192.168.1.50:8080` above is a LAN address, so it asks Let's Encrypt for `192.168.1.50` — which is never issued.
+- **`gateway_PORT=80`, reachable from the internet.** The HTTP-01 challenge arrives as plain HTTP on port 80, and compose publishes only `gateway_PORT`, so your router and firewall have to forward it. The config check refuses any other port while certbot is on, so `docker:build`, `docker:up` and `docker:restart` all stop there.
+- **`gateway_HTTPS_Redirect=true`.** Port 80 stays open for the challenge either way; without the redirect it keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the `Secure` session cookie.
+
+Get any of them wrong and nothing says so in the web app: certbot retries quietly, burning Let's Encrypt's failed-validation limit, while the stack keeps serving plain HTTP. Set `alert_URL` if you want to hear about it.
 
 certbot runs in its own container. Start the stack with `npm run docker:up` rather than a bare `docker compose up` — the script drops that container when `certbot_ON=false` ([chimera/compose.js](chimera/compose.js)), where compose alone would leave it sitting idle.
 
