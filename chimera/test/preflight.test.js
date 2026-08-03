@@ -20,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -112,6 +112,14 @@ describe("varProblem", () => {
 
 	test("port: numeric string → null", () => {
 		expect(varProblem(portVar, "8080")).toBeNull()
+	})
+
+	test("port: out of range → error, so it cannot reach listen() and throw ERR_SOCKET_BAD_PORT", () => {
+		expect(varProblem(portVar, "0")).toBeTruthy()
+		expect(varProblem(portVar, "65536")).toBeTruthy()
+		expect(varProblem(portVar, "99999")).toBeTruthy()
+		expect(varProblem(portVar, "1")).toBeNull()
+		expect(varProblem(portVar, "65535")).toBeNull()
 	})
 
 	test("string: set to non-placeholder → null", () => {
@@ -238,6 +246,45 @@ describe("cookieSecureProblem", () => {
 	})
 })
 
+describe("certbotPortProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("certbot on a non-80 gateway_PORT blocks — the HTTP-01 challenge is the only port compose publishes", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true", gateway_PORT: "8080" }))).toMatch(/gateway_PORT MUST BE 80/)
+	})
+
+	test("an unset gateway_PORT blocks the same way — nothing answers the challenge either", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true" }))).toBeTruthy()
+	})
+
+	test("certbot on port 80 passes", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true", gateway_PORT: "80" }))).toBeNull()
+	})
+
+	test("a non-80 port passes with certbot off — BYO certs do not use HTTP-01", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "false", gateway_PORT: "8080" }))).toBeNull()
+		expect(certbotPortProblem(lines({ gateway_PORT: "8080" }))).toBeNull()
+	})
+
+	test("a non-80 port passes with gateway_ON=false — watchCertRenewal never runs without the gateway service", () => {
+		expect(certbotPortProblem(lines({ gateway_ON: "false", certbot_ON: "true", gateway_PORT: "8080" }))).toBeNull()
+	})
+})
+
+describe("setupTokenHint", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("names setup_TOKEN and how to read it back — the wizard only ever showed it as a default", () => {
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/setup_TOKEN/)
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/grep setup_TOKEN/)
+	})
+
+	test("no hint when the command service is off — there is no setup screen to reach", () => {
+		expect(setupTokenHint(lines({ command_ON: "false" }))).toBeNull()
+		expect(setupTokenHint(lines({}))).toBeNull()
+	})
+})
+
 describe("envProblems", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 	const SCHEMA = [{ key: "storage_FOLDERPATH", placeholder: "Base shared file path", desc: "Base shared file path", optional: false }]
@@ -260,6 +307,11 @@ describe("envProblems", () => {
 		const probs = envProblems(SCHEMA, lines({ storage_ON: "false", object_ON: "true", livestream_ON: "false", storage_FOLDERPATH: "" }))
 		expect(probs.map(([k]) => k)).toEqual(["storage_FOLDERPATH", "object_ON"])
 		expect(probs[1][1]).toMatch(/object_ON requires livestream_ON/)
+	})
+
+	test("the certbot port gate blocks preflight, matching the boot check", () => {
+		const probs = envProblems([], lines({ certbot_ON: "true", gateway_PORT: "8080" }))
+		expect(probs).toEqual([["gateway_PORT", expect.stringMatching(/gateway_PORT MUST BE 80/)]])
 	})
 
 	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {

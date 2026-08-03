@@ -241,21 +241,29 @@ describe("validateEnvVars hand-edited # gate", () => {
 	})
 })
 
-describe("validateEnvVars certbot port warning", () => {
-	test("warns (non-fatal) when certbot_ON=true and gateway_PORT is not 80", () => {
+describe("validateEnvVars certbot port gate", () => {
+	// compose publishes only gateway_PORT, so HTTP-01 on anything but 80 can never be answered
+	test("blocks boot when certbot_ON=true and gateway_PORT is not 80", () => {
 		const res = run({ certbot_ON: "true", gateway_PORT: "8080" })
-		expect(res.stdout).toContain("gateway_PORT is not 80")
+		expect(res.stdout).toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(1)
 	})
 
-	test("no warning when gateway_PORT is 80", () => {
+	test("blocks boot when gateway_PORT is left blank", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "" })
+		expect(res.stdout).toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(1)
+	})
+
+	test("passes when gateway_PORT is 80", () => {
 		const res = run({ certbot_ON: "true", gateway_PORT: "80" })
-		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+		expect(res.stdout).not.toContain("gateway_PORT MUST BE 80")
 		expect(res.status).toBe(0)
 	})
 
-	test("no warning when certbot_ON is not true", () => {
+	test("passes when certbot_ON is not true — BYO certs do not use HTTP-01", () => {
 		const res = run({ certbot_ON: "false", gateway_PORT: "8080" })
-		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+		expect(res.stdout).not.toContain("gateway_PORT MUST BE 80")
 		expect(res.status).toBe(0)
 	})
 })

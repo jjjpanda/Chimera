@@ -19,6 +19,7 @@ jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: jest.fn
 const React = require("react")
 const { render, act, screen, fireEvent } = require("@testing-library/react")
 const ScheduleDashboard = require("../frontend/app/ScheduleDashboard.jsx").default
+const AuthContext = require("../frontend/app/AuthContext.jsx").default
 const { __calls: calls } = require("../frontend/js/request.js")
 
 const callsTo = (url) => calls.filter((c) => c.url === url)
@@ -74,5 +75,39 @@ describe("run-history refresh wiring", () => {
 		await act(async () => { fireEvent.click(screen.getByTitle("Refresh tasks")) })
 		expect(callsTo("/task/list")).toHaveLength(2)
 		expect(callsTo("/task/runs")).toHaveLength(1)
+	})
+})
+
+describe("schedule parameters resolve by their visible labels", () => {
+	const mountAsAdmin = async () => {
+		render(React.createElement(AuthContext.Provider, { value: { role: "admin" } },
+			React.createElement(ScheduleDashboard)))
+		await resolve("/cameras", [])
+		await resolve("/task/runs", { runs: [] })
+		await resolve("/task/list", { tasks: [] })
+	}
+
+	test("the camera select is named by its label", async () => {
+		await mountAsAdmin()
+
+		expect(screen.getByLabelText("Camera")).toBeTruthy()
+	})
+
+	test("the skip input is named by its label", async () => {
+		await mountAsAdmin()
+
+		expect(screen.getByLabelText("Skip")).toBeTruthy()
+	})
+
+	test("the window presets are a group named by their label", async () => {
+		await mountAsAdmin()
+
+		expect(screen.getByRole("group", { name: "Window" })).toBeTruthy()
+	})
+
+	test("the fps steppers are a group named by their label", async () => {
+		await mountAsAdmin()
+
+		expect(screen.getByRole("group", { name: "FPS" })).toBeTruthy()
 	})
 })

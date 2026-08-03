@@ -1,16 +1,17 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import { useChangePassword } from "./AuthContext.jsx"
-import { validatePassword } from "../js/password.js"
+import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 import toast from "../js/toast.js"
 
 const emptyForm = { currentPassword: "", password: "", confirm: "" }
 
 const AccountSettings = () => {
 	const changePassword = useChangePassword()
+	const uid = useId()
 	const [form, setForm] = useState(emptyForm)
 	const [pending, setPending] = useState(false)
 
@@ -32,8 +33,9 @@ const AccountSettings = () => {
 
 	const field = (key, label, placeholder, autoComplete) => (
 		<div className="flex flex-col gap-1">
-			<Label className="text-primary">{label}</Label>
+			<Label htmlFor={`${uid}-${key}`} className="text-primary">{label}</Label>
 			<Input
+				id={`${uid}-${key}`}
 				type="password"
 				value={form[key]}
 				onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
@@ -53,6 +55,7 @@ const AccountSettings = () => {
 				<form onSubmit={submit} className="flex flex-col gap-4 pt-2">
 					{field("currentPassword", "Current Password", "current password", "current-password")}
 					{field("password", "New Password", "new password", "new-password")}
+					<p className="text-xs text-muted -mt-3">{PASSWORD_REQUIREMENT}</p>
 					{field("confirm", "Confirm Password", "re-enter new password", "new-password")}
 					<p className="text-xs text-muted">Changing your password signs you out of every other session.</p>
 					<Button type="submit" disabled={pending} className="self-start bg-accent text-accent-foreground hover:bg-accent/80">Change Password</Button>

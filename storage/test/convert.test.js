@@ -1,21 +1,36 @@
 const supertest = require("supertest")
+
+jest.mock("lib")
+jest.mock("fs")
+jest.mock("memory")
+jest.mock("pm2")
+jest.mock("pg")
+jest.mock("cli-progress")
+jest.mock("fluent-ffmpeg", () => {
+	const { EventEmitter } = require("events")
+	const chainable = ["inputFormat", "outputFPS", "videoBitrate", "videoCodec", "toFormat", "mergeToFile", "outputOptions", "pipe"]
+	const factory = jest.fn(() => {
+		const command = new EventEmitter()
+		chainable.forEach((method) => { command[method] = jest.fn(() => command) })
+		command.kill = jest.fn()
+		return command
+	})
+	factory.setFfmpegPath = jest.fn()
+	factory.setFfprobePath = jest.fn()
+	return factory
+})
+
 const app = require("../backend/storage.js")
 
 const moment = require("moment")
 var {parseFileName, validateDays, validateRequest}    = require("../backend/routes/lib/converter.js")
 const dateFormat = require("../backend/routes/lib/dateFormat.js")
+const { frameFiles } = require("pg")
+
+const flush = async () => { for(let i = 0; i < 3; i++) await Promise.resolve() }
 
 const fileList = [
-	"20210101-000000-00.jpg",
-	"20210101-030000-00.jpg",
-	"20210101-060000-00.jpg",
-	"20210101-090000-00.jpg",
-	"20210101-120000-00.jpg",
-	"20210101-150000-00.jpg",
-	"20210101-180000-00.jpg",
-	"20210101-210000-00.jpg",
-	"20210102-000000-00.jpg",
-	"output_1_20210101-235959_20210201-235959_video1-20210301-235959.mp4", 
+	"output_1_20210101-235959_20210201-235959_video1-20210301-235959.mp4",
 	"output_1_20210101-235959_20210201-235959_video2-20210301-235959.mp4",
 	"output_1_20210101-235959_20210201-235959_video3-20210301-235959.mp4",
 	"mp4_1_video3-20210301-235959.txt",
@@ -33,26 +48,7 @@ const listOfProcesses = fileList.filter(file => file.includes(".mp4") || file.in
 	}
 }).filter(Boolean)
 
-const listOfImages = fileList.filter(file => file.includes(".jpg")).map(file => `/shared/captures/1/${file}`)
-
-jest.mock("lib")
-jest.mock("fs")
-jest.mock("memory")
-jest.mock("pm2")
-jest.mock("cli-progress")
-jest.mock("fluent-ffmpeg", () => {
-	const { EventEmitter } = require("events")
-	const chainable = ["inputFormat", "outputFPS", "videoBitrate", "videoCodec", "toFormat", "mergeToFile", "outputOptions", "pipe"]
-	const factory = jest.fn(() => {
-		const command = new EventEmitter()
-		chainable.forEach((method) => { command[method] = jest.fn(() => command) })
-		command.kill = jest.fn()
-		return command
-	})
-	factory.setFfmpegPath = jest.fn()
-	factory.setFfprobePath = jest.fn()
-	return factory
-})
+const listOfImages = frameFiles.map(file => `/shared/captures/1/${file}`)
 
 describe("Convert Routes", () => {
 	let cookieWithBearerToken = "validCookie"
@@ -532,20 +528,21 @@ describe("Convert Routes", () => {
 		beforeEach(() => { process.env.memory_ON = "true" })
 		afterEach(() => { memory.__client.connected = true })
 
-		const runVideo = () => {
+		const runVideo = async () => {
 			memory.__emitted.length = 0
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb && cb())
 			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
 			const res = { send: jest.fn() }
 
 			createVideo(req, res)
+			await flush()
 
 			writeFileSpy.mockRestore()
 			return ffmpeg.mock.results[ffmpeg.mock.results.length - 1].value
 		}
 
-		const startVideo = () => {
-			const command = runVideo()
+		const startVideo = async () => {
+			const command = await runVideo()
 			const saved = memory.__emitted.find(e => e.event === "saveProcessEnder")
 			expect(saved).toBeDefined()
 			return { command, id: saved.args[0], ender: saved.args[1] }
@@ -553,20 +550,20 @@ describe("Convert Routes", () => {
 
 		const deletedIds = () => memory.__emitted.filter(e => e.event === "deleteProcessEnder").map(e => e.args[0])
 
-		test("deletes the ender when ffmpeg finishes", () => {
-			const { command, id } = startVideo()
+		test("deletes the ender when ffmpeg finishes", async () => {
+			const { command, id } = await startVideo()
 			command.emit("end")
 			expect(deletedIds()).toContain(id)
 		})
 
-		test("deletes the ender when ffmpeg errors", () => {
-			const { command, id } = startVideo()
+		test("deletes the ender when ffmpeg errors", async () => {
+			const { command, id } = await startVideo()
 			command.emit("error", new Error("ffmpeg exited with code 1"))
 			expect(deletedIds()).toContain(id)
 		})
 
-		test("alerts about storage cleanup when ffmpeg reports a missing concat input", () => {
-			const { command, id } = startVideo()
+		test("alerts about storage cleanup when ffmpeg reports a missing concat input", async () => {
+			const { command, id } = await startVideo()
 
 			lib.webhookAlert.mockClear()
 			command.emit("error", new Error("1/frame2.jpg: No such file or directory"))
@@ -576,8 +573,8 @@ describe("Convert Routes", () => {
 			)
 		})
 
-		test("alerts a generic failure for any other ffmpeg error", () => {
-			const { command, id } = startVideo()
+		test("alerts a generic failure for any other ffmpeg error", async () => {
+			const { command, id } = await startVideo()
 
 			lib.webhookAlert.mockClear()
 			command.emit("error", new Error("ffmpeg exited with code 1"))
@@ -587,17 +584,17 @@ describe("Convert Routes", () => {
 			)
 		})
 
-		test("releasing the ender does not kill ffmpeg, cancelling does", () => {
-			const { command, ender } = startVideo()
+		test("releasing the ender does not kill ffmpeg, cancelling does", async () => {
+			const { command, ender } = await startVideo()
 			ender(false)
 			expect(command.kill).not.toHaveBeenCalled()
 			ender(true)
 			expect(command.kill).toHaveBeenCalledTimes(1)
 		})
 
-		test("drops enders while disconnected instead of buffering them", () => {
+		test("drops enders while disconnected instead of buffering them", async () => {
 			memory.__client.connected = false
-			const command = runVideo()
+			const command = await runVideo()
 			command.emit("end")
 
 			memory.__client.connected = true
@@ -606,9 +603,9 @@ describe("Convert Routes", () => {
 			expect(events).not.toContain("deleteProcessEnder")
 		})
 
-		test("registers no ender while memory is off", () => {
+		test("registers no ender while memory is off", async () => {
 			process.env.memory_ON = "false"
-			runVideo().emit("end")
+			;(await runVideo()).emit("end")
 			const events = memory.__emitted.map(e => e.event)
 			expect(events).not.toContain("saveProcessEnder")
 			expect(events).not.toContain("deleteProcessEnder")
@@ -619,15 +616,76 @@ describe("Convert Routes", () => {
 		const fs = require("fs")
 		const { createVideo } = require("../backend/routes/lib/video.js")
 
-		test("returns {error:true} instead of throwing when the frame-list write fails", () => {
+		test("returns {error:true} instead of throwing when the frame-list write fails", async () => {
 			const writeFileSpy = jest.spyOn(fs, "writeFile").mockImplementation((p, d, cb) => cb(new Error("ENOSPC")))
 			const req = { body: { camera: "1", start: "20210101-000000", end: "20210102-000000" } }
 			const res = { send: jest.fn() }
 
 			expect(() => createVideo(req, res)).not.toThrow()
+			await flush()
 			expect(res.send).toHaveBeenCalledWith({ error: true })
 
 			writeFileSpy.mockRestore()
+		})
+	})
+
+	describe("frame listing comes from the database, not the capture directory", () => {
+		const fs = require("fs")
+		const { mockedPool } = require("pg")
+
+		test("a frame list is an indexed, window-bounded, limited query and never reads the camera directory", async () => {
+			fs.readdir.mockClear()
+			mockedPool.query.mockClear()
+
+			await supertest(app)
+				.post("/convert/listFramesVideo")
+				.send({ start: "20210101-000000", end: "20210102-000000", camera: 1, frames: 3 })
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200)
+
+			const [sql, params] = mockedPool.query.mock.calls.find(([q]) => /AS idx/.test(q))
+			expect(sql).toMatch(/FROM frame_files WHERE camera = \$1 AND timestamp >= .+ AND timestamp < /)
+			expect(sql).toMatch(/ORDER BY idx ASC LIMIT \$5/)
+			expect(params.slice(0, 4)).toEqual(["1", "2021-01-01 00:00:00", "2021-01-02 00:00:00", 3])
+			expect(fs.readdir).not.toHaveBeenCalledWith(expect.stringContaining("captures/1"), expect.anything())
+		})
+
+		test("the concat manifest is ordered oldest first and skips every Nth frame in one query", async () => {
+			mockedPool.query.mockClear()
+
+			await new Promise((resolve) => {
+				const { createVideo } = require("../backend/routes/lib/video.js")
+				createVideo({ body: { camera: "1", start: "20210101-000000", end: "20210102-000000", skip: 4 } }, { send: resolve })
+			})
+
+			const [sql, params] = mockedPool.query.mock.calls.find(([q]) => /AS idx/.test(q))
+			expect(sql).toMatch(/ORDER BY timestamp ASC, name ASC/)
+			expect(sql).toMatch(/WHERE idx % GREATEST\(\$4, CEIL\(total::numeric \/ \$5\)\) = 0/)
+			expect(params[3]).toBe(4)
+		})
+
+		test("a window larger than the cap widens the stride instead of dropping the newest frames", async () => {
+			mockedPool.query.mockClear()
+
+			await new Promise((resolve) => {
+				const { createVideo } = require("../backend/routes/lib/video.js")
+				createVideo({ body: { camera: "1", start: "20210101-000000", end: "20210108-000000" } }, { send: resolve })
+			})
+
+			const [sql, params] = mockedPool.query.mock.calls.find(([q]) => /AS idx/.test(q))
+			expect(sql).toMatch(/COUNT\(\*\) OVER \(\) AS total/)
+			expect(sql).toMatch(/GREATEST\(\$4, CEIL\(total::numeric \/ \$5\)\)/)
+			expect(params[4]).toBe(250000)
+		})
+
+		test("an unreadable database yields an empty list instead of a crash", async () => {
+			mockedPool.query.mockImplementationOnce(() => Promise.reject(new Error("connection terminated")))
+
+			await supertest(app)
+				.post("/convert/listFramesVideo")
+				.send({ start: "20210101-000000", end: "20210102-000000", camera: 1 })
+				.set("Cookie", cookieWithBearerToken)
+				.expect(200, { list: [] })
 		})
 	})
 })

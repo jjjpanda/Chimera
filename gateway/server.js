@@ -3,6 +3,7 @@ const app = require("./gateway.js")
 
 module.exports = {
 	start: () => {
+		const securePort = process.env.gateway_PORT_SECURE || 443
 		const successCallback = () => {
 			console.log(`🗺️ Gateway On ▶ PORT ${process.env.gateway_PORT}`)
 		}
@@ -13,7 +14,7 @@ module.exports = {
 			console.log("🗺️ Gateway Off ❌")
 		}
 		const successCallbackSecure = () => {
-			console.log(`🗺️🔒 Secure Gateway On ▶ PORT ${process.env.gateway_PORT_SECURE}`)
+			console.log(`🗺️🔒 Secure Gateway On ▶ PORT ${securePort}`)
 		}
 		const failureCallbackSecure = (err) => {
 			if(err != undefined){
@@ -23,7 +24,7 @@ module.exports = {
 		}
 		if(process.env.gateway_ON == "true"){
 			handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
-			handleSecureServerStart(app, process.env.gateway_PORT_SECURE, successCallbackSecure, failureCallbackSecure)
+			handleSecureServerStart(app, securePort, successCallbackSecure, failureCallbackSecure)
 			if (isPrimeInstance && process.env.certbot_ON == "true") watchCertRenewal()
 		}
 		else{

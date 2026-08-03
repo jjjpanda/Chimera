@@ -48,16 +48,16 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123", token: "boot-token" })
+				.send({ username: "admin", password: "correct-horse-battery", token: "boot-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(spy).toHaveBeenCalled()
 		})
 
-		test("refuses setup when setup_TOKEN is not configured", async () => {
+		test("refuses setup without disclosing that setup_TOKEN is unconfigured", async () => {
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123" })
+				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
@@ -72,7 +72,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "newadmin", password: "password123", token: "recovery-token" })
+				.send({ username: "newadmin", password: "correct-horse-battery", token: "recovery-token" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})
@@ -100,7 +100,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }] }) // target is an existing non-admin
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "victim", password: "password123", token: "recovery-token" })
+				.send({ username: "victim", password: "correct-horse-battery", token: "recovery-token" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
@@ -115,7 +115,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "user" }] }) // target is a non-admin
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "victim", password: "password123", token: "recovery-token" })
+				.send({ username: "victim", password: "correct-horse-battery", token: "recovery-token" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
@@ -130,19 +130,19 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "second-admin", password: "password123", token: "recovery-token" })
+				.send({ username: "second-admin", password: "correct-horse-battery", token: "recovery-token" })
 			expect(res.status).toBe(403)
 			expect(res.body).toEqual({ error: true })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
-		test("rejects setup with an invalid setup_TOKEN", async () => {
+		test("rejects setup with an invalid setup_TOKEN and names the token", async () => {
 			process.env.setup_TOKEN = "right-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123", token: "wrong-token" })
+				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 		})
 
 		test("returns 400 when username or password is missing", async () => {
@@ -158,18 +158,18 @@ describe("Authorization Routes", () => {
 			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "bad/admin", password: "password123", token: "boot-token" })
+				.send({ username: "bad/admin", password: "correct-horse-battery", token: "boot-token" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 		})
 
-		test("returns 400 for a password shorter than 8 characters", async () => {
+		test("returns 400 for a password shorter than the minimum length", async () => {
 			process.env.setup_TOKEN = "boot-token"
 			const res = await supertest(app)
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short", token: "boot-token" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
 		})
 
 		test("returns 500 when the transaction throws a generic error", async () => {
@@ -178,7 +178,7 @@ describe("Authorization Routes", () => {
 			mockedPool.query.mockRejectedValueOnce(new Error("db down"))
 			const res = await supertest(app)
 				.post("/authorization/setup")
-				.send({ username: "admin", password: "password123", token: "boot-token" })
+				.send({ username: "admin", password: "correct-horse-battery", token: "boot-token" })
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
 			expect(errSpy).toHaveBeenCalled()
@@ -557,7 +557,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.patch("/authorization/users/bob")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword" })
+				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
@@ -574,7 +574,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.patch("/authorization/users/admin")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword" })
+				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
@@ -583,7 +583,7 @@ describe("Authorization Routes", () => {
 			)
 		})
 
-		test("returns 400 for a password shorter than 8 characters", async () => {
+		test("returns 400 for a password shorter than the minimum length", async () => {
 			mockedPool.query.mockResolvedValueOnce({ rows: [{ role: "admin", revoked: false }], rowCount: 1 })
 			const token = jwt.sign({ username: "admin", role: "admin", jti: "jti-admin" }, "test-secret")
 			const res = await supertest(app)
@@ -591,7 +591,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -763,18 +763,18 @@ describe("Authorization Routes", () => {
 
 	describe("POST /authorization/password", () => {
 		test("returns 401 with no token", async () => {
-			const res = await supertest(app).post("/authorization/password").send({ password: "newpassword" })
+			const res = await supertest(app).post("/authorization/password").send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(401)
 		})
 
-		test("returns 400 for a password shorter than 8 characters", async () => {
+		test("returns 400 for a password shorter than the minimum length", async () => {
 			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 8 characters." })
+			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
 		})
 
 		test("returns 200 for a voluntary change with the correct current password", async () => {
@@ -783,7 +783,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword", currentPassword: "mockedPassword" })
+				.send({ password: "replacement-passphrase", currentPassword: "mockedPassword" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 			expect(mockedPool.query).toHaveBeenCalledWith(
@@ -802,7 +802,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword", currentPassword: "wrongpass" })
+				.send({ password: "replacement-passphrase", currentPassword: "wrongpass" })
 			expect(res.status).toBe(400)
 			expect(res.body).toEqual({ error: true, errors: "Current password is incorrect" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(
@@ -820,7 +820,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword" })
+				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})
@@ -832,7 +832,7 @@ describe("Authorization Routes", () => {
 				res = await supertest(app)
 					.post("/authorization/password")
 					.set("Cookie", `bearertoken=Bearer%20${token}`)
-					.send({ password: "newpassword", currentPassword: `wrong${i}` })
+					.send({ password: "replacement-passphrase", currentPassword: `wrong${i}` })
 			}
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
@@ -844,7 +844,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword", currentPassword: "wrongpass" })
+				.send({ password: "replacement-passphrase", currentPassword: "wrongpass" })
 			expect(res.status).toBe(400)
 			expect(spy).not.toHaveBeenCalled()
 		})
@@ -1326,7 +1326,7 @@ describe("Authorization Routes", () => {
 			const res = await supertest(app)
 				.post("/authorization/password")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
-				.send({ password: "newpassword" })
+				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
 		})
 	})

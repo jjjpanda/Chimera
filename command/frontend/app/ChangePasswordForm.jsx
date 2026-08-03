@@ -1,19 +1,26 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
-import { validatePassword } from "../js/password.js"
+import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 
 const ChangePasswordForm = ({ changePassword }) => {
+	const uid = useId()
 	const [password, setPassword] = useState("")
 	const [confirm, setConfirm] = useState("")
 	const [status, setStatus] = useState(null)
 	const [message, setMessage] = useState(null)
 
 	const onSubmit = () => {
-		if (!password || password !== confirm) {
-			setStatus("mismatch")
+		if (!password || !confirm) {
+			setStatus("failed")
+			setMessage("Enter and confirm your new password.")
+			return
+		}
+		if (password !== confirm) {
+			setStatus("failed")
+			setMessage("Passwords do not match.")
 			return
 		}
 		const invalid = validatePassword(password)
@@ -42,8 +49,9 @@ const ChangePasswordForm = ({ changePassword }) => {
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
 					<div className="flex flex-col gap-1">
-						<Label className="text-muted">New Password</Label>
+						<Label htmlFor={`${uid}-password`} className="text-muted">New Password</Label>
 						<Input
+							id={`${uid}-password`}
 							className="bg-surface-raised border-border text-primary placeholder:text-muted"
 							type="password"
 							placeholder="new password"
@@ -52,10 +60,12 @@ const ChangePasswordForm = ({ changePassword }) => {
 							onKeyDown={handleKeyDown}
 							autoComplete="new-password"
 						/>
+						<p className="text-muted text-xs">{PASSWORD_REQUIREMENT}</p>
 					</div>
 					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Confirm Password</Label>
+						<Label htmlFor={`${uid}-confirm`} className="text-muted">Confirm Password</Label>
 						<Input
+							id={`${uid}-confirm`}
 							className="bg-surface-raised border-border text-primary placeholder:text-muted"
 							type="password"
 							placeholder="confirm password"
@@ -65,11 +75,8 @@ const ChangePasswordForm = ({ changePassword }) => {
 							autoComplete="new-password"
 						/>
 					</div>
-					{status === "mismatch" && (
-						<p className="text-danger text-sm">Passwords do not match.</p>
-					)}
 					{status === "failed" && (
-						<p className="text-danger text-sm">{message || "Failed to change password."}</p>
+						<p role="alert" className="text-danger text-sm">{message || "Failed to change password."}</p>
 					)}
 					<Button
 						className="bg-accent text-accent-foreground hover:opacity-90 w-full"
