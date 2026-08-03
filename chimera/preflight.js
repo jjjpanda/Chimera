@@ -67,6 +67,14 @@ const writeSecret = (file, data) => {
 	fs.chmodSync(file, SECRET_MODE)
 	if (!secretsWritten.includes(file)) secretsWritten.push(file)
 }
+const looseMode = (file) => {
+	try {
+		const mode = fs.statSync(file).mode & 0o777
+		return mode & 0o037 ? `0${mode.toString(8).padStart(3, "0")}` : null
+	} catch {
+		return null
+	}
+}
 const groupHint = () => {
 	const gid = process.getgid?.()
 	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
@@ -90,6 +98,7 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
+	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
@@ -129,6 +138,14 @@ const cameraProblems = () => {
 		}
 	}
 	return problems
+}
+
+const confModeProblem = () => {
+	const camDir = getCamDir()
+	const loose = listConfs().map(f => [f, looseMode(path.join(camDir, f))]).filter(([, m]) => m)
+	return loose.length
+		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds netcam_userpass, the camera login, and every account on this machine can read it; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
+		: null
 }
 
 const camTemplate = (id, name, url, userpass) =>
@@ -208,6 +225,8 @@ const runCheck = () => {
 		failed = true
 	} else {
 		const probs = envProblems(schema, lines)
+		const mode = looseMode(ENV)
+		if (mode) probs.push([".env", `mode ${mode} — holds SECRETKEY, database_PASSWORD and the service tokens, and every account on this machine can read them; run: chmod 640 .env`])
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
@@ -219,6 +238,8 @@ const runCheck = () => {
 		if (!motionOk) failed = true
 
 		const cam = cameraProblems()
+		const modeProb = confModeProblem()
+		if (modeProb) cam.push(modeProb)
 		console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
 		cam.forEach(p => console.log(`                  - ${p}`))
 		if (cam.length) failed = true
@@ -341,7 +362,12 @@ const runInteractive = async () => {
 			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
 			if (!(await confirm("  Add another camera?", false))) break
 		}
-		camOk = !cameraProblems().length
+		for (const f of listConfs()) {
+			try { fs.chmodSync(path.join(camDir, f), SECRET_MODE) } catch { /* reported by confModeProblem below */ }
+		}
+		const modeProb = confModeProblem()
+		if (modeProb) console.log(`  ${BAD} ${modeProb}`)
+		camOk = !cameraProblems().length && !modeProb
 		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
 
@@ -357,4 +383,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal, looseMode, confModeProblem }

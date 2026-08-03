@@ -20,7 +20,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -75,6 +75,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const alertOnVar = { key: "object_ALERT_ON", placeholder: "(true | text | false, default true)", optional: true }
 	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
 	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
@@ -96,6 +97,13 @@ describe("varProblem", () => {
 	test("bool: true/false → null", () => {
 		expect(varProblem(boolVar, "true")).toBeNull()
 		expect(varProblem(boolVar, "false")).toBeNull()
+	})
+
+	test("object_ALERT_ON: text is a valid third value, anything else is not", () => {
+		expect(varProblem(alertOnVar, "text")).toBeNull()
+		expect(varProblem(alertOnVar, "true")).toBeNull()
+		expect(varProblem(alertOnVar, "false")).toBeNull()
+		expect(varProblem(alertOnVar, "yes")).toBeTruthy()
 	})
 
 	test("port: non-numeric → error", () => {
@@ -416,5 +424,38 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
 		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+})
+
+// `cp env.example .env` yields 0644, and --check writes nothing, so reporting the mode is the only thing that closes the loop
+describe("looseMode", () => {
+	const fs = require("fs")
+	const os = require("os")
+	const path = require("path")
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "preflight-mode-"))
+	const at = (name, mode) => {
+		const p = path.join(dir, name)
+		fs.writeFileSync(p, "x")
+		fs.chmodSync(p, mode)
+		return p
+	}
+
+	afterAll(() => fs.rmSync(dir, { recursive: true, force: true }))
+
+	test("names the mode of a world-readable secret", () => {
+		expect(looseMode(at("world", 0o644))).toBe("0644")
+	})
+
+	test("accepts the modes preflight itself writes", () => {
+		expect(looseMode(at("tight", 0o640))).toBeNull()
+		expect(looseMode(at("owner", 0o600))).toBeNull()
+	})
+
+	test("flags group-write — group 1000 could rewrite the secret, not just read it", () => {
+		expect(looseMode(at("groupwrite", 0o660))).toBe("0660")
+	})
+
+	test("null for a file that is not there, so a missing artifact reports as missing", () => {
+		expect(looseMode(path.join(dir, "absent"))).toBeNull()
 	})
 })

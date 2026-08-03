@@ -260,6 +260,32 @@ describe("validateEnvVars certbot port warning", () => {
 	})
 })
 
+describe("validateEnvVars certbot redirect warning", () => {
+	// HTTP-01 needs port 80 reachable, and without the redirect that port serves the login form in the clear
+	test("warns (non-fatal) when certbot_ON=true and gateway_HTTPS_Redirect is not true", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("gateway_HTTPS_Redirect is not true")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns when gateway_HTTPS_Redirect is left blank — the env.example default", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "" })
+		expect(res.stdout).toContain("gateway_HTTPS_Redirect is not true")
+	})
+
+	test("no warning when the redirect is on", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).not.toContain("gateway_HTTPS_Redirect is not true")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when certbot_ON is not true", () => {
+		const res = run({ certbot_ON: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("gateway_HTTPS_Redirect is not true")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars insecure-cookie warning", () => {
 	test("fails on an HTTPS-resolved public gateway_HOST with an insecure cookie", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })

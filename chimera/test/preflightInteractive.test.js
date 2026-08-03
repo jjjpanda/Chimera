@@ -206,6 +206,17 @@ describe("runInteractive secret file modes", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	// `cp cameraconf/camera.conf.example cameraconf/cam1.conf` leaves 0644, and a valid conf is never rewritten
+	test("an existing camera conf is tightened to 0640 even when the wizard adds nothing", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		const { modes, exitCode } = await run()
+		expect(modes["cameraconf/cam1.conf"]).toBe(0o640)
+		expect(exitCode).toBe(0)
+	})
+
 	test("a camera conf lands at 0640 — it carries netcam_userpass", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
