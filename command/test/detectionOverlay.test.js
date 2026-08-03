@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
-const FRAME = { w: 416, h: 416 }
-const PAD = { top: 0, bot: 182, left: 0, right: 0 }
+const FRAME = { w: 640, h: 640 }
+const PAD = { top: 0, bot: 280, left: 0, right: 0 }
 
 jest.mock("../frontend/js/letterbox.js", () => ({
 	__esModule: true,
@@ -70,6 +70,8 @@ describe("mini thumbnail overlay", () => {
 
 		expect(detectGrayPad).toHaveBeenCalled()
 		expect(img.className).toContain("object-cover")
+		expect(img.className).toContain("object-top")
+		expect(svg.getAttribute("preserveAspectRatio")).toBe("xMidYMin slice")
 
 		expect(coverScale(cell, { w: vbW, h: vbH }))
 			.toBeCloseTo(coverScale(cell, { w: img.naturalWidth, h: img.naturalHeight }), 6)
