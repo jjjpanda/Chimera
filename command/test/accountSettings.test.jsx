@@ -6,12 +6,13 @@ const { MemoryRouter } = require("react-router-dom")
 const AccountSettings = require("../frontend/app/AccountSettings.jsx").default
 const AuthContext = require("../frontend/app/AuthContext.jsx").default
 const { routeToIndex, indexToRoute, adminRoutes } = require("../frontend/js/routeIndexMapping.js")
+const { PASSWORD_REQUIREMENT } = require("../frontend/js/password.js")
 
 const renderForm = (changePassword) =>
 	render(React.createElement(AuthContext.Provider, { value: { role: "user", signOut: jest.fn(), changePassword } },
 		React.createElement(AccountSettings)))
 
-const fill = ({ current = "oldpassword", password = "newpassword", confirm = "newpassword" } = {}) => {
+const fill = ({ current = "oldpassword", password = "replacement-passphrase", confirm = "replacement-passphrase" } = {}) => {
 	fireEvent.change(screen.getByPlaceholderText("current password"), { target: { value: current } })
 	fireEvent.change(screen.getByPlaceholderText("new password"), { target: { value: password } })
 	fireEvent.change(screen.getByPlaceholderText("re-enter new password"), { target: { value: confirm } })
@@ -25,7 +26,7 @@ test("submits the current password alongside the new one", () => {
 	fireEvent.click(screen.getByText("Change Password", { selector: "button" }))
 
 	expect(changePassword).toHaveBeenCalledWith(
-		{ password: "newpassword", currentPassword: "oldpassword" },
+		{ password: "replacement-passphrase", currentPassword: "oldpassword" },
 		expect.any(Function)
 	)
 })
@@ -52,7 +53,7 @@ test("blocks submission when the current password is blank", () => {
 	expect(changePassword).not.toHaveBeenCalled()
 })
 
-test("blocks submission on a confirm mismatch or a too-short password", () => {
+test("blocks submission on a confirm mismatch, a too-short password or a blocklisted one", () => {
 	const changePassword = jest.fn()
 	renderForm(changePassword)
 
@@ -63,6 +64,16 @@ test("blocks submission on a confirm mismatch or a too-short password", () => {
 	fill({ password: "short", confirm: "short" })
 	fireEvent.click(screen.getByText("Change Password", { selector: "button" }))
 	expect(changePassword).not.toHaveBeenCalled()
+
+	fill({ password: "PasswordPassword", confirm: "PasswordPassword" })
+	fireEvent.click(screen.getByText("Change Password", { selector: "button" }))
+	expect(changePassword).not.toHaveBeenCalled()
+})
+
+test("states the password requirement before anything is submitted", () => {
+	renderForm(jest.fn())
+
+	expect(screen.getByText(PASSWORD_REQUIREMENT)).toBeTruthy()
 })
 
 test("the account route is reachable by every signed-in user", () => {

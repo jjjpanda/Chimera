@@ -7,8 +7,8 @@ test.describe("authentication", () => {
 		await page.goto("/")
 		await expect(page.getByText("Create your account")).toBeVisible()
 		await page.getByPlaceholder("username").fill("admin")
-		await page.getByPlaceholder("password", { exact: true }).fill("password123")
-		await page.getByPlaceholder("confirm password").fill("password123")
+		await page.getByPlaceholder("password", { exact: true }).fill("correct-horse-battery")
+		await page.getByPlaceholder("confirm password").fill("correct-horse-battery")
 		await page.getByPlaceholder("setup token").fill("boot-token")
 		await page.getByRole("button", { name: "Create Account" }).click()
 		await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible()
@@ -51,16 +51,16 @@ test.describe("authentication", () => {
 		await expect(page.getByText("Too many attempts")).toBeVisible()
 	})
 
-	test("setup rejects a password shorter than 8 characters", async ({ page }) => {
+	test("setup rejects a password shorter than the minimum length", async ({ page }) => {
 		await mockApi(page, { "GET /authorization/status": json({ setup: false, tokenRequired: true }) })
 		await page.goto("/")
 		await page.getByPlaceholder("username").fill("admin")
 		await page.getByPlaceholder("password", { exact: true }).fill("short")
 		await page.getByRole("button", { name: "Create Account" }).click()
-		await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible()
+		await expect(page.getByText("Password must be at least 12 characters and not a commonly used password.")).toHaveCount(2)
 	})
 
-	test("forced password change rejects a password shorter than 8 characters", async ({ page, context }) => {
+	test("forced password change rejects a password shorter than the minimum length", async ({ page, context }) => {
 		await context.addCookies([{ name: "bearertoken", value: "Bearer%20token", url: "http://localhost:4173" }])
 		await mockApi(page, {
 			"POST /authorization/verify": json({ error: false, role: "user", forcePasswordChange: true })
@@ -69,7 +69,7 @@ test.describe("authentication", () => {
 		await page.getByPlaceholder("new password").fill("short")
 		await page.getByPlaceholder("confirm password").fill("short")
 		await page.getByRole("button", { name: "Set Password" }).click()
-		await expect(page.getByText("Password must be at least 8 characters.")).toBeVisible()
+		await expect(page.getByText("Password must be at least 12 characters and not a commonly used password.")).toHaveCount(2)
 	})
 
 	test("successful login lands on the dashboard", async ({ page }) => {
@@ -89,11 +89,11 @@ test.describe("authentication", () => {
 		})
 		await page.goto("/")
 		await expect(page.getByText("You must set a new password to continue.")).toBeVisible()
-		await page.getByPlaceholder("new password").fill("newpass123")
+		await page.getByPlaceholder("new password").fill("correct-horse-battery")
 		await page.getByPlaceholder("confirm password").fill("mismatch")
 		await page.getByRole("button", { name: "Set Password" }).click()
 		await expect(page.getByText("Passwords do not match.")).toBeVisible()
-		await page.getByPlaceholder("confirm password").fill("newpass123")
+		await page.getByPlaceholder("confirm password").fill("correct-horse-battery")
 		await page.getByRole("button", { name: "Set Password" }).click()
 		await expect(page.getByRole("button", { name: "Live" })).toBeVisible()
 	})

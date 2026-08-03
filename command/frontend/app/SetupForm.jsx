@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
-import { validatePassword } from "../js/password.js"
+import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 
 const SetupForm = ({ trySetup, tokenRequired }) => {
 	const [status, setStatus] = useState(null)
@@ -79,6 +79,7 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 								onChange={e => setPassword(e.target.value)}
 								autoComplete="new-password"
 							/>
+							<p className="text-muted text-xs">{PASSWORD_REQUIREMENT}</p>
 						</div>
 						<div className="flex flex-col gap-1">
 							<Label className="text-muted">Confirm Password</Label>

@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare, rateLimiter } = require("lib")
+var { validateBody, auth, validatePassword, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -10,9 +10,6 @@ const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
 
 const app = express.Router()
-
-const { minLength: MIN_PASSWORD_LENGTH, requirement: PASSWORD_REQUIREMENT } = password
-const isValidPassword = (p) => typeof p === "string" && p.length >= MIN_PASSWORD_LENGTH
 
 const sendError = (res, e) => {
 	if (e instanceof HttpError) return res.status(e.status).json({ error: true, ...(e.errors && { errors: e.errors }) })
@@ -79,7 +76,8 @@ app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (!process.env.setup_TOKEN || !timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
-	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
+	const invalidPassword = validatePassword(password)
+	if (invalidPassword) return res.status(400).json({ error: true, errors: invalidPassword })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
 	try {
 		const hash = await hashPassword(password)
@@ -155,7 +153,8 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
+	const invalidPassword = password !== undefined && validatePassword(password)
+	if (invalidPassword) return res.status(400).json({ error: true, errors: invalidPassword })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let hash
 	try {
@@ -232,7 +231,8 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, passwordLimiter, async (req, res) => {
 	const { password, currentPassword } = req.body
-	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
+	const invalidPassword = validatePassword(password)
+	if (invalidPassword) return res.status(400).json({ error: true, errors: invalidPassword })
 	const username = req.decoded.username
 	try {
 		await withTransaction(async (client) => {
