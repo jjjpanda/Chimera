@@ -105,7 +105,7 @@ async function runCreationTasks() {
 				try {
 					const missing = await missingColumns(table, columns)
 					ok = missing.length === 0
-					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage/certs, then start fresh.`
+					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. A v5 database cannot be upgraded in place — 'npm run docker:delete' wipes the database and all stored footage (TLS certs under /etc/letsencrypt are unaffected), then start fresh.`
 				} catch (schemaError) {
 					ok = false
 					detail = ` — failed to verify schema: ${schemaError.message}`

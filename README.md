@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`. Some also take `<prefix>_PROXY_ON` to be routed through the gateway; set both `true` on a single-machine install.
+Each service is toggled by `<prefix>_ON`. Some also take `<prefix>_PROXY_ON` to be routed through the gateway; set both `true` on a single-machine install. The gateway is the exception — it is the only service whose ports the bundled compose file publishes, so `gateway_ON` must be `true` and the config check blocks on anything else.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres
@@ -210,5 +210,7 @@ Start the stack with `npm run docker:up`, not a bare `docker compose up`. certbo
 <summary><b>Database schema</b></summary>
 
 [prepareDatabase.js](chimera/prepareDatabase.js) creates the tables and indexes if they are missing, and checks an existing table's column names (not types) against the expected v6 shape rather than assuming it is right. Table and index list: [chimera](chimera#preparedatabasejs). Connection settings: [env.example](env.example).
+
+**Upgrading from v5.** The v6 schema is a deliberate break and there is no in-place upgrade. Starting v6 against an existing `chimera-pgdata` volume fails the column check on boot (`auth` gains `role`, `last_login`, `force_password_change`, `theme`), which exits `1` and leaves the container restarting. That is the expected one-time step, not a corrupt install: run `npm run docker:delete`, then `npm run docker:up` to build the schema fresh. Recorded footage does not survive — `docker:delete` drops the `chimera-storage` volume with the database. TLS certs do survive; they live on the `/etc/letsencrypt` bind mount, which is untouched.
 
 </details>

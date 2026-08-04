@@ -1,4 +1,5 @@
-const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set() }
+const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null }
+const mockEOF = Symbol("EOF")
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
@@ -40,11 +41,15 @@ jest.mock("fs", () => {
 
 jest.mock("readline", () => ({
 	createInterface: () => ({
+		on: (event, cb) => { if (event === "close") mockState.close = cb },
 		question: (q, cb) => {
 			if (!mockState.answers.length) throw new Error(`preflight asked for more input than the test scripted: ${q.trim()}`)
-			cb(mockState.answers.shift())
+			const answer = mockState.answers.shift()
+			// on EOF real readline emits close and never calls the question callback
+			if (answer === mockEOF) return mockState.close?.()
+			cb(answer)
 		},
-		close: jest.fn()
+		close: () => mockState.close?.()
 	})
 }))
 
@@ -74,6 +79,7 @@ const setup = ({ env, answers, noEnv = false, noCams = false, motionDir = false,
 	mockState.answers = [...answers]
 	mockState.modes = {}
 	mockState.chmodFail = new Set()
+	mockState.close = null
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -366,6 +372,54 @@ describe("runInteractive certbotPortProblem", () => {
 		const { env, exitCode } = await run()
 		expect(env).toContain("gateway_PORT = 80")
 		expect(exitCode).toBe(0)
+	})
+})
+
+describe("runInteractive gatewayOffProblem", () => {
+	const EXAMPLE_WITH_GATEWAY = `${EXAMPLE}\ngateway_ON = (true | false)\ngateway_PORT = Port number`
+	// gateway_ON = false is a valid bool, so only the forced re-ask can surface it
+	const GATEWAY_OFF = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_ON: "false", gateway_PORT: "" }
+
+	test("prompts gateway_ON instead of blessing a config compose refuses to parse", async () => {
+		setup({ env: GATEWAY_OFF, answers: ["true", "80"], example: EXAMPLE_WITH_GATEWAY })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("gateway_ON MUST BE true")
+		expect(env).toContain("gateway_ON = true")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	// turning the gateway back on unskips gateway_PORT, which the first pass walked past
+	test("the re-walk then fills the blank gateway_PORT that broke docker compose config", async () => {
+		setup({ env: GATEWAY_OFF, answers: ["true", "80"], example: EXAMPLE_WITH_GATEWAY })
+		const { env } = await run()
+		expect(env).toContain("gateway_PORT = 80")
+	})
+
+	test("--check reports it too, so the predocker hook blocks the build", () => {
+		setup({ env: GATEWAY_OFF, answers: [], example: EXAMPLE_WITH_GATEWAY })
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("gateway_ON MUST BE true")
+		expect(exitCode).toBe(1)
+	})
+})
+
+describe("runInteractive abort", () => {
+	// EOF used to leave the promise unsettled: the walk stalled, nothing was written, and node exited 0
+	test("Ctrl-D reports the abort and exits 1 instead of passing silently", async () => {
+		setup({ env: BLANK, answers: ["false", mockEOF] })
+		const { out, exitCode } = await run()
+		expect(out).toContain("Aborted")
+		expect(out).not.toContain("All checks passed")
+		expect(exitCode).toBe(1)
+	})
+
+	test("answers given before the abort are not half-written to .env", async () => {
+		setup({ env: BLANK, answers: ["false", mockEOF] })
+		const { env } = await run()
+		expect(env).not.toContain("storage_ON = false")
+		expect(env).toBe(envText(BLANK))
 	})
 })
 

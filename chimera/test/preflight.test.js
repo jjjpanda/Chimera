@@ -21,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, gatewayOffProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -279,6 +279,24 @@ describe("certbotPortProblem", () => {
 	})
 })
 
+describe("gatewayOffProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("gateway_ON=false blocks — compose interpolates a blank gateway_PORT and aborts before anything starts", () => {
+		expect(gatewayOffProblem(lines({ gateway_ON: "false" }))).toMatch(/gateway_ON MUST BE true/)
+	})
+
+	test("gateway_ON=true passes", () => {
+		expect(gatewayOffProblem(lines({ gateway_ON: "true" }))).toBeNull()
+	})
+
+	// an absent or blank toggle is already "required, not set"; firing here too would double-report it
+	test("an unset or blank gateway_ON is left to the per-key check", () => {
+		expect(gatewayOffProblem(lines({}))).toBeNull()
+		expect(gatewayOffProblem(lines({ gateway_ON: "" }))).toBeNull()
+	})
+})
+
 describe("setupTokenHint", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
@@ -320,6 +338,11 @@ describe("envProblems", () => {
 	test("the certbot port gate blocks preflight, matching the boot check", () => {
 		const probs = envProblems([], lines({ certbot_ON: "true", gateway_PORT: "8080" }))
 		expect(probs).toEqual([["gateway_PORT", expect.stringMatching(/gateway_PORT MUST BE 80/)]])
+	})
+
+	test("the gateway toggle gate blocks preflight before compose ever parses the file", () => {
+		const probs = envProblems([], lines({ gateway_ON: "false" }))
+		expect(probs).toEqual([["gateway_ON", expect.stringMatching(/gateway_ON MUST BE true/)]])
 	})
 
 	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {

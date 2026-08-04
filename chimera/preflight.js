@@ -227,6 +227,10 @@ const certbotPortProblem = (lines) =>
 		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
 		: null
 
+const gatewayOffProblem = (lines) => getVal(lines, "gateway_ON") === "false"
+	? "gateway_ON MUST BE true — docker-compose publishes only the gateway's ports, so with it off nothing in the stack is reachable, and gateway_PORT is left blank, which aborts `docker compose config` with `no port specified: :<empty>` before any container starts; turn individual services off with their own <prefix>_ON instead"
+	: null
+
 const setupTokenHint = (lines) => on(lines, "command")
 	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
@@ -249,6 +253,8 @@ const envProblems = (schema, lines) => {
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
 	const certbotProb = certbotPortProblem(lines)
 	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
+	const gatewayProb = gatewayOffProblem(lines)
+	if (gatewayProb) probs.push(["gateway_ON", gatewayProb])
 	return probs
 }
 
@@ -292,6 +298,13 @@ const runCheck = () => {
 
 const runInteractive = async () => {
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+	// EOF resolves no question callback, so without this the walk stalls and node exits 0 as if it had passed
+	let finished = false
+	rl.on("close", () => {
+		if (finished) return
+		console.log("\nAborted — no changes written. Re-run `npm run preflight` to start over.")
+		process.exit(1)
+	})
 	const ask = q => new Promise(res => rl.question(q, a => res(a.trim())))
 	const confirm = async (q, def = true) => {
 		const a = (await ask(`${q} ${def ? "[Y/n]" : "[y/N]"} `)).toLowerCase()
@@ -370,6 +383,16 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		const gatewayProb = gatewayOffProblem(lines)
+		if (gatewayProb) {
+			console.log(`\n  gateway_ON ${BAD} ${gatewayProb}`)
+			const v = schema.find(s => s.key === "gateway_ON")
+			if (v) {
+				asked.delete("gateway_ON")
+				await askKey(v)
+			}
+			answered = true
+		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
 	const probs = envProblems(schema, lines)
@@ -423,6 +446,7 @@ const runInteractive = async () => {
 		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
 
+	finished = true
 	rl.close()
 	const setupHint = setupTokenHint(lines)
 	if (setupHint) console.log(setupHint)
@@ -437,4 +461,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, gatewayOffProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
