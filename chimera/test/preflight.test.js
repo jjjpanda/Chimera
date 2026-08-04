@@ -482,6 +482,10 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
 	})
 
+	test.each(["gateway_PORT", "gateway_PORT_SECURE", "gateway_HOST"])("%s stays required with a stale gateway_ON=false in .env — compose interpolates gateway_PORT with no default and dies on a blank", (key) => {
+		expect(isServiceOff(lines({ gateway_ON: "false" }), key)).toBe(false)
+	})
+
 	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {
 		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_PORT")).toBe(true)
 		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
