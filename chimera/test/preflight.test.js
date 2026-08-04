@@ -288,6 +288,14 @@ describe("cookiePlainHttpProblem", () => {
 	test("command_COOKIE_SECURE=false never fires it — that is cookieSecureProblem's territory", () => {
 		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "false" }))).toBeNull()
 	})
+
+	test("a bare (unbracketed) IPv6 loopback is exempt — new URL() rejects it, so the raw host must be checked too", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://::1", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a bracketed IPv6 loopback is exempt", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://[::1]", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
 })
 
 describe("certbotPortProblem", () => {

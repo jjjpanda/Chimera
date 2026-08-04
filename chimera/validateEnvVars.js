@@ -176,7 +176,7 @@ if (cookieProblem) {
 else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
 }
-else if (rawGatewayHost !== "" && !/^https?:\/\//i.test(rawGatewayHost) && !isServiceOff(envLines, "command_COOKIE_SECURE") && process.env.command_COOKIE_SECURE === "true" && !LOOPBACK.includes(hostnameOf(gatewayHost()))) {
+else if (rawGatewayHost !== "" && !/^https?:\/\//i.test(rawGatewayHost) && !isServiceOff(envLines, "command_COOKIE_SECURE") && process.env.command_COOKIE_SECURE === "true" && !LOOPBACK.includes(hostnameOf(gatewayHost()) || rawGatewayHost)) {
 	console.log("WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case")
 }
 

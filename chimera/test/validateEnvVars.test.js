@@ -411,6 +411,12 @@ describe("validateEnvVars bare-host cookie warning", () => {
 		const res = run({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
 		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
 	})
+
+	test("no warning on a bare (unbracketed) IPv6 loopback gateway_HOST — new URL() rejects it, so the raw host must be checked too", () => {
+		const res = run({ gateway_HOST: "::1", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars memory_ON cluster override", () => {

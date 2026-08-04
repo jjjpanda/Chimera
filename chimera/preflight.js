@@ -226,7 +226,7 @@ const cookieSecureProblem = (lines) =>
 const cookiePlainHttpProblem = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
 		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
-		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname"))
+		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
 		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy drop the http:// prefix (or write https://) and set gateway_HTTPS_Redirect or certbot_ON true, because command_COOKIE_SECURE=true only survives on a host browsers reach over HTTPS"
 		: null
 
