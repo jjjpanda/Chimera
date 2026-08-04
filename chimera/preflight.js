@@ -234,7 +234,7 @@ const setupTokenHint = (lines) => on(lines, "command")
 const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
-	const keys = [...SERVICE_PREFIXES.map(s => `${s}_PORT`), "gateway_PORT", "gateway_PORT_SECURE"]
+	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
 	const seen = Object.create(null)
 	const probs = []
 	for (const key of keys) {
@@ -242,7 +242,7 @@ const duplicatePortProblems = (lines) => {
 		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
 		if (!val) continue
 		const num = /^\d+$/.test(val) ? Number(val) : val
-		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service shares one pm2 process, so the second one to bind loses with EADDRINUSE`])
+		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service is its own pm2 app but they all share the container's network namespace, so the second one to bind loses with EADDRINUSE`])
 		else seen[num] = key
 	}
 	return probs
@@ -399,17 +399,20 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
-		for (const [key, p] of duplicatePortProblems(lines)) {
-			if (!duplicatePortProblems(lines).some(([k]) => k === key)) continue
+		for (let dup = duplicatePortProblems(lines); dup.length; dup = duplicatePortProblems(lines)) {
+			const [key, p] = dup[0]
 			console.log(`\n  ${key} ${BAD} ${p}`)
 			const other = p.match(/also used by (\w+)/)?.[1]
+			let prompted = false
 			for (const k of [...new Set([key, other])].filter(Boolean)) {
 				if (!duplicatePortProblems(lines).some(([kk]) => kk === key)) break
 				const v = schema.find(s => s.key === k)
 				if (!v) continue
 				asked.delete(k)
 				await askKey(v)
+				prompted = true
 			}
+			if (!prompted) break
 			answered = true
 		}
 	} while (answered)

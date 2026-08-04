@@ -298,6 +298,11 @@ describe("duplicatePortProblems", () => {
 		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))).toHaveLength(0)
 	})
 
+	test("a service clashing with gateway_PORT names the service port, since the gateway port is the pinned one", () => {
+		const probs = duplicatePortProblems(lines({ command_ON: "true", command_PORT: "80", gateway_PORT: "80" }))
+		expect(probs).toEqual([["command_PORT", expect.stringMatching(/gateway_PORT/)]])
+	})
+
 	test("distinct ports pass", () => {
 		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8081" }))).toHaveLength(0)
 	})
