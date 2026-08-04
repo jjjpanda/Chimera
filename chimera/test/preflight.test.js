@@ -273,10 +273,6 @@ describe("certbotPortProblem", () => {
 		expect(certbotPortProblem(lines({ certbot_ON: "false", gateway_PORT: "8080" }))).toBeNull()
 		expect(certbotPortProblem(lines({ gateway_PORT: "8080" }))).toBeNull()
 	})
-
-	test("a non-80 port passes with gateway_ON=false — watchCertRenewal never runs without the gateway service", () => {
-		expect(certbotPortProblem(lines({ gateway_ON: "false", certbot_ON: "true", gateway_PORT: "8080" }))).toBeNull()
-	})
 })
 
 describe("setupTokenHint", () => {
@@ -484,6 +480,10 @@ describe("isServiceOff (prefix mapping)", () => {
 		const off = { schedule_ON: "false", [`${prefix}_ON`]: "false" }
 		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "true" }), `${prefix}_HOST`)).toBe(false)
 		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
+	})
+
+	test.each(["gateway_PORT", "gateway_PORT_SECURE", "gateway_HOST"])("%s stays required with a stale gateway_ON=false in .env — compose interpolates gateway_PORT with no default and dies on a blank", (key) => {
+		expect(isServiceOff(lines({ gateway_ON: "false" }), key)).toBe(false)
 	})
 
 	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {

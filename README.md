@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`. Some also take `<prefix>_PROXY_ON` to be routed through the gateway; set both `true` on a single-machine install.
+Each service is toggled by `<prefix>_ON`, except the gateway — it is the entrypoint the bundled stack publishes ports for, so it always runs. Some also take `<prefix>_PROXY_ON` to be routed through the gateway; set both `true` on a single-machine install.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres

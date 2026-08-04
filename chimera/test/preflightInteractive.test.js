@@ -1,4 +1,5 @@
-const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set() }
+const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null }
+const mockEOF = Symbol("EOF")
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
@@ -40,11 +41,15 @@ jest.mock("fs", () => {
 
 jest.mock("readline", () => ({
 	createInterface: () => ({
+		on: (event, cb) => { if (event === "close") mockState.close = cb },
 		question: (q, cb) => {
 			if (!mockState.answers.length) throw new Error(`preflight asked for more input than the test scripted: ${q.trim()}`)
-			cb(mockState.answers.shift())
+			const answer = mockState.answers.shift()
+			// on EOF real readline emits close and never calls the question callback
+			if (answer === mockEOF) return mockState.close?.()
+			cb(answer)
 		},
-		close: jest.fn()
+		close: () => mockState.close?.()
 	})
 }))
 
@@ -74,6 +79,7 @@ const setup = ({ env, answers, noEnv = false, noCams = false, motionDir = false,
 	mockState.answers = [...answers]
 	mockState.modes = {}
 	mockState.chmodFail = new Set()
+	mockState.close = null
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -366,6 +372,47 @@ describe("runInteractive certbotPortProblem", () => {
 		const { env, exitCode } = await run()
 		expect(env).toContain("gateway_PORT = 80")
 		expect(exitCode).toBe(0)
+	})
+})
+
+describe("runInteractive abort", () => {
+	// EOF used to leave the promise unsettled: the walk stalled, nothing was written, and node exited 0
+	test("Ctrl-D reports the abort and exits 1 instead of passing silently", async () => {
+		setup({ env: BLANK, answers: ["false", mockEOF] })
+		const { out, exitCode } = await run()
+		expect(out).toContain("Aborted")
+		expect(out).not.toContain("All checks passed")
+		expect(exitCode).toBe(1)
+	})
+
+	test("answers given before the abort are not half-written to .env", async () => {
+		setup({ env: BLANK, answers: ["false", mockEOF] })
+		const { env, out } = await run()
+		expect(env).not.toContain("storage_ON = false")
+		expect(env).toBe(envText(BLANK))
+		expect(out).toContain("no changes written")
+	})
+
+	// the .env write at :382 and seedEnv both precede later prompts, so "no changes written" would be a lie there
+	test("EOF at a camera prompt keeps the written .env and says so", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false" },
+			answers: [SECRET, mockEOF],
+			noCams: true
+		})
+		const { out, env, exitCode } = await run()
+		expect(exitCode).toBe(1)
+		expect(env).toContain(`SECRETKEY = ${SECRET}`)
+		expect(out).toContain("changes already written are kept")
+		expect(out).not.toContain("no changes written")
+	})
+
+	test("EOF at the first prompt of a seeded run reports the seeded file rather than a clean slate", async () => {
+		setup({ env: BLANK, answers: [mockEOF], noEnv: true })
+		const { out, exitCode } = await run()
+		expect(exitCode).toBe(1)
+		expect(mockState.files[".env"]).toBeDefined()
+		expect(out).toContain("changes already written are kept")
 	})
 })
 

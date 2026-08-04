@@ -177,7 +177,7 @@ const confModeProblem = () => {
 const camTemplate = (id, name, url, userpass) =>
 	`camera_id ${id}\ncamera_name ${name}\n\nnetcam_url ${url}\nnetcam_userpass ${userpass}\nnetcam_keepalive on\nnetcam_use_tcp on\n`
 
-const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
+const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory"]
 const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const isServiceOff = (lines, key) => {
@@ -223,7 +223,7 @@ const cookieSecureProblem = (lines) =>
 		: null
 
 const certbotPortProblem = (lines) =>
-	!isServiceOff(lines, "gateway_PORT") && getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
+	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
 		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
 		: null
 
@@ -292,6 +292,16 @@ const runCheck = () => {
 
 const runInteractive = async () => {
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+	// EOF resolves no question callback, so without this the walk stalls and node exits 0 as if it had passed
+	let finished = false
+	let wrote = false
+	rl.on("close", () => {
+		if (finished) return
+		console.log(wrote
+			? "\nAborted — changes already written are kept. Re-run `npm run preflight` to finish."
+			: "\nAborted — no changes written. Re-run `npm run preflight` to start over.")
+		process.exit(1)
+	})
 	const ask = q => new Promise(res => rl.question(q, a => res(a.trim())))
 	const confirm = async (q, def = true) => {
 		const a = (await ask(`${q} ${def ? "[Y/n]" : "[y/N]"} `)).toLowerCase()
@@ -303,6 +313,7 @@ const runInteractive = async () => {
 	if (!fs.existsSync(ENV)) {
 		console.log("No .env found, seeding from env.example.")
 		seedEnv()
+		wrote = true
 	}
 	const schema = parseSchema()
 	const lines = readLines()
@@ -372,6 +383,7 @@ const runInteractive = async () => {
 		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
+	wrote = true
 	const probs = envProblems(schema, lines)
 	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
 	const envOk = !probs.length
@@ -423,6 +435,7 @@ const runInteractive = async () => {
 		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
 
+	finished = true
 	rl.close()
 	const setupHint = setupTokenHint(lines)
 	if (setupHint) console.log(setupHint)

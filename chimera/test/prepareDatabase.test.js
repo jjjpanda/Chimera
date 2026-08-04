@@ -120,6 +120,23 @@ describe("runCreationTasks", () => {
 		expect(issues).toBe(true)
 	})
 
+	test("an older auth table lists exactly which columns are missing", async () => {
+		const log = jest.spyOn(console, "log").mockImplementation(() => {})
+		poolInstance.query.mockImplementation((query, params) => {
+			if (/information_schema/.test(query)) {
+				if (params[0] === "auth") return Promise.resolve(columnRows(["id", "username", "hash"]))
+				return Promise.resolve(columnRows(creationTasks.find((t) => t.table === params[0]).columns))
+			}
+			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
+			return Promise.resolve({ rows: [] })
+		})
+		await expect(runCreationTasks()).resolves.toBe(true)
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: role, last_login, force_password_change, theme"))
+		// docker:delete is `compose down -v`, which never touches the /etc/letsencrypt bind mount
+		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("footage/certs"))
+		log.mockRestore()
+	})
+
 	test("a non-42P07 failure reports the underlying error", async () => {
 		const log = jest.spyOn(console, "log").mockImplementation(() => {})
 		poolInstance.query.mockRejectedValue(Object.assign(new Error("permission denied for schema public"), { code: "42501" }))
