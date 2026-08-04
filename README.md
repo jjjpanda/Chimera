@@ -120,7 +120,7 @@ Get it backwards and you pay either way: `true` on plain HTTP breaks login outri
 
 An HTTPS port is published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
 
-The config check catches only one of the two mistakes: `false` while something says HTTPS. It names the three settings that could have said so — an `https://` or prefix-less `gateway_HOST`, `gateway_HTTPS_Redirect=true`, `certbot_ON=true` — but not which one did. `true` on plain HTTP passes the check and still breaks login. Nothing is checked when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`).
+The config check catches `false` while something says HTTPS, and it catches `true` on an explicit `http://` deploy — but only once `gateway_HOST` carries that `http://` prefix itself. Left bare, the host reads as HTTPS by default, so the same `true` there is ambiguous rather than provably wrong, and the check only warns instead of blocking. Either error names the three settings that could have said so — `gateway_HOST`'s scheme, `gateway_HTTPS_Redirect=true`, `certbot_ON=true` — but not which one did. Nothing is checked when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`).
 
 Why the cookie can't just read the request: [command](command#config).
 

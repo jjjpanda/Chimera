@@ -21,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -252,6 +252,42 @@ describe("cookieSecureProblem", () => {
 	test("the check is skipped when the command service is off", () => {
 		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_ON: "false", command_COOKIE_SECURE: "false" }))).toBe(false)
 	})
+
+	test("command_COOKIE_SECURE=true on an explicit http:// gateway_HOST never fires cookieSecureProblem — that is cookiePlainHttpProblem's territory", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("cookiePlainHttpProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on an explicit http:// gateway_HOST with command_COOKIE_SECURE=true and no HTTPS signal", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toMatch(/command_COOKIE_SECURE MUST BE false/)
+	})
+
+	test("a bare, prefix-less gateway_HOST is the ambiguous case and does not fire — normalizeHost implies https:// there", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("loopback is exempt — browsers honour Secure on http://localhost", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://localhost:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("gateway_HTTPS_Redirect=true rules it out even on an explicit http:// gateway_HOST", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" }))).toBeNull()
+	})
+
+	test("certbot_ON=true rules it out even on an explicit http:// gateway_HOST", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_ON: "false", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("command_COOKIE_SECURE=false never fires it — that is cookieSecureProblem's territory", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "false" }))).toBeNull()
+	})
 })
 
 describe("certbotPortProblem", () => {
@@ -296,6 +332,11 @@ describe("envProblems", () => {
 	test("the insecure-cookie gate blocks preflight, matching the boot check", () => {
 		const probs = envProblems([], lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))
 		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE true/)]])
+	})
+
+	test("the plain-http cookie gate blocks preflight too", () => {
+		const probs = envProblems([], lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))
+		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE false/)]])
 	})
 
 	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {

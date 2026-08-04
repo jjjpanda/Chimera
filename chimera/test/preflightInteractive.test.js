@@ -339,6 +339,28 @@ describe("runInteractive cookieSecureProblem", () => {
 	})
 })
 
+describe("runInteractive cookiePlainHttpProblem", () => {
+	const EXAMPLE_WITH_GATEWAY = `${EXAMPLE}\ngateway_HOST = Gateway host\ncommand_COOKIE_SECURE = (true | false)`
+	// every key holds a valid value except the plain-http cookie pair, so only the forced re-ask can fix it
+	const PLAIN_HTTP_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }
+
+	test("prompts gateway_HOST instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
+		setup({ env: PLAIN_HTTP_BROKEN, answers: ["127.0.0.1"], example: EXAMPLE_WITH_GATEWAY })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("command_COOKIE_SECURE MUST BE false")
+		expect(env).toContain("gateway_HOST = 127.0.0.1")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("falls through to command_COOKIE_SECURE when gateway_HOST stays explicit http:// — clearing the cookie flag resolves it too", async () => {
+		setup({ env: PLAIN_HTTP_BROKEN, answers: ["http://192.168.1.50:8080", "false"], example: EXAMPLE_WITH_GATEWAY })
+		const { env, exitCode } = await run()
+		expect(env).toContain("command_COOKIE_SECURE = false")
+		expect(exitCode).toBe(0)
+	})
+})
+
 describe("runInteractive motion.conf directory", () => {
 	test("reports the directory instead of asking to copy over it — copyFileSync would only throw EISDIR", async () => {
 		setup({

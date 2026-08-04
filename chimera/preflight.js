@@ -210,16 +210,24 @@ const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestre
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const urlPart = (url, part) => { try { return new URL(url)[part] } catch { return "" } }
 const gatewayUrl = (lines) => normalizeHost(getVal(lines, "gateway_HOST"))
+const rawGatewayHost = (lines) => (getVal(lines, "gateway_HOST") || "").trim()
 
 const insecureCookie = (lines) => {
 	if (isServiceOff(lines, "command_COOKIE_SECURE") || getVal(lines, "command_COOKIE_SECURE") === "true") return false
-	const host = urlPart(gatewayUrl(lines), "hostname") || (getVal(lines, "gateway_HOST") || "").trim()
+	const host = urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines)
 	return !!host && !LOOPBACK.includes(host)
 }
 
 const cookieSecureProblem = (lines) =>
 	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
 		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
+		: null
+
+const cookiePlainHttpProblem = (lines) =>
+	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
+		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
+		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname"))
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy drop the http:// prefix (or write https://) and set gateway_HTTPS_Redirect or certbot_ON true, because command_COOKIE_SECURE=true only survives on a host browsers reach over HTTPS"
 		: null
 
 const certbotPortProblem = (lines) =>
@@ -245,7 +253,7 @@ const envProblems = (schema, lines) => {
 	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, keyProblem(lines, v)]).filter(([, p]) => p)
 	const feedProb = objectFeedProblem(lines)
 	if (feedProb) probs.push(["object_ON", feedProb])
-	const cookieProb = cookieSecureProblem(lines)
+	const cookieProb = cookieSecureProblem(lines) || cookiePlainHttpProblem(lines)
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
 	const certbotProb = certbotPortProblem(lines)
 	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
@@ -369,6 +377,18 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		const plainHttpProb = cookiePlainHttpProblem(lines)
+		if (plainHttpProb) {
+			console.log(`\n  command_COOKIE_SECURE ${BAD} ${plainHttpProb}`)
+			for (const key of ["gateway_HOST", "command_COOKIE_SECURE"]) {
+				if (!cookiePlainHttpProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
 		const certbotProb = certbotPortProblem(lines)
 		if (certbotProb) {
 			console.log(`\n  gateway_PORT ${BAD} ${certbotProb}`)
@@ -450,4 +470,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

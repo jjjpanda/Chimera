@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, certbotPortProblem, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -167,13 +167,17 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 
-const cookieProblem = cookieSecureProblem(envLines)
+const cookieProblem = cookieSecureProblem(envLines) || cookiePlainHttpProblem(envLines)
+const rawGatewayHost = (process.env.gateway_HOST || "").trim()
 if (cookieProblem) {
 	console.log(cookieProblem)
 	allEnvPresent = false
 }
 else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+}
+else if (rawGatewayHost !== "" && !/^https?:\/\//i.test(rawGatewayHost) && !isServiceOff(envLines, "command_COOKIE_SECURE") && process.env.command_COOKIE_SECURE === "true" && !LOOPBACK.includes(hostnameOf(gatewayHost()))) {
+	console.log("WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case")
 }
 
 const scheduleOn = process.env.schedule_ON === "true"
