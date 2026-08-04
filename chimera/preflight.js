@@ -235,7 +235,7 @@ const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
 	const keys = [...SERVICE_PREFIXES.map(s => `${s}_PORT`), "gateway_PORT", "gateway_PORT_SECURE"]
-	const seen = {}
+	const seen = Object.create(null)
 	const probs = []
 	for (const key of keys) {
 		if (isServiceOff(lines, key)) continue
@@ -402,10 +402,14 @@ const runInteractive = async () => {
 		for (const [key, p] of duplicatePortProblems(lines)) {
 			if (!duplicatePortProblems(lines).some(([k]) => k === key)) continue
 			console.log(`\n  ${key} ${BAD} ${p}`)
-			const v = schema.find(s => s.key === key)
-			if (!v) continue
-			asked.delete(key)
-			await askKey(v)
+			const other = p.match(/also used by (\w+)/)?.[1]
+			for (const k of [...new Set([key, other])].filter(Boolean)) {
+				if (!duplicatePortProblems(lines).some(([kk]) => kk === key)) break
+				const v = schema.find(s => s.key === k)
+				if (!v) continue
+				asked.delete(k)
+				await askKey(v)
+			}
 			answered = true
 		}
 	} while (answered)

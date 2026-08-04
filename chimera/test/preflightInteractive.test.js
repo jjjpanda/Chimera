@@ -375,6 +375,20 @@ describe("runInteractive certbotPortProblem", () => {
 	})
 })
 
+describe("runInteractive duplicatePortProblems", () => {
+	const EXAMPLE_WITH_GATEWAY_PORTS = `${EXAMPLE}\ngateway_PORT = Port number\ngateway_PORT_SECURE = Port number ***`
+	const PORT_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_PORT: "443" }
+
+	test("a blank gateway_PORT_SECURE keeps colliding with its own 443 default, so the loop falls through to gateway_PORT instead of re-asking forever", async () => {
+		setup({ env: PORT_BROKEN, answers: ["", "8080"], example: EXAMPLE_WITH_GATEWAY_PORTS })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("duplicate port 443")
+		expect(env).toContain("gateway_PORT = 8080")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+})
+
 describe("runInteractive abort", () => {
 	// EOF used to leave the promise unsettled: the walk stalled, nothing was written, and node exited 0
 	test("Ctrl-D reports the abort and exits 1 instead of passing silently", async () => {
