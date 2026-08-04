@@ -231,6 +231,22 @@ const setupTokenHint = (lines) => on(lines, "command")
 	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
 
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const duplicatePortProblems = (lines) => {
+	const keys = [...SERVICE_PREFIXES.map(s => `${s}_PORT`), "gateway_PORT", "gateway_PORT_SECURE"]
+	const seen = {}
+	const probs = []
+	for (const key of keys) {
+		if (isServiceOff(lines, key)) continue
+		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
+		if (!val) continue
+		if (seen[val]) probs.push([key, `duplicate port ${val} — also used by ${seen[val]}; every service shares one pm2 process, so the second one to bind loses with EADDRINUSE`])
+		else seen[val] = key
+	}
+	return probs
+}
+
 const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
@@ -249,6 +265,7 @@ const envProblems = (schema, lines) => {
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
 	const certbotProb = certbotPortProblem(lines)
 	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
+	probs.push(...duplicatePortProblems(lines))
 	return probs
 }
 
@@ -450,4 +467,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

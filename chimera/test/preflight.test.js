@@ -21,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -275,6 +275,34 @@ describe("certbotPortProblem", () => {
 	})
 })
 
+describe("duplicatePortProblems", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("a duplicate PORT across two on services is caught and names both keys", () => {
+		const probs = duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))
+		expect(probs).toEqual([["schedule_PORT", expect.stringMatching(/command_PORT/)]])
+		expect(probs[0][1]).toMatch(/8080/)
+	})
+
+	test("gateway_PORT=443 with a blank gateway_PORT_SECURE collides with its own 443 default", () => {
+		const probs = duplicatePortProblems(lines({ gateway_PORT: "443" }))
+		expect(probs).toEqual([["gateway_PORT_SECURE", expect.stringMatching(/gateway_PORT/)]])
+		expect(probs[0][1]).toMatch(/443/)
+	})
+
+	test("a duplicate is not caught when one of the two services is off", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "false", command_PORT: "8080", schedule_PORT: "8080" }))).toHaveLength(0)
+	})
+
+	test("a duplicate is not caught when the matching service is off even with PROXY_ON=true — a proxied service binds nothing locally", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))).toHaveLength(0)
+	})
+
+	test("distinct ports pass", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8081" }))).toHaveLength(0)
+	})
+})
+
 describe("setupTokenHint", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
@@ -321,6 +349,11 @@ describe("envProblems", () => {
 	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {
 		const probs = envProblems(SCHEMA, lines({ storage_ON: "true", storage_FOLDERPATH: "/mnt/storage#leftover" }))
 		expect(probs).toEqual([["storage_FOLDERPATH", expect.stringMatching(/cannot contain #/)]])
+	})
+
+	test("the duplicate-port gate rides along with the per-key problems", () => {
+		const probs = envProblems([], lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))
+		expect(probs).toEqual([["schedule_PORT", expect.stringMatching(/command_PORT/)]])
 	})
 })
 
