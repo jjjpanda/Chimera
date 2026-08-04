@@ -241,8 +241,9 @@ const duplicatePortProblems = (lines) => {
 		if (isServiceOff(lines, key)) continue
 		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
 		if (!val) continue
-		if (seen[val]) probs.push([key, `duplicate port ${val} — also used by ${seen[val]}; every service shares one pm2 process, so the second one to bind loses with EADDRINUSE`])
-		else seen[val] = key
+		const num = /^\d+$/.test(val) ? Number(val) : val
+		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service shares one pm2 process, so the second one to bind loses with EADDRINUSE`])
+		else seen[num] = key
 	}
 	return probs
 }
