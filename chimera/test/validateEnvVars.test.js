@@ -417,6 +417,18 @@ describe("validateEnvVars bare-host cookie warning", () => {
 		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
 		expect(res.status).toBe(0)
 	})
+
+	test("no warning on a bare gateway_HOST when certbot_ON=true alone — certbot means HTTPS, not ambiguous", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false", certbot_ON: "true", gateway_PORT: "80" })
+		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning on a bare gateway_HOST when gateway_HTTPS_Redirect=true — reverse-proxy TLS termination, not ambiguous", () => {
+		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars memory_ON cluster override", () => {
