@@ -405,7 +405,7 @@ const runInteractive = async () => {
 			const other = p.match(/also used by (\w+)/)?.[1]
 			let prompted = false
 			for (const k of [...new Set([key, other])].filter(Boolean)) {
-				if (!duplicatePortProblems(lines).some(([kk]) => kk === key)) break
+				if (!duplicatePortProblems(lines).some(([kk, pp]) => kk === key && pp === p)) break
 				const v = schema.find(s => s.key === k)
 				if (!v) continue
 				asked.delete(k)

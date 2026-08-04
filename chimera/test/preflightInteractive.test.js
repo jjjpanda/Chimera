@@ -406,6 +406,19 @@ describe("runInteractive duplicatePortProblems", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	// answering the first key can move it onto a different partner, which retires the pair before the partner is due
+	test("the partner is not asked once the answer moved the collision elsewhere — it re-reports the new pair instead", async () => {
+		const TWO_ON_ONE_PORT = { ...PORT_BROKEN, gateway_PORT: "80", command_ON: "true", command_PORT: "8080", schedule_ON: "true", schedule_PORT: "8080", memory_ON: "true", memory_PORT: "8081" }
+		// 80 moves schedule_PORT off command_PORT and onto gateway_PORT, so command_PORT is no longer in conflict
+		setup({ env: TWO_ON_ONE_PORT, answers: ["80", "9000"], example: EXAMPLE_WITH_SERVICE_PORTS })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("schedule_PORT ✗ duplicate port 80 — also used by gateway_PORT")
+		expect(env).toContain("command_PORT = 8080")
+		expect(env).toContain("schedule_PORT = 9000")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
 	test("a collision on keys absent from env.example reports once and blocks instead of spinning with no prompt", async () => {
 		const { command_ON, command_PORT, schedule_ON, schedule_PORT } = THREE_ON_ONE_PORT
 		setup({ env: { ...PORT_BROKEN, gateway_PORT: "80", command_ON, command_PORT, schedule_ON, schedule_PORT }, answers: [], example: EXAMPLE })

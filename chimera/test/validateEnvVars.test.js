@@ -280,6 +280,26 @@ describe("validateEnvVars certbot port gate", () => {
 	})
 })
 
+describe("validateEnvVars duplicate port gate", () => {
+	test("blocks boot when two on services share a port — they share the container network namespace, so the second bind hits EADDRINUSE", () => {
+		const res = run({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" })
+		expect(res.stdout).toContain("schedule_PORT duplicate port 8080 — also used by command_PORT")
+		expect(res.status).toBe(1)
+	})
+
+	test("blocks boot when gateway_PORT collides with the 443 gateway_PORT_SECURE default", () => {
+		const res = run({ gateway_PORT: "443", gateway_PORT_SECURE: "" })
+		expect(res.stdout).toContain("gateway_PORT_SECURE duplicate port 443 — also used by gateway_PORT")
+		expect(res.status).toBe(1)
+	})
+
+	test("quiet when the service holding the matching port is off", () => {
+		const res = run({ command_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", command_PORT: "8080", schedule_PORT: "8080" })
+		expect(res.stdout).not.toContain("duplicate port")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars certbot redirect warning", () => {
 	// HTTP-01 needs port 80 reachable, and without the redirect that port serves the login form in the clear
 	test("warns (non-fatal) when certbot_ON=true and gateway_HTTPS_Redirect is not true", () => {
