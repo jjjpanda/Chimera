@@ -294,9 +294,12 @@ const runInteractive = async () => {
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 	// EOF resolves no question callback, so without this the walk stalls and node exits 0 as if it had passed
 	let finished = false
+	let wrote = false
 	rl.on("close", () => {
 		if (finished) return
-		console.log("\nAborted — no changes written. Re-run `npm run preflight` to start over.")
+		console.log(wrote
+			? "\nAborted — changes already written are kept. Re-run `npm run preflight` to finish."
+			: "\nAborted — no changes written. Re-run `npm run preflight` to start over.")
 		process.exit(1)
 	})
 	const ask = q => new Promise(res => rl.question(q, a => res(a.trim())))
@@ -310,6 +313,7 @@ const runInteractive = async () => {
 	if (!fs.existsSync(ENV)) {
 		console.log("No .env found, seeding from env.example.")
 		seedEnv()
+		wrote = true
 	}
 	const schema = parseSchema()
 	const lines = readLines()
@@ -379,6 +383,7 @@ const runInteractive = async () => {
 		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
+	wrote = true
 	const probs = envProblems(schema, lines)
 	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
 	const envOk = !probs.length

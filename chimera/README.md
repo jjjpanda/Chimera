@@ -52,7 +52,7 @@ npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
 - Multiple cross-checks: `object_ON` requires `livestream_ON`; `command_COOKIE_SECURE` must be `true` on an HTTPS deploy at a non-loopback host, so a loopback `gateway_HOST` is never flagged; and `gateway_PORT` must be `80` when `certbot_ON=true`. Compose publishes only `gateway_PORT`, so an HTTP-01 challenge on any other port never arrives.
 - No value may contain `#` — dotenv reads it as a comment. Checked on wizard answers and on values already in the file.
 - The walk repeats until stable, since answering one key can unskip an earlier one. `livestream_ON`/`object_ON`, `gateway_HOST`/`command_COOKIE_SECURE`, and `certbot_ON`/`gateway_PORT` are re-asked as pairs — each is valid alone, so one pass would never revisit them.
-- EOF (Ctrl-D) at any prompt aborts: nothing is written and the run exits `1`. The walk only writes `.env` once, after it goes quiet, so an interrupted setup never leaves a half-filled file.
+- EOF (Ctrl-D) at any prompt aborts with exit `1`, and says whether anything was written. The schema walk writes `.env` once, after it goes quiet, so aborting mid-walk leaves no half-filled file — but seeding happens before the first prompt, and the motion.conf and camera prompts come after that write, so an abort there keeps a complete `.env` and any conf already created. Re-running picks up from what is on disk.
 
 **`motion.conf` / `cameraconf/`** — checked only when storage, object, or livestream is on.
 

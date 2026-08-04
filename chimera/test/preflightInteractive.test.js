@@ -387,9 +387,32 @@ describe("runInteractive abort", () => {
 
 	test("answers given before the abort are not half-written to .env", async () => {
 		setup({ env: BLANK, answers: ["false", mockEOF] })
-		const { env } = await run()
+		const { env, out } = await run()
 		expect(env).not.toContain("storage_ON = false")
 		expect(env).toBe(envText(BLANK))
+		expect(out).toContain("no changes written")
+	})
+
+	// the .env write at :382 and seedEnv both precede later prompts, so "no changes written" would be a lie there
+	test("EOF at a camera prompt keeps the written .env and says so", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false" },
+			answers: [SECRET, mockEOF],
+			noCams: true
+		})
+		const { out, env, exitCode } = await run()
+		expect(exitCode).toBe(1)
+		expect(env).toContain(`SECRETKEY = ${SECRET}`)
+		expect(out).toContain("changes already written are kept")
+		expect(out).not.toContain("no changes written")
+	})
+
+	test("EOF at the first prompt of a seeded run reports the seeded file rather than a clean slate", async () => {
+		setup({ env: BLANK, answers: [mockEOF], noEnv: true })
+		const { out, exitCode } = await run()
+		expect(exitCode).toBe(1)
+		expect(mockState.files[".env"]).toBeDefined()
+		expect(out).toContain("changes already written are kept")
 	})
 })
 
