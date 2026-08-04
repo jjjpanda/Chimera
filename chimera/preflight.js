@@ -399,6 +399,15 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		for (const [key, p] of duplicatePortProblems(lines)) {
+			if (!duplicatePortProblems(lines).some(([k]) => k === key)) continue
+			console.log(`\n  ${key} ${BAD} ${p}`)
+			const v = schema.find(s => s.key === key)
+			if (!v) continue
+			asked.delete(key)
+			await askKey(v)
+			answered = true
+		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
 	wrote = true
