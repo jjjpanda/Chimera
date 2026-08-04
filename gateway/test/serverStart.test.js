@@ -11,7 +11,6 @@ const server = require("../server.js")
 describe("Gateway Secure Port", () => {
 	const original = process.env.gateway_PORT_SECURE
 
-	beforeEach(() => { process.env.gateway_ON = "true" })
 	afterEach(() => {
 		if (original === undefined) delete process.env.gateway_PORT_SECURE
 		else process.env.gateway_PORT_SECURE = original

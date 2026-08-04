@@ -375,36 +375,6 @@ describe("runInteractive certbotPortProblem", () => {
 	})
 })
 
-describe("runInteractive gatewayOffProblem", () => {
-	const EXAMPLE_WITH_GATEWAY = `${EXAMPLE}\ngateway_ON = (true | false)\ngateway_PORT = Port number`
-	// gateway_ON = false is a valid bool, so only the forced re-ask can surface it
-	const GATEWAY_OFF = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_ON: "false", gateway_PORT: "" }
-
-	test("prompts gateway_ON instead of blessing a config compose refuses to parse", async () => {
-		setup({ env: GATEWAY_OFF, answers: ["true", "80"], example: EXAMPLE_WITH_GATEWAY })
-		const { out, env, exitCode } = await run()
-		expect(out).toContain("gateway_ON MUST BE true")
-		expect(env).toContain("gateway_ON = true")
-		expect(out).toContain("All checks passed")
-		expect(exitCode).toBe(0)
-	})
-
-	// turning the gateway back on unskips gateway_PORT, which the first pass walked past
-	test("the re-walk then fills the blank gateway_PORT that broke docker compose config", async () => {
-		setup({ env: GATEWAY_OFF, answers: ["true", "80"], example: EXAMPLE_WITH_GATEWAY })
-		const { env } = await run()
-		expect(env).toContain("gateway_PORT = 80")
-	})
-
-	test("--check reports it too, so the predocker hook blocks the build", () => {
-		setup({ env: GATEWAY_OFF, answers: [], example: EXAMPLE_WITH_GATEWAY })
-		mockState.modes[".env"] = 0o640
-		const { out, exitCode } = runCheckOnce()
-		expect(out).toContain("gateway_ON MUST BE true")
-		expect(exitCode).toBe(1)
-	})
-})
-
 describe("runInteractive abort", () => {
 	// EOF used to leave the promise unsettled: the walk stalled, nothing was written, and node exited 0
 	test("Ctrl-D reports the abort and exits 1 instead of passing silently", async () => {

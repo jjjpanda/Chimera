@@ -22,15 +22,9 @@ module.exports = {
 			}
 			console.log("🗺️🔒 Secure Gateway Off ❌")
 		}
-		if(process.env.gateway_ON == "true"){
-			handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
-			handleSecureServerStart(app, securePort, successCallbackSecure, failureCallbackSecure)
-			if (isPrimeInstance && process.env.certbot_ON == "true") watchCertRenewal()
-		}
-		else{
-			failureCallback()
-			failureCallbackSecure()
-		}
+		handleServerStart(app, process.env.gateway_PORT, successCallback, failureCallback)
+		handleSecureServerStart(app, securePort, successCallbackSecure, failureCallbackSecure)
+		if (isPrimeInstance && process.env.certbot_ON == "true") watchCertRenewal()
 	},
 
 	app

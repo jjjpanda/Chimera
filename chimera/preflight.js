@@ -177,7 +177,7 @@ const confModeProblem = () => {
 const camTemplate = (id, name, url, userpass) =>
 	`camera_id ${id}\ncamera_name ${name}\n\nnetcam_url ${url}\nnetcam_userpass ${userpass}\nnetcam_keepalive on\nnetcam_use_tcp on\n`
 
-const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
+const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory"]
 const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const isServiceOff = (lines, key) => {
@@ -223,13 +223,9 @@ const cookieSecureProblem = (lines) =>
 		: null
 
 const certbotPortProblem = (lines) =>
-	!isServiceOff(lines, "gateway_PORT") && getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
+	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
 		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
 		: null
-
-const gatewayOffProblem = (lines) => getVal(lines, "gateway_ON") === "false"
-	? "gateway_ON MUST BE true — docker-compose publishes only the gateway's ports, so with it off nothing in the stack is reachable, and gateway_PORT is left blank, which aborts `docker compose config` with `no port specified: :<empty>` before any container starts; turn individual services off with their own <prefix>_ON instead"
-	: null
 
 const setupTokenHint = (lines) => on(lines, "command")
 	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
@@ -253,8 +249,6 @@ const envProblems = (schema, lines) => {
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
 	const certbotProb = certbotPortProblem(lines)
 	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
-	const gatewayProb = gatewayOffProblem(lines)
-	if (gatewayProb) probs.push(["gateway_ON", gatewayProb])
 	return probs
 }
 
@@ -383,16 +377,6 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
-		const gatewayProb = gatewayOffProblem(lines)
-		if (gatewayProb) {
-			console.log(`\n  gateway_ON ${BAD} ${gatewayProb}`)
-			const v = schema.find(s => s.key === "gateway_ON")
-			if (v) {
-				asked.delete("gateway_ON")
-				await askKey(v)
-			}
-			answered = true
-		}
 	} while (answered)
 	writeSecret(ENV, lines.join("\n"))
 	const probs = envProblems(schema, lines)
@@ -461,4 +445,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, gatewayOffProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

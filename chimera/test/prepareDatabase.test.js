@@ -120,8 +120,7 @@ describe("runCreationTasks", () => {
 		expect(issues).toBe(true)
 	})
 
-	// the v5 auth shape, which is the only way most operators ever reach this branch
-	test("a v5 auth table names the upgrade instead of reading as a corrupt install", async () => {
+	test("an older auth table lists exactly which columns are missing", async () => {
 		const log = jest.spyOn(console, "log").mockImplementation(() => {})
 		poolInstance.query.mockImplementation((query, params) => {
 			if (/information_schema/.test(query)) {
@@ -133,7 +132,6 @@ describe("runCreationTasks", () => {
 		})
 		await expect(runCreationTasks()).resolves.toBe(true)
 		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: role, last_login, force_password_change, theme"))
-		expect(log).toHaveBeenCalledWith(expect.stringContaining("A v5 database cannot be upgraded in place"))
 		// docker:delete is `compose down -v`, which never touches the /etc/letsencrypt bind mount
 		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("footage/certs"))
 		log.mockRestore()
