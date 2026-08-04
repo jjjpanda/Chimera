@@ -281,6 +281,66 @@ describe("runInteractive secret file modes", () => {
 	})
 })
 
+describe("runInteractive camera_id/camera_name prompts", () => {
+	const CAM_ENV = { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET }
+
+	test("rejects a non-positive-integer camera_id and a blank camera_name before accepting valid answers", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "0", "1", "", "indoor", "rtsp://1.1.1.1/cam", "", "n"]
+		})
+		const { out, exitCode } = await run()
+		expect(out).toContain("camera_id must be a positive integer")
+		expect(out).toContain("camera_name not set")
+		expect(mockState.files["cameraconf/cam1.conf"]).toContain("camera_id 1")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("rejects a duplicate camera_id and a duplicate camera_name before accepting valid answers", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "1", "2", "indoor", "backyard", "rtsp://1.1.1.1/cam", "", "n"]
+		})
+		mockState.files["cameraconf/cam1.conf"] = "camera_id 1\ncamera_name indoor\n"
+		const { out, exitCode } = await run()
+		expect(out).toContain("camera_id 1 already used by cam1.conf")
+		expect(out).toContain("camera_name \"indoor\" already used by cam1.conf")
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
+		expect(exitCode).toBe(1)
+	})
+
+	test("rejects a camera_id whose cam<id>.conf already exists under a different camera_id", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "2", "3", "patio", "rtsp://2.2.2.2/cam", "", "n"]
+		})
+		// cam2.conf holds camera_id 5, so `used` (camera_id values) doesn't catch id 2 — the filename check must
+		mockState.files["cameraconf/cam2.conf"] = "camera_id 5\ncamera_name garage\n"
+		const { out, exitCode } = await run()
+		expect(out).toContain("cam2.conf already exists")
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 5")
+		expect(mockState.files["cameraconf/cam3.conf"]).toContain("camera_id 3")
+		expect(exitCode).toBe(1)
+	})
+
+	test("rejects a camera_id with trailing junk instead of silently truncating it", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "2abc", "2", "patio", "rtsp://2.2.2.2/cam", "", "n"]
+		})
+		const { out, exitCode } = await run()
+		expect(out).toContain("camera_id must be a positive integer")
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+})
+
 describe("runInteractive objectFeedProblem", () => {
 	// every key holds a valid value, so the schema walk asks nothing at all
 	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: SECRET }

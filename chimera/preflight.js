@@ -408,13 +408,34 @@ const runInteractive = async () => {
 		while (cameraProblems().length) {
 			for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
 			if (!(await confirm("  Add a camera now?"))) break
-			const confs = listConfs().map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
+			const files = listConfs()
+			const confs = files.map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
 			const used = confs.map(c => parseInt(c.camera_id))
 			const usedNames = confs.map(c => c.camera_name)
+			const idProblem = (id) => {
+				if (!(id > 0)) return "camera_id must be a positive integer"
+				const i = used.indexOf(id)
+				if (i >= 0) return `camera_id ${id} already used by ${files[i]}`
+				return files.includes(`cam${id}.conf`) ? `cam${id}.conf already exists` : null
+			}
+			const nameProblem = (name) => {
+				if (!name) return "camera_name not set"
+				const i = usedNames.indexOf(name)
+				return i >= 0 ? `camera_name "${name}" already used by ${files[i]}` : null
+			}
 			let id
-			do { id = parseInt(await ask("    camera_id (positive integer) = ")) } while (!(id > 0) || used.includes(id))
+			do {
+				const rawId = await ask("    camera_id (positive integer) = ")
+				id = /^\d+$/.test(rawId) ? parseInt(rawId) : NaN
+				const p = idProblem(id)
+				if (p) console.log(`    ${BAD} ${p}`)
+			} while (idProblem(id))
 			let name
-			do { name = await ask("    camera_name = ") } while (!name || usedNames.includes(name))
+			do {
+				name = await ask("    camera_name = ")
+				const p = nameProblem(name)
+				if (p) console.log(`    ${BAD} ${p}`)
+			} while (nameProblem(name))
 			let url, userpass
 			do {
 				url = await ask("    netcam_url (rtsp://...) = ")
