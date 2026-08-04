@@ -311,6 +311,34 @@ describe("runInteractive camera_id/camera_name prompts", () => {
 		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
 		expect(exitCode).toBe(1)
 	})
+
+	test("rejects a camera_id whose cam<id>.conf already exists under a different camera_id", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "2", "3", "patio", "rtsp://2.2.2.2/cam", "", "n"]
+		})
+		// cam2.conf holds camera_id 5, so `used` (camera_id values) doesn't catch id 2 — the filename check must
+		mockState.files["cameraconf/cam2.conf"] = "camera_id 5\ncamera_name garage\n"
+		const { out, exitCode } = await run()
+		expect(out).toContain("cam2.conf already exists")
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 5")
+		expect(mockState.files["cameraconf/cam3.conf"]).toContain("camera_id 3")
+		expect(exitCode).toBe(1)
+	})
+
+	test("rejects a camera_id with trailing junk instead of silently truncating it", async () => {
+		setup({
+			env: CAM_ENV,
+			noCams: true,
+			answers: ["y", "2abc", "2", "patio", "rtsp://2.2.2.2/cam", "", "n"]
+		})
+		const { out, exitCode } = await run()
+		expect(out).toContain("camera_id must be a positive integer")
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
 })
 
 describe("runInteractive objectFeedProblem", () => {

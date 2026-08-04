@@ -415,7 +415,8 @@ const runInteractive = async () => {
 			const idProblem = (id) => {
 				if (!(id > 0)) return "camera_id must be a positive integer"
 				const i = used.indexOf(id)
-				return i >= 0 ? `camera_id ${id} already used by ${files[i]}` : null
+				if (i >= 0) return `camera_id ${id} already used by ${files[i]}`
+				return files.includes(`cam${id}.conf`) ? `cam${id}.conf already exists` : null
 			}
 			const nameProblem = (name) => {
 				if (!name) return "camera_name not set"
@@ -424,7 +425,8 @@ const runInteractive = async () => {
 			}
 			let id
 			do {
-				id = parseInt(await ask("    camera_id (positive integer) = "))
+				const rawId = await ask("    camera_id (positive integer) = ")
+				id = /^\d+$/.test(rawId) ? parseInt(rawId) : NaN
 				const p = idProblem(id)
 				if (p) console.log(`    ${BAD} ${p}`)
 			} while (idProblem(id))
