@@ -4,7 +4,7 @@
   "description": "a microservices based security camera system",
   "engines": {
     "npm": ">=7.0.0",
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "overrides": {
     "adm-zip": "^0.6.0"
@@ -64,10 +64,11 @@
     "storage": "file:./storage"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.16.7",
     "eslint": "^8.2.0",
     "eslint-plugin-react": "^7.27.0",
-    "jest": "^29.0.0",
-    "jest-environment-jsdom": "^29.0.0",
-    "supertest": "^6.1.6"
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.0.0",
+    "supertest": "^7.2.2"
   }
 }

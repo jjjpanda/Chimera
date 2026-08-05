@@ -7,14 +7,14 @@
     "test": "jest --verbose"
   },
   "dependencies": {
-    "archiver": "^4.0.2",
+    "archiver": "^8.0.0",
     "cli-progress": "^3.9.1",
     "cookie-parser": "^1.4.5",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "fluent-ffmpeg": "^2.1.2",
     "heartbeat": "jjjpanda/heartbeat#v1.4.1",
-    "helmet": "^8.0.0",
+    "helmet": "^8.3.0",
     "lib": "file:../lib",
     "memory": "file:../memory",
     "mkdirp": "^1.0.4",
@@ -23,7 +23,7 @@
     "pm2": "^7.0.3"
   },
   "peerDependencies": {
-    "jest": "^29.0.0",
-    "supertest": "^6.1.6"
+    "jest": "^30.0.0",
+    "supertest": "^7.2.2"
   }
 }

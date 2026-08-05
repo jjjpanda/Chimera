@@ -10,12 +10,12 @@
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
     "heartbeat": "jjjpanda/heartbeat#v1.4.1",
-    "helmet": "^8.0.0",
+    "helmet": "^8.3.0",
     "lib": "file:../lib",
     "memory": "file:../memory"
   },
   "peerDependencies": {
-    "jest": "^29.0.0",
-    "supertest": "^6.1.6"
+    "jest": "^30.0.0",
+    "supertest": "^7.2.2"
   }
 }

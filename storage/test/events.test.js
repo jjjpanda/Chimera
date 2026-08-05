@@ -35,6 +35,24 @@ const { query: bulkQuery } = bulkPool
 
 const bulkSql = () => bulkQuery.mock.calls.map((c) => typeof c[0] === "string" ? c[0] : c[0].text)
 
+const rawGet = (rawPath) => new Promise((resolve, reject) => {
+	const http = require("http")
+	const server = http.createServer(app).listen(0, "127.0.0.1", () => {
+		http.get({
+			port: server.address().port,
+			path: rawPath,
+			headers: { Cookie: "validCookie" }
+		}, (res) => {
+			let raw = ""
+			res.on("data", (chunk) => { raw += chunk })
+			res.on("end", () => server.close(() => resolve({
+				status: res.statusCode,
+				body: raw && /json/.test(res.headers["content-type"] || "") ? JSON.parse(raw) : {}
+			})))
+		}).on("error", (err) => server.close(() => reject(err)))
+	})
+})
+
 const defaultAuthorize = lib.auth.authorize.getMockImplementation()
 
 beforeEach(() => {
@@ -324,9 +342,7 @@ describe("Events Routes", () => {
 
 	describe("GET /frames/:camera_id/:filename", () => {
 		test("returns 400 for path traversal attempt", async () => {
-			const res = await supertest(app)
-				.get("/frames/%2e%2e/evil")
-				.set("Cookie", "validCookie")
+			const res = await rawGet("/frames/%2e%2e/evil")
 			expect(res.status).toBe(400)
 		})
 
