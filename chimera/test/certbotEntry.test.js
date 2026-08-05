@@ -42,7 +42,12 @@ afterEach(() => {
 })
 
 describe("grant_gateway_read", () => {
-	test("opens up only the configured domain's lineage, leaving other certs in the shared store untouched", () => {
+	// win32 and WSL's /mnt/c report a fixed mode whatever chmod does, and these assertions opt out there
+	const probe = fs.mkdtempSync(path.join(os.tmpdir(), "certbot-modeprobe-"))
+	fs.chmodSync(probe, 0o600)
+	const onModes = (fs.statSync(probe).mode & 0o777) === 0o600 ? test : test.skip
+
+	onModes("opens up only the configured domain's lineage, leaving other certs in the shared store untouched", () => {
 		const dir = store()
 
 		grantGatewayRead(dir, "mine.com")
@@ -58,7 +63,7 @@ describe("grant_gateway_read", () => {
 		expect(mode(dir, "archive", "other.com")).toBe(0o700)
 	})
 
-	test("grants the store parents traverse but not read, so the gateway cannot list what other certs exist", () => {
+	onModes("grants the store parents traverse but not read, so the gateway cannot list what other certs exist", () => {
 		const dir = store()
 
 		grantGatewayRead(dir, "mine.com")
@@ -76,7 +81,7 @@ describe("grant_gateway_read", () => {
 		])
 	})
 
-	test("is a no-op without a domain — an install that owns no cert relaxes nothing", () => {
+	onModes("is a no-op without a domain — an install that owns no cert relaxes nothing", () => {
 		const dir = store()
 
 		expect(grantGatewayRead(dir, "")).toEqual([])
