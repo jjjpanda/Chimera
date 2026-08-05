@@ -400,35 +400,6 @@ describe("validateEnvVars bare-host cookie warning", () => {
 		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
 		expect(res.status).toBe(0)
 	})
-
-	test("no warning on a bare loopback gateway_HOST", () => {
-		const res = run({ gateway_HOST: "localhost", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning when command_COOKIE_SECURE is false — that is the plain insecure-cookie warning's territory", () => {
-		const res = run({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
-	})
-
-	test("no warning on a bare (unbracketed) IPv6 loopback gateway_HOST — new URL() rejects it, so the raw host must be checked too", () => {
-		const res = run({ gateway_HOST: "::1", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning on a bare gateway_HOST when certbot_ON=true alone — certbot means HTTPS, not ambiguous", () => {
-		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false", certbot_ON: "true", gateway_PORT: "80" })
-		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning on a bare gateway_HOST when gateway_HTTPS_Redirect=true — reverse-proxy TLS termination, not ambiguous", () => {
-		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" })
-		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
-		expect(res.status).toBe(0)
-	})
 })
 
 describe("validateEnvVars memory_ON cluster override", () => {

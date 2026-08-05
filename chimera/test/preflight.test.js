@@ -21,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -295,6 +295,47 @@ describe("cookiePlainHttpProblem", () => {
 
 	test("a bracketed IPv6 loopback is exempt", () => {
 		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://[::1]", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("cookieAmbiguousHostWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on a bare, prefix-less gateway_HOST with command_COOKIE_SECURE=true and no HTTPS signal", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toMatch(/WARNING: gateway_HOST has no scheme/)
+	})
+
+	test("an explicit scheme rules it out — nothing is ambiguous once the scheme is written down", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "https://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("loopback is exempt — browsers honour Secure on localhost", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "localhost", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a bare (unbracketed) IPv6 loopback is exempt — new URL() rejects it, so the raw host must be checked too", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "::1", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("certbot_ON=true rules it out — certbot means HTTPS, not ambiguous", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("gateway_HTTPS_Redirect=true rules it out — reverse-proxy TLS termination, not ambiguous", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" }))).toBeNull()
+	})
+
+	test("command_COOKIE_SECURE=false never fires it — that is the insecure-cookie warning's territory", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "false" }))).toBeNull()
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_ON: "false", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a blank gateway_HOST has nothing to be ambiguous about", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "", command_COOKIE_SECURE: "true" }))).toBeNull()
 	})
 })
 
