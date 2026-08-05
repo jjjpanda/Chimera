@@ -12,7 +12,8 @@ module.exports = {
 			configFile: false,
 			babelrc: false,
 			presets: [["@babel/preset-env", { targets: { node: "current" } }]]
-		}]
+		}],
+		"\\.[jt]sx?$": "babel-jest"
 	},
 	transformIgnorePatterns: ["[\\\\/]node_modules[\\\\/](?!(archiver|compress-commons|crc32-stream|is-stream|minimatch|zip-stream)[\\\\/])"]
 }
