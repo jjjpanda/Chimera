@@ -59,7 +59,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true })
+			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 

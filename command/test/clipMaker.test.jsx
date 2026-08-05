@@ -26,6 +26,7 @@ const { render, screen, act, fireEvent } = require("@testing-library/react")
 const { MemoryRouter } = require("react-router-dom")
 const ClipMaker = require("../frontend/app/ClipMaker.jsx").default
 const { __calls: calls } = require("../frontend/js/request.js")
+const frameLimits = require("lib/utils/frames.json")
 
 class FakeImage {
 	constructor() {
@@ -127,6 +128,27 @@ describe("clip parameters resolve by their visible labels", () => {
 
 		expect(screen.getByRole("group", { name: "Cameras" })).toBeTruthy()
 	})
+})
+
+test("the frame count clamps typed and stepped values to frameLimits", () => {
+	renderClipMaker()
+	const frames = screen.getByLabelText("Frames")
+	const stepper = (icon) => [...frames.parentElement.querySelectorAll("button")].find(b => b.querySelector(`svg.lucide-${icon}`))
+
+	fireEvent.change(frames, { target: { value: String(frameLimits.max + 1) } })
+	expect(frames.value).toBe(String(frameLimits.max))
+
+	fireEvent.click(stepper("plus"))
+	expect(frames.value).toBe(String(frameLimits.max))
+
+	fireEvent.change(frames, { target: { value: "0" } })
+	expect(frames.value).toBe(String(frameLimits.min))
+
+	fireEvent.change(frames, { target: { value: "-5" } })
+	expect(frames.value).toBe(String(frameLimits.min))
+
+	fireEvent.click(stepper("minus"))
+	expect(frames.value).toBe(String(frameLimits.min))
 })
 
 test("activating the Boxes toggle turns boxes on", async () => {
