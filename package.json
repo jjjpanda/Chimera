@@ -6,6 +6,9 @@
     "npm": ">=7.0.0",
     "node": ">=22.0.0"
   },
+  "overrides": {
+    "adm-zip": "^0.6.0"
+  },
   "workspaces": [
     "command",
     "gateway",
@@ -39,6 +42,7 @@
     "docker:up": "node chimera/compose.js up -d",
     "docker:down": "node chimera/compose.js down",
     "docker:logs": "node chimera/compose.js logs -f",
+    "predocker:restart": "node chimera/preflight.js --check",
     "docker:restart": "node chimera/compose.js restart",
     "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
     "docker:delete": "node chimera/compose.js down -v"

@@ -12,7 +12,7 @@ module.exports = {
 	},
 
 	restart: (processName, callback) => {
-		if(!processNames.includes(processName)) return callback(new Error("process or namespace not found"))
+		if(!/^live_stream_cam_\d{1,8}$/.test(processName)) return callback(new Error("process or namespace not found"))
 		callback(null, { name: processName })
 	}
 }

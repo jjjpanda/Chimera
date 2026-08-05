@@ -106,43 +106,43 @@ describe("Livestream Routes", () => {
 			}
 		})
 
-		test("rate limits restarts per ip", async () => {
-			for(let i = 0; i < 20; i++){
+		test("rate limits restarts per camera, regardless of source ip", async () => {
+			for(let i = 0; i < 3; i++){
 				await supertest(app)
 					.post("/livestream/restart")
 					.set("Cookie", "validCookie")
 					.set("X-Forwarded-For", "10.0.0.3")
-					.send({ camera: 1 })
+					.send({ camera: 50 })
 					.expect(200)
 			}
 			await supertest(app)
 				.post("/livestream/restart")
 				.set("Cookie", "validCookie")
 				.set("X-Forwarded-For", "10.0.0.3")
-				.send({ camera: 1 })
+				.send({ camera: 50 })
 				.expect(429)
 			await supertest(app)
 				.post("/livestream/restart")
 				.set("Cookie", "validCookie")
 				.set("X-Forwarded-For", "10.0.0.4")
-				.send({ camera: 1 })
-				.expect(200)
+				.send({ camera: 50 })
+				.expect(429)
 		})
 
 		test("one camera's exhausted budget does not block the other cameras", async () => {
-			for(let i = 0; i < 20; i++){
+			for(let i = 0; i < 3; i++){
 				await supertest(app)
 					.post("/livestream/restart")
 					.set("Cookie", "validCookie")
 					.set("X-Forwarded-For", "10.0.0.6")
-					.send({ camera: 1 })
+					.send({ camera: 51 })
 					.expect(200)
 			}
 			await supertest(app)
 				.post("/livestream/restart")
 				.set("Cookie", "validCookie")
 				.set("X-Forwarded-For", "10.0.0.6")
-				.send({ camera: 1 })
+				.send({ camera: 51 })
 				.expect(429)
 			for(const camera of [2, 3]){
 				await supertest(app)

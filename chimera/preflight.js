@@ -1,6 +1,7 @@
 const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
+const crypto = require("crypto")
 
 let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost
 try {
@@ -29,10 +30,13 @@ const CAM_DIR = path.join(ROOT, "cameraconf")
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
 
+// a "# default" comment means the value shown is real, not prose to be replaced
+const hasDefault = (rest) => /^\s*default\b/i.test(rest.split("#")[1] || "")
+
 const parseSchema = () =>
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).reduce((acc, line) => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (m) acc.push({ key: m[1], placeholder: m[2].split("#")[0].trim(), desc: m[2].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
+		if (m) acc.push({ key: m[1], placeholder: hasDefault(m[2]) ? "" : m[2].split("#")[0].trim(), desc: m[2].replace(/\*\*\*/g, "").trim(), optional: m[2].includes("***") })
 		return acc
 	}, [])
 
@@ -58,10 +62,52 @@ const setVal = (lines, key, value) => {
 	else lines.push(`${key} = ${value}`)
 }
 
-const seedEnv = () => fs.writeFileSync(ENV,
+const SECRET_MODE = 0o640
+const CONTAINER_GID = 1000
+const secretsWritten = []
+const writeSecret = (file, data) => {
+	fs.writeFileSync(file, data, { mode: SECRET_MODE })
+	fs.chmodSync(file, SECRET_MODE)
+	if (!secretsWritten.includes(file)) secretsWritten.push(file)
+}
+const modesSupported = (() => {
+	let cached
+	return () => {
+		if (cached !== undefined) return cached
+		const probe = path.join(ROOT, `.preflight-mode-${process.pid}`)
+		try {
+			fs.writeFileSync(probe, "", { mode: 0o600 })
+			cached = (fs.statSync(probe).mode & 0o777) === 0o600
+		} catch {
+			cached = false
+		} finally {
+			try { fs.unlinkSync(probe) } catch { /* nothing to remove */ }
+		}
+		return cached
+	}
+})()
+const looseMode = (file) => {
+	try {
+		if (!modesSupported()) return null
+		const mode = fs.statSync(file).mode & 0o777
+		return mode & 0o037 ? `0${mode.toString(8).padStart(3, "0")}` : null
+	} catch {
+		return null
+	}
+}
+const groupHint = () => {
+	const gid = process.getgid?.()
+	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
+	const file = path.relative(ROOT, ENV)
+	return `Wrote ${file} mode 0640 — only your account can read it right now.\n`
+		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
+		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
+}
+
+const seedEnv = () => writeSecret(ENV,
 	fs.readFileSync(ENV_EXAMPLE, "utf8").split(/\r?\n/).map(line => {
 		const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/)
-		if (!m) return line
+		if (!m || hasDefault(m[2])) return line
 		const h = m[2].indexOf("#")
 		return `${m[1]} =${h >= 0 ? " " + m[2].slice(h) : ""}`
 	}).join("\n"))
@@ -72,15 +118,22 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
+	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
-	if (t === "port" && !/^\d+$/.test(val)) return `must be a number (got "${val}")`
+	if (t === "port" && !(/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 65535)) return `must be a port from 1 to 65535 (got "${val}")`
 	return null
 }
 
+const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+
+const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
+	? "is a directory — docker-compose bind-mounts ./motion.conf, and Docker creates a directory there when the file is missing; run `rm -rf motion.conf` then `cp motion.conf.example motion.conf`"
+	: null
+
 const getCamDir = () => {
-	if (fs.existsSync(MOTION)) {
+	if (isFile(MOTION)) {
 		const conf = parseConf(fs.readFileSync(MOTION, "utf8"))
 		if (conf.camera_dir && !path.isAbsolute(conf.camera_dir)) return path.resolve(ROOT, conf.camera_dir)
 	}
@@ -113,10 +166,18 @@ const cameraProblems = () => {
 	return problems
 }
 
+const confModeProblem = () => {
+	const camDir = getCamDir()
+	const loose = listConfs().map(f => [f, looseMode(path.join(camDir, f))]).filter(([, m]) => m)
+	return loose.length
+		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds netcam_userpass, the camera login, and every account on this machine can read it; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
+		: null
+}
+
 const camTemplate = (id, name, url, userpass) =>
 	`camera_id ${id}\ncamera_name ${name}\n\nnetcam_url ${url}\nnetcam_userpass ${userpass}\nnetcam_keepalive on\nnetcam_use_tcp on\n`
 
-const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory", "gateway"]
+const SERVICE_PREFIXES = ["command", "schedule", "storage", "livestream", "object", "memory"]
 const on = (lines, s) => getVal(lines, `${s}_ON`) === "true"
 const camerasNeeded = (lines) => ["storage", "object", "livestream"].some(s => on(lines, s))
 const isServiceOff = (lines, key) => {
@@ -124,6 +185,7 @@ const isServiceOff = (lines, key) => {
 	// object needs both: writes storage_FOLDERPATH, reads livestream_FOLDERPATH
 	if (key === "storage_FOLDERPATH") return !on(lines, "storage") && !on(lines, "object")
 	if (key === "livestream_FOLDERPATH") return !on(lines, "livestream") && !on(lines, "object")
+	if (key === "object_MODEL_SHA256") return !on(lines, "object") || !/^https?:\/\//i.test(getVal(lines, "object_MODEL_URL") || "")
 	if (/^ffprobe_/.test(key)) return !on(lines, "storage")
 	if (key === "storage_HOST" && on(lines, "schedule")) return false
 	if (key === "scheduler_TRUSTED_SOURCES") return false
@@ -148,10 +210,11 @@ const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestre
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const urlPart = (url, part) => { try { return new URL(url)[part] } catch { return "" } }
 const gatewayUrl = (lines) => normalizeHost(getVal(lines, "gateway_HOST"))
+const rawGatewayHost = (lines) => (getVal(lines, "gateway_HOST") || "").trim()
 
 const insecureCookie = (lines) => {
 	if (isServiceOff(lines, "command_COOKIE_SECURE") || getVal(lines, "command_COOKIE_SECURE") === "true") return false
-	const host = urlPart(gatewayUrl(lines), "hostname") || (getVal(lines, "gateway_HOST") || "").trim()
+	const host = urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines)
 	return !!host && !LOOPBACK.includes(host)
 }
 
@@ -159,6 +222,47 @@ const cookieSecureProblem = (lines) =>
 	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
 		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
 		: null
+
+const cookiePlainHttpProblem = (lines) =>
+	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
+		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
+		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy drop the http:// prefix (or write https://) and set gateway_HTTPS_Redirect or certbot_ON true, because command_COOKIE_SECURE=true only survives on a host browsers reach over HTTPS"
+		: null
+
+const cookieAmbiguousHostWarning = (lines) =>
+	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
+		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
+		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
+		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
+		? "WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case"
+		: null
+
+const certbotPortProblem = (lines) =>
+	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
+		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
+		: null
+
+const setupTokenHint = (lines) => on(lines, "command")
+	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
+	: null
+
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const duplicatePortProblems = (lines) => {
+	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
+	const seen = Object.create(null)
+	const probs = []
+	for (const key of keys) {
+		if (isServiceOff(lines, key)) continue
+		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
+		if (!val) continue
+		const num = /^\d+$/.test(val) ? Number(val) : val
+		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service is its own pm2 app but they all share the container's network namespace, so the second one to bind loses with EADDRINUSE`])
+		else seen[num] = key
+	}
+	return probs
+}
 
 const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
@@ -174,8 +278,11 @@ const envProblems = (schema, lines) => {
 	const probs = schema.filter(v => !isServiceOff(lines, v.key)).map(v => [v.key, keyProblem(lines, v)]).filter(([, p]) => p)
 	const feedProb = objectFeedProblem(lines)
 	if (feedProb) probs.push(["object_ON", feedProb])
-	const cookieProb = cookieSecureProblem(lines)
+	const cookieProb = cookieSecureProblem(lines) || cookiePlainHttpProblem(lines)
 	if (cookieProb) probs.push(["command_COOKIE_SECURE", cookieProb])
+	const certbotProb = certbotPortProblem(lines)
+	if (certbotProb) probs.push(["gateway_PORT", certbotProb])
+	probs.push(...duplicatePortProblems(lines))
 	return probs
 }
 
@@ -190,17 +297,21 @@ const runCheck = () => {
 		failed = true
 	} else {
 		const probs = envProblems(schema, lines)
+		const mode = looseMode(ENV)
+		if (mode) probs.push([".env", `mode ${mode} — holds SECRETKEY, database_PASSWORD and the service tokens, and every account on this machine can read them; run: chmod 640 .env`])
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
 	}
 
 	if (camerasNeeded(lines)) {
-		const motionOk = fs.existsSync(MOTION)
-		console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : "  missing"}`)
+		const motionOk = isFile(MOTION)
+		console.log(`  motion.conf   ${motionOk ? OK : BAD}${motionOk ? "" : `  ${motionDirProblem() || "missing"}`}`)
 		if (!motionOk) failed = true
 
 		const cam = cameraProblems()
+		const modeProb = confModeProblem()
+		if (modeProb) cam.push(modeProb)
 		console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
 		cam.forEach(p => console.log(`                  - ${p}`))
 		if (cam.length) failed = true
@@ -215,6 +326,16 @@ const runCheck = () => {
 
 const runInteractive = async () => {
 	const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+	// EOF resolves no question callback, so without this the walk stalls and node exits 0 as if it had passed
+	let finished = false
+	let wrote = false
+	rl.on("close", () => {
+		if (finished) return
+		console.log(wrote
+			? "\nAborted — changes already written are kept. Re-run `npm run preflight` to finish."
+			: "\nAborted — no changes written. Re-run `npm run preflight` to start over.")
+		process.exit(1)
+	})
 	const ask = q => new Promise(res => rl.question(q, a => res(a.trim())))
 	const confirm = async (q, def = true) => {
 		const a = (await ask(`${q} ${def ? "[Y/n]" : "[y/N]"} `)).toLowerCase()
@@ -226,6 +347,7 @@ const runInteractive = async () => {
 	if (!fs.existsSync(ENV)) {
 		console.log("No .env found, seeding from env.example.")
 		seedEnv()
+		wrote = true
 	}
 	const schema = parseSchema()
 	const lines = readLines()
@@ -235,9 +357,11 @@ const runInteractive = async () => {
 	const asked = new Set()
 	const askKey = async (v) => {
 		if (v.desc) console.log(`    ${v.desc}`)
+		const secretDefault = isSecret(v.key) ? crypto.randomBytes(32).toString("base64url") : null
 		let val, ap
 		do {
-			val = await ask(`    ${v.key} = `)
+			val = await ask(secretDefault ? `    ${v.key} [${secretDefault}] = ` : `    ${v.key} = `)
+			if (val === "" && secretDefault && !blankDisables(lines, v.key)) val = secretDefault
 			ap = val === "" && blankDisables(lines, v.key) ? null : answerProblem(v, val)
 			if (ap) console.log(`    ${BAD} ${ap}`)
 		} while (ap)
@@ -279,8 +403,49 @@ const runInteractive = async () => {
 			}
 			answered = true
 		}
+		const plainHttpProb = cookiePlainHttpProblem(lines)
+		if (plainHttpProb) {
+			console.log(`\n  command_COOKIE_SECURE ${BAD} ${plainHttpProb}`)
+			for (const key of ["gateway_HOST", "command_COOKIE_SECURE"]) {
+				if (!cookiePlainHttpProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
+		const certbotProb = certbotPortProblem(lines)
+		if (certbotProb) {
+			console.log(`\n  gateway_PORT ${BAD} ${certbotProb}`)
+			for (const key of ["certbot_ON", "gateway_PORT"]) {
+				if (!certbotPortProblem(lines)) break
+				const v = schema.find(s => s.key === key)
+				if (!v) continue
+				asked.delete(key)
+				await askKey(v)
+			}
+			answered = true
+		}
+		for (let dup = duplicatePortProblems(lines); dup.length; dup = duplicatePortProblems(lines)) {
+			const [key, p] = dup[0]
+			console.log(`\n  ${key} ${BAD} ${p}`)
+			const other = p.match(/also used by (\w+)/)?.[1]
+			let prompted = false
+			for (const k of [...new Set([key, other])].filter(Boolean)) {
+				if (!duplicatePortProblems(lines).some(([kk, pp]) => kk === key && pp === p)) break
+				const v = schema.find(s => s.key === k)
+				if (!v) continue
+				asked.delete(k)
+				await askKey(v)
+				prompted = true
+			}
+			if (!prompted) break
+			answered = true
+		}
 	} while (answered)
-	fs.writeFileSync(ENV, lines.join("\n"))
+	writeSecret(ENV, lines.join("\n"))
+	wrote = true
 	const probs = envProblems(schema, lines)
 	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
 	const envOk = !probs.length
@@ -290,11 +455,13 @@ const runInteractive = async () => {
 	let motionOk = true, camOk = true
 	if (needCams) {
 		console.log("Checking motion.conf...")
-		if (!fs.existsSync(MOTION)) {
+		const dirProb = motionDirProblem()
+		if (dirProb) console.log(`  ${BAD} motion.conf ${dirProb}`)
+		else if (!fs.existsSync(MOTION)) {
 			if (await confirm("  motion.conf missing. Create from motion.conf.example?"))
 				fs.copyFileSync(MOTION_EXAMPLE, MOTION)
 		}
-		motionOk = fs.existsSync(MOTION)
+		motionOk = isFile(MOTION)
 		console.log(`motion.conf ${motionOk ? OK : BAD}\n`)
 
 		console.log("Checking cameraconf/...")
@@ -303,13 +470,34 @@ const runInteractive = async () => {
 		while (cameraProblems().length) {
 			for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
 			if (!(await confirm("  Add a camera now?"))) break
-			const confs = listConfs().map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
+			const files = listConfs()
+			const confs = files.map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
 			const used = confs.map(c => parseInt(c.camera_id))
 			const usedNames = confs.map(c => c.camera_name)
+			const idProblem = (id) => {
+				if (!(id > 0)) return "camera_id must be a positive integer"
+				const i = used.indexOf(id)
+				if (i >= 0) return `camera_id ${id} already used by ${files[i]}`
+				return files.includes(`cam${id}.conf`) ? `cam${id}.conf already exists` : null
+			}
+			const nameProblem = (name) => {
+				if (!name) return "camera_name not set"
+				const i = usedNames.indexOf(name)
+				return i >= 0 ? `camera_name "${name}" already used by ${files[i]}` : null
+			}
 			let id
-			do { id = parseInt(await ask("    camera_id (positive integer) = ")) } while (!(id > 0) || used.includes(id))
+			do {
+				const rawId = await ask("    camera_id (positive integer) = ")
+				id = /^\d+$/.test(rawId) ? parseInt(rawId) : NaN
+				const p = idProblem(id)
+				if (p) console.log(`    ${BAD} ${p}`)
+			} while (idProblem(id))
 			let name
-			do { name = await ask("    camera_name = ") } while (!name || usedNames.includes(name))
+			do {
+				name = await ask("    camera_name = ")
+				const p = nameProblem(name)
+				if (p) console.log(`    ${BAD} ${p}`)
+			} while (nameProblem(name))
 			let url, userpass
 			do {
 				url = await ask("    netcam_url (rtsp://...) = ")
@@ -317,15 +505,25 @@ const runInteractive = async () => {
 				const p = urlProblem(url, buildFullUrl(url, userpass))
 				if (p) console.log(`    ${BAD} ${p}`)
 			} while (urlProblem(url, buildFullUrl(url, userpass)))
-			fs.writeFileSync(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
+			writeSecret(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
 			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
 			if (!(await confirm("  Add another camera?", false))) break
 		}
-		camOk = !cameraProblems().length
+		for (const f of listConfs()) {
+			try { fs.chmodSync(path.join(camDir, f), SECRET_MODE) } catch { /* reported by confModeProblem below */ }
+		}
+		const modeProb = confModeProblem()
+		if (modeProb) console.log(`  ${BAD} ${modeProb}`)
+		camOk = !cameraProblems().length && !modeProb
 		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
 
+	finished = true
 	rl.close()
+	const setupHint = setupTokenHint(lines)
+	if (setupHint) console.log(setupHint)
+	const hint = groupHint()
+	if (hint) console.log(hint)
 	if (motionOk && camOk && envOk) console.log(`All checks passed ${OK}  Safe to run docker.`)
 	else { console.log(`Still incomplete ${BAD}  Docker blocked.`); process.exit(1) }
 }
@@ -335,4 +533,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, answerProblem, envProblems, hashTruncated, runInteractive, readLines, getVal, setVal }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

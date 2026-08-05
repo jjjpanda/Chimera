@@ -44,6 +44,18 @@ describe("validateEnvVars against the CI env file", () => {
 		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
+
+	test("blocks boot when object_MODEL_URL is set without object_MODEL_SHA256 — object would fetch an unverified model", () => {
+		const res = run({ object_MODEL_URL: "https://host/m.onnx", object_MODEL_SHA256: "" })
+		expect(res.stdout).toContain("MISSING ENV VAR object_MODEL_SHA256")
+		expect(res.status).toBe(1)
+	})
+
+	test("allows a blank object_MODEL_SHA256 when object_MODEL_URL is unset — the bundled default model has its own pinned hash", () => {
+		const res = run({ object_MODEL_URL: "", object_MODEL_SHA256: "" })
+		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars unreadable .env gate", () => {
@@ -241,21 +253,75 @@ describe("validateEnvVars hand-edited # gate", () => {
 	})
 })
 
-describe("validateEnvVars certbot port warning", () => {
-	test("warns (non-fatal) when certbot_ON=true and gateway_PORT is not 80", () => {
+describe("validateEnvVars certbot port gate", () => {
+	// compose publishes only gateway_PORT, so HTTP-01 on anything but 80 can never be answered
+	test("blocks boot when certbot_ON=true and gateway_PORT is not 80", () => {
 		const res = run({ certbot_ON: "true", gateway_PORT: "8080" })
-		expect(res.stdout).toContain("gateway_PORT is not 80")
+		expect(res.stdout).toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(1)
 	})
 
-	test("no warning when gateway_PORT is 80", () => {
+	test("blocks boot when gateway_PORT is left blank", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "" })
+		expect(res.stdout).toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(1)
+	})
+
+	test("passes when gateway_PORT is 80", () => {
 		const res = run({ certbot_ON: "true", gateway_PORT: "80" })
-		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+		expect(res.stdout).not.toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(0)
+	})
+
+	test("passes when certbot_ON is not true — BYO certs do not use HTTP-01", () => {
+		const res = run({ certbot_ON: "false", gateway_PORT: "8080" })
+		expect(res.stdout).not.toContain("gateway_PORT MUST BE 80")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars duplicate port gate", () => {
+	test("blocks boot when two on services share a port — they share the container network namespace, so the second bind hits EADDRINUSE", () => {
+		const res = run({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" })
+		expect(res.stdout).toContain("schedule_PORT duplicate port 8080 — also used by command_PORT")
+		expect(res.status).toBe(1)
+	})
+
+	test("blocks boot when gateway_PORT collides with the 443 gateway_PORT_SECURE default", () => {
+		const res = run({ gateway_PORT: "443", gateway_PORT_SECURE: "" })
+		expect(res.stdout).toContain("gateway_PORT_SECURE duplicate port 443 — also used by gateway_PORT")
+		expect(res.status).toBe(1)
+	})
+
+	test("quiet when the service holding the matching port is off", () => {
+		const res = run({ command_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", command_PORT: "8080", schedule_PORT: "8080" })
+		expect(res.stdout).not.toContain("duplicate port")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars certbot redirect warning", () => {
+	// HTTP-01 needs port 80 reachable, and without the redirect that port serves the login form in the clear
+	test("warns (non-fatal) when certbot_ON=true and gateway_HTTPS_Redirect is not true", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("gateway_HTTPS_Redirect is not true")
+		expect(res.status).toBe(0)
+	})
+
+	test("warns when gateway_HTTPS_Redirect is left blank — the env.example default", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "" })
+		expect(res.stdout).toContain("gateway_HTTPS_Redirect is not true")
+	})
+
+	test("no warning when the redirect is on", () => {
+		const res = run({ certbot_ON: "true", gateway_PORT: "80", gateway_HTTPS_Redirect: "true" })
+		expect(res.stdout).not.toContain("gateway_HTTPS_Redirect is not true")
 		expect(res.status).toBe(0)
 	})
 
 	test("no warning when certbot_ON is not true", () => {
-		const res = run({ certbot_ON: "false", gateway_PORT: "8080" })
-		expect(res.stdout).not.toContain("gateway_PORT is not 80")
+		const res = run({ certbot_ON: "false", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("gateway_HTTPS_Redirect is not true")
 		expect(res.status).toBe(0)
 	})
 })
@@ -315,27 +381,43 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(0)
 	})
 
-	test("fails on a public gateway_HOST with an insecure cookie when gateway_ON is false — storage still builds webhook links from it", () => {
-		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "true", command_COOKIE_SECURE: "false" })
-		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE true")
-		expect(res.status).toBe(1)
-	})
-
-	test("no warning on a loopback gateway_HOST when gateway_ON is false", () => {
-		const res = run({ gateway_ON: "false", gateway_HOST: "127.0.0.1", command_ON: "true", command_COOKIE_SECURE: "false" })
-		expect(res.stdout).toBe("")
-		expect(res.status).toBe(0)
-	})
-
-	test("no warning on a public gateway_HOST when both the gateway and the command service are off", () => {
-		const res = run({ gateway_ON: "false", gateway_HOST: "example.com", command_ON: "false", command_PROXY_ON: "false", command_COOKIE_SECURE: "false" })
+	test("no warning on a public gateway_HOST when the command service is off", () => {
+		const res = run({ gateway_HOST: "example.com", command_ON: "false", command_PROXY_ON: "false", command_COOKIE_SECURE: "false" })
 		expect(res.stdout).toBe("")
 		expect(res.status).toBe(0)
 	})
 
 	test("allows a blank command_COOKIE_SECURE on a public gateway_HOST when the command service is off", () => {
-		const res = run({ command_ON: "false", command_PROXY_ON: "true", command_COOKIE_SECURE: "", gateway_ON: "true", gateway_HOST: "example.com" })
+		const res = run({ command_ON: "false", command_PROXY_ON: "true", command_COOKIE_SECURE: "", gateway_HOST: "example.com" })
 		expect(res.stdout).toBe("")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars plain-http cookie gate", () => {
+	test("blocks boot when command_COOKIE_SECURE=true and gateway_HOST is explicit http:// with no HTTPS signal", () => {
+		const res = run({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE false")
+		expect(res.status).toBe(1)
+	})
+
+	test("does not block on http://localhost — browsers honour Secure on loopback", () => {
+		const res = run({ gateway_HOST: "http://localhost:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("command_COOKIE_SECURE MUST BE false")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars bare-host cookie warning", () => {
+	test("warns (non-fatal) when gateway_HOST has no scheme and command_COOKIE_SECURE=true", () => {
+		const res = run({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning once gateway_HOST carries an explicit scheme", () => {
+		const res = run({ gateway_HOST: "https://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
 		expect(res.status).toBe(0)
 	})
 })

@@ -6,11 +6,12 @@ const cliProgress = require("cli-progress")
 const {
 	generateID,
 	filterList,
+	sampleList,
 	fileName,
 	memoryEmitter,
 }              = require("./converter.js")
 const { EXPORT_LOCK_REFRESH_MS, exportLockName } = require("./file.js")
-const {webhookAlert, alertTime, gatewayHost} = require("lib")
+const {webhookAlert, alertTime, gatewayHost, frames: frameLimits} = require("lib")
 
 ffmpeg.setFfmpegPath(process.env.ffmpeg_FILEPATH)
 ffmpeg.setFfprobePath(process.env.ffprobe_FILEPATH)
@@ -20,16 +21,8 @@ const emitToMemory = memoryEmitter("VIDEO PROCESS")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const createFrameList = (camera, start, end, limit, callback) => {
-	filterList(camera, start, end, undefined, (filteredList) => {
-		const limitIteration = Math.ceil(filteredList.length/limit)
-
-		const limitedList = filteredList.filter((item, index) => {
-			return (index % limitIteration === 0)
-		}).map((item) => {
-			return `/shared/captures/${camera}/${item}`
-		})
-	
-		callback(limitedList)
+	sampleList(camera, start, end, limit, (sampledList) => {
+		callback(sampledList.map((item) => `/shared/captures/${camera}/${item}`))
 	})
 }
 
@@ -65,6 +58,11 @@ const createVideoList = (camera, start, end, skip, callback) => {
 const clampFPS = (fps) => {
 	fps = Number(fps)
 	return Number.isFinite(fps) ? Math.min(Math.max(fps, 1), 60) : 20
+}
+
+const clampFrames = (frames) => {
+	frames = Number(frames)
+	return Number.isFinite(frames) ? Math.min(Math.max(frames, frameLimits.min), frameLimits.max) : frameLimits.default
 }
 
 const video = (camera, fps, frames, start, end, rand, save, req, res) => {
@@ -169,6 +167,7 @@ const video = (camera, fps, frames, start, end, rand, save, req, res) => {
 
 module.exports = {
 	clampFPS,
+	clampFrames,
 
 	createVideo: (req, res) => {
 		//console.log(req)
@@ -205,9 +204,7 @@ module.exports = {
 
 		let { camera, start, end, frames } = req.body
 
-		if(frames == undefined){
-			frames = 10
-		}
+		frames = clampFrames(frames)
 
 		createFrameList(camera, start, end, frames, (list) => {
 			res.send({

@@ -20,7 +20,7 @@ If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), d
 ---
 # Ports & TLS
 
-`gateway_ON=true` runs two listeners:
+The gateway runs two listeners:
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
@@ -34,4 +34,4 @@ Before proxying, serves `/.well-known/` from the repo-root dir (dotfiles allowed
 ---
 # Config
 
-`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_ON`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`; see [../env.example](../env.example).
+`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`; see [../env.example](../env.example).

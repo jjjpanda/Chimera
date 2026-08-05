@@ -1,7 +1,7 @@
 **/node_modules/
 feed/
 log/
-.env
+**/.env
 secrets/
 *.md
 motion.conf
@@ -11,3 +11,7 @@ cameraconf/
 **/test/
 **/*.test.js
 **/coverage/
+shared/
+objectTemp/
+objectCaptures/
+.pass

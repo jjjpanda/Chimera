@@ -8,11 +8,12 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 # Exports
 
 **Middleware**
-- `auth` — session/JWT-cookie guard + `requireAdmin` RBAC; scheduler bypass requires all three of `scheduler_AUTH`, a path in `schedulableUrls`, and a socket peer address matching `scheduler_TRUSTED_SOURCES` (proxy-addr list, defaults to `loopback`). Invalid values are rejected by preflight — `proxy-addr.compile` throws at import and would crash-loop every service.
+- `auth` — session/JWT-cookie guard + `requireAdmin` RBAC. The scheduler bypasses it with `scheduler_AUTH`, on a path in `schedulableUrls`, from a peer matching `scheduler_TRUSTED_SOURCES` (proxy-addr list, defaults to `loopback`).
 - `validateBody` — rejects empty bodies (`400`).
 - `tracker` — admin webhook alert in two tiers. **High-impact:** `/authorization/(login|setup|password|users|sessions)`, `/camera/<id>`, `/convert/(createVideo|createZip|cancelProcess|deleteProcess)`, `/file/(pathDelete|pathClean|pathAutoClean)`, `/livestream/restart`, `/object/(config|scan)`, `/task/(start|stop|destroy)`; `GET` on the users/sessions list endpoints and `/object/config` is excluded. **Probe:** any path no service mounts, less the files browsers and crawlers fetch unprompted (`favicon.ico`, `robots.txt`, `sitemap.xml`, `apple-touch-icon.png`, with an optional `-<w>x<h>` size and an optional `-precomposed`). Every other path is silent. Each tier holds its own budget of 30 alerts globally and 10 per IP each minute, so a probe flood cannot silence high-impact alerts.
 - `tempMiddleware` — `deprecation` / `construction` stubs.
 - `helmetOptions` — CSP for `helmet`.
+- `rateLimiter(namespace)` — reservation-based rate limiter factory; returns `{ rateLimit, makeReserve, releaseOnSuccess, client }`. Shares failures across pm2 instances via `memory.client(namespace)` when `memory_ON=true`, falling back to a local in-process store when disconnected or when a shared reservation's ack errors or times out (1s). `rateLimit(opts)` wires the 429 response and, only if `opts.releaseOnSuccess` is set, refunds the reservation on a non-4xx finish — callers that must count every accepted call (not just failures) omit it.
 
 **Server & runtime**
 - `handleServerStart` / `handleSecureServerStart` — start HTTP / HTTPS listeners (TLS paths from `certPaths`, an internal helper not exported from `index.js`).
@@ -35,6 +36,7 @@ Exports below are from `index.js` (CommonJS) unless noted; `module.js` re-export
 - `formatBytes` — human-readable byte sizes.
 - `randomID` — `nanoid` generator.
 - `password` — shared password-policy JSON.
+- `frames` — shared video-export frame-count limits JSON (`min` / `max` / `default`).
 - `jsonFileHanding` — JSON read/write/validate (key spelled `jsonFileHanding`).
 - `mapLimit` — run an async fn over items with bounded concurrency.
 

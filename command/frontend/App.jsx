@@ -24,7 +24,7 @@ const AppInner = ({ loaded, setup, tokenRequired, loggedIn, role, forcePasswordC
 	if (loggedIn && forcePasswordChange) return <ChangePasswordForm changePassword={changePassword} />
 
 	return (
-		<AuthContext.Provider value={{ role, signOut }}>
+		<AuthContext.Provider value={{ role, signOut, changePassword }}>
 			<Router key={`ROUTER-${routerKey}`}>
 				<Routes>
 					<Route

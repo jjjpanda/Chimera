@@ -7,6 +7,7 @@ import { Button } from "../components/ui/button"
 
 const LoginForm = (props) => {
 	const [loginStatus, , , inputValues, onLoginEnter, updateUsername, updatePassword, loginError] = useLoginSchema(props)
+	const uid = React.useId()
 
 	const handleSubmit = (e) => {
 		e.preventDefault()
@@ -22,8 +23,9 @@ const LoginForm = (props) => {
 			<CardContent>
 				<form onSubmit={handleSubmit} className="flex flex-col gap-4">
 					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Username</Label>
+						<Label htmlFor={`${uid}-username`} className="text-muted">Username</Label>
 						<Input
+							id={`${uid}-username`}
 							className="bg-surface-raised border-border text-primary placeholder:text-muted"
 							placeholder="username"
 							value={inputValues.username}
@@ -32,8 +34,9 @@ const LoginForm = (props) => {
 						/>
 					</div>
 					<div className="flex flex-col gap-1">
-						<Label className="text-muted">Password</Label>
+						<Label htmlFor={`${uid}-password`} className="text-muted">Password</Label>
 						<Input
+							id={`${uid}-password`}
 							className="bg-surface-raised border-border text-primary placeholder:text-muted"
 							type="password"
 							placeholder="password"
@@ -43,10 +46,10 @@ const LoginForm = (props) => {
 						/>
 					</div>
 					{loginStatus === "wrong" && (
-						<p className="text-danger text-sm">{loginError || "Invalid username or password."}</p>
+						<p role="alert" className="text-danger text-sm">{loginError || "Invalid username or password."}</p>
 					)}
 					{loginStatus === "right" && (
-						<p className="text-accent text-sm">Signed in.</p>
+						<p role="status" className="text-accent text-sm">Signed in.</p>
 					)}
 					<Button
 						type="submit"

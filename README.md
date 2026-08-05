@@ -46,7 +46,7 @@ flowchart LR
 | [gateway](gateway) | Public entrypoint · reverse proxy · TLS |
 | [memory](memory) | Shared state across a pm2 cluster |
 
-Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
+Each service is toggled by `<prefix>_ON`, except the gateway — it is the entrypoint the bundled stack publishes ports for, so it always runs. Some also take `<prefix>_PROXY_ON` to be routed through the gateway; set both `true` on a single-machine install.
 
 **Shared:** [lib](lib) (helpers every service imports) · [chimera](chimera) (boot scripts)<br>
 **Bundled in the image:** motion · ffmpeg · heartbeat · postgres
@@ -59,7 +59,7 @@ Each service is toggled by `<prefix>_ON`. The gateway is the only public port.
 
 - **Docker**, with Compose **v2.23.1 or newer**. Check with `docker compose version` — older ones cannot read `secrets.environment`.
 - **Node 22+ and npm 7+**. Every `npm run` script below runs on your machine — the config check and the `docker:*` wrappers. The services themselves all run in the container.
-- **`git` and a connection to github.com**. `npm install` pulls every service's packages onto your machine, because the check imports their code, and one package comes straight from GitHub.
+- **`git` and a connection to github.com**. The services are npm workspaces, so `npm install` pulls all of their packages onto your machine even though only the container runs them. `heartbeat` comes straight from GitHub.
 
 ### 1 · Install
 
@@ -77,7 +77,7 @@ You fill in three things: `.env`, `motion.conf`, and one file per camera in `cam
 npm run preflight
 ```
 
-**By hand** — same three files, you edit them yourself. In the copied `.env` every right-hand side is a description of the value, not a value:
+**By hand** — same three files, you edit them yourself. In the copied `.env` most right-hand sides are a description of the value, not a value:
 
 ```bash
 cp env.example .env
@@ -85,7 +85,7 @@ cp motion.conf.example motion.conf
 cp cameraconf/camera.conf.example cameraconf/cam1.conf   # one per camera
 ```
 
-A camera's file holds its address, username and password. Every `.env` value is explained beside it in [env.example](env.example), and a `# Docker:` note marks the ones the container fixes for you.
+A camera's file holds its address, username and password. Every `.env` value is explained beside it in [env.example](env.example). Lines marked `# default` are already filled in with the right value for Docker — leave them alone.
 
 Every service shares one container, so each `<prefix>_HOST` is just loopback plus that service's own port — the `http://127.0.0.1:8081` half of the example, not the domain half. `gateway_HOST` is the exception: it is the address you type in a browser.
 
@@ -106,16 +106,21 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 
 **Your footage** lives in a Docker volume, not in a folder you can browse. Pick a camera and a time range in the web app, and it builds an MP4 or a zip you download from the same page.
 
-**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every file in that folder at startup, so there is no second list to keep in step.
+**Adding a camera** is a new `.conf` in `cameraconf/` plus `npm run docker:restart`. Chimera reads every `.conf` in that folder at startup, so there is no second list to keep in step.
 
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
 
-Set `command_COOKIE_SECURE=true` if browsers reach you over HTTPS, however the certificate gets there. Set it `false` for plain HTTP. Browsers drop a `Secure` cookie on a plain-HTTP origin, so the wrong answer breaks login and nothing else.
+Look at the address you type in the browser, then match it:
 
-On plain HTTP, also give `gateway_HOST` an explicit `http://` prefix — `http://192.168.1.50:8080` — and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`. An HTTPS port still gets published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
+- **`http://`** — set `command_COOKIE_SECURE=false`. Give `gateway_HOST` an explicit `http://` prefix (`http://192.168.1.50:8080`) and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`.
+- **`https://`** — set `command_COOKIE_SECURE=true`, however the certificate gets there.
 
-Preflight catches only one of the two mistakes: `command_COOKIE_SECURE=false` while something says HTTPS. It then lists the three things that could have said so — an `https://` or prefix-less `gateway_HOST`, `gateway_HTTPS_Redirect=true`, `certbot_ON=true` — without saying which one did. The opposite mistake, `true` on a plain-HTTP deploy, passes the check and still breaks login. Nothing is checked at all when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`).
+Get it backwards and you pay either way: `true` on plain HTTP breaks login outright, `false` on HTTPS quietly drops the `Secure` flag from your login cookies.
+
+An HTTPS port is published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
+
+The config check catches `false` while something says HTTPS, and it catches `true` on an explicit `http://` deploy — but only once `gateway_HOST` carries that `http://` prefix itself. Left bare, the host reads as HTTPS by default, so the same `true` there is ambiguous rather than provably wrong, and only the container-boot check (`validateEnvVars.js`, not the config check) warns instead of blocking. The `false`-while-HTTPS error names the three settings that could have said so — `gateway_HOST`'s scheme, `gateway_HTTPS_Redirect=true`, `certbot_ON=true` — but not which one did; the `true`-on-`http://` error is unambiguous, since only `gateway_HOST`'s prefix can trigger it. Nothing is checked when `command_ON=false`, or when `gateway_HOST` is blank or points at this machine (`localhost`, `127.0.0.1`, `::1`).
 
 Why the cookie can't just read the request: [command](command#config).
 
@@ -124,11 +129,38 @@ Why the cookie can't just read the request: [command](command#config).
 <details>
 <summary><b>It built fine but the container keeps restarting</b></summary>
 
-A few checks wait until the container starts: the `*_URL` addresses and the file paths. The cookie check runs again there too, in case `.env` changed after the build. So a build can pass and still fail on startup — the container then restarts over and over, and `npm run docker:logs` shows which value it stopped on.
+Run `npm run docker:logs` — it names the value it stopped on.
 
-**Or it says `CANNOT READ`.** The app reads `.env` and `motion.conf` from inside the container as a normal user, not root. Copy them with plain `cp`, which leaves them readable — no `sudo`, and no `chmod 600`. If you already used `sudo`, `sudo chmod 644 .env motion.conf` undoes it.
+A build can pass and still fail at startup, because some checks only run once the container is up: the `*_URL` addresses, the file paths, and the cookie check again in case `.env` changed after the build.
 
-This only matters when the project folder lives on Linux — a Linux host, or a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Mac or Windows drive, such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera`, Docker Desktop sets the ownership for you.
+**Or it says `CANNOT READ`.**
+
+- **Ownership** is what produces `CANNOT READ` at startup, and only on Linux, including a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Windows or Mac drive Docker Desktop sets ownership for you.
+- **File mode** is checked before the build, not at startup, and applies everywhere except a Windows drive such as `C:\Users\you\chimera` or `/mnt/c/Users/you/chimera` — those report a fixed mode whatever you `chmod`, so Chimera does not look. macOS is checked like Linux.
+
+Inside the container the app runs as user `node`, uid 1000, and reads your config files as that user. Copy them with plain `cp`, never `sudo`, so they stay yours.
+
+**`.env`** holds your passwords and tokens, and `cp` leaves it world-readable at `644`. If your own uid is already 1000 — most single-user installs, check with `id -u` — tightening the mode is all it needs:
+
+```sh
+chmod 640 .env
+```
+
+Otherwise hand it to group 1000 as well:
+
+```sh
+sudo chown "$USER":1000 .env && sudo chmod 640 .env
+```
+
+**Each `cameraconf/*.conf`** holds `netcam_userpass`, a camera password, and `cp` leaves it world-readable at `644`. The container fixes the group on every start, so only the mode needs tightening:
+
+```sh
+chmod 640 cameraconf/*.conf
+```
+
+**`motion.conf`** holds no secret and is fine at the default `644`.
+
+`chmod 644 .env` clears the error too, but it opens your passwords to every account on the machine — so `npm run docker:build`, `docker:up` and `docker:restart` all stop until you put it back.
 
 </details>
 
@@ -163,9 +195,14 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>TLS renewal</b></summary>
 
-`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01, which needs `gateway_PORT=80`; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
+`certbot_ON=true` auto-issues + renews Let's Encrypt certs over HTTP-01; the gateway self-restarts nightly to load them. Disable for BYO certs / upstream TLS.
 
-certbot runs in its own container. Start the stack with `npm run docker:up` rather than a bare `docker compose up` — the script drops that container when `certbot_ON=false` ([chimera/compose.js](chimera/compose.js)), where compose alone would leave it sitting idle.
+Two things have to be true, or no certificate is ever issued:
+
+- **`gateway_HOST` is a public domain name pointing at this machine.** certbot asks for that name without the scheme and port, so the LAN address `http://192.168.1.50:8080` above becomes a request for `192.168.1.50` — never issued.
+- **`gateway_PORT=80`, open through your router.** The challenge arrives as plain HTTP on port 80, and that is the only port published. The config check stops the build on any other port.
+
+Start the stack with `npm run docker:up`, not a bare `docker compose up`. certbot runs in its own container, and the script drops it when `certbot_ON=false` ([chimera/compose.js](chimera/compose.js)); compose alone leaves it sitting idle.
 
 </details>
 

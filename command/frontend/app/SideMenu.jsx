@@ -1,6 +1,6 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, Sun, Moon, Monitor } from "lucide-react"
+import { Home, Video, Scissors, Rewind, Activity, CalendarClock, Users, ScanEye, KeyRound, Sun, Moon, Monitor } from "lucide-react"
 
 import { indexToRoute, adminRoutes } from "../js/routeIndexMapping"
 import { useRole } from "./AuthContext.jsx"
@@ -92,6 +92,16 @@ const SideMenu = ({ index, mobile }) => {
 				})}
 			</nav>
 			<div className="space-y-1 px-2 py-2">
+				<button
+					onClick={() => go("route-8")}
+					className={cn(
+						"flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+						index === "route-8" ? "bg-accent/15 text-accent" : "text-muted hover:bg-surface-raised hover:text-primary"
+					)}
+				>
+					<KeyRound className="size-5 shrink-0" />
+					<span>Account</span>
+				</button>
 				<SignOutButton className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-raised hover:text-primary" iconOnly={false} />
 				<div className="flex w-full rounded-md border border-border">
 					{themeOptions.map(({ value, icon: Icon }) => (

@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare } = require("lib")
+var { validateBody, auth, password, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -8,7 +8,6 @@ const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).s
 
 const bcrypt = require("bcryptjs")
 const { randomBytes } = require("crypto")
-const memory = require("memory")
 
 const app = express.Router()
 
@@ -34,43 +33,14 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const sharedAttempts = process.env.memory_ON == "true"
-const memoryClient = sharedAttempts ? memory.client("AUTH") : null
+const { makeReserve, rateLimit: baseRateLimit, releaseOnSuccess, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const releaseOnSuccess = (res, release) =>
-	res.on("finish", () => { if (res.statusCode < 400 || res.statusCode >= 500) release() })
-
-const makeReserve = ({ windowMs, max, keyFn }) => {
-	const local = memory.loginAttempts()
-	const getKey = keyFn || ((req) => `${req.ip || ""}:${req.path}`)
-	const reserveLocal = (key, cb) =>
-		local.loginReserve(key, max, windowMs, (blocked) => cb(blocked, () => local.loginRelease(key)))
-	const reserve = (key, cb) => {
-		if (!sharedAttempts || !memoryClient.connected) return reserveLocal(key, cb)
-		memoryClient.timeout(1000).emit("loginReserve", key, max, windowMs, (err, blocked) => {
-			if (err) {
-				memoryClient.emit("loginRelease", key)
-				return reserveLocal(key, cb)
-			}
-			cb(blocked, () => memoryClient.emit("loginRelease", key))
-		})
-	}
-	return (req, cb) => reserve(getKey(req), cb)
-}
-
-const rateLimit = (opts) => {
-	const reserve = makeReserve(opts)
-	return (req, res, next) => {
-		reserve(req, (blocked, release) => {
-			if (blocked) return res.status(429).json({ error: true, errors: "Too many attempts" })
-			releaseOnSuccess(res, release)
-			next()
-		})
-	}
-}
+const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+
+const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (req) => `password:${req.decoded?.username ?? ""}` })
 
 const THROTTLE_WINDOW_MS = 10000
 
@@ -107,7 +77,7 @@ app.get("/status", async (req, res) => {
 
 app.post("/setup", validateBody, loginLimiter, async (req, res) => {
 	const { username, password, token } = req.body
-	if (!process.env.setup_TOKEN || !timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true })
+	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
@@ -173,7 +143,7 @@ app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	try {
 		const tempPassword = randomBytes(16).toString("hex")
 		const hash = await hashPassword(tempPassword)
-		await pool.query("INSERT INTO auth(username, hash, role, force_password_change, temp_password_expires) VALUES($1, $2, $3, TRUE, NOW() + INTERVAL '24 hours')", [username, hash, role])
+		await pool.query("INSERT INTO auth(username, hash, role, force_password_change) VALUES($1, $2, $3, TRUE)", [username, hash, role])
 		res.json({ error: false, tempPassword })
 	} catch (e) {
 		if (e.code === "23505") return sendError(res, new HttpError(400))
@@ -204,7 +174,8 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 			if (password !== undefined) {
 				values.push(hash)
 				updates.push(`hash = $${values.length}`)
-				updates.push("force_password_change = FALSE", "temp_password_expires = NULL")
+				values.push(username !== req.decoded.username)
+				updates.push(`force_password_change = $${values.length}`)
 			}
 			values.push(username)
 			await client.query(`UPDATE auth SET ${updates.join(", ")} WHERE username = $${values.length}`, values)
@@ -259,17 +230,17 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	}
 })
 
-app.post("/password", authorize, validateBody, async (req, res) => {
+app.post("/password", authorize, validateBody, passwordLimiter, async (req, res) => {
 	const { password, currentPassword } = req.body
 	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
 	const username = req.decoded.username
 	try {
-		const hash = await hashPassword(password)
 		await withTransaction(async (client) => {
 			const current = (await client.query("SELECT hash, force_password_change FROM auth WHERE username = $1", [username])).rows[0]
 			if (!current) throw new HttpError(404)
 			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "Current password is incorrect")
-			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE, temp_password_expires = NULL WHERE username = $2", [hash, username])
+			const hash = await hashPassword(password)
+			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])
 		})
 		auth.invalidateUser(username)

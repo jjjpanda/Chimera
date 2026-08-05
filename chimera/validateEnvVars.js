@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -153,21 +153,37 @@ if (multiInstance(instances) && process.env.memory_ON !== "true") {
 	process.env.memory_ON = "true"
 }
 
-if (process.env.certbot_ON === "true" && process.env.gateway_PORT !== "80") {
-	console.log("WARNING: certbot_ON=true but gateway_PORT is not 80 — Let's Encrypt HTTP-01 uses port 80; cert issuance/renewal will fail")
+const certbotPort = certbotPortProblem(envLines)
+if (certbotPort) {
+	console.log(certbotPort)
+	allEnvPresent = false
+}
+
+const duplicatePorts = duplicatePortProblems(envLines)
+duplicatePorts.forEach(([k, p]) => {
+	console.log(k, p)
+	allEnvPresent = false
+})
+
+if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
+	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 stays open for HTTP-01 and keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the Secure session cookie, silently failing the login")
 }
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 
-const cookieProblem = cookieSecureProblem(envLines)
+const cookieProblem = cookieSecureProblem(envLines) || cookiePlainHttpProblem(envLines)
+const ambiguousHost = cookieAmbiguousHostWarning(envLines)
 if (cookieProblem) {
 	console.log(cookieProblem)
 	allEnvPresent = false
 }
 else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+}
+else if (ambiguousHost) {
+	console.log(ambiguousHost)
 }
 
 const scheduleOn = process.env.schedule_ON === "true"

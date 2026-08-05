@@ -39,13 +39,13 @@ const services = [
 	{ name: "livestream" },
 	{ name: "schedule" },
 	{ name: "object", instances: 1 },
-	{ name: "gateway" },
 	{ name: "memory", instances: 1 },
 ]
 for (const { name, instances } of services) {
 	if (process.env[`${name}_ON`] === "true") config.apps.push(svc(name, { instances }))
 	else console.log(`↷ skipping ${name} (${name}_ON is "${process.env[`${name}_ON`] ?? "unset"}")`)
 }
+config.apps.push(svc("gateway"))
 
 if(!isDev){
 	if(process.env.alert_URL) config.apps.push({

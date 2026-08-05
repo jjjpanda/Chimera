@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from "react"
+import React, { useId, useState, useMemo, useRef, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useRole } from "./AuthContext"
 import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, Save, SkipBack, ScanEye } from "lucide-react"
@@ -18,6 +18,7 @@ import ResizeHandle from "../components/ResizeHandle.jsx"
 import CameraGridMini from "../components/CameraGridMini.jsx"
 import usePreviewHeight from "../hooks/usePreviewHeight"
 import { padSlots, gridShape } from "../js/grid.js"
+import frameLimits from "lib/utils/frames.json"
 import { nearestFrameIndex, frameSpacingMs, boxesForScrub, fuseMarkers } from "../js/detections.js"
 import toast from "../js/toast"
 import moment from "moment"
@@ -280,6 +281,7 @@ const ClipMakerMini = () => {
 }
 
 const ClipMakerFull = () => {
+	const uid = useId()
 	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const role = useRole()
 	const isAdmin = role === "admin"
@@ -290,7 +292,7 @@ const ClipMakerFull = () => {
 	const [camera, setCamera] = useState(null)
 	const [startDate, setStartDate] = useState(moment().subtract(4, "hours"))
 	const [endDate, setEndDate] = useState(moment())
-	const [number, setNumber] = useState(10)
+	const [number, setNumber] = useState(frameLimits.default)
 	const [fps, setFps] = useState(20)
 	const [skip, setSkip] = useState(1)
 	const [scrubIdx, setScrubIdx] = useState(0)
@@ -804,10 +806,10 @@ const ClipMakerFull = () => {
 			<div className="flex flex-col gap-4 px-2 pt-1 pb-3">
 				<div className="grid grid-cols-2 gap-3">
 					<div className="flex flex-col gap-1.5">
-						<Label>Camera{multiCam ? "s" : ""}</Label>
+						<Label id={`${uid}-camera-label`} htmlFor={multiCam && isDesktop ? undefined : `${uid}-camera`}>Camera{multiCam ? "s" : ""}</Label>
 						{multiCam && isDesktop ? (
 							<div className="flex flex-col gap-1">
-								<div className="flex flex-wrap gap-1">
+								<div role="group" aria-labelledby={`${uid}-camera-label`} className="flex flex-wrap gap-1">
 									{cameras.map((cam, i) => {
 										const selected = selectedCams.includes(i)
 										const atMax = !selected && selectedCams.length >= 4
@@ -832,7 +834,7 @@ const ClipMakerFull = () => {
 						) : (
 							<div className="flex gap-1">
 								<Select value={camera == null ? "" : String(camera)} onValueChange={v => setCamera(parseInt(v))}>
-									<SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
+									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder="Select camera" /></SelectTrigger>
 									<SelectContent>
 										{cameras.map((cam, i) => (
 											<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
@@ -848,19 +850,21 @@ const ClipMakerFull = () => {
 						)}
 					</div>
 					<div className="flex flex-col gap-1.5">
-						<Label>Frames</Label>
+						<Label htmlFor={`${uid}-frames`}>Frames</Label>
 						<div className="flex items-center gap-2">
-							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(1, n - 10))}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(frameLimits.min, n - 10))}>
 								<Minus className="size-4" />
 							</Button>
 							<Input
+								id={`${uid}-frames`}
 								type="number"
-								min="1"
+								min={frameLimits.min}
+								max={frameLimits.max}
 								value={number}
-								onChange={e => setNumber(Math.max(1, parseInt(e.target.value) || 1))}
+								onChange={e => setNumber(Math.min(frameLimits.max, Math.max(frameLimits.min, parseInt(e.target.value) || frameLimits.min)))}
 								className="flex-1 text-center text-sm font-medium px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
 							/>
-							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => n + 10)}>
+							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.min(frameLimits.max, n + 10))}>
 								<Plus className="size-4" />
 							</Button>
 						</div>
@@ -869,8 +873,8 @@ const ClipMakerFull = () => {
 
 				<div className="flex flex-col gap-3 p-2 bg-muted/5 border border-border/50 rounded-lg">
 					<div className="flex flex-col gap-1">
-						<Label>Time Range</Label>
-						<div className="flex items-center gap-2 justify-end flex-wrap">
+						<Label id={`${uid}-range-label`}>Time Range</Label>
+						<div role="group" aria-labelledby={`${uid}-range-label`} className="flex items-center gap-2 justify-end flex-wrap">
 							<span className="text-xs text-muted/50">preset</span>
 							<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
 								<X className="size-3" />
@@ -890,15 +894,15 @@ const ClipMakerFull = () => {
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-x-3 gap-y-2">
-						<Label className="text-xs">Start</Label>
-						<Label className="text-xs">End</Label>
-						<Input type="date" value={startDate.format("YYYY-MM-DD")}
+						<Label htmlFor={`${uid}-start-date`} className="text-xs">Start</Label>
+						<Label htmlFor={`${uid}-end-date`} className="text-xs">End</Label>
+						<Input id={`${uid}-start-date`} type="date" value={startDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setStartDate, "date", e.target.value)} />
-						<Input type="date" value={endDate.format("YYYY-MM-DD")}
+						<Input id={`${uid}-end-date`} type="date" value={endDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setEndDate, "date", e.target.value)} />
-						<Input type="time" step="1" value={startDate.format("HH:mm:ss")}
+						<Input aria-label="Start time" type="time" step="1" value={startDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setStartDate, "time", e.target.value)} />
-						<Input type="time" step="1" value={endDate.format("HH:mm:ss")}
+						<Input aria-label="End time" type="time" step="1" value={endDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setEndDate, "time", e.target.value)} />
 					</div>
 				</div>
@@ -923,12 +927,13 @@ const ClipMakerFull = () => {
 								<div className="flex flex-col gap-4">
 									<div className="flex flex-col gap-3">
 										<div className="flex items-center justify-between gap-4">
-											<Label>FPS</Label>
+											<Label htmlFor={`${uid}-fps`}>FPS</Label>
 											<div className="flex items-center gap-2">
 												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
+													id={`${uid}-fps`}
 													type="number"
 													min="1"
 													value={fps}
@@ -941,12 +946,13 @@ const ClipMakerFull = () => {
 											</div>
 										</div>
 										<div className="flex items-center justify-between gap-4">
-											<Label>Skip</Label>
+											<Label htmlFor={`${uid}-skip`}>Skip</Label>
 											<div className="flex items-center gap-2">
 												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
 													<Minus className="size-4" />
 												</Button>
 												<Input
+													id={`${uid}-skip`}
 													type="number"
 													min="1"
 													value={skip}

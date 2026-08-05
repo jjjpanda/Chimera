@@ -4,8 +4,24 @@ var moment     = require("moment")
 var dateFormat = require("./dateFormat.js")
 var {randomID, gatewayHost}    = require("lib")
 var memory     = require("memory")
+var {pool}     = require("../../lib/pool.js")
 
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
+
+const FRAME_LIST_MAX = 250000
+
+const FRAME_WINDOW = "FROM frame_files WHERE camera = $1 AND timestamp >= ($2::timestamp AT TIME ZONE 'UTC') AND timestamp < (($3::timestamp AT TIME ZONE 'UTC') + INTERVAL '1 second')"
+
+const windowBound = (value) => moment.utc(value, dateFormat).format("YYYY-MM-DD HH:mm:ss")
+
+const positiveInt = (value) => Math.max(parseInt(value) || 1, 1)
+
+const frameNames = (query, params, callback) => pool.query(query, params)
+	.then(({rows}) => callback(rows.map(row => row.name)))
+	.catch((err) => {
+		console.log("STORAGE FRAME LIST ERROR", err.message)
+		callback([])
+	})
 
 module.exports = {
 	generateID: () => {
@@ -18,21 +34,19 @@ module.exports = {
 		return (event, ...args) => { if(process.env.memory_ON == "true" && client.connected) client.emit(event, ...args) }
 	},
     
-	filterList: (camera, start, end, skipEvery=1, callback) => {
-		fs.readdir(path.join(imgDir, camera), (err, files) => {
-			if(err){
-				callback([])
-			}
-			else{
-				let list = files.filter( file => file.includes(".jpg") && 
-					`${file.split("-")[0]}-${file.split("-")[1]}` >= start && 
-					`${file.split("-")[0]}-${file.split("-")[1]}` <= end )
-				callback(skipEvery == 1 ? list : list.filter( (file, index) => {
-					return (index % skipEvery === 0 )
-				}))
-			}
-		})
-	},
+	/** Every `skipEvery`-th frame of the window, oldest first, for the ffmpeg concat manifest and zip archives. Widens the stride past `skipEvery` when the window holds more than `FRAME_LIST_MAX` frames, so an oversized export still spans the requested range instead of stopping partway through it. */
+	filterList: (camera, start, end, skipEvery=1, callback) => frameNames(
+		`SELECT name FROM (SELECT name, row_number() OVER (ORDER BY timestamp ASC, name ASC) - 1 AS idx, COUNT(*) OVER () AS total ${FRAME_WINDOW}) frames WHERE idx % GREATEST($4, CEIL(total::numeric / $5)) = 0 ORDER BY idx ASC LIMIT $5`,
+		[camera, windowBound(start), windowBound(end), positiveInt(skipEvery), FRAME_LIST_MAX],
+		callback
+	),
+
+	/** At most `limit` frames of the window, evenly spaced across it, oldest first. */
+	sampleList: (camera, start, end, limit, callback) => frameNames(
+		`SELECT name FROM (SELECT name, row_number() OVER (ORDER BY timestamp ASC, name ASC) - 1 AS idx, COUNT(*) OVER () AS total ${FRAME_WINDOW}) frames WHERE idx % GREATEST(CEIL(total::numeric / $4), 1) = 0 ORDER BY idx ASC LIMIT $5`,
+		[camera, windowBound(start), windowBound(end), positiveInt(limit), positiveInt(limit)],
+		callback
+	),
 
 	filterType: (type, callback) => {
 		fs.readdir(path.join(imgDir), (err, files) => {

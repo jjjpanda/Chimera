@@ -23,10 +23,10 @@ const creationTasks = [
 		columns: ["id", "timestamp", "camera", "size", "count"],
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, temp_password_expires TIMESTAMPTZ, theme VARCHAR(10) DEFAULT 'system');",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, theme VARCHAR(10) DEFAULT 'system');",
 		description: "authorization table",
 		table: "auth",
-		columns: ["id", "username", "hash", "role", "last_login", "force_password_change", "temp_password_expires", "theme"],
+		columns: ["id", "username", "hash", "role", "last_login", "force_password_change", "theme"],
 	},
 	{
 		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen TIMESTAMPTZ, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",
@@ -105,7 +105,7 @@ async function runCreationTasks() {
 				try {
 					const missing = await missingColumns(table, columns)
 					ok = missing.length === 0
-					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage/certs, then start fresh.`
+					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage, then start fresh.`
 				} catch (schemaError) {
 					ok = false
 					detail = ` — failed to verify schema: ${schemaError.message}`

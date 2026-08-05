@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
-import { request, statusProcessing } from "../js/request.js"
+import { request, statusProcessing, jsonProcessing } from "../js/request.js"
 import useCameras from "./useCameras.js"
+
+const streamUp = (data) => Array.isArray(data) && data.length > 0 && data.every((p) => p.status === "online")
 
 const baseStatusUrls = [
 	{ statusType: "command", url: "/command/health" },
@@ -26,7 +28,8 @@ const useChimeraStatus = () => {
 	useEffect(() => {
 		const cameraStatusUrls = cameras.map((cam) => ({
 			statusType: `cam ${cam.name}`,
-			url: `/livestream/status?camera=${cam.id}`
+			url: `/livestream/status?camera=${cam.id}`,
+			stream: true
 		}))
 		const allUrls = [...baseStatusUrls, ...cameraStatusUrls]
 
@@ -40,13 +43,15 @@ const useChimeraStatus = () => {
 		const poll = () => {
 			if (document.hidden) return
 			const seq = ++pollSeq
-			for (const { statusType, url } of allUrls) {
+			for (const { statusType, url, stream } of allUrls) {
 				request(url, getOptions, (prom) => {
-					statusProcessing(prom, 200, (successful) => {
+					const apply = (up) => {
 						if (seq <= (applied[statusType] || 0)) return
 						applied[statusType] = seq
-						setStatus((prev) => ({ ...prev, [statusType]: successful ? "up" : "down" }))
-					})
+						setStatus((prev) => ({ ...prev, [statusType]: up ? "up" : "down" }))
+					}
+					if (stream) jsonProcessing(prom, (data) => apply(streamUp(data)))
+					else statusProcessing(prom, 200, apply)
 				})
 			}
 		}

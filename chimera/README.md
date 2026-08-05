@@ -23,8 +23,9 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 - `object_ON=true` requires `livestream_ON=true` (why: [object](../object)); `livestream_PROXY_ON` is gateway routing and does not satisfy it.
 - `storage_MOTION_CONF_FILEPATH` required only when storage/object/livestream is on.
 - `storage_FOLDERPATH` (`objectCaptures/` out) and `livestream_FOLDERPATH` (frames in) are also required when `object_ON=true`, even with their own service off.
+- `object_MODEL_SHA256` is required only once `object_MODEL_URL` is set. Without the hash object refuses to load the model, but it still starts. It then fails each scan on a retry backoff, so this check blocks boot instead.
 - Re-reads the raw `.env` file (not `process.env`) for every key to catch a `#` dotenv already silently truncated before parsing — see `preflight.js` below.
-- Absolute-path checks: key/cert/ffmpeg/ffprobe files; `storage_FOLDERPATH` / `livestream_FOLDERPATH` folders.
+- Absolute-path checks: key/cert/ffmpeg/ffprobe files; `storage_FOLDERPATH` / `livestream_FOLDERPATH` folders. A `_FILEPATH` naming a file that does not exist still passes — only the folders are stat-confirmed. `storage_MOTION_CONF_FILEPATH` skips the path check entirely and is read-tested instead.
 - Upgrading a deployment where `database_PASSWORD` is under 32 characters: this now blocks boot. Postgres only reads `POSTGRES_PASSWORD_FILE` on first init of an empty `chimera-pgdata` volume, so lengthening `database_PASSWORD` in `.env` alone desyncs it from the password already stored in Postgres. Rotate the stored password to match first (e.g. `docker compose exec postgres psql -U "$database_USER" -c "ALTER USER \"$database_USER\" WITH PASSWORD '<new value>'"`) before restarting with the new value — `npm run docker:delete` also wipes the `chimera-storage` footage volume.
 
 ---
@@ -44,7 +45,26 @@ npm run preflight            # interactive; fixes problems in place
 npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
 ```
 
-- `.env`: interactive seeds a missing file from `env.example` and re-prompts until valid; `--check` only reports. Validates presence, boolean / port type, `storage_HOST` scheme, `chimeraInstances` range, `scheduler_TRUSTED_SOURCES` format, secret length (>= 32, for every key matching `SECRETKEY` or a `_AUTH` / `_TOKEN` / `_PASSWORD` suffix — `scheduler_AUTH` is admin-equivalent on the schedulable routes, so it carries the same floor as `SECRETKEY`), and that `command_COOKIE_SECURE` is `true` whenever `gateway_HOST` (or `gateway_HTTPS_Redirect` / `certbot_ON`) puts the deploy on HTTPS with a non-loopback host; skips disabled services. No value may contain `#` — dotenv reads it as a comment and drops the rest of the line; this is checked for wizard answers and for values already sitting in the file (hand-edited or left over from a previous run), not just fresh input. The walk repeats until stable, since answering one key can unskip an earlier one, and forces a re-ask of `livestream_ON` / `object_ON` while that pair stays inconsistent, or `gateway_HOST` / `command_COOKIE_SECURE` while the cookie stays insecure on that deploy.
-- `motion.conf` / `cameraconf/`: checked only when storage/object/livestream is on. Validates each camera `.conf` (unique `camera_id` / `camera_name`, `netcam_url` scheme) and can scaffold new ones. An absolute `camera_dir` in `motion.conf` is ignored here (falls back to `cameraconf/`), but `loadCameras.js` (used by pm2) does honor it — the two can disagree.
-- Preflight checks presence, type, format, the length rules, and the `command_COOKIE_SECURE` cross-check above. `validateEnvVars.js` re-runs that same `command_COOKIE_SECURE` gate at boot (blocking there too), plus deeper checks preflight does not make: `*_URL` scheme (`alert_URL`, `admin_alert_URL`, `object_MODEL_URL`) and the absolute-path checks above. Those path checks are narrower than they sound: a `_FOLDERPATH` must name an existing directory, but a `_FILEPATH` pointing at a missing file passes — only a relative path or a directory fails. Readability is read-tested for `.env` and `storage_MOTION_CONF_FILEPATH` only, and both ignore a missing file. A build can pass preflight and still fail the boot check for those classes.
-- Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVars.js` and tests.
+**`.env`** — interactive seeds a missing file from `env.example` and re-prompts until valid; `--check` only reports. Disabled services are skipped.
+
+- Seeding blanks every right-hand side, since `env.example` holds a description of the value rather than a value. The exception is a line whose comment starts with `# default` — that value is real (the Docker paths, the Postgres host and port), so it is copied through as-is and never prompted for. `parseSchema` gives those keys an empty `placeholder`, which is what stops `varProblem` reading a correctly-filled default as unset.
+- Checks presence, types, ranges, formats, and secret length — 32+ for `SECRETKEY` and any `_AUTH` / `_TOKEN` / `_PASSWORD` key. Interactive offers a `crypto.randomBytes(32)` value for those keys and uses it on a blank Enter, instead of re-prompting.
+- Cross-checks: `object_ON` requires `livestream_ON`; `command_COOKIE_SECURE` must be `true` on an HTTPS deploy at a non-loopback host, so a loopback `gateway_HOST` is never flagged; `command_COOKIE_SECURE` must be `false` when `gateway_HOST` carries an explicit `http://` prefix and neither `gateway_HTTPS_Redirect` nor `certbot_ON` is `true`; `gateway_PORT` must be `80` when `certbot_ON=true` (compose publishes only `gateway_PORT`, so an HTTP-01 challenge on any other port never arrives); and no two enabled services (including `gateway_PORT` / `gateway_PORT_SECURE`) may share a port — they're separate pm2 apps in the same container network namespace, so the second to bind loses with `EADDRINUSE`.
+- No value may contain `#` — dotenv reads it as a comment. Checked on wizard answers and on values already in the file.
+- The walk repeats until stable, since answering one key can unskip an earlier one. `livestream_ON`/`object_ON`, `gateway_HOST`/`command_COOKIE_SECURE`, and `certbot_ON`/`gateway_PORT` are re-asked as pairs — each is valid alone, so one pass would never revisit them.
+- EOF (Ctrl-D) at any prompt aborts with exit `1`, and says whether anything was written. The schema walk writes `.env` once, after it goes quiet, so aborting mid-walk leaves no half-filled file — but seeding happens before the first prompt, and the motion.conf and camera prompts come after that write, so an abort there keeps a complete `.env` and any conf already created. Re-running picks up from what is on disk.
+
+**`motion.conf` / `cameraconf/`** — checked only when storage, object, or livestream is on.
+
+- `motion.conf` must be a file, not just present. Compose bind-mounts that path unconditionally, so Docker creates a directory there when the file is missing.
+- Validates each camera `.conf` (unique `camera_id` / `camera_name`, `netcam_url` scheme) and can scaffold new ones.
+- An absolute `camera_dir` in `motion.conf` is ignored here but honored by `loadCameras.js` — the two can disagree.
+
+**File permissions** — `.env` and `cameraconf/*.conf` are written `0640`, and existing camera confs are re-chmod'd on every interactive run.
+
+- `--check` fails on a loose file even when its content is valid, so a plain `cp env.example .env` blocks `predocker:build` / `up` / `restart`.
+- Interactive prints a `chown` hint when your gid isn't 1000, the uid the container runs as.
+
+**At boot** — `validateEnvVars.js` re-runs all cross-checks and adds `*_URL` scheme and absolute-path checks. A build can pass preflight and still fail at boot.
+
+Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVars.js` and tests.

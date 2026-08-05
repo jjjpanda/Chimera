@@ -9,7 +9,8 @@ jest.mock("fs", () => {
 				"gateway_PORT = Port number",
 				"command_ON = (true | false)",
 				"alert_TZ = IANA tz ***",
-				"storage_FOLDERPATH = Base shared file path  # Docker: /mnt/storage/"
+				"storage_FOLDERPATH = /mnt/storage/  # default; base shared file path",
+				"livestream_FOLDERPATH = Base shared folder path  # frames live here"
 			].join("\n")
 			if (p.includes("cam1.conf")) return "camera_id 1\ncamera_name indoor\nnetcam_url rtsp://1.1.1.1/cam\n"
 			if (p.includes("cam2.conf")) return "camera_id 2\ncamera_name outdoor\nnetcam_url rtsp://2.2.2.2/cam\n"
@@ -20,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, envProblems, hashTruncated } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -41,11 +42,18 @@ describe("parseSchema", () => {
 		expect(sk.optional).toBe(false)
 	})
 
-	test("keeps the # Docker hint in desc but strips it from placeholder", () => {
+	test("keeps a trailing # hint in desc but strips it from placeholder", () => {
+		const schema = parseSchema()
+		const fp = schema.find(v => v.key === "livestream_FOLDERPATH")
+		expect(fp.placeholder).toBe("Base shared folder path")
+		expect(fp.desc).toContain("# frames live here")
+	})
+
+	test("a # default line holds a real value, so nothing is treated as placeholder prose", () => {
 		const schema = parseSchema()
 		const fp = schema.find(v => v.key === "storage_FOLDERPATH")
-		expect(fp.placeholder).toBe("Base shared file path")
-		expect(fp.desc).toContain("# Docker: /mnt/storage/")
+		expect(fp.placeholder).toBe("")
+		expect(varProblem(fp, "/mnt/storage/")).toBeNull()
 	})
 })
 
@@ -75,6 +83,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const alertOnVar = { key: "object_ALERT_ON", placeholder: "(true | text | false, default true)", optional: true }
 	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
 	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
@@ -98,12 +107,27 @@ describe("varProblem", () => {
 		expect(varProblem(boolVar, "false")).toBeNull()
 	})
 
+	test("object_ALERT_ON: text is a valid third value, anything else is not", () => {
+		expect(varProblem(alertOnVar, "text")).toBeNull()
+		expect(varProblem(alertOnVar, "true")).toBeNull()
+		expect(varProblem(alertOnVar, "false")).toBeNull()
+		expect(varProblem(alertOnVar, "yes")).toBeTruthy()
+	})
+
 	test("port: non-numeric → error", () => {
 		expect(varProblem(portVar, "abc")).toBeTruthy()
 	})
 
 	test("port: numeric string → null", () => {
 		expect(varProblem(portVar, "8080")).toBeNull()
+	})
+
+	test("port: out of range → error, so it cannot reach listen() and throw ERR_SOCKET_BAD_PORT", () => {
+		expect(varProblem(portVar, "0")).toBeTruthy()
+		expect(varProblem(portVar, "65536")).toBeTruthy()
+		expect(varProblem(portVar, "99999")).toBeTruthy()
+		expect(varProblem(portVar, "1")).toBeNull()
+		expect(varProblem(portVar, "65535")).toBeNull()
 	})
 
 	test("string: set to non-placeholder → null", () => {
@@ -228,6 +252,159 @@ describe("cookieSecureProblem", () => {
 	test("the check is skipped when the command service is off", () => {
 		expect(insecureCookie(lines({ gateway_HOST: "example.com", command_ON: "false", command_COOKIE_SECURE: "false" }))).toBe(false)
 	})
+
+	test("command_COOKIE_SECURE=true on an explicit http:// gateway_HOST never fires cookieSecureProblem — that is cookiePlainHttpProblem's territory", () => {
+		expect(cookieSecureProblem(lines({ gateway_HOST: "http://example.com", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("cookiePlainHttpProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on an explicit http:// gateway_HOST with command_COOKIE_SECURE=true and no HTTPS signal", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toMatch(/command_COOKIE_SECURE MUST BE false/)
+	})
+
+	test("a bare, prefix-less gateway_HOST is the ambiguous case and does not fire — normalizeHost implies https:// there", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("loopback is exempt — browsers honour Secure on http://localhost", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://localhost:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("gateway_HTTPS_Redirect=true rules it out even on an explicit http:// gateway_HOST", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" }))).toBeNull()
+	})
+
+	test("certbot_ON=true rules it out even on an explicit http:// gateway_HOST", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_ON: "false", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("command_COOKIE_SECURE=false never fires it — that is cookieSecureProblem's territory", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "false" }))).toBeNull()
+	})
+
+	test("a bare (unbracketed) IPv6 loopback is exempt — new URL() rejects it, so the raw host must be checked too", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://::1", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a bracketed IPv6 loopback is exempt", () => {
+		expect(cookiePlainHttpProblem(lines({ gateway_HOST: "http://[::1]", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("cookieAmbiguousHostWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on a bare, prefix-less gateway_HOST with command_COOKIE_SECURE=true and no HTTPS signal", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toMatch(/WARNING: gateway_HOST has no scheme/)
+	})
+
+	test("an explicit scheme rules it out — nothing is ambiguous once the scheme is written down", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "https://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("loopback is exempt — browsers honour Secure on localhost", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "localhost", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a bare (unbracketed) IPv6 loopback is exempt — new URL() rejects it, so the raw host must be checked too", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "::1", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("certbot_ON=true rules it out — certbot means HTTPS, not ambiguous", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("gateway_HTTPS_Redirect=true rules it out — reverse-proxy TLS termination, not ambiguous", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" }))).toBeNull()
+	})
+
+	test("command_COOKIE_SECURE=false never fires it — that is the insecure-cookie warning's territory", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "false" }))).toBeNull()
+	})
+
+	test("the check is skipped when the command service is off", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "192.168.1.50:8080", command_ON: "false", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+
+	test("a blank gateway_HOST has nothing to be ambiguous about", () => {
+		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("certbotPortProblem", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("certbot on a non-80 gateway_PORT blocks — the HTTP-01 challenge is the only port compose publishes", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true", gateway_PORT: "8080" }))).toMatch(/gateway_PORT MUST BE 80/)
+	})
+
+	test("an unset gateway_PORT blocks the same way — nothing answers the challenge either", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true" }))).toBeTruthy()
+	})
+
+	test("certbot on port 80 passes", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "true", gateway_PORT: "80" }))).toBeNull()
+	})
+
+	test("a non-80 port passes with certbot off — BYO certs do not use HTTP-01", () => {
+		expect(certbotPortProblem(lines({ certbot_ON: "false", gateway_PORT: "8080" }))).toBeNull()
+		expect(certbotPortProblem(lines({ gateway_PORT: "8080" }))).toBeNull()
+	})
+})
+
+describe("duplicatePortProblems", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("a duplicate PORT across two on services is caught and names both keys", () => {
+		const probs = duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))
+		expect(probs).toEqual([["schedule_PORT", expect.stringMatching(/command_PORT/)]])
+		expect(probs[0][1]).toMatch(/8080/)
+	})
+
+	test("gateway_PORT=443 with a blank gateway_PORT_SECURE collides with its own 443 default", () => {
+		const probs = duplicatePortProblems(lines({ gateway_PORT: "443" }))
+		expect(probs).toEqual([["gateway_PORT_SECURE", expect.stringMatching(/gateway_PORT/)]])
+		expect(probs[0][1]).toMatch(/443/)
+	})
+
+	test("a duplicate is not caught when one of the two services is off", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "false", command_PORT: "8080", schedule_PORT: "8080" }))).toHaveLength(0)
+	})
+
+	test("a duplicate is not caught when the matching service is off even with PROXY_ON=true — a proxied service binds nothing locally", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "false", schedule_PROXY_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))).toHaveLength(0)
+	})
+
+	test("a service clashing with gateway_PORT names the service port, since the gateway port is the pinned one", () => {
+		const probs = duplicatePortProblems(lines({ command_ON: "true", command_PORT: "80", gateway_PORT: "80" }))
+		expect(probs).toEqual([["command_PORT", expect.stringMatching(/gateway_PORT/)]])
+	})
+
+	test("distinct ports pass", () => {
+		expect(duplicatePortProblems(lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8081" }))).toHaveLength(0)
+	})
+})
+
+describe("setupTokenHint", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("names setup_TOKEN and how to read it back — the wizard only ever showed it as a default", () => {
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/setup_TOKEN/)
+		expect(setupTokenHint(lines({ command_ON: "true" }))).toMatch(/grep setup_TOKEN/)
+	})
+
+	test("no hint when the command service is off — there is no setup screen to reach", () => {
+		expect(setupTokenHint(lines({ command_ON: "false" }))).toBeNull()
+		expect(setupTokenHint(lines({}))).toBeNull()
+	})
 })
 
 describe("envProblems", () => {
@@ -237,6 +414,11 @@ describe("envProblems", () => {
 	test("the insecure-cookie gate blocks preflight, matching the boot check", () => {
 		const probs = envProblems([], lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false" }))
 		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE true/)]])
+	})
+
+	test("the plain-http cookie gate blocks preflight too", () => {
+		const probs = envProblems([], lines({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true" }))
+		expect(probs).toEqual([["command_COOKIE_SECURE", expect.stringMatching(/command_COOKIE_SECURE MUST BE false/)]])
 	})
 
 	test("a blank storage_FOLDERPATH is a problem once object_ON is on, even with storage off", () => {
@@ -254,9 +436,19 @@ describe("envProblems", () => {
 		expect(probs[1][1]).toMatch(/object_ON requires livestream_ON/)
 	})
 
+	test("the certbot port gate blocks preflight, matching the boot check", () => {
+		const probs = envProblems([], lines({ certbot_ON: "true", gateway_PORT: "8080" }))
+		expect(probs).toEqual([["gateway_PORT", expect.stringMatching(/gateway_PORT MUST BE 80/)]])
+	})
+
 	test("a hand-edited value with a # is flagged even though it never went through the wizard", () => {
 		const probs = envProblems(SCHEMA, lines({ storage_ON: "true", storage_FOLDERPATH: "/mnt/storage#leftover" }))
 		expect(probs).toEqual([["storage_FOLDERPATH", expect.stringMatching(/cannot contain #/)]])
+	})
+
+	test("the duplicate-port gate rides along with the per-key problems", () => {
+		const probs = envProblems([], lines({ command_ON: "true", schedule_ON: "true", command_PORT: "8080", schedule_PORT: "8080" }))
+		expect(probs).toEqual([["schedule_PORT", expect.stringMatching(/command_PORT/)]])
 	})
 })
 
@@ -272,15 +464,15 @@ describe("hashTruncated", () => {
 	})
 
 	test("does not flag a seeded key left blank with its example comment intact", () => {
-		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# Docker: /mnt/storage/" }), "livestream_FOLDERPATH")).toBeNull()
+		expect(hashTruncated(lines({ livestream_FOLDERPATH: "# frames live here" }), "livestream_FOLDERPATH")).toBeNull()
 	})
 
 	test("does not flag a key that is not set at all", () => {
 		expect(hashTruncated(lines({}), "setup_TOKEN")).toBeNull()
 	})
 
-	test("does not flag a filled value that kept the env.example hint dotenv strips", () => {
-		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # Docker: /mnt/storage/" }), "storage_FOLDERPATH")).toBeNull()
+	test("does not flag a seeded default that kept the env.example comment dotenv strips", () => {
+		expect(hashTruncated(lines({ storage_FOLDERPATH: "/mnt/storage/  # default; base shared file path" }), "storage_FOLDERPATH")).toBeNull()
 	})
 })
 
@@ -383,6 +575,17 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ livestream_ON: "false", object_ON: "true" }), "livestream_FOLDERPATH")).toBe(false)
 	})
 
+	test("object_MODEL_SHA256 required only once object_MODEL_URL is set", () => {
+		expect(isServiceOff(lines({ object_ON: "true" }), "object_MODEL_SHA256")).toBe(true)
+		expect(isServiceOff(lines({ object_ON: "true", object_MODEL_URL: "https://host/m.onnx" }), "object_MODEL_SHA256")).toBe(false)
+		expect(isServiceOff(lines({ object_ON: "false", object_MODEL_URL: "https://host/m.onnx" }), "object_MODEL_SHA256")).toBe(true)
+	})
+
+	test("object_MODEL_SHA256 stays skipped when object_MODEL_URL still holds its env.example prose", () => {
+		const prose = "Override URL to download the YOLOX ONNX model; requires object_MODEL_SHA256. Left blank, the first boot downloads yolox_tiny.onnx (~20 MB)"
+		expect(isServiceOff(lines({ object_ON: "true", object_MODEL_URL: prose }), "object_MODEL_SHA256")).toBe(true)
+	})
+
 	test("memory vars follow memory service when single-instance", () => {
 		expect(isServiceOff(lines({ memory_ON: "false", chimeraInstances: "1" }), "memory_HOST")).toBe(true)
 		expect(isServiceOff(lines({ memory_ON: "true", chimeraInstances: "1" }), "memory_HOST")).toBe(false)
@@ -407,6 +610,10 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ ...off, [`${prefix}_PROXY_ON`]: "false" }), `${prefix}_HOST`)).toBe(true)
 	})
 
+	test.each(["gateway_PORT", "gateway_PORT_SECURE", "gateway_HOST"])("%s stays required with a stale gateway_ON=false in .env — compose interpolates gateway_PORT with no default and dies on a blank", (key) => {
+		expect(isServiceOff(lines({ gateway_ON: "false" }), key)).toBe(false)
+	})
+
 	test("a PROXY_ON service still skips its non-host vars — only the proxy target is needed", () => {
 		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_PORT")).toBe(true)
 		expect(isServiceOff(lines({ storage_ON: "false", schedule_ON: "false", storage_PROXY_ON: "true" }), "storage_FOLDERPATH")).toBe(true)
@@ -416,5 +623,41 @@ describe("isServiceOff (prefix mapping)", () => {
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
 		expect(isServiceOff(lines({ schedule_ON: "true" }), "scheduler_TRUSTED_SOURCES")).toBe(false)
 		expect(isServiceOff(lines({ schedule_ON: "false" }), "scheduler_AUTH")).toBe(true)
+	})
+})
+
+// `cp env.example .env` yields 0644, and --check writes nothing, so reporting the mode is the only thing that closes the loop
+describe("looseMode", () => {
+	const fs = require("fs")
+	const os = require("os")
+	const path = require("path")
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "preflight-mode-"))
+	const at = (name, mode) => {
+		const p = path.join(dir, name)
+		fs.writeFileSync(p, "x")
+		fs.chmodSync(p, mode)
+		return p
+	}
+
+	afterAll(() => fs.rmSync(dir, { recursive: true, force: true }))
+
+	// win32 and WSL's /mnt/c report a fixed mode whatever chmod does, and looseMode opts out there
+	const onModes = (fs.statSync(at("probe", 0o600)).mode & 0o777) === 0o600 ? test : test.skip
+
+	onModes("names the mode of a world-readable secret", () => {
+		expect(looseMode(at("world", 0o644))).toBe("0644")
+	})
+
+	onModes("accepts the modes preflight itself writes", () => {
+		expect(looseMode(at("tight", 0o640))).toBeNull()
+		expect(looseMode(at("owner", 0o600))).toBeNull()
+	})
+
+	onModes("flags group-write — group 1000 could rewrite the secret, not just read it", () => {
+		expect(looseMode(at("groupwrite", 0o660))).toBe("0660")
+	})
+
+	test("null for a file that is not there, so a missing artifact reports as missing", () => {
+		expect(looseMode(path.join(dir, "absent"))).toBeNull()
 	})
 })

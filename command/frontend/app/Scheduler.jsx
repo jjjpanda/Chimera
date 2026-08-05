@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useId, useState } from "react"
 
 import cronstrue from "cronstrue"
 
@@ -25,13 +25,15 @@ const cronIsInvalid = (cronString) => {
 }
 
 const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false }) => {
+	const cronId = useId()
 	const [cronString, setCronString] = useState(initial)
 
 	return (
 		<div className="flex flex-col gap-1.5">
-			<Label className="text-xs text-muted">CRON expression</Label>
+			<Label htmlFor={cronId} className="text-xs text-muted">CRON expression</Label>
 			<div className="flex items-center gap-2">
 				<Input
+					id={cronId}
 					value={cronString}
 					onChange={(e) => setCronString(e.target.value)}
 					placeholder="* * * * *"

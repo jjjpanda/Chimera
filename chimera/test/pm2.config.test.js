@@ -41,6 +41,23 @@ describe("pm2.config heartbeat", () => {
 	})
 })
 
+describe("pm2.config gateway", () => {
+	// compose publishes only the gateway's ports, so it is pushed outside the *_ON loop — re-adding it there would silently stop it spawning
+	test("runs with every service toggle off, and is then the only app", () => {
+		const config = load({ command_ON: "false" })
+		expect(appNamed(config, "gateway")).toBeDefined()
+		expect(config.apps.map(a => a.name)).toEqual(["gateway"])
+	})
+
+	test("scales with chimeraInstances like the other services", () => {
+		expect(appNamed(load({ chimeraInstances: "4" }), "gateway").instances).toBe("4")
+	})
+
+	test("stays single instance without a cluster request", () => {
+		expect(appNamed(load({}), "gateway").instances).toBeUndefined()
+	})
+})
+
 describe("pm2.config cluster gate", () => {
 	test.each(["max", "0", "-1", "4"])("chimeraInstances=%s forces memory on and scales the service", (chimeraInstances) => {
 		const config = load({ chimeraInstances, memory_ON: "false" })

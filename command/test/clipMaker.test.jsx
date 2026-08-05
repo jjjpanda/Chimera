@@ -26,6 +26,7 @@ const { render, screen, act, fireEvent } = require("@testing-library/react")
 const { MemoryRouter } = require("react-router-dom")
 const ClipMaker = require("../frontend/app/ClipMaker.jsx").default
 const { __calls: calls } = require("../frontend/js/request.js")
+const frameLimits = require("lib/utils/frames.json")
 
 class FakeImage {
 	constructor() {
@@ -105,6 +106,49 @@ test("the Boxes toggle is a switch that its label names", async () => {
 	await loadBoxesToggle()
 
 	expect(screen.getByRole("switch", { name: "Boxes" })).toBeTruthy()
+})
+
+describe("clip parameters resolve by their visible labels", () => {
+	test.each(["Camera", "Frames", "Start", "End", "Start time", "End time"])("%s", (label) => {
+		renderClipMaker()
+
+		expect(screen.getByLabelText(label)).toBeTruthy()
+	})
+
+	test("the time-range presets are a group named by their label", () => {
+		renderClipMaker()
+
+		expect(screen.getByRole("group", { name: "Time Range" })).toBeTruthy()
+	})
+
+	test("the multi-camera buttons are a group named by the pluralised label", async () => {
+		renderClipMaker()
+
+		await act(async () => { screen.getByLabelText("Switch to multi-camera").click() })
+
+		expect(screen.getByRole("group", { name: "Cameras" })).toBeTruthy()
+	})
+})
+
+test("the frame count clamps typed and stepped values to frameLimits", () => {
+	renderClipMaker()
+	const frames = screen.getByLabelText("Frames")
+	const stepper = (icon) => [...frames.parentElement.querySelectorAll("button")].find(b => b.querySelector(`svg.lucide-${icon}`))
+
+	fireEvent.change(frames, { target: { value: String(frameLimits.max + 1) } })
+	expect(frames.value).toBe(String(frameLimits.max))
+
+	fireEvent.click(stepper("plus"))
+	expect(frames.value).toBe(String(frameLimits.max))
+
+	fireEvent.change(frames, { target: { value: "0" } })
+	expect(frames.value).toBe(String(frameLimits.min))
+
+	fireEvent.change(frames, { target: { value: "-5" } })
+	expect(frames.value).toBe(String(frameLimits.min))
+
+	fireEvent.click(stepper("minus"))
+	expect(frames.value).toBe(String(frameLimits.min))
 })
 
 test("activating the Boxes toggle turns boxes on", async () => {
