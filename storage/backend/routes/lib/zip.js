@@ -1,4 +1,4 @@
-var archiver   = require("archiver")
+var { ZipArchive } = require("archiver")
 var dateFormat = require("./dateFormat.js")
 var fs         = require("fs")
 var path       = require("path")
@@ -16,7 +16,7 @@ const emitToMemory = memoryEmitter("ZIP PROCESS")
 const imgDir = path.join(process.env.storage_FOLDERPATH, "shared/captures")
 
 const createZipList = (camera, start, end, skip, callback) => {
-	var archive = archiver("zip", {
+	var archive = new ZipArchive({
 		zlib: {level: 9}
 	})
 

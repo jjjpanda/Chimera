@@ -23,7 +23,7 @@ jest.mock("archiver", () => {
 		abort: () => {},
 		finalize: () => {}
 	}
-	return () => archive
+	return { ZipArchive: function() { return archive } }
 })
 
 jest.mock("cli-progress", () => ({
