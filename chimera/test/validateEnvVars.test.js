@@ -394,6 +394,34 @@ describe("validateEnvVars insecure-cookie warning", () => {
 	})
 })
 
+describe("validateEnvVars plain-http cookie gate", () => {
+	test("blocks boot when command_COOKIE_SECURE=true and gateway_HOST is explicit http:// with no HTTPS signal", () => {
+		const res = run({ gateway_HOST: "http://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("command_COOKIE_SECURE MUST BE false")
+		expect(res.status).toBe(1)
+	})
+
+	test("does not block on http://localhost — browsers honour Secure on loopback", () => {
+		const res = run({ gateway_HOST: "http://localhost:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("command_COOKIE_SECURE MUST BE false")
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars bare-host cookie warning", () => {
+	test("warns (non-fatal) when gateway_HOST has no scheme and command_COOKIE_SECURE=true", () => {
+		const res = run({ gateway_HOST: "192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning once gateway_HOST carries an explicit scheme", () => {
+		const res = run({ gateway_HOST: "https://192.168.1.50:8080", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "false" })
+		expect(res.stdout).not.toContain("WARNING: gateway_HOST has no scheme")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars memory_ON cluster override", () => {
 	test("announces the override when a cluster overrules memory_ON=false", () => {
 		const res = run({ memory_ON: "false", chimeraInstances: "4" })

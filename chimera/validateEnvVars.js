@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -173,13 +173,17 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
 const hostnameOf = (url) => { try { return new URL(url).hostname } catch { return "" } }
 
-const cookieProblem = cookieSecureProblem(envLines)
+const cookieProblem = cookieSecureProblem(envLines) || cookiePlainHttpProblem(envLines)
+const ambiguousHost = cookieAmbiguousHostWarning(envLines)
 if (cookieProblem) {
 	console.log(cookieProblem)
 	allEnvPresent = false
 }
 else if (insecureCookie(envLines)) {
 	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+}
+else if (ambiguousHost) {
+	console.log(ambiguousHost)
 }
 
 const scheduleOn = process.env.schedule_ON === "true"
