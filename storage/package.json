@@ -14,7 +14,7 @@
     "express": "^4.21.0",
     "fluent-ffmpeg": "^2.1.2",
     "heartbeat": "jjjpanda/heartbeat#v1.4.1",
-    "helmet": "^8.0.0",
+    "helmet": "^8.3.0",
     "lib": "file:../lib",
     "memory": "file:../memory",
     "mkdirp": "^1.0.4",
