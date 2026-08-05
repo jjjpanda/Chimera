@@ -457,6 +457,60 @@ describe("runInteractive certbotPortProblem", () => {
 	})
 })
 
+describe("runInteractive duplicatePortProblems", () => {
+	const EXAMPLE_WITH_GATEWAY_PORTS = `${EXAMPLE}\ngateway_PORT = Port number\ngateway_PORT_SECURE = Port number ***`
+	const PORT_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_PORT: "443" }
+
+	const SERVICE_KEYS = ["command", "schedule", "memory"].flatMap(s => [`${s}_ON = (true | false)`, `${s}_PORT = Port number`])
+	const EXAMPLE_WITH_SERVICE_PORTS = [EXAMPLE, ...SERVICE_KEYS].join("\n")
+	const THREE_ON_ONE_PORT = { ...PORT_BROKEN, gateway_PORT: "80", command_ON: "true", command_PORT: "8080", schedule_ON: "true", schedule_PORT: "8080", memory_ON: "true", memory_PORT: "8080" }
+
+	test("a blank gateway_PORT_SECURE keeps colliding with its own 443 default, so the loop falls through to gateway_PORT instead of re-asking forever", async () => {
+		setup({ env: PORT_BROKEN, answers: ["", "8080"], example: EXAMPLE_WITH_GATEWAY_PORTS })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("duplicate port 443")
+		expect(env).toContain("gateway_PORT = 8080")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	// three services on one port leaves a second entry queued while the first pair is being answered
+	test("the second collision names the key that still holds the port, not the one the first answer already moved", async () => {
+		// schedule_PORT stays 8080 and command_PORT moves to 9000, so memory_PORT now collides with schedule_PORT
+		setup({ env: THREE_ON_ONE_PORT, answers: ["8080", "9000", "8082"], example: EXAMPLE_WITH_SERVICE_PORTS })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("memory_PORT ✗ duplicate port 8080 — also used by schedule_PORT")
+		expect(out).not.toContain("memory_PORT ✗ duplicate port 8080 — also used by command_PORT")
+		expect(env).toContain("command_PORT = 9000")
+		expect(env).toContain("schedule_PORT = 8080")
+		expect(env).toContain("memory_PORT = 8082")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	// answering the first key can move it onto a different partner, which retires the pair before the partner is due
+	test("the partner is not asked once the answer moved the collision elsewhere — it re-reports the new pair instead", async () => {
+		const TWO_ON_ONE_PORT = { ...PORT_BROKEN, gateway_PORT: "80", command_ON: "true", command_PORT: "8080", schedule_ON: "true", schedule_PORT: "8080", memory_ON: "true", memory_PORT: "8081" }
+		// 80 moves schedule_PORT off command_PORT and onto gateway_PORT, so command_PORT is no longer in conflict
+		setup({ env: TWO_ON_ONE_PORT, answers: ["80", "9000"], example: EXAMPLE_WITH_SERVICE_PORTS })
+		const { out, env, exitCode } = await run()
+		expect(out).toContain("schedule_PORT ✗ duplicate port 80 — also used by gateway_PORT")
+		expect(env).toContain("command_PORT = 8080")
+		expect(env).toContain("schedule_PORT = 9000")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("a collision on keys absent from env.example reports once and blocks instead of spinning with no prompt", async () => {
+		const { command_ON, command_PORT, schedule_ON, schedule_PORT } = THREE_ON_ONE_PORT
+		setup({ env: { ...PORT_BROKEN, gateway_PORT: "80", command_ON, command_PORT, schedule_ON, schedule_PORT }, answers: [], example: EXAMPLE })
+		const { out, exitCode } = await run()
+		expect(out.match(/duplicate port 8080/g)).toHaveLength(2)
+		expect(out).toContain("Still incomplete")
+		expect(exitCode).toBe(1)
+	})
+})
+
 describe("runInteractive abort", () => {
 	// EOF used to leave the promise unsettled: the walk stalled, nothing was written, and node exited 0
 	test("Ctrl-D reports the abort and exits 1 instead of passing silently", async () => {
