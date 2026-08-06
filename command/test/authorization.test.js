@@ -184,6 +184,32 @@ describe("Authorization Routes", () => {
 			expect(errSpy).toHaveBeenCalled()
 			errSpy.mockRestore()
 		})
+
+		test("rejects a cross-site POST with 403", async () => {
+			process.env.setup_TOKEN = "boot-token"
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.set("Sec-Fetch-Site", "cross-site")
+				.send({ username: "admin", password: "correct-horse-battery", token: "boot-token" })
+			expect(res.status).toBe(403)
+			expect(res.body).toEqual({ error: "forbidden" })
+			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
+		})
+
+		test("allows a same-origin POST", async () => {
+			process.env.setup_TOKEN = "boot-token"
+			mockedPool.query.mockResolvedValueOnce({}) // BEGIN
+			mockedPool.query.mockResolvedValueOnce({}) // pg_advisory_xact_lock
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 0 }) // no admin exists
+			mockedPool.query.mockResolvedValueOnce({ rows: [] }) // target is a new user
+			mockedPool.query.mockResolvedValueOnce({ rowCount: 1 }) // upsert
+			const res = await supertest(app)
+				.post("/authorization/setup")
+				.set("Sec-Fetch-Site", "same-origin")
+				.send({ username: "admin", password: "correct-horse-battery", token: "boot-token" })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
 	})
 
 	describe("POST /authorization/login", () => {
