@@ -1053,28 +1053,10 @@ describe("Authorization Routes", () => {
 			expect(res.status).toBe(200)
 		})
 
-		test("the per-IP budget throttles rather than blocking once spent", async () => {
+		// one username for the whole spray, so the per-username throttle refuses most
+		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 100
+		test("a spent per-IP budget throttles instead of blocking, and a device token does not skip it", async () => {
 			const ip = "198.18.3.3"
-			for (let i = 0; i < 100; i++) {
-				await supertest(app)
-					.post("/authorization/login")
-					.set("X-Forwarded-For", ip)
-					.send({ username: `spray${i}`, password: "wrongpassword" })
-			}
-			const first = await supertest(app)
-				.post("/authorization/login")
-				.set("X-Forwarded-For", ip)
-				.send({ username: "sprayvictim", password: "mockedPassword" })
-			const second = await supertest(app)
-				.post("/authorization/login")
-				.set("X-Forwarded-For", ip)
-				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
-			expect(second.status).toBe(429)
-		})
-
-		test("a device token does not skip the per-IP budget", async () => {
-			const ip = "198.18.5.5"
 			const agent = supertest.agent(app)
 			const enrol = await agent
 				.post("/authorization/login")
@@ -1086,19 +1068,27 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
-					.send({ username: `ipnoise${i}`, password: "wrongpassword" })
+					.send({ username: "sprayfodder", password: "wrongpassword" })
 			}
-			await supertest(app)
+
+			const first = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
-				.send({ username: "burnthrottle", password: "wrongpassword" })
+				.send({ username: "sprayvictim", password: "mockedPassword" })
+			expect(first.status).toBe(200)
+
+			const second = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "sprayvictim", password: "mockedPassword" })
+			expect(second.status).toBe(429)
 
 			const known = await agent
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "iptokenuser", password: "mockedPassword" })
 			expect(known.status).toBe(429)
-		})
+		}, 30000)
 
 		test("a device token from an earlier login skips the throttle", async () => {
 			const agent = supertest.agent(app)
