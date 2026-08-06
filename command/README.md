@@ -32,32 +32,33 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 ---
 # Login limits
 
-Four controls run on `POST /authorization/login`, in order:
+`POST /authorization/login` spends three budgets in order, then checks the password:
 
-- **Per IP, burst** — 20 tries per 15 minutes, then the throttle below. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port. A success refunds its slot, and so does a 5xx; only a rejected password spends one. The budget absorbs a shared address fumbling several logins at once without funding a wide spray — 20 tries is at most two usernames' budgets, not ten. A device token does **not** skip this one, so it stays the brake on a stolen token.
-- **Per IP, daily** — 100 tries per 24 hours, then one check per 15 minutes. This is the ceiling on what one address can spend in a day: without it, the burst throttle alone would still admit ~10,560 checks per day per address. Only attempts that clear the burst budget spend it, so a flood of throttled 429s does not drain a shared address's day. A success refunds its slot, and so does a 5xx; only a rejected password spends one. A device token does not skip this one either.
-- **Per username** — 10 tries per 15 minutes. A success refunds its slot, and so does a 5xx; only a rejected password spends one. Once the budget is spent, nothing refunds it — a correct password gets the user in, but the throttle below stays on for the rest of the window.
-- **Throttle** — once a budget is spent, one credential check per window for that key: `THROTTLE_WINDOW_MS` (10s) for the burst and per-username budgets, 15 minutes for the daily one. Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
+| budget | key | allowance | once spent |
+|---|---|---|---|
+| burst | IP | 20 / 15 min | 1 check / 10s |
+| daily | IP | 100 / 24h | 1 check / 15 min |
+| account | username | 10 / 15 min | 1 check / 10s |
 
-No budget ends in a hard block. Clients sharing an egress IP (a home router, carrier CGNAT) share the per-IP budgets, which is why they throttle rather than 429. While an attack on that address is running they contend for the one slot, and can keep losing it.
+No budget ends in a hard block. A spent budget throttles to one credential check per window; extra requests get 429 immediately, and nothing queues, so a flood cannot build latency. The check that does run answers 429 on a wrong password too — a 429 does not prove the credentials went unchecked.
 
-The per-IP budgets are also a capacity choice. `bcryptjs` yields only when a slice runs past 100ms, and a cost-10 check takes ~50ms, so it holds the event loop for its whole duration — longer on a Pi or NAS:
+A response under 400, or a 5xx, refunds the slot; every 4xx spends it. So a request the account throttle rejects spends both IP slots without ever checking a password. A request stopped at the burst stage never reaches the daily budget, which keeps a flood of 429s from draining a shared address's day.
 
-| concurrent logins from one IP | every route stalls for |
-|---|---|
-| 10 | ~0.5s |
-| 20 (the burst budget) | ~1s |
+The daily budget is the ceiling on one address: without it, the burst throttle alone would admit ~10,560 checks a day.
 
-Nothing caps this across addresses, and a spray of distinct usernames gets a fresh per-username budget each, so N addresses buy N×20 checks per window and about N×200 per day. Run a cluster (`chimeraInstances`) to spread that across workers; it also forces `memory_ON=true`, which keeps these limits shared.
+`req.ip` is the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit — true only while the gateway is the sole reachable port.
 
-A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limits stay, which give 20 tries per 15 minutes **per address**, 100 per day, and a trickle after that — so a token replayed from many addresses gets that from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
+## Device tokens
 
-The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
+A successful login sets `devicetoken`, a year-long signed `httpOnly` cookie naming the username. It skips the **account** budget only, so an attacker cannot lock a user out of a device they already use. Both per-IP budgets still apply, leaving a stolen token ~200 guesses per address per day.
 
-The limits are tuned to keep legitimate users in, not to guarantee an attacker is stopped. Three consequences follow:
+The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, which `knownDevice` re-checks on every login. Any password change voids every token for that username and restores the account cap — that is the remediation path for a stolen device, since revoking sessions alone does not void the cookie. Logout keeps it on purpose; it exists to survive session expiry.
 
-- Under an active attack, a client with no `devicetoken` is slowed to one attempt per 10s and competes with the attacker for that slot. On a shared egress IP this applies even when the attack targets someone else, since the per-IP budgets are common to that address — and once the address's daily budget is spent, the slot opens only every 15 minutes.
-- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user inherits the skip for the username that logged in before them.
-- A stolen `devicetoken` faces the per-IP limits but no per-username one, so it gets at most ~200 guesses per address per day. Reset the password to void it.
+## What this does not do
 
-Logout keeps the cookie on purpose — it exists to survive session expiry.
+These budgets are tuned to keep legitimate users in, not to guarantee an attacker is stopped. The consequences:
+
+- Clients behind one egress IP (home router, CGNAT) share the per-IP budgets and contend for the single slot, even when the attack targets someone else.
+- `knownDevice` matches username and current password hash, not a live session, so a shared browser lets a later user inherit the skip.
+- Nothing caps attempts across addresses: N addresses buy N×20 checks per window, ~N×200 per day. Run a cluster (`chimeraInstances`) to spread the load; it also forces `memory_ON=true`, which keeps the budgets shared.
+- `bcryptjs` holds the event loop for a whole cost-10 check (~50ms, longer on a Pi or NAS), so 20 concurrent logins from one address stall every route for ~1s.
