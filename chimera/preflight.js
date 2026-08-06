@@ -227,7 +227,7 @@ const cookiePlainHttpProblem = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
 		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
-		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy drop the http:// prefix (or write https://) and set gateway_HTTPS_Redirect or certbot_ON true, because command_COOKIE_SECURE=true only survives on a host browsers reach over HTTPS"
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy write gateway_HOST as https:// — that alone clears this, because browsers only keep a Secure cookie on an https:// address. Do not set gateway_HTTPS_Redirect=true instead; it loops every page when something in front holds the cert"
 		: null
 
 const cookieAmbiguousHostWarning = (lines) =>
@@ -236,6 +236,12 @@ const cookieAmbiguousHostWarning = (lines) =>
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
 		? "WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case"
+		: null
+
+const httpsRedirectLoopWarning = (lines) =>
+	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "certbot_ON") !== "true"
+		&& !getVal(lines, "privateKey_FILEPATH") && !getVal(lines, "certificate_FILEPATH")
+		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, both FILEPATH lines blank). Who serves https:// to your visitors?\n  this machine — fine, ignore this; your cert must be in /etc/letsencrypt/live/<gateway_HOST domain>/\n  Cloudflare, nginx or a tunnel — set gateway_HTTPS_Redirect=false, or every page redirects to itself forever (ERR_TOO_MANY_REDIRECTS)"
 		: null
 
 const certbotPortProblem = (lines) =>
@@ -533,4 +539,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

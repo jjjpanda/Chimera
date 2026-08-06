@@ -326,6 +326,26 @@ describe("validateEnvVars certbot redirect warning", () => {
 	})
 })
 
+describe("validateEnvVars https-redirect loop warning", () => {
+	test("warns (non-fatal) when the redirect is on but this machine holds no certificate", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "", certificate_FILEPATH: "" })
+		expect(res.stdout).toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when certbot_ON=true issues the cert", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "true", gateway_PORT: "80" })
+		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
+
+	test("no warning when the operator supplies their own cert", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" })
+		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
+})
+
 describe("validateEnvVars insecure-cookie warning", () => {
 	test("fails on an HTTPS-resolved public gateway_HOST with an insecure cookie", () => {
 		const res = run({ gateway_HOST: "example.com", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })

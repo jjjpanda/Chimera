@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -167,6 +167,11 @@ duplicatePorts.forEach(([k, p]) => {
 
 if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
 	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 stays open for HTTP-01 and keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the Secure session cookie, silently failing the login")
+}
+
+const redirectLoop = httpsRedirectLoopWarning(envLines)
+if (redirectLoop) {
+	console.log(redirectLoop)
 }
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
