@@ -1090,6 +1090,23 @@ describe("Authorization Routes", () => {
 			expect(known.status).toBe(429)
 		}, 30000)
 
+		test("a spent per-IP budget answers 429 on a wrong password for an untouched username", async () => {
+			const ip = "198.18.5.5"
+			for (let i = 0; i < 100; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", ip)
+					.send({ username: "carryfodder", password: "wrongpassword" })
+			}
+
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "carryvictim", password: "wrongpassword" })
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
+		}, 30000)
+
 		test("a device token from an earlier login skips the throttle", async () => {
 			const agent = supertest.agent(app)
 			const enrol = await agent

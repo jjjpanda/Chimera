@@ -40,14 +40,14 @@ Three controls run on `POST /authorization/login`, in order:
 
 Neither budget ends in a hard block. Clients sharing an egress IP (a home router, carrier CGNAT) share the per-IP budget, which is why it throttles rather than 429s. While an attack on that address is running they contend for the one slot, and can keep losing it.
 
-The per-IP budget is also a capacity choice. `bcryptjs` does not yield, so each password check holds the event loop ~50ms — more on a Pi or NAS:
+The per-IP budget is also a capacity choice. `bcryptjs` yields only when a slice runs past 100ms, and a cost-10 check takes ~50ms, so it holds the event loop for its whole duration — longer on a Pi or NAS:
 
 | concurrent logins from one IP | every route stalls for |
 |---|---|
 | 10 | ~0.5s |
 | 100 (the budget) | ~5s |
 
-Run a cluster (`chimeraInstances`) to spread that across workers; it also forces `memory_ON=true`, which keeps these limits shared.
+Nothing caps this across addresses, and a spray of distinct usernames gets a fresh per-username budget each, so N addresses buy N×100 checks. Run a cluster (`chimeraInstances`) to spread that across workers; it also forces `memory_ON=true`, which keeps these limits shared.
 
 A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 100 tries per 15 minutes **per address** and then 6 per minute — so a token replayed from many addresses gets that from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
 
