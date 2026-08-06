@@ -34,11 +34,20 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 
 Three controls run on `POST /authorization/login`, in order:
 
-- **Per IP** — 100 tries per 15 minutes, then the throttle below. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port. The budget is deliberately loose: its job is to cap total password-hashing work per address, not to stop a targeted attack — the per-username limit does that. A device token does **not** skip this one, so it stays the brake on a stolen token.
+- **Per IP** — 100 tries per 15 minutes, then the throttle below. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port. The budget is deliberately loose: it bounds what one address can spend, not a targeted attack — the per-username limit does that. A device token does **not** skip this one, so it stays the brake on a stolen token.
 - **Per username** — 10 tries per 15 minutes. A success refunds its slot, and so does a 5xx; only a rejected password spends one. Once the budget is spent, nothing refunds it — a correct password gets the user in, but the throttle below stays on for the rest of the window.
 - **Throttle** — once either budget is spent, one credential check per `THROTTLE_WINDOW_MS` (10s) for that key. Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
 
-Neither budget ends in a hard block, so no client can be locked out for a fixed window — the worst case is one attempt per 10s. Clients sharing an egress IP (a home router, carrier CGNAT) share the per-IP budget, which is why it degrades to a throttle rather than a 429.
+Neither budget ends in a hard block. Clients sharing an egress IP (a home router, carrier CGNAT) share the per-IP budget, which is why it throttles rather than 429s. While an attack on that address is running they contend for the one slot, and can keep losing it.
+
+The per-IP budget is also a capacity choice. `bcryptjs` does not yield, so each password check holds the event loop ~50ms — more on a Pi or NAS:
+
+| concurrent logins from one IP | every route stalls for |
+|---|---|
+| 10 | ~0.5s |
+| 100 (the budget) | ~5s |
+
+Run a cluster (`chimeraInstances`) to spread that across workers; it also forces `memory_ON=true`, which keeps these limits shared.
 
 A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 100 tries per 15 minutes **per address** and then 6 per minute — so a token replayed from many addresses gets that from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
 
