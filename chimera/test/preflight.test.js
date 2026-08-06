@@ -322,7 +322,7 @@ describe("cookieAmbiguousHostWarning", () => {
 		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", certbot_ON: "true" }))).toBeNull()
 	})
 
-	test("gateway_HTTPS_Redirect=true rules it out — the flag declares an HTTPS deploy, not ambiguous", () => {
+	test("gateway_HTTPS_Redirect=true rules it out — reverse-proxy TLS termination, not ambiguous", () => {
 		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "example.com", command_COOKIE_SECURE: "true", gateway_HTTPS_Redirect: "true" }))).toBeNull()
 	})
 

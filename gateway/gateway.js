@@ -7,6 +7,7 @@ var {
 const { helmetOptions } = require("lib")
 
 var app = express()
+app.set("trust proxy", 1)
 
 app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"), {
 	dotfiles: "allow"
