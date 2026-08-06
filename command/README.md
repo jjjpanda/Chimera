@@ -34,17 +34,20 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 
 Three controls run on `POST /authorization/login`, in order:
 
-- **Per IP** — 10 tries per 15 minutes. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port.
+- **Per IP** — 100 tries per 15 minutes, then the throttle below. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port. The budget is deliberately loose: its job is to cap total password-hashing work per address, not to stop a targeted attack — the per-username limit does that. A device token does **not** skip this one, so it stays the brake on a stolen token.
 - **Per username** — 10 tries per 15 minutes. A success refunds its slot, and so does a 5xx; only a rejected password spends one. Once the budget is spent, nothing refunds it — a correct password gets the user in, but the throttle below stays on for the rest of the window.
-- **Throttle** — once the per-username budget is spent, one credential check per `THROTTLE_WINDOW_MS` (10s). Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
+- **Throttle** — once either budget is spent, one credential check per `THROTTLE_WINDOW_MS` (10s) for that key. Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
 
-A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 10 tries per 15 minutes **per address** — so a token replayed from many addresses gets 10 tries from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
+Neither budget ends in a hard block, so no client can be locked out for a fixed window — the worst case is one attempt per 10s. Clients sharing an egress IP (a home router, carrier CGNAT) share the per-IP budget, which is why it degrades to a throttle rather than a 429.
+
+A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 100 tries per 15 minutes **per address** and then 6 per minute — so a token replayed from many addresses gets that from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
 
 The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
 
-Two gaps stay open:
+Three gaps stay open:
 
-- A user on a device with no `devicetoken` can still be throttled while an attack is running.
+- A user on a device with no `devicetoken` can still be throttled while an attack is running. On a shared egress IP this now includes an attack aimed at someone else entirely, since the per-IP budget is common to everyone behind that address. They are slowed to one attempt per 10s, not blocked, and they compete with the attacker for that slot.
 - `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
+- A stolen `devicetoken` still faces the per-IP limit but no per-username one, so it buys a sustained 6 password guesses per minute per address. Reset the password to void it.
 
 Logout keeps the cookie on purpose — it exists to survive session expiry.
