@@ -47,9 +47,9 @@ const THROTTLE_WINDOW_MS = 10000
 const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
 const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
-const throttledLimiter = ({ max, keyFn, skip }) => {
-	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max, keyFn })
-	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${keyFn(req)}` })
+const throttledLimiter = ({ windowMs = 15 * 60 * 1000, max, throttleMs = THROTTLE_WINDOW_MS, keyFn, skip }) => {
+	const budget = makeReserve({ windowMs, max, keyFn })
+	const throttle = makeReserve({ windowMs: throttleMs, max: 1, keyFn: (req) => `throttle:${keyFn(req)}` })
 	const gate = (req, res, next) => budget(req, (blocked, release) => {
 		req.accountThrottled ||= blocked
 		if (!blocked) {
@@ -64,7 +64,8 @@ const throttledLimiter = ({ max, keyFn, skip }) => {
 	return skip ? (req, res, next) => skip(req).then((s) => (s ? next() : gate(req, res, next))) : gate
 }
 
-const ipLimiter = throttledLimiter({ max: 100, keyFn: ipKeyFn })
+const ipLimiter = throttledLimiter({ max: 20, keyFn: ipKeyFn })
+const ipDayLimiter = throttledLimiter({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}` })
 const accountLimiter = throttledLimiter({ max: 10, keyFn: accountKeyFn, skip: knownDevice })
 
 app.get("/status", async (req, res) => {
@@ -106,7 +107,7 @@ app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) 
 	}
 })
 
-app.post("/login", blockCrossSite, validateBody, ipLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, ipLimiter, ipDayLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
