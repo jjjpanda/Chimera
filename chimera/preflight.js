@@ -240,8 +240,8 @@ const cookieAmbiguousHostWarning = (lines) =>
 
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "certbot_ON") !== "true"
-		&& !getVal(lines, "privateKey_FILEPATH") && !getVal(lines, "certificate_FILEPATH")
-		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, both FILEPATH lines blank). Who serves https:// to your visitors?\n  this machine — fine, ignore this; your cert must be in /etc/letsencrypt/live/<gateway_HOST domain>/\n  Cloudflare, nginx or a tunnel — set gateway_HTTPS_Redirect=false, or every page redirects to itself forever (ERR_TOO_MANY_REDIRECTS)"
+		&& !(getVal(lines, "privateKey_FILEPATH") && getVal(lines, "certificate_FILEPATH"))
+		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, and privateKey_FILEPATH/certificate_FILEPATH are not both set). Who serves https:// to your visitors?\n  this machine — fine, ignore this; your cert must be in /etc/letsencrypt/live/<gateway_HOST domain>/\n  Cloudflare, nginx or a tunnel — set gateway_HTTPS_Redirect=false, or every page redirects to itself forever (ERR_TOO_MANY_REDIRECTS)"
 		: null
 
 const certbotPortProblem = (lines) =>
@@ -322,6 +322,9 @@ const runCheck = () => {
 		cam.forEach(p => console.log(`                  - ${p}`))
 		if (cam.length) failed = true
 	}
+
+	const redirectLoop = httpsRedirectLoopWarning(lines)
+	if (redirectLoop) console.log(`\n${redirectLoop}`)
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -456,6 +459,9 @@ const runInteractive = async () => {
 	probs.forEach(([k, p]) => console.log(`\n  ${k} ${BAD} ${p}`))
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
+
+	const redirectLoop = httpsRedirectLoopWarning(lines)
+	if (redirectLoop) console.log(`${redirectLoop}\n`)
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true

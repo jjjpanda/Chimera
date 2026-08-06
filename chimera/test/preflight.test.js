@@ -354,12 +354,16 @@ describe("httpsRedirectLoopWarning", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true" }))).toBeNull()
 	})
 
-	test("a privateKey_FILEPATH rules it out — the operator supplied a certificate", () => {
-		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "" }))).toBeNull()
+	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
 	})
 
-	test("a certificate_FILEPATH rules it out — the operator supplied a certificate", () => {
-		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+	test("only privateKey_FILEPATH set still fires — certPaths.js requires both-or-neither and disables TLS entirely on a mismatched pair", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "" }))).toBeTruthy()
+	})
+
+	test("only certificate_FILEPATH set still fires — same both-or-neither gap", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
 	})
 
 	test("never fires while the redirect is off — nothing redirects, so nothing can loop", () => {
