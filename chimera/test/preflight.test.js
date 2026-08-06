@@ -21,7 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -336,6 +336,40 @@ describe("cookieAmbiguousHostWarning", () => {
 
 	test("a blank gateway_HOST has nothing to be ambiguous about", () => {
 		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+describe("httpsRedirectLoopWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires when the redirect is on and nothing here gives this machine a certificate", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "", certificate_FILEPATH: "" }))).toMatch(/ERR_TOO_MANY_REDIRECTS/)
+	})
+
+	test("fires when those lines are missing from .env entirely, not merely blank", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true" }))).toBeTruthy()
+	})
+
+	test("certbot_ON=true rules it out — certbot gets this machine its own certificate", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+	})
+
+	test("only privateKey_FILEPATH set still fires — certPaths.js requires both-or-neither and disables TLS entirely on a mismatched pair", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "" }))).toBeTruthy()
+	})
+
+	test("only certificate_FILEPATH set still fires — same both-or-neither gap", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+	})
+
+	test("never fires while the redirect is off — nothing redirects, so nothing can loop", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "false" }))).toBeNull()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "" }))).toBeNull()
+		expect(httpsRedirectLoopWarning(lines({}))).toBeNull()
 	})
 })
 
