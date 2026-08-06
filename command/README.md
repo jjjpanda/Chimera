@@ -44,10 +44,10 @@ A successful login also sets `devicetoken`, a year-long signed cookie naming tha
 
 The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
 
-Three gaps stay open:
+The limits are tuned to keep legitimate users in, not to guarantee an attacker is stopped. Three consequences follow:
 
-- A user on a device with no `devicetoken` can still be throttled while an attack is running. On a shared egress IP this now includes an attack aimed at someone else entirely, since the per-IP budget is common to everyone behind that address. They are slowed to one attempt per 10s, not blocked, and they compete with the attacker for that slot.
-- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
-- A stolen `devicetoken` still faces the per-IP limit but no per-username one, so it buys a sustained 6 password guesses per minute per address. Reset the password to void it.
+- Under an active attack, a client with no `devicetoken` is slowed to one attempt per 10s and competes with the attacker for that slot. On a shared egress IP this applies even when the attack targets someone else, since the per-IP budget is common to that address.
+- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user inherits the skip for the username that logged in before them.
+- A stolen `devicetoken` faces the per-IP limit but no per-username one, so it sustains 6 guesses per minute per address. Reset the password to void it.
 
 Logout keeps the cookie on purpose — it exists to survive session expiry.
