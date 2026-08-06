@@ -949,16 +949,22 @@ describe("Authorization Routes", () => {
 			expect(second.res.status).toHaveBeenCalledWith(429)
 		})
 
-		test("is wired onto POST /login and returns 429 once exhausted", async () => {
+		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {
 				res = await supertest(app)
-					.post("/authorization/login")
+					.post("/authorization/setup")
 					.set("X-Forwarded-For", "198.51.100.23")
-					.send({ username: "admin", password: "wrongpassword" })
+					.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			}
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+
+			const otherIp = await supertest(app)
+				.post("/authorization/setup")
+				.set("X-Forwarded-For", "198.51.100.24")
+				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
+			expect(otherIp.status).toBe(403)
 		})
 
 		test("empty-body 400s do not count toward the login lockout", async () => {
@@ -1054,7 +1060,7 @@ describe("Authorization Routes", () => {
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
-		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 100
+		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 20
 		test("a spent per-IP budget throttles instead of blocking, and a device token does not skip it", async () => {
 			const ip = "198.18.3.3"
 			const agent = supertest.agent(app)
@@ -1064,7 +1070,7 @@ describe("Authorization Routes", () => {
 				.send({ username: "iptokenuser", password: "mockedPassword" })
 			expect(enrol.status).toBe(200)
 
-			for (let i = 0; i < 100; i++) {
+			for (let i = 0; i < 20; i++) {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
@@ -1092,7 +1098,7 @@ describe("Authorization Routes", () => {
 
 		test("a spent per-IP budget answers 429 on a wrong password for an untouched username", async () => {
 			const ip = "198.18.5.5"
-			for (let i = 0; i < 100; i++) {
+			for (let i = 0; i < 20; i++) {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
@@ -1103,6 +1109,29 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "carryvictim", password: "wrongpassword" })
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
+		}, 30000)
+
+		// Date.now is mocked so the 15-minute burst window can renew while the
+		// daily window stays open — five renewed bursts spend the daily 100
+		test("the daily per-IP ceiling holds after the burst window renews", async () => {
+			const ip = "198.18.7.7"
+			let now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
+			for (let round = 0; round < 5; round++) {
+				for (let i = 0; i < 20; i++) {
+					await supertest(app)
+						.post("/authorization/login")
+						.set("X-Forwarded-For", ip)
+						.send({ username: `dayfodder${round}`, password: "wrongpassword" })
+				}
+				now += 16 * 60 * 1000
+			}
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "dayvictim", password: "wrongpassword" })
 			expect(res.status).toBe(429)
 			expect(res.body.errors).toBe("Too many attempts")
 		}, 30000)
