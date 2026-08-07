@@ -64,7 +64,6 @@ const throttledLimiter = ({ windowMs = 15 * 60 * 1000, max, throttleMs = THROTTL
 	return skip ? (req, res, next) => skip(req).then((s) => (s ? next() : gate(req, res, next))) : gate
 }
 
-// both budgets ask the same question, so the token is verified and looked up once per request
 const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
 const ipLimiter = throttledLimiter({ max: 20, keyFn: ipKeyFn })

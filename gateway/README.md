@@ -24,9 +24,9 @@ The gateway runs two listeners:
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure`, which by default is the gateway's own TLS socket and cannot be spoofed.
+`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure` — by default the gateway's own TLS socket, which cannot be spoofed.
 
-`gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` comes from `X-Forwarded-Proto` instead. Set it when something in front terminates TLS (nginx, a CDN, a tunnel), which the redirect needs to break out of a loop; leave it off otherwise. It is an explicit opt-in because the header is only as trustworthy as the network: whoever can reach `gateway_PORT` directly can forge it and skip the redirect.
+`gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` reads `X-Forwarded-Proto` instead. Set it only when something in front terminates TLS (nginx, a CDN, a tunnel); the redirect loops without it. It stays opt-in because anyone who can reach `gateway_PORT` directly can forge that header and skip the redirect.
 
 ---
 # ACME challenges

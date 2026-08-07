@@ -241,7 +241,7 @@ const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
 		&& getVal(lines, "certbot_ON") !== "true"
 		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
-		? "WARNING: gateway_HTTPS_Redirect=true, but nothing here terminates TLS (certbot_ON is not true, privateKey_FILEPATH/certificate_FILEPATH are not both absolute paths) and gateway_TRUST_PROXY is not true. Who serves https:// to your visitors?\n  this machine — point privateKey_FILEPATH and certificate_FILEPATH at the cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme), or every page redirects to itself (ERR_TOO_MANY_REDIRECTS)"
+		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 
 const certbotPortProblem = (lines) =>

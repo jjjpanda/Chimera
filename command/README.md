@@ -50,7 +50,7 @@ The daily budget caps one address: without it, the burst throttle alone would ad
 
 ## Device tokens
 
-A successful login sets `devicetoken`, a year-long signed `httpOnly` cookie naming the username. It skips the **account** and **daily** budgets, so neither an attacker nor a stranger sharing the egress IP can lock a user out of a device they already use — the daily budget is keyed on an address a whole site can share and stays spent for the rest of the day, so without the skip one bad afternoon throttles every returning visitor until tomorrow. The burst budget still applies to it, capping a stolen token at 20 guesses per 15 minutes, then one per 10s.
+A successful login sets `devicetoken`, a year-long signed `httpOnly` cookie naming the username. It skips the **account** and **daily** budgets, so no one else's failures can lock a user out of a device they already use. The daily budget matters here because one address covers a whole site and stays spent until tomorrow. The burst budget still applies, capping a stolen token at 20 guesses per 15 minutes, then one per 10s.
 
 The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, which `knownDevice` re-checks on every login. A password change therefore voids every token for that username and restores the account cap — the remediation path for a stolen device, since revoking sessions alone does not void the cookie. Logout keeps it on purpose; it exists to survive session expiry.
 
