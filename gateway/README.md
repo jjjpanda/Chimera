@@ -24,7 +24,9 @@ The gateway runs two listeners:
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure`. If the key/cert above resolve to files that exist, that reflects the gateway's own TLS socket, unspoofable. Otherwise `trust proxy` is enabled and `req.secure` comes from `X-Forwarded-Proto` — an upstream terminator works, but only if it sends that header and `gateway_PORT` is unreachable except from it; anyone else who can reach it can forge the header and skip the redirect.
+`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure`, which by default is the gateway's own TLS socket and cannot be spoofed.
+
+`gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` comes from `X-Forwarded-Proto` instead. Set it when something in front terminates TLS (nginx, a CDN, a tunnel), which the redirect needs to break out of a loop; leave it off otherwise. It is an explicit opt-in because the header is only as trustworthy as the network: whoever can reach `gateway_PORT` directly can forge it and skip the redirect.
 
 ---
 # ACME challenges
@@ -34,4 +36,4 @@ Before proxying, serves `/.well-known/` from the repo-root dir (dotfiles allowed
 ---
 # Config
 
-`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`; see [../env.example](../env.example).
+`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).
