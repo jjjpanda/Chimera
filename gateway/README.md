@@ -24,7 +24,7 @@ The gateway runs two listeners:
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure`, which `trust proxy` resolves from `X-Forwarded-Proto`, so an upstream terminator works — but only if it sends that header. Without it, every request redirects in a loop.
+`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure`. If the key/cert above resolve to files that exist, that reflects the gateway's own TLS socket, unspoofable. Otherwise `trust proxy` is enabled and `req.secure` comes from `X-Forwarded-Proto` — an upstream terminator works, but only if it sends that header and `gateway_PORT` is unreachable except from it; anyone else who can reach it can forge the header and skip the redirect.
 
 ---
 # ACME challenges

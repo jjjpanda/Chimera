@@ -1,13 +1,19 @@
 var express    = require("express")
 const path = require("path")
+const fs = require("fs")
 const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
 const { helmetOptions } = require("lib")
+const certPaths = require("../lib/utils/certPaths.js")
 
 var app = express()
-app.set("trust proxy", 1)
+const { key, cert } = certPaths()
+const terminatesTLSLocally = Boolean(key && cert && fs.existsSync(key) && fs.existsSync(cert))
+if(!terminatesTLSLocally){
+	app.set("trust proxy", 1)
+}
 
 app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"), {
 	dotfiles: "allow"
