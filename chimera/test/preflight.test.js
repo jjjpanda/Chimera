@@ -354,6 +354,10 @@ describe("httpsRedirectLoopWarning", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true" }))).toBeNull()
 	})
 
+	test("gateway_TRUST_PROXY=true rules it out — the proxy in front says which scheme the visitor used", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true" }))).toBeNull()
+	})
+
 	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
 	})
@@ -364,6 +368,10 @@ describe("httpsRedirectLoopWarning", () => {
 
 	test("only certificate_FILEPATH set still fires — same both-or-neither gap", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+	})
+
+	test("placeholder prose in the FILEPATHs still fires — `cp env.example .env` leaves the description behind, not a path", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "Custom TLS private key path (overrides auto-resolve)", certificate_FILEPATH: "Custom TLS certificate path (overrides auto-resolve)" }))).toBeTruthy()
 	})
 
 	test("never fires while the redirect is off — nothing redirects, so nothing can loop", () => {

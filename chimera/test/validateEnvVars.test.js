@@ -344,6 +344,12 @@ describe("validateEnvVars https-redirect loop warning", () => {
 		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
 		expect(res.status).toBe(0)
 	})
+
+	test("no warning when gateway_TRUST_PROXY=true — a proxy terminates TLS and says so", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_TRUST_PROXY: "true" })
+		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
 })
 
 describe("validateEnvVars insecure-cookie warning", () => {
