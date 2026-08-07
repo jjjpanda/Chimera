@@ -238,9 +238,10 @@ const cookieAmbiguousHostWarning = (lines) =>
 		: null
 
 const httpsRedirectLoopWarning = (lines) =>
-	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "certbot_ON") !== "true"
-		&& !(getVal(lines, "privateKey_FILEPATH") && getVal(lines, "certificate_FILEPATH"))
-		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, privateKey_FILEPATH/certificate_FILEPATH not both set). Who serves https:// to your visitors?\n  this machine — ignore this; put the cert in /etc/letsencrypt/live/<gateway_HOST domain>/\n  a proxy or tunnel — it must send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme), or every page redirects to itself (ERR_TOO_MANY_REDIRECTS)"
+	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
+		&& getVal(lines, "certbot_ON") !== "true"
+		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
+		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 
 const certbotPortProblem = (lines) =>

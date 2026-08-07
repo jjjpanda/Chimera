@@ -64,9 +64,11 @@ const throttledLimiter = ({ windowMs = 15 * 60 * 1000, max, throttleMs = THROTTL
 	return skip ? (req, res, next) => skip(req).then((s) => (s ? next() : gate(req, res, next))) : gate
 }
 
+const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
+
 const ipLimiter = throttledLimiter({ max: 20, keyFn: ipKeyFn })
-const ipDayLimiter = throttledLimiter({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}` })
-const accountLimiter = throttledLimiter({ max: 10, keyFn: accountKeyFn, skip: knownDevice })
+const ipDayLimiter = throttledLimiter({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
+const accountLimiter = throttledLimiter({ max: 10, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
 	try {

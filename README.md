@@ -114,7 +114,7 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 Look at the address you type in the browser, then match it:
 
 - **`http://`** — set `command_COOKIE_SECURE=false`. Give `gateway_HOST` an explicit `http://` prefix (`http://192.168.1.50:8080`) and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`.
-- **`https://`** — set `command_COOKIE_SECURE=true`, however the certificate gets there.
+- **`https://`** — set `command_COOKIE_SECURE=true`, however the certificate gets there. If something in front of Chimera holds the certificate (nginx, a CDN, a tunnel), also set `gateway_TRUST_PROXY=true`, or `gateway_HTTPS_Redirect=true` sends every page back to itself.
 
 Get it backwards and you pay either way: `true` on plain HTTP breaks login outright, `false` on HTTPS quietly drops the `Secure` flag from your login cookies.
 

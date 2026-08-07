@@ -1,17 +1,13 @@
 var express    = require("express")
 const path = require("path")
-const fs = require("fs")
 const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
 const { helmetOptions } = require("lib")
-const certPaths = require("../lib/utils/certPaths.js")
 
 var app = express()
-const { key, cert } = certPaths()
-const terminatesTLSLocally = Boolean(key && cert && fs.existsSync(key) && fs.existsSync(cert))
-if(!terminatesTLSLocally){
+if(process.env.gateway_TRUST_PROXY == "true"){
 	app.set("trust proxy", 1)
 }
 
