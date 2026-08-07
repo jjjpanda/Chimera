@@ -1119,6 +1119,7 @@ describe("Authorization Routes", () => {
 			const ip = "198.18.7.7"
 			let now = Date.now()
 			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
 			for (let round = 0; round < 5; round++) {
 				for (let i = 0; i < 20; i++) {
 					await supertest(app)
@@ -1136,10 +1137,11 @@ describe("Authorization Routes", () => {
 			expect(res.body.errors).toBe("Too many attempts")
 		}, 30000)
 
-		test("a device token does not skip the per-IP daily budget", async () => {
+		test("a device token skips the per-IP daily budget, so a spent day does not throttle returning users", async () => {
 			const ip = "198.18.7.8"
 			let now = Date.now()
 			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
 
 			const agent = supertest.agent(app)
 			const enrol = await agent
@@ -1158,6 +1160,18 @@ describe("Authorization Routes", () => {
 				now += 16 * 60 * 1000
 			}
 
+			const stranger = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(stranger.status).toBe(200)
+
+			const throttled = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(throttled.status).toBe(429)
+
 			const first = await agent
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
@@ -1168,7 +1182,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(second.status).toBe(429)
+			expect(second.status).toBe(200)
 		}, 30000)
 
 		test("a device token from an earlier login skips the throttle", async () => {
