@@ -1,12 +1,13 @@
 const supertest = require("supertest")
 
 process.env.gateway_HTTPS_Redirect = "true"
+process.env.gateway_TRUST_PROXY = "true"
 const gateway = require("../gateway.js")
 
 jest.mock("memory")
 jest.mock("axios")
 
-describe("gateway_HTTPS_Redirect", () => {
+describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 	test("redirects a plain request with no X-Forwarded-Proto", (done) => {
 		supertest(gateway)
 			.get("/command/health")
