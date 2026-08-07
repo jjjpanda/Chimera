@@ -2,7 +2,7 @@
 
 Saves motion-detected camera frames, serves them, builds downloadable videos/zips, and handles deletion, metrics, and stats.
 
-Runs on the same machine as [motion](https://github.com/Motion-Project/motion), which saves RTSP frames and logs each to `frame_files`. Motion can't capture file size in `sql_query`, so `on_picture_save` shells out to `psql` after each save. `postgresql-client` ships in the image; `database_*` from `.env`. Full config: [motion.conf.example](../motion.conf.example). Needs [ffmpeg](https://ffmpeg.org) for video generation.
+Runs on the same machine as [motion](https://github.com/Motion-Project/motion), which saves RTSP frames and logs each to `frame_files`. Motion can't capture file size in `sql_query`, so `on_picture_save` shells out to `psql` after each save (`postgresql-client` ships in the image, `database_*` from `.env`). Full config: [motion.conf.example](../motion.conf.example). Needs [ffmpeg](https://ffmpeg.org) for video generation.
 
 ---
 # API

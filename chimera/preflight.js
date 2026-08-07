@@ -99,8 +99,7 @@ const groupHint = () => {
 	const gid = process.getgid?.()
 	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
 	const file = path.relative(ROOT, ENV)
-	return `Wrote ${file} mode 0640 — only your account can read it right now.\n`
-		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
+	return `Wrote ${file} mode 0640 — only your account can read it. The container runs as uid ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
 		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
 }
 
@@ -117,7 +116,7 @@ const varProblem = (v, val) => {
 	if (blank) return v.optional ? null : "required, not set"
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
-	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
+	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
@@ -129,7 +128,7 @@ const varProblem = (v, val) => {
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
-	? "is a directory — docker-compose bind-mounts ./motion.conf, and Docker creates a directory there when the file is missing; run `rm -rf motion.conf` then `cp motion.conf.example motion.conf`"
+	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
 	: null
 
 const getCamDir = () => {
@@ -170,7 +169,7 @@ const confModeProblem = () => {
 	const camDir = getCamDir()
 	const loose = listConfs().map(f => [f, looseMode(path.join(camDir, f))]).filter(([, m]) => m)
 	return loose.length
-		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds netcam_userpass, the camera login, and every account on this machine can read it; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
+		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds camera logins and every account on this machine can read them; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
 		: null
 }
 
@@ -204,7 +203,7 @@ const blankDisables = (lines, key) => {
 }
 
 const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
-	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
+	? "object_ON requires livestream_ON — object reads its frames from the livestream feeds, which only run when livestream_ON=true"
 	: null
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
@@ -220,14 +219,14 @@ const insecureCookie = (lines) => {
 
 const cookieSecureProblem = (lines) =>
 	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
-		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
+		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request. For a plain-HTTP deploy, give gateway_HOST an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false"
 		: null
 
 const cookiePlainHttpProblem = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
 		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
-		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy write gateway_HOST as https:// — that alone clears this, because browsers only keep a Secure cookie on an https:// address"
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST is http:// and neither gateway_HTTPS_Redirect nor certbot_ON marks this deploy HTTPS, so browsers drop the Secure cookie and login loops with no error. For HTTPS, terminate TLS (certbot_ON, your own certs, or a proxy) and write gateway_HOST as https://"
 		: null
 
 const cookieAmbiguousHostWarning = (lines) =>
@@ -235,22 +234,22 @@ const cookieAmbiguousHostWarning = (lines) =>
 		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
-		? "WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case"
+		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
 		: null
 
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !(getVal(lines, "privateKey_FILEPATH") && getVal(lines, "certificate_FILEPATH"))
-		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, and privateKey_FILEPATH/certificate_FILEPATH are not both set). Who serves https:// to your visitors?\n  this machine — fine, ignore this; your cert must be in /etc/letsencrypt/live/<gateway_HOST domain>/\n  Cloudflare, nginx or a tunnel — it must send X-Forwarded-Proto (nginx needs proxy_set_header X-Forwarded-Proto $scheme); without it every page redirects to itself forever (ERR_TOO_MANY_REDIRECTS)"
+		? "WARNING: gateway_HTTPS_Redirect=true, but no cert is configured here (certbot_ON is not true, privateKey_FILEPATH/certificate_FILEPATH not both set). Who serves https:// to your visitors?\n  this machine — ignore this; put the cert in /etc/letsencrypt/live/<gateway_HOST domain>/\n  a proxy or tunnel — it must send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme), or every page redirects to itself (ERR_TOO_MANY_REDIRECTS)"
 		: null
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
-		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
+		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and compose publishes no port but gateway_PORT, so nothing answers the challenge. Set gateway_PORT=80, or set certbot_ON=false and supply your own certs via privateKey_FILEPATH/certificate_FILEPATH"
 		: null
 
 const setupTokenHint = (lines) => on(lines, "command")
-	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
+	? `The first admin account needs setup_TOKEN — read it with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
 
 const GATEWAY_PORT_SECURE_DEFAULT = "443"
@@ -264,13 +263,13 @@ const duplicatePortProblems = (lines) => {
 		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
 		if (!val) continue
 		const num = /^\d+$/.test(val) ? Number(val) : val
-		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service is its own pm2 app but they all share the container's network namespace, so the second one to bind loses with EADDRINUSE`])
+		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; the services share one network namespace, so the second to bind fails with EADDRINUSE`])
 		else seen[num] = key
 	}
 	return probs
 }
 
-const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
+const HASH_MSG = "cannot contain # — dotenv reads it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
 const hashTruncated = (lines, key) => {
@@ -304,7 +303,7 @@ const runCheck = () => {
 	} else {
 		const probs = envProblems(schema, lines)
 		const mode = looseMode(ENV)
-		if (mode) probs.push([".env", `mode ${mode} — holds SECRETKEY, database_PASSWORD and the service tokens, and every account on this machine can read them; run: chmod 640 .env`])
+		if (mode) probs.push([".env", `mode ${mode} — holds your secrets and every account on this machine can read them; run: chmod 640 .env`])
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
