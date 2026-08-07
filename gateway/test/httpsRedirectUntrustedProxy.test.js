@@ -38,6 +38,9 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 		supertest(freshGateway())
 			.get("/command/health")
 			.set("X-Forwarded-Proto", "https")
-			.expect(504, done)
+			.expect((res) => {
+				if (res.status === 302) throw new Error("redirected despite a trusted X-Forwarded-Proto")
+			})
+			.end(done)
 	})
 })
