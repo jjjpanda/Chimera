@@ -24,7 +24,7 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 	const redirectTarget = (() => {
 		try{
 			const url = new URL(gatewayHost())
-			return url.protocol == "https:" ? url.host : `${url.hostname}${portSuffix}`
+			return url.protocol == "https:" && url.port ? url.host : `${url.hostname}${portSuffix}`
 		}
 		catch{
 			return ""

@@ -26,6 +26,8 @@ The gateway runs two listeners:
 
 `gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure` — by default the gateway's own TLS socket, which cannot be spoofed.
 
+The redirect target is built once at boot from `gateway_HOST` + `gateway_PORT_SECURE`, not from the request's `Host`, so the deploy is single-name: a browser opening `http://192.168.1.50/…`, a tailnet name, or a container alias is sent to `gateway_HOST`, which internal DNS or hairpin NAT has to resolve. Give `gateway_HOST` a port only if it matches `gateway_PORT_SECURE` — a disagreement sends browsers to a port with no TLS listener, which `npm run preflight` warns about without blocking. If `gateway_HOST` is unset or unparseable the target falls back to the request's own `Host` header, so a forged `Host` picks where visitors land.
+
 `gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` reads `X-Forwarded-Proto` instead. Set it only when something in front terminates TLS (nginx, a CDN, a tunnel); the redirect loops without it. It stays opt-in because anyone who can reach `gateway_PORT` directly can forge that header and skip the redirect.
 
 ---
@@ -36,4 +38,4 @@ Before proxying, serves `/.well-known/` from the repo-root dir (dotfiles allowed
 ---
 # Config
 
-`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).
+`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive, HTTPS redirect target), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).

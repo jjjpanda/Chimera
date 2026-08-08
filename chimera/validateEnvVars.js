@@ -36,7 +36,7 @@ const rawGatewayHost = (process.env.gateway_HOST || "").trim()
 if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
 	try { new URL(gatewayHost()) }
 	catch {
-		console.log("gateway_HOST MUST BE A VALID URL — an unparseable value falls back to req.hostname, and with gateway_TRUST_PROXY=true that resolves from the client-supplied X-Forwarded-Host, letting a forged Host header pick the HTTPS redirect target")
+		console.log("gateway_HOST MUST BE A VALID URL — an unparseable value falls back to the client-supplied Host header (gateway.js reads req.headers.host, whatever gateway_TRUST_PROXY says), letting a forged Host pick the HTTPS redirect target")
 		allEnvPresent = false
 	}
 }

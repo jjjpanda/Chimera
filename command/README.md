@@ -38,7 +38,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 |---|---|---|---|
 | burst | IP | 20 / 15 min | 1 check / 10s |
 | daily | IP | 100 / 24h | 1 check / 15 min |
-| account | username | 10 / 15 min | 1 check / 15 min |
+| account | username | 10 / 15 min | 1 check / 10s |
 
 No budget ends in a hard block. A spent budget throttles to one credential check per window; extra requests get 429 immediately and nothing queues, so a flood cannot build latency. That one check also answers 429 on a wrong password — a 429 does not prove the credentials went unchecked.
 
@@ -62,4 +62,5 @@ These budgets are tuned to keep legitimate users in, not to guarantee an attacke
 - Clients behind one egress IP (home router, CGNAT) share the per-IP budgets and contend for the single slot, even when the attack targets someone else.
 - `knownDevice` matches username and current password hash, not a live session, so a shared browser lets a later user inherit the skip.
 - Nothing caps attempts across addresses: N addresses buy N×20 checks per window, ~N×200 per day. Run a cluster (`chimeraInstances`) to spread the load; it also forces `memory_ON=true`, which keeps the budgets shared.
+- The account throttle is one slot per username, and any unauthenticated request takes it. Its window is short on purpose: a long one would let an attacker keep a user who has no device token out for as long as they keep sending. The cost is that a spent account budget still admits ~8,600 checks a day against that username, spread across addresses.
 - `bcryptjs` holds the event loop for a whole cost-10 check (~50ms, longer on a Pi or NAS), so 20 concurrent logins from one address stall every route for ~1s.

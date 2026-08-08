@@ -119,6 +119,36 @@ describe("the redirect target comes from config, not from the request", () => {
 			.expect("location", "https://192.168.1.50:8443/command/health", done)
 	})
 
+	test("an https:// gateway_HOST with no port takes gateway_PORT_SECURE — the scheme alone does not mean 443", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "https://cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "cam.example.com:8080")
+			.expect("location", "https://cam.example.com:8443/command/health", done)
+	})
+
+	test("a scheme-less gateway_HOST reads as https:// and still takes gateway_PORT_SECURE", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "cam.example.com:8080")
+			.expect("location", "https://cam.example.com:8443/command/health", done)
+	})
+
+	test("a bare IPv6 gateway_HOST is bracketed, not dropped as unparseable", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "::1"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "[::1]:8080")
+			.expect("location", "https://[::1]:8443/command/health", done)
+	})
+
 	test("an http:// gateway_HOST behind a proxy keeps the proxy's port, not the container's TLS port", (done) => {
 		process.env.gateway_TRUST_PROXY = "true"
 		process.env.gateway_PORT_SECURE = "8443"
