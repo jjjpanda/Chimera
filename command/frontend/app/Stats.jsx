@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Minus, Plus } from "lucide-react"
 import { ChevronRight } from "lucide-react"
 import useFileStats from "../hooks/useFileStats"
@@ -19,11 +20,12 @@ import moment from "moment"
 const segmentColor = (i) => i === 0 ? CHART_ACCENT : colors[i % colors.length]
 
 const Stats = () => {
+	const { t } = useTranslation()
 	const role = useRole()
 	const isAdmin = role === "admin"
 
 	const [days, setDays] = useState(7)
-	const clearLabel = (d) => d === 0 ? "all footage" : `older than ${d} ${d === 1 ? "day" : "days"}`
+	const clearLabel = (d) => d === 0 ? t("stats.allFootage") : t("stats.olderThanDays", { count: d })
 
 	const [fileStatsState, , refreshFileStats] = useFileStats({
 		loading: "refreshing",
@@ -81,7 +83,7 @@ const Stats = () => {
 				<Card>
 					<CardContent className="space-y-3 pt-4">
 						<div className="flex items-center gap-2">
-							<span className="text-[10px] text-muted w-14 shrink-0">by camera</span>
+							<span className="text-[10px] text-muted w-14 shrink-0">{t("stats.byCameraLabel")}</span>
 							<div className="flex h-3 flex-1 overflow-hidden rounded-full">
 								{usage.cameras.length > 0
 									? usage.cameras.map((cam) => (
@@ -93,7 +95,7 @@ const Stats = () => {
 						</div>
 						{usage.max_gb > 0 && (
 							<div className="flex items-center gap-2">
-								<span className="text-[10px] text-muted w-14 shrink-0">vs max</span>
+								<span className="text-[10px] text-muted w-14 shrink-0">{t("stats.vsMax")}</span>
 								<div className="flex h-3 flex-1 overflow-hidden rounded-full bg-border">
 									<div
 										className="h-full rounded-full bg-primary transition-all"
@@ -104,10 +106,10 @@ const Stats = () => {
 						)}
 						<p className="text-sm text-muted">
 							{usage.max_gb > 0
-								? `${formatBytes(usedBytes, 1)} / ${formatBytes(maxBytes, 1)} USED`
-								: `${formatBytes(usedBytes, 1)} USED`
+								? t("stats.usedOfMax", { used: formatBytes(usedBytes, 1), max: formatBytes(maxBytes, 1) })
+								: t("stats.used", { used: formatBytes(usedBytes, 1) })
 							}
-							{` • ${usage.total_frames.toLocaleString()} frames`}
+							{` • ${t("stats.frames", { count: usage.total_frames })}`}
 						</p>
 						<StorageBreakdown breakdown={usage.breakdown} />
 					</CardContent>
@@ -124,7 +126,7 @@ const Stats = () => {
 									days === d ? "bg-accent text-accent-foreground" : "text-muted hover:text-primary"
 								)}
 							>
-								{d === 1 ? "1 Day" : `${d} Days`}
+								{t("stats.days", { count: d })}
 							</button>
 						))}
 					</div>
@@ -134,9 +136,9 @@ const Stats = () => {
 					<CardContent className="pt-4">
 						<div className="flex items-start justify-between mb-3">
 							<div>
-								<p className="text-base font-semibold text-accent">Storage Growth</p>
+								<p className="text-base font-semibold text-accent">{t("stats.storageGrowth")}</p>
 								<p className="text-xs text-muted mt-0.5">
-								Total recorded {days === 1 ? "today" : days === 7 ? "this week" : "this month"}
+									{t("stats.totalRecorded", { period: days === 1 ? t("stats.today") : days === 7 ? t("stats.thisWeek") : t("stats.thisMonth") })}
 								</p>
 							</div>
 							<div className="text-right">
@@ -192,16 +194,16 @@ const Stats = () => {
 				<Card>
 					<CardHeader className="pb-2">
 						<div className="flex items-center justify-between">
-							<CardTitle className="text-base text-accent">By Camera</CardTitle>
+							<CardTitle className="text-base text-accent">{t("stats.byCameraTitle")}</CardTitle>
 							{isAdmin && (
 								<div className="flex items-center gap-1">
-									<span className="text-xs text-muted mr-1">Older than</span>
+									<span className="text-xs text-muted mr-1">{t("stats.olderThanLabel")}</span>
 									<Button variant="outline" size="icon" className="size-7"
 										onClick={() => setClearDays(d => Math.max(0, d - 1))}>
 										<Minus className="size-3" />
 									</Button>
 									<span className="w-14 text-center text-xs font-medium">
-										{clearDays === 0 ? "all" : `${clearDays} ${clearDays === 1 ? "day" : "days"}`}
+										{clearDays === 0 ? t("stats.all") : t("stats.dayCount", { count: clearDays })}
 									</span>
 									<Button variant="outline" size="icon" className="size-7"
 										onClick={() => setClearDays(d => d + 1)}>
@@ -231,7 +233,7 @@ const Stats = () => {
 												disabled={deleting}
 												onClick={() => setPending({ type: "camera", cameraId: cam.id, cameraName: cam.name })}
 											>
-											Clear
+												{t("stats.clear")}
 											</Button>
 										) : (
 											<ChevronRight className="size-4 text-muted shrink-0 ml-1" />
@@ -253,7 +255,7 @@ const Stats = () => {
 									disabled={deleting}
 									onClick={() => setPending({ type: "all" })}
 								>
-								Clear All — {clearLabel(clearDays)}
+									{t("stats.clearAll", { label: clearLabel(clearDays) })}
 								</Button>
 							</div>
 						)}
@@ -264,17 +266,17 @@ const Stats = () => {
 			<Dialog open={!!pending} onOpenChange={open => !open && setPending(null)}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Confirm Clear</DialogTitle>
+						<DialogTitle>{t("stats.confirmClear")}</DialogTitle>
 					</DialogHeader>
 					<p className="text-sm text-muted">
 						{pending?.type === "all"
-							? `Delete ${clearLabel(clearDays)} from all cameras?`
-							: `Delete ${clearLabel(clearDays)} from ${pending?.cameraName}?`
+							? t("stats.deleteAllCameras", { label: clearLabel(clearDays) })
+							: t("stats.deleteCamera", { label: clearLabel(clearDays), camera: pending?.cameraName })
 						}
 					</p>
 					<DialogFooter>
-						<Button variant="ghost" onClick={() => setPending(null)}>Cancel</Button>
-						<Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+						<Button variant="ghost" onClick={() => setPending(null)}>{t("common.cancel")}</Button>
+						<Button variant="destructive" onClick={confirmDelete}>{t("common.delete")}</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

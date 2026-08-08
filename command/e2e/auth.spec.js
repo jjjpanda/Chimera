@@ -43,7 +43,7 @@ test.describe("authentication", () => {
 	})
 
 	test("rate-limited login shows the server message", async ({ page }) => {
-		await mockApi(page, { "POST /authorization/login": json({ error: true, errors: "Too many attempts" }, 429) })
+		await mockApi(page, { "POST /authorization/login": json({ error: true, errors: "TOO_MANY_ATTEMPTS" }, 429) })
 		await page.goto("/")
 		await page.getByPlaceholder("username").fill("admin")
 		await page.getByPlaceholder("password").fill("correct-horse-battery")

@@ -59,6 +59,7 @@
         "heartbeat": "jjjpanda/heartbeat#v1.4.1",
         "helmet": "^8.3.0",
         "hls.js": "^1.5.18",
+        "i18next": "^26.3.6",
         "jsonwebtoken": "^9.0.0",
         "lib": "file:../lib",
         "lucide-react": "^0.460.0",
@@ -67,6 +68,7 @@
         "pg": "^8.11.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
+        "react-i18next": "^17.0.11",
         "react-responsive": "^10.0.0",
         "react-router-dom": "^6.26.2",
         "recharts": "^2.13.3",
@@ -9383,6 +9385,15 @@
       "integrity": "sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==",
       "license": "MIT"
     },
+    "node_modules/html-parse-stringify": {
+      "version": "4.0.1",
+      "resolved": "https://registry.npmjs.org/html-parse-stringify/-/html-parse-stringify-4.0.1.tgz",
+      "integrity": "sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw==",
+      "license": "MIT",
+      "funding": {
+        "url": "https://locize.com"
+      }
+    },
     "node_modules/http-errors": {
       "version": "2.0.1",
       "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
@@ -9490,6 +9501,34 @@
       "resolved": "https://registry.npmjs.org/hyphenate-style-name/-/hyphenate-style-name-1.1.0.tgz",
       "integrity": "sha512-WDC/ui2VVRrz3jOVi+XtjqkDjiVjTtFaAGiW37k6b+ohyQ5wYDOGkvCZa8+H0nx3gyvv0+BST9xuOgIyGQ00gw==",
       "license": "BSD-3-Clause"
+    },
+    "node_modules/i18next": {
+      "version": "26.3.6",
+      "resolved": "https://registry.npmjs.org/i18next/-/i18next-26.3.6.tgz",
+      "integrity": "sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA==",
+      "funding": [
+        {
+          "type": "individual",
+          "url": "https://www.locize.com/i18next"
+        },
+        {
+          "type": "individual",
+          "url": "https://www.i18next.com/how-to/faq#i18next-is-awesome.-how-can-i-support-the-project"
+        },
+        {
+          "type": "individual",
+          "url": "https://www.locize.com"
+        }
+      ],
+      "license": "MIT",
+      "peerDependencies": {
+        "typescript": "^5 || ^6 || ^7"
+      },
+      "peerDependenciesMeta": {
+        "typescript": {
+          "optional": true
+        }
+      }
     },
     "node_modules/iconv-lite": {
       "version": "0.4.24",
@@ -13324,6 +13363,33 @@
         "react": "^18.3.1"
       }
     },
+    "node_modules/react-i18next": {
+      "version": "17.0.11",
+      "resolved": "https://registry.npmjs.org/react-i18next/-/react-i18next-17.0.11.tgz",
+      "integrity": "sha512-cDtkXgxjuFTWUH6V+aQn1Ve5vDiUztCNPWW5GtSHDccsgRXO1nE6QFWCEmc1KAutrb3OUv87wFShJL5RhUwPXg==",
+      "license": "MIT",
+      "dependencies": {
+        "@babel/runtime": "^7.29.2",
+        "html-parse-stringify": "^4.0.1",
+        "use-sync-external-store": "^1.6.0"
+      },
+      "peerDependencies": {
+        "i18next": ">= 26.2.0",
+        "react": ">= 16.8.0",
+        "typescript": "^5 || ^6 || ^7"
+      },
+      "peerDependenciesMeta": {
+        "react-dom": {
+          "optional": true
+        },
+        "react-native": {
+          "optional": true
+        },
+        "typescript": {
+          "optional": true
+        }
+      }
+    },
     "node_modules/react-is": {
       "version": "18.3.1",
       "resolved": "https://registry.npmjs.org/react-is/-/react-is-18.3.1.tgz",
@@ -15613,6 +15679,15 @@
         "@types/react": {
           "optional": true
         }
+      }
+    },
+    "node_modules/use-sync-external-store": {
+      "version": "1.6.0",
+      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz",
+      "integrity": "sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==",
+      "license": "MIT",
+      "peerDependencies": {
+        "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
       }
     },
     "node_modules/util-deprecate": {
@@ -19563,7 +19638,8 @@
       "requires": {}
     },
     "adm-zip": {
-      "version": "https://registry.npmjs.org/adm-zip/-/adm-zip-0.6.0.tgz",
+      "version": "0.6.0",
+      "resolved": "https://registry.npmjs.org/adm-zip/-/adm-zip-0.6.0.tgz",
       "integrity": "sha512-XleryMhbuksdKtofnWZ9Sk+4CUTbms4Mb/EU32SZwToAyZ5RgVos/ki8n+yr0LWHOGKuakbXTuuYNHLQjhddgg=="
     },
     "agent-base": {
@@ -20347,6 +20423,7 @@
         "heartbeat": "jjjpanda/heartbeat#v1.4.1",
         "helmet": "^8.3.0",
         "hls.js": "^1.5.18",
+        "i18next": "^26.3.6",
         "jsonwebtoken": "^9.0.0",
         "lib": "file:../lib",
         "lucide-react": "^0.460.0",
@@ -20356,6 +20433,7 @@
         "postcss": "^8.4.49",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
+        "react-i18next": "^17.0.11",
         "react-responsive": "^10.0.0",
         "react-router-dom": "^6.26.2",
         "recharts": "^2.13.3",
@@ -21915,6 +21993,11 @@
       "resolved": "https://registry.npmjs.org/html-escaper/-/html-escaper-2.0.2.tgz",
       "integrity": "sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg=="
     },
+    "html-parse-stringify": {
+      "version": "4.0.1",
+      "resolved": "https://registry.npmjs.org/html-parse-stringify/-/html-parse-stringify-4.0.1.tgz",
+      "integrity": "sha512-0zHsZJrK7S3K2aucXWL6ycoYJ/iNtIcFHC/nYQgFklPtrv5LpJctIiSCroWZWeuoXvuyFdzp6KzjJQ+OT5MfFw=="
+    },
     "http-errors": {
       "version": "2.0.1",
       "resolved": "https://registry.npmjs.org/http-errors/-/http-errors-2.0.1.tgz",
@@ -21983,6 +22066,12 @@
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/hyphenate-style-name/-/hyphenate-style-name-1.1.0.tgz",
       "integrity": "sha512-WDC/ui2VVRrz3jOVi+XtjqkDjiVjTtFaAGiW37k6b+ohyQ5wYDOGkvCZa8+H0nx3gyvv0+BST9xuOgIyGQ00gw=="
+    },
+    "i18next": {
+      "version": "26.3.6",
+      "resolved": "https://registry.npmjs.org/i18next/-/i18next-26.3.6.tgz",
+      "integrity": "sha512-Bu5Z2nAXgfVyM8xvW3jk9EKRIuX37PudsrBViThNFx7CR7aaYTpP01cxNB/E4c4UUzTDiAZRstEhsRfPOL/8xA==",
+      "requires": {}
     },
     "iconv-lite": {
       "version": "0.4.24",
@@ -23810,7 +23899,7 @@
       "resolved": "https://registry.npmjs.org/onnxruntime-node/-/onnxruntime-node-1.27.0.tgz",
       "integrity": "sha512-QEzGwrvNBgv4uPVdnbHsOGG4G6T96mdlcFI8aAKPjMU8wOPpVocPXb6k3QGkaZagVTv2G9Bnnbo6Z3JdXr1fQw==",
       "requires": {
-        "adm-zip": "^0.5.16",
+        "adm-zip": "^0.6.0",
         "global-agent": "^4.1.3",
         "onnxruntime-common": "1.27.0"
       }
@@ -24463,6 +24552,16 @@
       "requires": {
         "loose-envify": "^1.1.0",
         "scheduler": "^0.23.2"
+      }
+    },
+    "react-i18next": {
+      "version": "17.0.11",
+      "resolved": "https://registry.npmjs.org/react-i18next/-/react-i18next-17.0.11.tgz",
+      "integrity": "sha512-cDtkXgxjuFTWUH6V+aQn1Ve5vDiUztCNPWW5GtSHDccsgRXO1nE6QFWCEmc1KAutrb3OUv87wFShJL5RhUwPXg==",
+      "requires": {
+        "@babel/runtime": "^7.29.2",
+        "html-parse-stringify": "^4.0.1",
+        "use-sync-external-store": "^1.6.0"
       }
     },
     "react-is": {
@@ -25988,6 +26087,12 @@
         "detect-node-es": "^1.1.0",
         "tslib": "^2.0.0"
       }
+    },
+    "use-sync-external-store": {
+      "version": "1.6.0",
+      "resolved": "https://registry.npmjs.org/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz",
+      "integrity": "sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==",
+      "requires": {}
     },
     "util-deprecate": {
       "version": "1.0.2",

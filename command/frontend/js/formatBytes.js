@@ -1,11 +1,16 @@
+import i18n from "./i18n.js"
+
+const UNITS = ["byte", "kilobyte", "megabyte", "gigabyte", "terabyte", "petabyte"]
+
 export default (bytes, decimals = 2) => {
-	if (bytes === 0) return "0 Bytes"
+	const value = Number(bytes) || 0
+	const magnitude = value === 0 ? 0 : Math.floor(Math.log(Math.abs(value)) / Math.log(1024))
+	const i = Math.min(Math.max(magnitude, 0), UNITS.length - 1)
 
-	const k = 1024
-	const dm = decimals < 0 ? 0 : decimals
-	const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-
-	const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-	return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+	return new Intl.NumberFormat(i18n.language, {
+		style: "unit",
+		unit: UNITS[i],
+		unitDisplay: "short",
+		maximumFractionDigits: Math.max(0, decimals)
+	}).format(value / Math.pow(1024, i))
 }
