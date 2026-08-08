@@ -164,6 +164,7 @@
 	},
 	"language": {
 		"label": "Sprache",
+		"loadFailed": "Sprache konnte nicht geladen werden",
 		"preferences": "Einstellungen",
 		"saveFailed": "Sprache konnte nicht gespeichert werden"
 	},

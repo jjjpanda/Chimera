@@ -163,6 +163,7 @@
 	},
 	"language": {
 		"label": "言語",
+		"loadFailed": "言語を読み込めませんでした",
 		"preferences": "環境設定",
 		"saveFailed": "言語を保存できませんでした"
 	},

@@ -7,7 +7,7 @@ jest.mock("../frontend/js/request.js", () => ({
 jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: () => {} }))
 
 const React = require("react")
-const { render, screen, fireEvent } = require("@testing-library/react")
+const { render, screen, fireEvent, waitFor } = require("@testing-library/react")
 const moment = require("moment")
 const { LanguageProvider, useLanguage } = require("../frontend/app/LanguageContext.jsx")
 
@@ -86,8 +86,9 @@ test("importing the provider leaves moment on en rather than the last defined lo
 	})
 })
 
-test.each(["hi", "gu"])("%s formats and parses machine timestamps in ASCII digits", (tag) => {
+test.each(["hi", "gu"])("%s formats and parses machine timestamps in ASCII digits", async (tag) => {
 	renderWithProvider({ serverLanguage: tag, loggedIn: true })
+	await waitFor(() => expect(moment.locale()).toBe(tag))
 
 	expect(moment.utc("2025-08-08T12:34:56Z").format("YYYYMMDD-HHmmss")).toBe("20250808-123456")
 	expect(moment.utc("2025-08-08T12:34:56Z").format("YYYY-MM-DD")).toBe("2025-08-08")

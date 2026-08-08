@@ -164,6 +164,7 @@
 	},
 	"language": {
 		"label": "Language",
+		"loadFailed": "Couldn't load language",
 		"preferences": "Preferences",
 		"saveFailed": "Couldn't save language"
 	},

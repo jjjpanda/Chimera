@@ -1,23 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import moment from "moment"
-import "moment/locale/es"
-import "moment/locale/fr"
-import "moment/locale/de"
-import "moment/locale/pt-br"
-import "moment/locale/ru"
-import "moment/locale/zh-cn"
-import "moment/locale/ja"
-import "moment/locale/ko"
-import "moment/locale/hi"
-import "moment/locale/gu"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
-import i18n from "../js/i18n.js"
-import { resolveLanguage, detectLanguage, MOMENT_LOCALES } from "../js/languages.js"
+import i18n, { changeLanguage } from "../js/i18n.js"
+import { resolveLanguage, detectLanguage, LANGUAGES } from "../js/languages.js"
 
 const identity = (s) => s
-for (const locale of ["hi", "gu"]) moment.updateLocale(locale, { preparse: identity, postformat: identity })
-moment.locale("en")
+
+const applyMomentLocale = (tag) => {
+	const locale = LANGUAGES[tag]?.moment ?? "en"
+	moment.updateLocale(locale, { preparse: identity, postformat: identity })
+	moment.locale(locale)
+}
 
 const LanguageContext = createContext({ language: "en", applyLanguage: () => {} })
 
@@ -41,10 +35,13 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 	}, [serverLanguage, loggedIn])
 
 	useEffect(() => {
-		i18n.changeLanguage(language)
-		moment.locale(MOMENT_LOCALES[language] ?? "en")
+		let stale = false
+		changeLanguage(language)
+			.then(() => { if (!stale) applyMomentLocale(language) })
+			.catch(() => toast(i18n.t("language.loadFailed")))
 		document.documentElement.lang = language
 		localStorage.setItem("language", language)
+		return () => { stale = true }
 	}, [language])
 
 	const applyLanguage = (next) => {

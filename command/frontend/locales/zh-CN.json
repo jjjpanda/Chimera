@@ -163,6 +163,7 @@
 	},
 	"language": {
 		"label": "语言",
+		"loadFailed": "无法加载语言设置",
 		"preferences": "偏好设置",
 		"saveFailed": "无法保存语言设置"
 	},

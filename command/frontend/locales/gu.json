@@ -164,6 +164,7 @@
 	},
 	"language": {
 		"label": "ભાષા",
+		"loadFailed": "ભાષા લોડ કરી શકાઈ નહીં",
 		"preferences": "પસંદગીઓ",
 		"saveFailed": "ભાષા સાચવી શકાઈ નહીં"
 	},

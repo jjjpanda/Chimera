@@ -164,6 +164,7 @@
 	},
 	"language": {
 		"label": "भाषा",
+		"loadFailed": "भाषा लोड नहीं की जा सकी",
 		"preferences": "प्राथमिकताएं",
 		"saveFailed": "भाषा सहेजी नहीं जा सकी"
 	},

@@ -36,12 +36,12 @@ const SCHEDULE_PRESETS = [
 
 import { cn } from "../lib/utils"
 import i18n from "../js/i18n.js"
-import { CRONSTRUE_LOCALES } from "../js/languages.js"
+import { LANGUAGES } from "../js/languages.js"
 
 const humanCron = (cronString) => {
 	if (!cronString) return cronString ?? ""
 	try {
-		return cronstrue.toString(cronString, { locale: CRONSTRUE_LOCALES[i18n.language] ?? "en" })
+		return cronstrue.toString(cronString, { locale: LANGUAGES[i18n.language]?.cronstrue ?? "en" })
 	} catch {
 		return cronString
 	}

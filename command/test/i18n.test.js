@@ -1,6 +1,12 @@
+const fs = require("fs")
+const path = require("path")
 const tags = require("lib/utils/languages.json")
-const { default: i18n, resources } = require("../frontend/js/i18n.js")
+const { default: i18n, changeLanguage } = require("../frontend/js/i18n.js")
+const { LANGUAGES } = require("../frontend/js/languages.js")
 const en = require("../frontend/locales/en.json")
+
+const localeDir = path.join(__dirname, "../frontend/locales")
+const resources = Object.fromEntries(tags.map(tag => [tag, { translation: require(`${localeDir}/${tag}.json`) }]))
 
 const EXEMPT = {
 	"clip.videoCount": "Not a plural pair — the singular is clip.video, a different string. Guarded at ClipMaker.jsx:979.",
@@ -58,10 +64,29 @@ const englishFor = (key) => {
 	return flat[`${base}_other`] ?? flat[`${base}_one`] ?? flat[base]
 }
 
-const shipped = Object.keys(resources).sort()
+test("the locale directory holds exactly the allow-listed languages", () => {
+	const shipped = fs.readdirSync(localeDir).filter(file => file.endsWith(".json")).map(file => file.replace(/\.json$/, ""))
 
-test("every language in the allow-list ships a locale file", () => {
-	expect(shipped).toEqual([...tags].sort())
+	expect(shipped.sort()).toEqual([...tags].sort())
+})
+
+test("every allow-listed language has a record with a label, a moment locale and a loader", () => {
+	expect(Object.keys(LANGUAGES).sort()).toEqual([...tags].sort())
+	for (const tag of tags) {
+		expect(LANGUAGES[tag].label.trim()).not.toBe("")
+		expect(LANGUAGES[tag].moment.trim()).not.toBe("")
+		expect(LANGUAGES[tag].cronstrue.trim()).not.toBe("")
+		expect(typeof LANGUAGES[tag].load).toBe("function")
+	}
+})
+
+test.each(others)("%s loads its bundle on demand rather than at import", async (tag) => {
+	expect(i18n.hasResourceBundle(tag, "translation")).toBe(false)
+
+	await changeLanguage(tag)
+
+	expect(i18n.hasResourceBundle(tag, "translation")).toBe(true)
+	expect(i18n.t("auth.signIn")).toBe(flatten(resources[tag].translation)["auth.signIn"])
 })
 
 test.each(others)("%s carries the full en.json key set", (tag) => {
@@ -89,7 +114,7 @@ test.each(tags)("%s declares exactly the plural categories its language uses", (
 })
 
 test.each(others)("%s renders a plural through i18next for every category", async (tag) => {
-	await i18n.changeLanguage(tag)
+	await changeLanguage(tag)
 	for (const count of [0, 1, 2, 5, 21]) {
 		const rendered = i18n.t("stats.days", { count })
 		expect(typeof rendered).toBe("string")
@@ -99,11 +124,11 @@ test.each(others)("%s renders a plural through i18next for every category", asyn
 })
 
 test("a count groups its digits in the app language, not the browser locale", async () => {
-	await i18n.changeLanguage("de")
+	await changeLanguage("de")
 	expect(i18n.t("stats.frames", { count: 1234567 })).toBe("1.234.567 Bilder")
 	expect(i18n.t("storage.frames", { count: 1 })).toBe("1 Bild")
 
-	await i18n.changeLanguage("en")
+	await changeLanguage("en")
 	expect(i18n.t("stats.frames", { count: 1234567 })).toBe("1,234,567 frames")
 	expect(i18n.t("storage.frames", { count: 1 })).toBe("1 frame")
 })

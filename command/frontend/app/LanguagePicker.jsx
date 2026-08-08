@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Label } from "../components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { useLanguage } from "./LanguageContext.jsx"
-import tags, { LANGUAGE_LABELS } from "../js/languages.js"
+import tags, { LANGUAGES } from "../js/languages.js"
 
 const LanguagePicker = () => {
 	const { language, applyLanguage } = useLanguage()
@@ -18,7 +18,7 @@ const LanguagePicker = () => {
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent className="bg-surface-raised border-border text-primary">
-					{tags.map(tag => <SelectItem key={tag} value={tag}>{LANGUAGE_LABELS[tag]}</SelectItem>)}
+					{tags.map(tag => <SelectItem key={tag} value={tag}>{LANGUAGES[tag].label}</SelectItem>)}
 				</SelectContent>
 			</Select>
 		</div>
