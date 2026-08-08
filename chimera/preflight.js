@@ -3,12 +3,13 @@ const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
 
-let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost
+let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths
 try {
 	loadCameras = require("../lib/utils/loadCameras.js")
 	multiInstanceLib = require("../lib/utils/multiInstance.js")
 	trustedSourcesLib = require("../lib/utils/trustedSources.js")
 	normalizeHost = require("../lib/utils/normalizeHost.js")
+	certPaths = require("../lib/utils/certPaths.js")
 } catch (e) {
 	if (e.code === "MODULE_NOT_FOUND") {
 		console.error("Missing dependencies — run `npm install` first.")
@@ -19,6 +20,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
+const { letsencryptPaths } = certPaths
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -117,6 +119,7 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
+	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (/^watchdog_(INTERVAL_MS|FAILURES)$/.test(v.key) && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
@@ -127,6 +130,9 @@ const varProblem = (v, val) => {
 }
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+
+// certbot-entry.sh leaves /etc/letsencrypt/live mode 0710, so stat throws EACCES for an account outside the container group — only ENOENT/ENOTDIR prove the cert is absent.
+const certMaybePresent = (p) => { try { return fs.statSync(p).isFile() } catch (e) { return e.code !== "ENOENT" && e.code !== "ENOTDIR" } }
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -246,17 +252,33 @@ const watchdogHostWarning = (lines) =>
 
 const autoResolvedCertOnDisk = (lines) => {
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	return !!hostname && ["privkey.pem", "fullchain.pem"].every(f => isFile(`/etc/letsencrypt/live/${hostname}/${f}`))
+	if (!hostname) return false
+	const { key, cert } = letsencryptPaths(hostname)
+	return [key, cert].every(certMaybePresent)
 }
 
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
 		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
-		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
+		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => certMaybePresent(getVal(lines, k) || ""))
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 
-const warnings = (lines) => [httpsRedirectLoopWarning, watchdogHostWarning].map(w => w(lines)).filter(Boolean)
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const httpsRedirectPortWarning = (lines) => {
+	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
+	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
+	const url = gatewayUrl(lines)
+	if (urlPart(url, "protocol") !== "https:") return null
+	const hostPort = urlPart(url, "port") || GATEWAY_PORT_SECURE_DEFAULT
+	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
+	return hostPort === securePort
+		? null
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE), so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+}
+
+const warnings = (lines) => [httpsRedirectLoopWarning, httpsRedirectPortWarning, watchdogHostWarning].map(w => w(lines)).filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
@@ -266,8 +288,6 @@ const certbotPortProblem = (lines) =>
 const setupTokenHint = (lines) => on(lines, "command")
 	? `The first admin account needs setup_TOKEN — read it with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
-
-const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
 	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
@@ -557,4 +577,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

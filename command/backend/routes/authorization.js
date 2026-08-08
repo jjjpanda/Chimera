@@ -33,7 +33,7 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const { makeReserve, rateLimit: baseRateLimit, releaseOnSuccess, client: memoryClient } = rateLimiter("AUTH")
+const { rateLimit: baseRateLimit, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
@@ -47,28 +47,11 @@ const THROTTLE_WINDOW_MS = 10000
 const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
 const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
-const throttledLimiter = ({ windowMs = 15 * 60 * 1000, max, throttleMs = THROTTLE_WINDOW_MS, keyFn, skip }) => {
-	const budget = makeReserve({ windowMs, max, keyFn })
-	const throttle = makeReserve({ windowMs: throttleMs, max: 1, keyFn: (req) => `throttle:${keyFn(req)}` })
-	const gate = (req, res, next) => budget(req, (blocked, release) => {
-		req.accountThrottled ||= blocked
-		if (!blocked) {
-			releaseOnSuccess(res, release)
-			return next()
-		}
-		throttle(req, (tooSoon) => tooSoon
-			? res.status(429).json({ error: true, errors: "Too many attempts" })
-			: next())
-	})
-	// skip never rejects — knownDevice answers false for a bad token, a bad signature or a failed query
-	return skip ? (req, res, next) => skip(req).then((s) => (s ? next() : gate(req, res, next))) : gate
-}
-
 const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
-const ipLimiter = throttledLimiter({ max: 20, keyFn: ipKeyFn })
-const ipDayLimiter = throttledLimiter({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
-const accountLimiter = throttledLimiter({ max: 10, keyFn: accountKeyFn, skip: deviceKnown })
+const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
+const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: 15 * 60 * 1000, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
 	try {

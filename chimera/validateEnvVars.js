@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -30,6 +30,15 @@ const rawStorageHost = (process.env.storage_HOST || "").trim()
 if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https?:\/\//i.test(rawStorageHost)) {
 	console.log("storage_HOST MUST START WITH http:// OR https:// — storage serves plain HTTP, so an implied https:// fails the TLS handshake")
 	allEnvPresent = false
+}
+
+const rawGatewayHost = (process.env.gateway_HOST || "").trim()
+if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
+	try { new URL(gatewayHost()) }
+	catch {
+		console.log("gateway_HOST MUST BE A VALID URL — an unparseable value falls back to req.hostname, and with gateway_TRUST_PROXY=true that resolves from the client-supplied X-Forwarded-Host, letting a forged Host header pick the HTTPS redirect target")
+		allEnvPresent = false
+	}
 }
 
 const objectFeed = objectFeedProblem(envLines)
@@ -172,6 +181,11 @@ if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== 
 const redirectLoop = httpsRedirectLoopWarning(envLines)
 if (redirectLoop) {
 	console.log(redirectLoop)
+}
+
+const redirectPort = httpsRedirectPortWarning(envLines)
+if (redirectPort) {
+	console.log(redirectPort)
 }
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]

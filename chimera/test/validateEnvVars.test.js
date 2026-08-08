@@ -340,8 +340,18 @@ describe("validateEnvVars https-redirect loop warning", () => {
 	})
 
 	test("no warning when the operator supplies their own cert", () => {
-		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" })
+		const key = path.join(os.tmpdir(), "chimera-test-privkey.pem")
+		const cert = path.join(os.tmpdir(), "chimera-test-fullchain.pem")
+		fs.writeFileSync(key, "")
+		fs.writeFileSync(cert, "")
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: key, certificate_FILEPATH: cert })
 		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
+
+	test("still warns when FILEPATHs are absolute but do not exist on disk", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "/certs/does-not-exist-privkey.pem", certificate_FILEPATH: "/certs/does-not-exist-fullchain.pem" })
+		expect(res.stdout).toContain("ERR_TOO_MANY_REDIRECTS")
 		expect(res.status).toBe(0)
 	})
 
@@ -401,10 +411,10 @@ describe("validateEnvVars insecure-cookie warning", () => {
 		expect(res.status).toBe(1)
 	})
 
-	test("warns on a malformed gateway_HOST instead of silently skipping the check", () => {
+	test("a malformed gateway_HOST blocks boot before the cookie check ever runs", () => {
 		const res = run({ gateway_HOST: "not a valid host", command_COOKIE_SECURE: "false", gateway_HTTPS_Redirect: "false" })
-		expect(res.stdout).toContain("WARNING: auth cookie may be sent over plaintext HTTP")
-		expect(res.status).toBe(0)
+		expect(res.stdout).toContain("gateway_HOST MUST BE A VALID URL")
+		expect(res.status).toBe(1)
 	})
 
 	test("no warning on a public gateway_HOST when the command service is off", () => {
@@ -542,6 +552,28 @@ describe("validateEnvVars storage_HOST protocol gate", () => {
 
 	test("quiet when storage is off and nothing dials storage_HOST", () => {
 		const res = run({ storage_ON: "false", storage_PROXY_ON: "false", schedule_ON: "false", schedule_PROXY_ON: "false", scheduler_AUTH: "", storage_HOST: "127.0.0.1:8081" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+})
+
+describe("validateEnvVars gateway_HOST URL gate", () => {
+	const MESSAGE = "gateway_HOST MUST BE A VALID URL"
+
+	test("blocks boot when gateway_HOST does not parse as a URL", () => {
+		const res = run({ gateway_HOST: "not a valid host" })
+		expect(res.stdout).toContain(MESSAGE)
+		expect(res.status).toBe(1)
+	})
+
+	test("accepts a loopback gateway_HOST", () => {
+		const res = run({ gateway_HOST: "http://127.0.0.1:8080" })
+		expect(res.stdout).not.toContain(MESSAGE)
+		expect(res.status).toBe(0)
+	})
+
+	test.each(["cam.example.com", "https://cam.example.com"])("accepts %s", (val) => {
+		const res = run({ gateway_HOST: val, command_COOKIE_SECURE: "true" })
 		expect(res.stdout).not.toContain(MESSAGE)
 		expect(res.status).toBe(0)
 	})
