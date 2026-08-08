@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
+import errorMessage from "../js/errors.js"
 
 const LoginForm = (props) => {
 	const [loginStatus, , , inputValues, onLoginEnter, updateUsername, updatePassword, loginError] = useLoginSchema(props)
@@ -46,7 +47,7 @@ const LoginForm = (props) => {
 						/>
 					</div>
 					{loginStatus === "wrong" && (
-						<p role="alert" className="text-danger text-sm">{loginError || "Invalid username or password."}</p>
+						<p role="alert" className="text-danger text-sm">{errorMessage(loginError ?? "INVALID_CREDENTIALS")}</p>
 					)}
 					{loginStatus === "right" && (
 						<p role="status" className="text-accent text-sm">Signed in.</p>

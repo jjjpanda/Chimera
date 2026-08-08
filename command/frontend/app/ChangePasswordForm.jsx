@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
+import errorMessage from "../js/errors.js"
 
 const ChangePasswordForm = ({ changePassword }) => {
 	const uid = useId()
@@ -31,7 +32,7 @@ const ChangePasswordForm = ({ changePassword }) => {
 		}
 		changePassword({ password }, (success, errors) => {
 			setStatus(success ? "done" : "failed")
-			setMessage(success ? null : errors)
+			setMessage(success ? null : errorMessage(errors))
 		})
 	}
 

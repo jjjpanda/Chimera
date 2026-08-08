@@ -6,6 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
+import errorMessage from "../js/errors.js"
 
 const ROLES = ["user", "admin"]
 
@@ -24,7 +25,7 @@ const AddUserDialog = ({ onAdded }) => {
 			body: JSON.stringify(form)
 		}, authPromiseHandler).then(res => {
 			if (res.error) {
-				toast(res.errors || "Failed to add user")
+				toast(errorMessage(res.errors) || "Failed to add user")
 			} else {
 				setTempPassword(res.tempPassword)
 				setForm({ username: "", role: "user" })

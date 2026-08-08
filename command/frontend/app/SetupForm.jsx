@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
+import errorMessage from "../js/errors.js"
 
 const SetupForm = ({ trySetup, tokenRequired }) => {
 	const uid = useId()
@@ -29,7 +30,7 @@ const SetupForm = ({ trySetup, tokenRequired }) => {
 		}
 		trySetup(username, password, tokenRequired ? token : undefined, (success, errors) => {
 			setStatus(success ? "done" : "failed")
-			setMessage(success ? null : errors)
+			setMessage(success ? null : errorMessage(errors))
 		})
 	}
 

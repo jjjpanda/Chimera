@@ -7,6 +7,7 @@ import SessionList from "./SessionList.jsx"
 import EditUserDialog from "./EditUserDialog.jsx"
 import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
+import errorMessage from "../js/errors.js"
 
 const UserList = ({ users, fetchUsers }) => {
 	const [expandedSessions, setExpandedSessions] = useState({})
@@ -35,7 +36,7 @@ const UserList = ({ users, fetchUsers }) => {
 		request(`/authorization/sessions/${id}`, { method: "DELETE" }, authPromiseHandler)
 			.then(res => {
 				if (res.error) {
-					toast(res.errors || "Failed to revoke session")
+					toast(errorMessage(res.errors) || "Failed to revoke session")
 				} else {
 					toast("Session revoked")
 					setSessions(s => ({
@@ -51,7 +52,7 @@ const UserList = ({ users, fetchUsers }) => {
 			method: "DELETE"
 		}, authPromiseHandler).then(res => {
 			if (res.error) {
-				toast(res.errors || "Cannot delete user")
+				toast(errorMessage(res.errors) || "Cannot delete user")
 			} else {
 				toast("User deleted")
 				setDeleteTarget(null)

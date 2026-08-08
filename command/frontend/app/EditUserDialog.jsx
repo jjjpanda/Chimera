@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from ".
 import { request, authPromiseHandler } from "../js/request.js"
 import toast from "../js/toast.js"
 import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
+import errorMessage from "../js/errors.js"
 
 const ROLES = ["user", "admin"]
 
@@ -38,7 +39,7 @@ const EditUserDialog = ({ user, open, onOpenChange, onUpdated }) => {
 			body: JSON.stringify(body)
 		}, authPromiseHandler).then(res => {
 			if (res.error) {
-				toast(res.errors || "Failed to update user")
+				toast(errorMessage(res.errors) || "Failed to update user")
 			} else {
 				toast("User updated")
 				onOpenChange(false)

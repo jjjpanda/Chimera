@@ -59,7 +59,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+			expect(res.body).toEqual({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
@@ -142,7 +142,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+			expect(res.body).toEqual({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 		})
 
 		test("returns 400 when username or password is missing", async () => {
@@ -160,7 +160,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "bad/admin", password: "correct-horse-battery", token: "boot-token" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
+			expect(res.body).toEqual({ error: true, errors: "INVALID_USERNAME" })
 		})
 
 		test("returns 400 for a password shorter than the minimum length", async () => {
@@ -169,7 +169,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short", token: "boot-token" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 500 when the transaction throws a generic error", async () => {
@@ -617,7 +617,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -631,7 +631,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ role: "user" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "cannot demote last admin" })
+			expect(res.body).toEqual({ error: true, errors: "CANNOT_DEMOTE_LAST_ADMIN" })
 		})
 	})
 
@@ -705,7 +705,7 @@ describe("Authorization Routes", () => {
 				.delete("/authorization/users/other")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "cannot delete last admin" })
+			expect(res.body).toEqual({ error: true, errors: "CANNOT_DELETE_LAST_ADMIN" })
 		})
 	})
 
@@ -800,7 +800,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 200 for a voluntary change with the correct current password", async () => {
@@ -830,7 +830,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "replacement-passphrase", currentPassword: "wrongpass" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Current password is incorrect" })
+			expect(res.body).toEqual({ error: true, errors: "WRONG_CURRENT_PASSWORD" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(
 				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
 				expect.anything()
@@ -861,7 +861,7 @@ describe("Authorization Routes", () => {
 					.send({ password: "replacement-passphrase", currentPassword: `wrong${i}` })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 		})
 
 		test("does not hash the new password when the current password is wrong", async () => {
@@ -958,7 +958,7 @@ describe("Authorization Routes", () => {
 					.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 
 			const otherIp = await supertest(app)
 				.post("/authorization/setup")
@@ -987,7 +987,7 @@ describe("Authorization Routes", () => {
 					.send({ username: "lockme", password: "wrongpassword" })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 		})
 
 		test("a correct password still logs in after wrong attempts exhaust the per-username budget", async () => {
@@ -1110,7 +1110,7 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", ip)
 				.send({ username: "carryvictim", password: "wrongpassword" })
 			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.body.errors).toBe("TOO_MANY_ATTEMPTS")
 		}, 30000)
 
 		// Date.now is mocked so the 15-minute burst window can renew while the daily
@@ -1135,7 +1135,7 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", ip)
 				.send({ username: "dayvictim", password: "wrongpassword" })
 			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.body.errors).toBe("TOO_MANY_ATTEMPTS")
 		}, 30000)
 
 		test("a device token skips the per-IP daily budget, so a spent day does not throttle returning users", async () => {
@@ -1244,7 +1244,7 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", "203.0.117.91")
 				.send({ username: "wrongpwdevice", password: "wrongpassword" })
 			expect(known.status).toBe(400)
-			expect(known.body).toEqual({ error: true, errors: "Invalid username or password" })
+			expect(known.body).toEqual({ error: true, errors: "INVALID_CREDENTIALS" })
 			expect(known.headers["set-cookie"]).toBeUndefined()
 		})
 

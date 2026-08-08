@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button"
 import { useChangePassword } from "./AuthContext.jsx"
 import { validatePassword, PASSWORD_REQUIREMENT } from "../js/password.js"
 import toast from "../js/toast.js"
+import errorMessage from "../js/errors.js"
 
 const emptyForm = { currentPassword: "", password: "", confirm: "" }
 
@@ -25,7 +26,7 @@ const AccountSettings = () => {
 		setPending(true)
 		changePassword({ password: form.password, currentPassword: form.currentPassword }, (success, errors) => {
 			setPending(false)
-			if (!success) return toast(errors || "Failed to change password")
+			if (!success) return toast(errorMessage(errors) || "Failed to change password")
 			setForm(emptyForm)
 			toast("Password changed")
 		})

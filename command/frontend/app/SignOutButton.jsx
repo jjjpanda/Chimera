@@ -4,6 +4,7 @@ import { useSignOut } from "./AuthContext.jsx"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "../components/ui/dialog"
 import { Button } from "../components/ui/button"
 import toast from "../js/toast.js"
+import errorMessage from "../js/errors.js"
 
 const SignOutButton = ({ className, iconOnly }) => {
 	const signOut = useSignOut()
@@ -13,7 +14,7 @@ const SignOutButton = ({ className, iconOnly }) => {
 		signOut((success, errors) => {
 			if (!success) {
 				setOpen(false)
-				toast(errors || "Failed to log out")
+				toast(errorMessage(errors) || "Failed to log out")
 			}
 		})
 	}
