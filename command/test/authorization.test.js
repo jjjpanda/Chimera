@@ -976,6 +976,51 @@ describe("Authorization Routes", () => {
 			expect(second.res.status).toHaveBeenCalledWith(429)
 		})
 
+		test("with throttleMs, a spent budget lets exactly one request through per window, then blocks", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, throttleMs: 60000 })
+			expect(run(mw, "15.15.15.15").next).toHaveBeenCalled()
+			expect(run(mw, "15.15.15.15").next).toHaveBeenCalled()
+			const { res, next } = run(mw, "15.15.15.15")
+			expect(next).not.toHaveBeenCalled()
+			expect(res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("skip resolving true bypasses the limiter entirely, even after the budget is spent", async () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, skip: async () => true })
+			const makeReq = (ip) => ({ headers: {}, ip, path: "/login" })
+			const makeRes = () => ({ statusCode: 400, status: jest.fn().mockReturnThis(), json: jest.fn(), on: jest.fn() })
+
+			const next1 = jest.fn()
+			mw(makeReq("16.16.16.16"), makeRes(), next1)
+			await Promise.resolve()
+			expect(next1).toHaveBeenCalled()
+
+			const res2 = makeRes()
+			const next2 = jest.fn()
+			mw(makeReq("16.16.16.16"), res2, next2)
+			await Promise.resolve()
+			expect(next2).toHaveBeenCalled()
+			expect(res2.status).not.toHaveBeenCalled()
+		})
+
+		test("skip resolving false runs the limiter as normal", async () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, skip: async () => false })
+			const makeReq = (ip) => ({ headers: {}, ip, path: "/login" })
+			const makeRes = () => ({ statusCode: 400, status: jest.fn().mockReturnThis(), json: jest.fn(), on: jest.fn() })
+
+			const next1 = jest.fn()
+			mw(makeReq("17.17.17.17"), makeRes(), next1)
+			await Promise.resolve()
+			expect(next1).toHaveBeenCalled()
+
+			const res2 = makeRes()
+			const next2 = jest.fn()
+			mw(makeReq("17.17.17.17"), res2, next2)
+			await Promise.resolve()
+			expect(next2).not.toHaveBeenCalled()
+			expect(res2.status).toHaveBeenCalledWith(429)
+		})
+
 		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {
@@ -1051,6 +1096,39 @@ describe("Authorization Routes", () => {
 			expect(first.status).toBe(200)
 			expect(second.status).toBe(429)
 			expect(Date.now() - start).toBeLessThan(1000)
+		})
+
+		test("the account throttle window is 15 minutes, not the 10-second default ipLimiter uses", async () => {
+			const username = "throttlewindowvictim"
+			let now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
+
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${i}`)
+					.send({ username, password: "wrongpassword" })
+			}
+			const first = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.50")
+				.send({ username, password: "mockedPassword" })
+			expect(first.status).toBe(200)
+
+			now += 10 * 1000
+			const tenSecondsLater = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.51")
+				.send({ username, password: "mockedPassword" })
+			expect(tenSecondsLater.status).toBe(429)
+
+			now += 15 * 60 * 1000
+			const fifteenMinutesLater = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.52")
+				.send({ username, password: "mockedPassword" })
+			expect(fifteenMinutesLater.status).toBe(200)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {

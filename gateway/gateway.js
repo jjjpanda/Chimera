@@ -18,12 +18,15 @@ app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"),
 app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
+	const securePort = process.env.gateway_PORT_SECURE || 443
+	const portSuffix = String(securePort) == "443" ? "" : `:${securePort}`
 	app.use((req, res, next) => {
 		if(req.secure || req.path.split("/")[1] == ".well-known"){
 			next()
 		}
 		else{
-			res.redirect(`https://${req.headers.host}${req.url}`)
+			const host = (req.headers.host || "").replace(/:\d+$/, "")
+			res.redirect(`https://${host}${portSuffix}${req.url}`)
 		}
 	})
 }

@@ -46,7 +46,7 @@ module.exports = {
 
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
-		const deny = () => req.accountThrottled
+		const deny = () => req.throttled
 			? res.status(429).json({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 			: res.status(400).json({ error: true, errors: "INVALID_CREDENTIALS" })
 		const serverError = () => res.status(500).json({ error: true })
