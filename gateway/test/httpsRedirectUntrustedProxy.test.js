@@ -2,6 +2,7 @@ const supertest = require("supertest")
 
 process.env.gateway_HTTPS_Redirect = "true"
 process.env.gateway_TRUST_PROXY = "false"
+process.env.gateway_HOST = "https://cam.example.com"
 const gateway = require("../gateway.js")
 
 jest.mock("memory")
@@ -42,5 +43,13 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 				if (res.status === 302) throw new Error("redirected despite a trusted X-Forwarded-Proto")
 			})
 			.end(done)
+	})
+
+	test("a trusted proxy that appends rather than overwrites does not let the client's value win", (done) => {
+		process.env.gateway_TRUST_PROXY = "true"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("X-Forwarded-Proto", "https,http")
+			.expect(302, done)
 	})
 })

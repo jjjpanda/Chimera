@@ -27,7 +27,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 
 `command_ON`, `command_PORT`, `command_HOST`, `command_PROXY_ON`, `command_COOKIE_SECURE`, `SECRETKEY`, `setup_TOKEN`; see [../env.example](../env.example).
 
-`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is config, not `req.secure`: `trust proxy` reads `X-Forwarded-Proto`, which a client can prepend to and the gateway's `xfwd` appends to rather than overwrites — so the request cannot be trusted to describe its own transport. Which value to pick: [env.example](../env.example).
+`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is config, not `req.secure`: `trust proxy` reads `X-Forwarded-Proto`, and a client can prepend to that header — so the request cannot be trusted to describe its own transport. Which value to pick: [env.example](../env.example).
 
 ---
 # Login limits
@@ -44,7 +44,7 @@ No budget ends in a hard block. A spent budget throttles to one credential check
 
 A response under 400, or a 5xx, refunds the slot; every 4xx spends it. A request stopped at the burst stage never reaches the daily budget, which keeps a flood of 429s from draining a shared address's day.
 
-`req.ip` is the last `X-Forwarded-For` entry, which the gateway appends as its own peer, so a forged header cannot raise the limit.
+`req.ip` reads the single `X-Forwarded-For` entry the gateway writes, which is the client it resolved, so a forged header cannot raise the limit and a proxy in front of the gateway cannot collapse every visitor onto one budget.
 
 ## Device tokens
 
