@@ -90,4 +90,5 @@ test("does not render the setup form when no token is configured", () => {
 
 	expect(screen.queryByPlaceholderText("username")).toBeNull()
 	expect(screen.getByText("Setup unavailable")).toBeTruthy()
+	expect(screen.getByText("setup_TOKEN").tagName).toBe("CODE")
 })

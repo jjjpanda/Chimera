@@ -2,7 +2,7 @@ import React, { useId, useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { useRole } from "./AuthContext"
 import moment from "moment"
-import cronstrue from "cronstrue"
+import cronstrue from "cronstrue/i18n"
 import cronParser from "cron-parser"
 import { Trash2, Minus, Plus, ArrowRight, RefreshCw } from "lucide-react"
 
@@ -36,11 +36,12 @@ const SCHEDULE_PRESETS = [
 
 import { cn } from "../lib/utils"
 import i18n from "../js/i18n.js"
+import { CRONSTRUE_LOCALES } from "../js/languages.js"
 
 const humanCron = (cronString) => {
 	if (!cronString) return cronString ?? ""
 	try {
-		return cronstrue.toString(cronString)
+		return cronstrue.toString(cronString, { locale: CRONSTRUE_LOCALES[i18n.language] ?? "en" })
 	} catch {
 		return cronString
 	}

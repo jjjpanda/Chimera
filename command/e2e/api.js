@@ -7,8 +7,9 @@ const json = (body, status = 200) => ({
 const defaultRoutes = {
 	"GET /authorization/status": json({ setup: true, tokenRequired: false }),
 	"POST /authorization/verify": json({ error: true }),
-	"POST /authorization/login": json({ error: false, role: "admin", theme: "system" }),
+	"POST /authorization/login": json({ error: false, role: "admin", theme: "system", language: "en" }),
 	"PUT /authorization/theme": json({ error: false }),
+	"PUT /authorization/language": json({ error: false }),
 	"POST /authorization/logout": json({ error: false }),
 	"POST /authorization/setup": json({ error: false }),
 	"POST /authorization/password": json({ error: false }),

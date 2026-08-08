@@ -14,6 +14,34 @@ export const LANGUAGE_LABELS = {
 	"gu": "ગુજરાતી"
 }
 
+export const MOMENT_LOCALES = {
+	"en": "en",
+	"es": "es",
+	"fr": "fr",
+	"de": "de",
+	"pt-BR": "pt-br",
+	"ru": "ru",
+	"zh-CN": "zh-cn",
+	"ja": "ja",
+	"ko": "ko",
+	"hi": "hi",
+	"gu": "gu"
+}
+
+export const CRONSTRUE_LOCALES = {
+	"en": "en",
+	"es": "es",
+	"fr": "fr",
+	"de": "de",
+	"pt-BR": "pt_BR",
+	"ru": "ru",
+	"zh-CN": "zh_CN",
+	"ja": "ja",
+	"ko": "ko",
+	"hi": "en",
+	"gu": "en"
+}
+
 export const resolveLanguage = (tag) => {
 	if (typeof tag !== "string" || !tag) return null
 	if (tags.includes(tag)) return tag

@@ -1,15 +1,17 @@
 import React, { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import cronstrue from "cronstrue"
+import cronstrue from "cronstrue/i18n"
 
 import { Input } from "../components/ui/input"
 import { Button } from "../components/ui/button"
 import { Label } from "../components/ui/label"
+import i18n from "../js/i18n.js"
+import { CRONSTRUE_LOCALES } from "../js/languages.js"
 
 const humanReadableCron = (cronString) => {
 	try {
-		return cronstrue.toString(cronString)
+		return cronstrue.toString(cronString, { locale: CRONSTRUE_LOCALES[i18n.language] ?? "en" })
 	} catch (e) {
 		return ""
 	}
