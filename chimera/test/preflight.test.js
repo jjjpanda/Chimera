@@ -360,7 +360,18 @@ describe("httpsRedirectLoopWarning", () => {
 	})
 
 	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
+			if (["/certs/privkey.pem", "/certs/fullchain.pem"].includes(p)) return { isFile: () => true }
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+		})
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+		statSpy.mockRestore()
+	})
+
+	test("both FILEPATHs absolute but missing on disk still fires — an absolute path alone does not prove the cert is there", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+		statSpy.mockRestore()
 	})
 
 	test("only privateKey_FILEPATH set still fires — certPaths.js requires both-or-neither and disables TLS entirely on a mismatched pair", () => {
