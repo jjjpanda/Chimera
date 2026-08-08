@@ -51,7 +51,7 @@ const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
 const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
 const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
-const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: 15 * 60 * 1000, keyFn: accountKeyFn, skip: deviceKnown })
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
 	try {
