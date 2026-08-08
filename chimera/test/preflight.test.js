@@ -21,6 +21,7 @@ jest.mock("fs", () => {
 	}
 })
 
+const fs = require("fs")
 const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
@@ -378,6 +379,30 @@ describe("httpsRedirectLoopWarning", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "false" }))).toBeNull()
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "" }))).toBeNull()
 		expect(httpsRedirectLoopWarning(lines({}))).toBeNull()
+	})
+
+	test("auto-resolved cert files on disk for gateway_HOST rule it out — a certbot run on the host outside chimera's own flow still holds the certificate", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
+			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) return { isFile: () => true }
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+		})
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		statSpy.mockRestore()
+	})
+
+	test("still fires when only one of the two auto-resolved cert files exists", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
+			if (p === "/etc/letsencrypt/live/cam.example.com/privkey.pem") return { isFile: () => true }
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+		})
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
+		statSpy.mockRestore()
+	})
+
+	test("still fires when gateway_HOST is set but no cert files exist there yet", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
+		statSpy.mockRestore()
 	})
 })
 

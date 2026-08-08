@@ -237,9 +237,14 @@ const cookieAmbiguousHostWarning = (lines) =>
 		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
 		: null
 
+const autoResolvedCertOnDisk = (lines) => {
+	const hostname = urlPart(gatewayUrl(lines), "hostname")
+	return !!hostname && ["privkey.pem", "fullchain.pem"].every(f => isFile(`/etc/letsencrypt/live/${hostname}/${f}`))
+}
+
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
-		&& getVal(lines, "certbot_ON") !== "true"
+		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
 		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
