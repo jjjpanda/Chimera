@@ -8,6 +8,7 @@ jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: () => {
 
 const React = require("react")
 const { render, screen, fireEvent } = require("@testing-library/react")
+const moment = require("moment")
 const { LanguageProvider, useLanguage } = require("../frontend/app/LanguageContext.jsx")
 
 const requests = []
@@ -74,4 +75,22 @@ test("picking a language while logged in saves it to the server", () => {
 	expect(requests).toHaveLength(1)
 	expect(requests[0][0]).toBe("/authorization/language")
 	expect(JSON.parse(requests[0][1].body)).toEqual({ language: "ja" })
+})
+
+test("importing the provider leaves moment on en rather than the last defined locale", () => {
+	jest.isolateModules(() => {
+		const freshMoment = require("moment")
+		require("../frontend/app/LanguageContext.jsx")
+
+		expect(freshMoment.locale()).toBe("en")
+	})
+})
+
+test.each(["hi", "gu"])("%s formats and parses machine timestamps in ASCII digits", (tag) => {
+	renderWithProvider({ serverLanguage: tag, loggedIn: true })
+
+	expect(moment.utc("2025-08-08T12:34:56Z").format("YYYYMMDD-HHmmss")).toBe("20250808-123456")
+	expect(moment.utc("2025-08-08T12:34:56Z").format("YYYY-MM-DD")).toBe("2025-08-08")
+	expect(moment.utc("20250808-123456", "YYYYMMDD-HHmmss", true).isValid()).toBe(true)
+	expect(moment.utc("2025-08-08T12:34:56Z").format("MMMM")).not.toMatch(/^[A-Za-z]+$/)
 })

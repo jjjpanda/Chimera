@@ -15,6 +15,10 @@ import toast from "../js/toast.js"
 import i18n from "../js/i18n.js"
 import { resolveLanguage, detectLanguage, MOMENT_LOCALES } from "../js/languages.js"
 
+const identity = (s) => s
+for (const locale of ["hi", "gu"]) moment.updateLocale(locale, { preparse: identity, postformat: identity })
+moment.locale("en")
+
 const LanguageContext = createContext({ language: "en", applyLanguage: () => {} })
 
 const saveLanguage = (language) =>
