@@ -29,7 +29,6 @@ const MOTION = path.join(ROOT, "motion.conf")
 const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
 
-// a value in the seconds range is a unit mistake: 60 would poll every 60ms and reboot the host within a second of the first failure
 const WATCHDOG_MIN_INTERVAL_MS = 5000
 
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))

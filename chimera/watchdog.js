@@ -12,14 +12,12 @@ const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
 const POLL_TIMEOUT_MS = 10000
-// plain `restart` exits 0 without doing anything once the containers are gone
 const RESTART_ARGS = ["up", "-d", "--force-recreate"]
 const NO_REBOOT = `no reboot command known for platform ${process.platform} — the watchdog cannot recover this host`
 const NOTHING_TO_POLL = "no service has *_PROXY_ON=true — the gateway routes no health endpoint to watch"
 
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
-	// nothing runs preflight before `npm run watchdog`, so the floor has to hold here too
 	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, Number(process.env.watchdog_INTERVAL_MS) || 60000),
 	threshold: Number(process.env.watchdog_FAILURES) || 3
 })
@@ -49,7 +47,6 @@ const privileged = (command, platform = process.platform, uid = process.getuid?.
 
 const nextStage = (stage) => (stage + 1) % STAGES.length
 
-// a stage that cannot run must not take the loop down with it — the other stage may still work
 const fail = (reason) => {
 	console.error(reason)
 	process.exitCode = 1
