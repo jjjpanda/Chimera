@@ -427,6 +427,24 @@ describe("httpsRedirectLoopWarning", () => {
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
 		statSpy.mockRestore()
 	})
+
+	test("stays quiet when the auto-resolved cert dir is unreadable — certbot-entry.sh leaves it mode 0710, and EACCES is not proof the cert is absent", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
+			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) throw Object.assign(new Error("EACCES"), { code: "EACCES" })
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+		})
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		statSpy.mockRestore()
+	})
+
+	test("stays quiet when a configured FILEPATH is unreadable", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
+			if (["/certs/privkey.pem", "/certs/fullchain.pem"].includes(p)) throw Object.assign(new Error("EACCES"), { code: "EACCES" })
+			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
+		})
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+		statSpy.mockRestore()
+	})
 })
 
 describe("httpsRedirectPortWarning", () => {
