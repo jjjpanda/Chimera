@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 import toast from "../js/toast.js"
+import i18n from "../js/i18n.js"
 
 const POLL_MS = 5000
 
@@ -44,7 +45,7 @@ const cancelProcessGenerator = (setState) => (id) => {
 }
 
 const deleteProcessGenerator = (setState) => (id) => {
-	const remove = toast("Attempting Delete…", 0)
+	const remove = toast(i18n.t("footage.attemptingDelete"), 0)
 	request("/convert/deleteProcess", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
@@ -52,7 +53,7 @@ const deleteProcessGenerator = (setState) => (id) => {
 	}, (prom) => {
 		jsonProcessing(prom, (data) => {
 			remove()
-			toast(data?.deleted ? "Files Deleted" : "None Deleted")
+			toast(i18n.t(data?.deleted ? "footage.filesDeleted" : "footage.noneDeleted"))
 			setTimeout(() => listProcesses(setState), 1500)
 		})
 	})

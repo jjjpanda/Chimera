@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react"
 import moment from "moment"
 import { request, jsonProcessing } from "../js/request.js"
 import toast from "../js/toast.js"
+import i18n from "../js/i18n.js"
 
 const listVideos = (cameras, setState, seqRef) => {
 	const seq = ++seqRef.current
@@ -57,10 +58,10 @@ const useLiveVideo = (cameras) => {
 	const restartAll = () => {
 		if (!cameras.length || state.restarting) return
 		setState((old) => ({ ...old, restarting: true }))
-		toast("Restarting livestreams…")
+		toast(i18n.t("live.restartingLivestreams"))
 		Promise.all(cameras.map((cam) => attemptRestart(cam.id))).then((results) => {
 			const failed = results.filter((ok) => !ok).length
-			if (failed) toast(`${failed} camera${failed === 1 ? "" : "s"} could not be restarted`)
+			if (failed) toast(i18n.t("live.restartFailed", { count: failed }))
 			setState((old) => ({ ...old, restarting: false }))
 			refresh()
 		})

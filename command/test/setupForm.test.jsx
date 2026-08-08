@@ -3,7 +3,7 @@
 const React = require("react")
 const { render, screen, fireEvent } = require("@testing-library/react")
 const SetupForm = require("../frontend/app/SetupForm.jsx").default
-const { PASSWORD_REQUIREMENT } = require("../frontend/js/password.js")
+const PASSWORD_REQUIREMENT = require("../frontend/js/errors.js").default("PASSWORD_TOO_SHORT")
 
 const fillForm = ({ username = "alice", password = "correct-horse-battery", confirmPassword = "correct-horse-battery", token = "topsecret" } = {}) => {
 	fireEvent.change(screen.getByPlaceholderText("username"), { target: { value: username } })

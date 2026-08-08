@@ -1,4 +1,5 @@
 import React, { useId, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import cronstrue from "cronstrue"
 
@@ -25,12 +26,13 @@ const cronIsInvalid = (cronString) => {
 }
 
 const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false }) => {
+	const { t } = useTranslation()
 	const cronId = useId()
 	const [cronString, setCronString] = useState(initial)
 
 	return (
 		<div className="flex flex-col gap-1.5">
-			<Label htmlFor={cronId} className="text-xs text-muted">CRON expression</Label>
+			<Label htmlFor={cronId} className="text-xs text-muted">{t("schedule.cronExpression")}</Label>
 			<div className="flex items-center gap-2">
 				<Input
 					id={cronId}
@@ -39,7 +41,7 @@ const Scheduler = ({ cronString: initial = "", url, onEnter, disabled = false })
 					placeholder="* * * * *"
 				/>
 				<Button disabled={disabled || cronIsInvalid(cronString)} onClick={() => onEnter(url, cronString)}>
-					Schedule
+					{t("schedule.schedule")}
 				</Button>
 			</div>
 			<p className="min-h-5 text-sm text-muted">{cronIsInvalid(cronString) ? "" : humanReadableCron(cronString)}</p>

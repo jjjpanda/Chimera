@@ -1,14 +1,15 @@
+import i18n from "./i18n.js"
 import pw from "lib/utils/password.json"
 
-const messages = {
-	TOO_MANY_ATTEMPTS: "Too many attempts",
-	INVALID_CREDENTIALS: "Invalid username or password.",
-	INVALID_USERNAME: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores.",
-	SETUP_TOKEN_MISMATCH: "Setup token does not match setup_TOKEN in .env",
-	WRONG_CURRENT_PASSWORD: "Current password is incorrect",
-	PASSWORD_TOO_SHORT: `Password must be at least ${pw.minLength} characters.`,
-	CANNOT_DEMOTE_LAST_ADMIN: "Cannot demote the last admin",
-	CANNOT_DELETE_LAST_ADMIN: "Cannot delete the last admin"
+const keys = {
+	TOO_MANY_ATTEMPTS: "errors.tooManyAttempts",
+	INVALID_CREDENTIALS: "errors.invalidCredentials",
+	INVALID_USERNAME: "errors.invalidUsername",
+	SETUP_TOKEN_MISMATCH: "errors.setupTokenMismatch",
+	WRONG_CURRENT_PASSWORD: "errors.wrongCurrentPassword",
+	PASSWORD_TOO_SHORT: "errors.passwordTooShort",
+	CANNOT_DEMOTE_LAST_ADMIN: "errors.cannotDemoteLastAdmin",
+	CANNOT_DELETE_LAST_ADMIN: "errors.cannotDeleteLastAdmin"
 }
 
-export default (code) => (code ? messages[code] ?? code : code)
+export default (code) => (keys[code] ? i18n.t(keys[code], { minLength: pw.minLength }) : code)

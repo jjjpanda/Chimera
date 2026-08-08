@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import { I18nextProvider } from "react-i18next"
 import {
 	BrowserRouter as Router,
 	Route,
@@ -15,6 +16,7 @@ import AuthContext from "./app/AuthContext.jsx"
 import { ThemeProvider } from "./app/ThemeContext.jsx"
 import useAuth from "./hooks/useAuth.js"
 import ToastContainer from "./components/ToastContainer.jsx"
+import i18n from "./js/i18n.js"
 
 const AppInner = ({ loaded, setup, tokenRequired, loggedIn, role, forcePasswordChange, tryLogin, trySetup, signOut, changePassword, routerKey }) => {
 	if (!loaded) return <LoadingIcon />
@@ -57,22 +59,24 @@ const App = () => {
 	}, [loggedIn])
 
 	return (
-		<ThemeProvider serverTheme={serverTheme} loggedIn={loggedIn}>
-			<ToastContainer />
-			<AppInner
-				loaded={loaded}
-				setup={setup}
-				tokenRequired={tokenRequired}
-				loggedIn={loggedIn}
-				role={role}
-				forcePasswordChange={forcePasswordChange}
-				tryLogin={tryLogin}
-				trySetup={trySetup}
-				signOut={signOut}
-				changePassword={changePassword}
-				routerKey={key}
-			/>
-		</ThemeProvider>
+		<I18nextProvider i18n={i18n}>
+			<ThemeProvider serverTheme={serverTheme} loggedIn={loggedIn}>
+				<ToastContainer />
+				<AppInner
+					loaded={loaded}
+					setup={setup}
+					tokenRequired={tokenRequired}
+					loggedIn={loggedIn}
+					role={role}
+					forcePasswordChange={forcePasswordChange}
+					tryLogin={tryLogin}
+					trySetup={trySetup}
+					signOut={signOut}
+					changePassword={changePassword}
+					routerKey={key}
+				/>
+			</ThemeProvider>
+		</I18nextProvider>
 	)
 }
 
