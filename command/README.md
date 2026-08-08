@@ -13,7 +13,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 - theme and password changes
 - list cameras (RTSP credentials stripped) for the web app
 
-`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when no admin exists; it cannot reset or take over an existing account. `/setup` is public but rate-limited.
+`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when none exists; it cannot take over an existing account. `/setup` is public but rate-limited.
 
 ---
 # Web app
@@ -27,24 +27,39 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 
 `command_ON`, `command_PORT`, `command_HOST`, `command_PROXY_ON`, `command_COOKIE_SECURE`, `SECRETKEY`, `setup_TOKEN`; see [../env.example](../env.example).
 
-`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is config, not `req.secure`: `trust proxy` makes Express read `X-Forwarded-Proto`, which a client can prepend to, and the gateway's `xfwd` appends rather than overwrites — so the request cannot be trusted to describe its own transport. Which value to pick: [env.example](../env.example).
+`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is config, not `req.secure`: `trust proxy` reads `X-Forwarded-Proto`, which a client can prepend to and the gateway's `xfwd` appends to rather than overwrites — so the request cannot be trusted to describe its own transport. Which value to pick: [env.example](../env.example).
 
 ---
 # Login limits
 
-Three controls run on `POST /authorization/login`, in order:
+`POST /authorization/login` spends three budgets in order, then checks the password. The numbers below are set in [authorization.js](backend/routes/authorization.js):
 
-- **Per IP** — 10 tries per 15 minutes. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port.
-- **Per username** — 10 tries per 15 minutes. A success refunds its slot, and so does a 5xx; only a rejected password spends one. Once the budget is spent, nothing refunds it — a correct password gets the user in, but the throttle below stays on for the rest of the window.
-- **Throttle** — once the per-username budget is spent, one credential check per `THROTTLE_WINDOW_MS` (10s). Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
+| budget | key | allowance | once spent |
+|---|---|---|---|
+| burst | IP | 20 / 15 min | 1 check / 10s |
+| daily | IP | 100 / 24h | 1 check / 15 min |
+| account | username | 10 / 15 min | 1 check / 15 min |
 
-A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 10 tries per 15 minutes **per address** — so a token replayed from many addresses gets 10 tries from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
+No budget ends in a hard block. A spent budget throttles to one credential check per window; extra requests get 429 immediately and nothing queues, so a flood cannot build latency. That one check also answers 429 on a wrong password — a 429 does not prove the credentials went unchecked.
 
-The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
+A response under 400, or a 5xx, refunds the slot; every 4xx spends it. So a request the account throttle rejects spends both IP slots without checking a password. A request stopped at the burst stage never reaches the daily budget, which keeps a flood of 429s from draining a shared address's day.
 
-Two gaps stay open:
+The daily budget caps one address: without it, the burst throttle alone would admit ~10,560 checks a day.
 
-- A user on a device with no `devicetoken` can still be throttled while an attack is running.
-- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
+`req.ip` is the last `X-Forwarded-For` entry, which the gateway appends as its own peer, so a forged header cannot raise the limit.
 
-Logout keeps the cookie on purpose — it exists to survive session expiry.
+## Device tokens
+
+A successful login sets `devicetoken`, a year-long signed `httpOnly` cookie naming the username. It skips the **account** and **daily** budgets, so no one else's failures can lock a user out of a device they already use. The daily budget matters here because one address covers a whole site and stays spent until tomorrow. The burst budget still applies, capping a stolen token at 20 guesses per 15 minutes, then one per 10s.
+
+The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, which `knownDevice` re-checks on every login. A password change therefore voids every token for that username and restores both the account and daily caps — the remediation path for a stolen device, since revoking sessions alone does not void the cookie. Logout keeps it on purpose; it exists to survive session expiry.
+
+## What this does not do
+
+These budgets are tuned to keep legitimate users in, not to guarantee an attacker is stopped. The consequences:
+
+- Any proxy in front of the gateway (CDN, nginx, tunnel) becomes that peer, so the whole site shares one set of per-IP budgets.
+- Clients behind one egress IP (home router, CGNAT) share the per-IP budgets and contend for the single slot, even when the attack targets someone else.
+- `knownDevice` matches username and current password hash, not a live session, so a shared browser lets a later user inherit the skip.
+- Nothing caps attempts across addresses: N addresses buy N×20 checks per window, ~N×200 per day. Run a cluster (`chimeraInstances`) to spread the load; it also forces `memory_ON=true`, which keeps the budgets shared.
+- `bcryptjs` holds the event loop for a whole cost-10 check (~50ms, longer on a Pi or NAS), so 20 concurrent logins from one address stall every route for ~1s.

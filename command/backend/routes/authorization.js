@@ -33,7 +33,7 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const { makeReserve, rateLimit: baseRateLimit, releaseOnSuccess, client: memoryClient } = rateLimiter("AUTH")
+const { rateLimit: baseRateLimit, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
@@ -45,25 +45,13 @@ const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (re
 const THROTTLE_WINDOW_MS = 10000
 
 const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
+const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
-const accountLimiter = (() => {
-	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
-	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
-	// knownDevice never rejects — it answers false for a bad token, a bad signature or a failed query
-	return (req, res, next) => knownDevice(req).then((known) => {
-		if (known) return next()
-		budget(req, (blocked, release) => {
-			req.accountThrottled = blocked
-			if (!blocked) {
-				releaseOnSuccess(res, release)
-				return next()
-			}
-			throttle(req, (tooSoon) => tooSoon
-				? res.status(429).json({ error: true, errors: "Too many attempts" })
-				: next())
-		})
-	})
-})()
+const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
+
+const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
+const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: 15 * 60 * 1000, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
 	try {
@@ -104,7 +92,7 @@ app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) 
 	}
 })
 
-app.post("/login", blockCrossSite, validateBody, loginLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, ipLimiter, ipDayLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])

@@ -3,12 +3,13 @@ const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
 
-let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost
+let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths
 try {
 	loadCameras = require("../lib/utils/loadCameras.js")
 	multiInstanceLib = require("../lib/utils/multiInstance.js")
 	trustedSourcesLib = require("../lib/utils/trustedSources.js")
 	normalizeHost = require("../lib/utils/normalizeHost.js")
+	certPaths = require("../lib/utils/certPaths.js")
 } catch (e) {
 	if (e.code === "MODULE_NOT_FOUND") {
 		console.error("Missing dependencies — run `npm install` first.")
@@ -19,6 +20,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
+const { letsencryptPaths } = certPaths
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -99,8 +101,7 @@ const groupHint = () => {
 	const gid = process.getgid?.()
 	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
 	const file = path.relative(ROOT, ENV)
-	return `Wrote ${file} mode 0640 — only your account can read it right now.\n`
-		+ `The container runs as uid ${CONTAINER_GID} and your gid is not ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
+	return `Wrote ${file} mode 0640 — only your account can read it. The container runs as uid ${CONTAINER_GID}, so hand it the group or the container will restart-loop:\n`
 		+ `  sudo chown "$USER":${CONTAINER_GID} ${file} && sudo chmod 640 ${file}\n`
 }
 
@@ -117,7 +118,8 @@ const varProblem = (v, val) => {
 	if (blank) return v.optional ? null : "required, not set"
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
-	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// — storage is dialled directly and serves plain HTTP (got "${val}")`
+	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
+	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
@@ -128,8 +130,11 @@ const varProblem = (v, val) => {
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
+// certbot-entry.sh leaves /etc/letsencrypt/live mode 0710, so stat throws EACCES for an account outside the container group — only ENOENT/ENOTDIR prove the cert is absent.
+const certMaybePresent = (p) => { try { return fs.statSync(p).isFile() } catch (e) { return e.code !== "ENOENT" && e.code !== "ENOTDIR" } }
+
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
-	? "is a directory — docker-compose bind-mounts ./motion.conf, and Docker creates a directory there when the file is missing; run `rm -rf motion.conf` then `cp motion.conf.example motion.conf`"
+	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
 	: null
 
 const getCamDir = () => {
@@ -170,7 +175,7 @@ const confModeProblem = () => {
 	const camDir = getCamDir()
 	const loose = listConfs().map(f => [f, looseMode(path.join(camDir, f))]).filter(([, m]) => m)
 	return loose.length
-		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds netcam_userpass, the camera login, and every account on this machine can read it; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
+		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds camera logins and every account on this machine can read them; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
 		: null
 }
 
@@ -204,7 +209,7 @@ const blankDisables = (lines, key) => {
 }
 
 const objectFeedProblem = (lines) => on(lines, "object") && !on(lines, "livestream")
-	? "object_ON requires livestream_ON — object's only frame source is livestream_FOLDERPATH/feed/<id>/video.m3u8, and pm2 starts the per-camera ffmpeg writers only when livestream_ON=true, so every scan fails and nothing is ever detected"
+	? "object_ON requires livestream_ON — object reads its frames from the livestream feeds, which only run when livestream_ON=true"
 	: null
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
@@ -220,14 +225,14 @@ const insecureCookie = (lines) => {
 
 const cookieSecureProblem = (lines) =>
 	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
-		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request; for a plain-HTTP deploy write gateway_HOST with an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false, because browsers drop Secure cookies on non-HTTPS origins"
+		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request. For a plain-HTTP deploy, give gateway_HOST an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false"
 		: null
 
 const cookiePlainHttpProblem = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
 		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
-		? "command_COOKIE_SECURE MUST BE false — gateway_HOST carries an explicit http:// prefix and neither gateway_HTTPS_Redirect nor certbot_ON says this deploy is HTTPS, so browsers drop the Secure cookie on the plain-HTTP origin and the login form loops forever with no error; for an HTTPS deploy drop the http:// prefix (or write https://) and set gateway_HTTPS_Redirect or certbot_ON true, because command_COOKIE_SECURE=true only survives on a host browsers reach over HTTPS"
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST is http:// and neither gateway_HTTPS_Redirect nor certbot_ON marks this deploy HTTPS, so browsers drop the Secure cookie and login loops with no error. For HTTPS, terminate TLS (certbot_ON, your own certs, or a proxy) and write gateway_HOST as https://"
 		: null
 
 const cookieAmbiguousHostWarning = (lines) =>
@@ -235,19 +240,45 @@ const cookieAmbiguousHostWarning = (lines) =>
 		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
-		? "WARNING: gateway_HOST has no scheme, so it is read as https:// — if browsers actually reach this deploy over http://, command_COOKIE_SECURE=true never protects the cookie and login loops forever; give gateway_HOST an explicit http:// prefix if that is the case"
+		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
 		: null
+
+const autoResolvedCertOnDisk = (lines) => {
+	const hostname = urlPart(gatewayUrl(lines), "hostname")
+	if (!hostname) return false
+	const { key, cert } = letsencryptPaths(hostname)
+	return [key, cert].every(certMaybePresent)
+}
+
+const httpsRedirectLoopWarning = (lines) =>
+	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
+		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
+		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => certMaybePresent(getVal(lines, k) || ""))
+		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
+		: null
+
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const httpsRedirectPortWarning = (lines) => {
+	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
+	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
+	const url = gatewayUrl(lines)
+	if (urlPart(url, "protocol") !== "https:") return null
+	const hostPort = urlPart(url, "port") || GATEWAY_PORT_SECURE_DEFAULT
+	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
+	return hostPort === securePort
+		? null
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE), so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+}
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
-		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and docker-compose never publishes port 80 unless gateway_PORT=80, so nothing ever answers the challenge; certbot then retries into the failed-validation rate limit while the stack keeps serving plain HTTP. Set gateway_PORT=80, or certbot_ON=false and point privateKey_FILEPATH/certificate_FILEPATH at certs you supply yourself"
+		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and compose publishes no port but gateway_PORT, so nothing answers the challenge. Set gateway_PORT=80, or set certbot_ON=false and supply your own certs via privateKey_FILEPATH/certificate_FILEPATH"
 		: null
 
 const setupTokenHint = (lines) => on(lines, "command")
-	? `Creating the first admin account in the browser needs setup_TOKEN — read it back with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
+	? `The first admin account needs setup_TOKEN — read it with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
-
-const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
 	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
@@ -258,13 +289,13 @@ const duplicatePortProblems = (lines) => {
 		const val = key === "gateway_PORT_SECURE" ? (getVal(lines, key) || GATEWAY_PORT_SECURE_DEFAULT) : getVal(lines, key)
 		if (!val) continue
 		const num = /^\d+$/.test(val) ? Number(val) : val
-		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; every service is its own pm2 app but they all share the container's network namespace, so the second one to bind loses with EADDRINUSE`])
+		if (seen[num]) probs.push([key, `duplicate port ${val} — also used by ${seen[num]}; the services share one network namespace, so the second to bind fails with EADDRINUSE`])
 		else seen[num] = key
 	}
 	return probs
 }
 
-const HASH_MSG = "cannot contain # — .env is read by dotenv, which treats it as a comment and drops the rest of the line"
+const HASH_MSG = "cannot contain # — dotenv reads it as a comment and drops the rest of the line"
 const answerProblem = (v, val) => val.includes("#") ? HASH_MSG : varProblem(v, val)
 
 const hashTruncated = (lines, key) => {
@@ -298,7 +329,7 @@ const runCheck = () => {
 	} else {
 		const probs = envProblems(schema, lines)
 		const mode = looseMode(ENV)
-		if (mode) probs.push([".env", `mode ${mode} — holds SECRETKEY, database_PASSWORD and the service tokens, and every account on this machine can read them; run: chmod 640 .env`])
+		if (mode) probs.push([".env", `mode ${mode} — holds your secrets and every account on this machine can read them; run: chmod 640 .env`])
 		console.log(`  .env          ${probs.length ? BAD : OK}${probs.length ? `  ${probs.length} problem(s)` : ""}`)
 		probs.forEach(([k, p]) => console.log(`                  - ${k}: ${p}`))
 		if (probs.length) failed = true
@@ -315,6 +346,10 @@ const runCheck = () => {
 		console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
 		cam.forEach(p => console.log(`                  - ${p}`))
 		if (cam.length) failed = true
+	}
+
+	for (const w of [httpsRedirectLoopWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`\n${w}`)
 	}
 
 	if (failed) {
@@ -451,6 +486,10 @@ const runInteractive = async () => {
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
 
+	for (const w of [httpsRedirectLoopWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`${w}\n`)
+	}
+
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
 	if (needCams) {
@@ -533,4 +572,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

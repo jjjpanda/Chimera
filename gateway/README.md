@@ -24,7 +24,9 @@ The gateway runs two listeners:
 - `gateway_PORT` — HTTP.
 - `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure` off the gateway's own socket, so enable it only when the gateway terminates TLS itself — behind an upstream terminator that forwards plain HTTP it redirects every request in a loop.
+`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure` — by default the gateway's own TLS socket, which cannot be spoofed.
+
+`gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` reads `X-Forwarded-Proto` instead. Set it only when something in front terminates TLS (nginx, a CDN, a tunnel); the redirect loops without it. It stays opt-in because anyone who can reach `gateway_PORT` directly can forge that header and skip the redirect.
 
 ---
 # ACME challenges
@@ -34,4 +36,4 @@ Before proxying, serves `/.well-known/` from the repo-root dir (dotfiles allowed
 ---
 # Config
 
-`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`; see [../env.example](../env.example).
+`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).
