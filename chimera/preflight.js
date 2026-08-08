@@ -130,9 +130,8 @@ const varProblem = (v, val) => {
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
-// certbot-entry.sh leaves /etc/letsencrypt/live mode 0710, so stat throws EACCES for an account outside the container group.
-// Only ENOENT/ENOTDIR prove the cert is absent; anything else means we cannot tell, and a warning built on "absent" would be wrong.
-const certMissing = (p) => { try { return !fs.statSync(p).isFile() } catch (e) { return e.code === "ENOENT" || e.code === "ENOTDIR" } }
+// certbot-entry.sh leaves /etc/letsencrypt/live mode 0710, so stat throws EACCES for an account outside the container group — only ENOENT/ENOTDIR prove the cert is absent.
+const certMaybePresent = (p) => { try { return fs.statSync(p).isFile() } catch (e) { return e.code !== "ENOENT" && e.code !== "ENOTDIR" } }
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -248,13 +247,13 @@ const autoResolvedCertOnDisk = (lines) => {
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
 	if (!hostname) return false
 	const { key, cert } = letsencryptPaths(hostname)
-	return ![key, cert].some(certMissing)
+	return [key, cert].every(certMaybePresent)
 }
 
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
 		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
-		&& ["privateKey_FILEPATH", "certificate_FILEPATH"].some(k => certMissing(getVal(lines, k) || ""))
+		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => certMaybePresent(getVal(lines, k) || ""))
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 

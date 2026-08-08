@@ -32,7 +32,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 ---
 # Login limits
 
-`POST /authorization/login` spends three budgets in order, then checks the password:
+`POST /authorization/login` spends three budgets in order, then checks the password. The numbers below are set in [authorization.js](backend/routes/authorization.js):
 
 | budget | key | allowance | once spent |
 |---|---|---|---|
