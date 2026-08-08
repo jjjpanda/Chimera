@@ -72,19 +72,19 @@ Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVar
 ---
 # watchdog.js — `npm run watchdog`
 
-Host-side liveness check, the only script here that keeps running after boot. Operator setup — run modes, cron/systemd/`schtasks` snippets, and the reboot privilege each host needs — is in the root [README](../README.md) under *Watchdog*; this covers what the script does.
+Host-side liveness check, the only script here that keeps running after boot. Operator setup is in the root [README](../README.md) under *Watchdog*.
 
 ```
 npm run watchdog              # self-polling, every watchdog_INTERVAL_MS
-npm run watchdog:once         # one pass, then exit — for cron / a systemd timer / Task Scheduler
-npm run watchdog -- --dry-run # print the restart and reboot commands for this host, exit 0
+npm run watchdog:once         # one pass, then exit — for a scheduler
+npm run watchdog -- --dry-run # print the restart and reboot commands, exit 0
 ```
 
-- Polls the five `<gateway_HOST>/<service>/health` endpoints the [heartbeat](../heartbeat.config.js) uses. Any non-2xx or thrown request counts the whole poll as failed; a clean poll resets both the count and the stage.
-- Acts only after `watchdog_FAILURES` consecutive failed polls, then escalates one step at a time — `docker compose restart` first, a host reboot next — and cycles back to the restart afterwards, indefinitely. No step powers the machine off, and `/proc/sysrq-trigger` is never written: it cuts power with no unmount and would corrupt the Postgres volume.
-- Runs on the host because the [heartbeat](../pm2.config.js) is a pm2 app inside `chimera` and dies with the thing it watches. The host script also outlives the Docker daemon itself, and on Docker Desktop reboots the real machine rather than the VM. Neither survives a kernel hang.
-- The restart goes through `compose.js`, so it keeps the `certbot` scaling and the Windows `shell: true` handling instead of shelling out to `docker` directly.
-- Reboot command by platform: `systemctl reboot` (Linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (Linux without systemd, macOS), `shutdown /r /t 0` (Windows). Non-root posix users get `sudo -n` in front. An unknown platform, a missing binary, or a non-zero exit from the command all exit `1` with the reason — a watchdog that silently no-ops is worse than none.
-- The alert is awaited before the reboot runs, or the process would die before the request flushed. That is why `webhookAlert` returns its promise.
-- `watchdog.state.json` next to the script holds `{ failures, stage }` via `jsonFileHandling.js`, which is what makes `watchdog:once` work at all — a single pass has no memory otherwise.
-- `watchdog_ON` must be `true`; anything else makes every run print a line and exit `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`, and preflight rejects a non-integer or a value below `1`.
+- Polls the five `<gateway_HOST>/<service>/health` endpoints the [heartbeat](../heartbeat.config.js) uses. Any non-2xx or thrown request fails the whole poll; a clean poll resets the count and the stage.
+- Acts after `watchdog_FAILURES` consecutive failed polls, alternating `docker compose restart` and a host reboot, indefinitely. Nothing powers the machine off.
+- Runs on the host because the heartbeat is a pm2 app inside `chimera` and dies with what it watches. Neither survives a kernel hang.
+- Restarts through `compose.js`, keeping the `certbot` scaling and the Windows `shell: true` handling.
+- Reboot: `systemctl reboot` (linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (linux without systemd, darwin), `shutdown /r /t 0` (win32), prefixed with `sudo -n` for a non-root posix user. An unknown platform, a missing binary, or a non-zero exit all exit `1` with the reason.
+- Awaits the alert before rebooting, which is why `webhookAlert` returns its promise.
+- `watchdog.state.json` holds `{ failures, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs.
+- `watchdog_ON` must be `true`; anything else exits `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`, and preflight rejects a non-integer or a value below `1`.
