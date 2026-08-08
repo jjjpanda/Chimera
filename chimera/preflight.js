@@ -131,8 +131,9 @@ const varProblem = (v, val) => {
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
-// certbot-entry.sh leaves /etc/letsencrypt/live mode 0710, so stat throws EACCES for an account outside the container group — only ENOENT/ENOTDIR prove the cert is absent.
+// certbot leaves /etc/letsencrypt/live mode 0700 root on the host, so stat throws EACCES for an ordinary account — only ENOENT/ENOTDIR prove the cert is absent.
 const certMaybePresent = (p) => { try { return fs.statSync(p).isFile() } catch (e) { return e.code !== "ENOENT" && e.code !== "ENOTDIR" } }
+const certUnreadable = (p) => { try { fs.statSync(p); return null } catch (e) { return e.code === "ENOENT" || e.code === "ENOTDIR" ? null : e.code } }
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -250,17 +251,35 @@ const watchdogHostWarning = (lines) =>
 		? "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the watchdog polls https://. On a plain-HTTP deploy every poll fails and the watchdog reboots a healthy host on a loop — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 		: null
 
-const autoResolvedCertOnDisk = (lines) => {
+// mirrors certPaths(): the two FILEPATH overrides win over the auto-resolved pair, and one override alone disables TLS outright
+const configuredCertPair = (lines) => {
+	const [key, cert] = ["privateKey_FILEPATH", "certificate_FILEPATH"].map(k => getVal(lines, k) || "")
+	if (key || cert) return key && cert ? [key, cert] : []
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	if (!hostname) return false
-	const { key, cert } = letsencryptPaths(hostname)
-	return [key, cert].every(certMaybePresent)
+	if (!hostname) return []
+	const auto = letsencryptPaths(hostname)
+	return [auto.key, auto.cert]
+}
+
+const certPairMaybePresent = (lines) => {
+	const pair = configuredCertPair(lines)
+	return pair.length > 0 && pair.every(certMaybePresent)
+}
+
+const redirectNeedsLocalCert = (lines) =>
+	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
+		&& getVal(lines, "certbot_ON") !== "true"
+
+const certUnreadableWarning = (lines) => {
+	if (!redirectNeedsLocalCert(lines)) return null
+	const unreadable = configuredCertPair(lines).map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
+	return unreadable.length
+		? `WARNING: cannot read ${unreadable.map(([p, code]) => `${p} (${code})`).join(", ")} from this account, so preflight cannot tell whether the certificate is there and will not warn about the redirect loop. Check it yourself with \`sudo test -f <path>\` — /etc/letsencrypt is mode 0700 root outside the container, and a FILEPATH names a path inside the container, which docker-compose.yml need not mount from this host`
+		: null
 }
 
 const httpsRedirectLoopWarning = (lines) =>
-	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
-		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
-		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => certMaybePresent(getVal(lines, k) || ""))
+	redirectNeedsLocalCert(lines) && !certPairMaybePresent(lines)
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 
@@ -278,7 +297,7 @@ const httpsRedirectPortWarning = (lines) => {
 		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE), so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
 }
 
-const warnings = (lines) => [httpsRedirectLoopWarning, httpsRedirectPortWarning, watchdogHostWarning].map(w => w(lines)).filter(Boolean)
+const warnings = (lines) => [httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning].map(w => w(lines)).filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
@@ -577,4 +596,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
