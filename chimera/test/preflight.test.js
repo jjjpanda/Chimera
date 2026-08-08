@@ -22,7 +22,7 @@ jest.mock("fs", () => {
 })
 
 const fs = require("fs")
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -403,6 +403,48 @@ describe("httpsRedirectLoopWarning", () => {
 		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
 		statSpy.mockRestore()
+	})
+})
+
+describe("httpsRedirectPortWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires when the TLS listener is on a port gateway_HOST does not name — the redirect lands where nothing serves TLS", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))).toMatch(/ERR_SSL_PROTOCOL_ERROR/)
+	})
+
+	test("fires when gateway_HOST names a port the TLS listener does not use", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "443", gateway_HOST: "https://192.168.1.50:8443" }))).toBeTruthy()
+	})
+
+	test("matching ports pass", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50:8443" }))).toBeNull()
+	})
+
+	test("a bare gateway_HOST reads as https on 443, so a blank gateway_PORT_SECURE matches it", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "80", gateway_HOST: "cam.example.com" }))).toBeNull()
+	})
+
+	test("an explicit :443 in gateway_HOST is the same 443 the default names", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com:443" }))).toBeNull()
+	})
+
+	test("a blank gateway_PORT_SECURE still fires against a non-443 gateway_HOST — the listener falls back to 443", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com:8443" }))).toBeTruthy()
+	})
+
+	test("never fires while the redirect is off — nothing redirects, so nothing can miss the listener", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "false", gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(httpsRedirectPortWarning(lines({ gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("an explicit http:// gateway_HOST names the plain port, not the TLS one, so it says nothing", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
+	})
+
+	test("a blank or unparseable gateway_HOST names no port to disagree with", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "" }))).toBeNull()
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "not a valid host" }))).toBeNull()
 	})
 })
 

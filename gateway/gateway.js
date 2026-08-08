@@ -4,7 +4,7 @@ const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
-const { helmetOptions } = require("lib")
+const { helmetOptions, gatewayHost } = require("lib")
 
 var app = express()
 if(process.env.gateway_TRUST_PROXY == "true"){
@@ -18,12 +18,22 @@ app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"),
 app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
+	const securePort = process.env.gateway_PORT_SECURE || 443
+	const portSuffix = securePort == 443 ? "" : `:${securePort}`
+	const redirectHost = (() => {
+		try{
+			return new URL(gatewayHost()).hostname
+		}
+		catch{
+			return ""
+		}
+	})()
 	app.use((req, res, next) => {
 		if(req.secure || req.path.split("/")[1] == ".well-known"){
 			next()
 		}
 		else{
-			res.redirect(`https://${req.headers.host}${req.url}`)
+			res.redirect(`https://${redirectHost || req.hostname}${portSuffix}${req.url}`)
 		}
 	})
 }

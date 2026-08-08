@@ -249,6 +249,19 @@ const httpsRedirectLoopWarning = (lines) =>
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const httpsRedirectPortWarning = (lines) => {
+	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
+	const url = gatewayUrl(lines)
+	if (urlPart(url, "protocol") !== "https:") return null
+	const hostPort = urlPart(url, "port") || GATEWAY_PORT_SECURE_DEFAULT
+	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
+	return hostPort === securePort
+		? null
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${securePort} (gateway_PORT_SECURE), but gateway_HOST says browsers reach this deploy on port ${hostPort}, so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+}
+
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
 		? "gateway_PORT MUST BE 80 when certbot_ON=true — Let's Encrypt validates over HTTP-01 on port 80, and compose publishes no port but gateway_PORT, so nothing answers the challenge. Set gateway_PORT=80, or set certbot_ON=false and supply your own certs via privateKey_FILEPATH/certificate_FILEPATH"
@@ -257,8 +270,6 @@ const certbotPortProblem = (lines) =>
 const setupTokenHint = (lines) => on(lines, "command")
 	? `The first admin account needs setup_TOKEN — read it with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
-
-const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
 	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
@@ -328,8 +339,9 @@ const runCheck = () => {
 		if (cam.length) failed = true
 	}
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`\n${redirectLoop}`)
+	for (const w of [httpsRedirectLoopWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`\n${w}`)
+	}
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -465,8 +477,9 @@ const runInteractive = async () => {
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`${redirectLoop}\n`)
+	for (const w of [httpsRedirectLoopWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`${w}\n`)
+	}
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -550,4 +563,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

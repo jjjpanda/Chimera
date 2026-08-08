@@ -41,3 +41,60 @@ describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 			.end(done)
 	})
 })
+
+describe("the redirect target comes from config, not from the request", () => {
+	const freshGateway = () => {
+		jest.resetModules()
+		return require("../gateway.js")
+	}
+
+	afterEach(() => {
+		delete process.env.gateway_PORT_SECURE
+		delete process.env.gateway_HOST
+		jest.resetModules()
+	})
+
+	test("targets gateway_PORT_SECURE, not the port the client connected on", (done) => {
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "https://192.168.1.50:8443"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "192.168.1.50:8080")
+			.expect(302)
+			.expect("location", "https://192.168.1.50:8443/command/health", done)
+	})
+
+	test("drops the client's port when gateway_PORT_SECURE is 443", (done) => {
+		process.env.gateway_PORT_SECURE = "443"
+		process.env.gateway_HOST = "https://cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "cam.example.com:8080")
+			.expect("location", "https://cam.example.com/command/health", done)
+	})
+
+	test("an unset gateway_PORT_SECURE reads as 443", (done) => {
+		process.env.gateway_HOST = "https://cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "cam.example.com:8080")
+			.expect("location", "https://cam.example.com/command/health", done)
+	})
+
+	test("the host comes from gateway_HOST, so a forged Host header cannot pick the target", (done) => {
+		process.env.gateway_HOST = "https://cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "phish.example.com")
+			.expect("location", "https://cam.example.com/command/health", done)
+	})
+
+	test("falls back to the request host when gateway_HOST is unparseable", (done) => {
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "not a valid host"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "192.168.1.50:8080")
+			.expect("location", "https://192.168.1.50:8443/command/health", done)
+	})
+})
