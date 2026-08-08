@@ -190,6 +190,42 @@ Your first successful login leaves a second cookie in that browser for a year. I
 - In production pm2 writes no log files; everything streams to container stdout, rotated by the `json-file` driver (`npm run docker:logs`).
 - `chimera` has no `DAC_OVERRIDE`, so `docker compose exec chimera pm2 list` fails as root — use `docker compose exec -u node chimera pm2 list`.
 
+**Coming back after a reboot or a power cut.** `chimera`, `certbot` and `postgres` carry `restart: unless-stopped`, so they come back once the Docker daemon starts — which is not automatic:
+
+- Linux: `sudo systemctl enable --now docker`.
+- Docker Desktop (Windows / macOS): turn on Settings → General → *Start Docker Desktop when you sign in*. That is a login, not a boot, so a machine nobody signs into stays down — run Docker Engine on Linux there instead.
+- `unless-stopped` does not restart a container you stopped yourself, so a stack left down by `npm run docker:down` stays down across a reboot. Start it with `npm run docker:up`.
+- None of the above helps if the machine never powers back on. Enable power restore in the firmware — vendors all name that setting differently, so look up yours.
+
+</details>
+
+<details>
+<summary><b>Watchdog</b></summary>
+
+[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the same five gateway health endpoints as the in-container heartbeat. After `watchdog_FAILURES` consecutive failed polls it alerts and restarts the stack; if the failures keep coming it reboots the host, then cycles back to the restart. It never powers the machine off, and cannot rescue a kernel hang.
+
+```
+watchdog_ON = true            # off by default
+watchdog_INTERVAL_MS = 60000  # self-polling mode only
+watchdog_FAILURES = 3
+```
+
+`npm run watchdog` polls on its own timer. `npm run watchdog:once` runs a single pass for cron, a systemd timer or Task Scheduler, keeping the failure count in `chimera/watchdog.state.json`:
+
+```cron
+*/5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
+```
+
+`npm run watchdog -- --dry-run` prints the restart and reboot commands for this host and exits 0 without running either.
+
+**Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
+
+```
+chimera ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
+```
+
+Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
+
 </details>
 
 <details>

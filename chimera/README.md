@@ -68,3 +68,23 @@ npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
 **At boot** — `validateEnvVars.js` re-runs all cross-checks and adds `*_URL` scheme and absolute-path checks. A build can pass preflight and still fail at boot.
 
 Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVars.js` and tests.
+
+---
+# watchdog.js — `npm run watchdog`
+
+Host-side liveness check, the only script here that keeps running after boot. Operator setup is in the root [README](../README.md) under *Watchdog*.
+
+```
+npm run watchdog              # self-polling, every watchdog_INTERVAL_MS
+npm run watchdog:once         # one pass, then exit — for a scheduler
+npm run watchdog -- --dry-run # print the restart and reboot commands, exit 0
+```
+
+- Polls the five `<gateway_HOST>/<service>/health` endpoints the [heartbeat](../heartbeat.config.js) uses. Any non-2xx or thrown request fails the whole poll; a clean poll resets the count and the stage.
+- Acts after `watchdog_FAILURES` consecutive failed polls, alternating `docker compose restart` and a host reboot, indefinitely. Nothing powers the machine off.
+- Runs on the host because the heartbeat is a pm2 app inside `chimera` and dies with what it watches. Neither survives a kernel hang.
+- Restarts through `compose.js`, keeping the `certbot` scaling and the Windows `shell: true` handling.
+- Reboot: `systemctl reboot` (linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (linux without systemd, darwin), `shutdown /r /t 0` (win32), prefixed with `sudo -n` for a non-root posix user. An unknown platform, a missing binary, or a non-zero exit all exit `1` with the reason.
+- Awaits the alert before rebooting, which is why `webhookAlert` returns its promise.
+- `watchdog.state.json` holds `{ failures, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs.
+- `watchdog_ON` must be `true`; anything else exits `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`, and preflight rejects a non-integer or a value below `1`.
