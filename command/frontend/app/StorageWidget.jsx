@@ -73,7 +73,7 @@ const StorageWidget = () => {
 						? t("storage.usedOfMax", { used: formatBytes(usedBytes, 1), max: formatBytes(maxBytes, 1) })
 						: t("storage.used", { used: formatBytes(usedBytes, 1) })
 					}
-					{` • ${t("storage.frames", { count: usage.total_frames.toLocaleString() })}`}
+					{` • ${t("storage.frames", { count: usage.total_frames })}`}
 				</p>
 				<Button onClick={() => navigate("/stats")} className="mt-auto w-full">{role === "admin" ? t("storage.manageData") : t("storage.viewStats")}</Button>
 			</CardContent>

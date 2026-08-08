@@ -264,7 +264,7 @@
 		"days_other": "{{count}}일",
 		"deleteAllCameras": "모든 카메라에서 {{label}}을(를) 삭제하시겠습니까?",
 		"deleteCamera": "{{camera}}에서 {{label}}을(를) 삭제하시겠습니까?",
-		"frames": "프레임 {{count}}개",
+		"frames_other": "프레임 {{count, number}}개",
 		"olderThanDays_other": "{{count}}일 이전",
 		"olderThanLabel": "이전",
 		"storageGrowth": "저장소 증가량",
@@ -304,7 +304,7 @@
 	},
 	"storage": {
 		"breakdownTitle": "저장소 세부 정보",
-		"frames": "프레임 {{count}}개",
+		"frames_other": "프레임 {{count, number}}개",
 		"framesLabel": "프레임",
 		"manageData": "데이터 관리",
 		"objectsLabel": "객체",

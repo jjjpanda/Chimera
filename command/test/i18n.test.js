@@ -4,7 +4,7 @@ const en = require("../frontend/locales/en.json")
 
 const PLURAL_BASES = ["live.restartFailed", "stats.dayCount", "stats.days", "stats.olderThanDays"]
 const stripPlural = (key) => key.replace(/_(zero|one|two|few|many|other)$/, "")
-const placeholders = (value) => (value.match(/{{\s*\w+\s*}}/g) ?? []).sort()
+const placeholders = (value) => [...value.matchAll(/{{\s*(\w+)[^}]*}}/g)].map(([, name]) => name).sort()
 
 const flatten = (obj, prefix = "") =>
 	Object.entries(obj).reduce((acc, [k, v]) => {
@@ -81,6 +81,16 @@ test.each(others)("%s renders a plural through i18next for every category", asyn
 		expect(rendered.trim()).not.toBe("")
 		expect(rendered).not.toMatch(/^stats\.days/)
 	}
+})
+
+test("a count groups its digits in the app language, not the browser locale", async () => {
+	await i18n.changeLanguage("de")
+	expect(i18n.t("stats.frames", { count: 1234567 })).toBe("1.234.567 Bilder")
+	expect(i18n.t("storage.frames", { count: 1 })).toBe("1 Bild")
+
+	await i18n.changeLanguage("en")
+	expect(i18n.t("stats.frames", { count: 1234567 })).toBe("1,234,567 frames")
+	expect(i18n.t("storage.frames", { count: 1 })).toBe("1 frame")
 })
 
 test("interpolation still resolves through the English fallback", async () => {

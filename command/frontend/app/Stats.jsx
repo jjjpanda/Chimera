@@ -109,7 +109,7 @@ const Stats = () => {
 								? t("stats.usedOfMax", { used: formatBytes(usedBytes, 1), max: formatBytes(maxBytes, 1) })
 								: t("stats.used", { used: formatBytes(usedBytes, 1) })
 							}
-							{` • ${t("stats.frames", { count: usage.total_frames.toLocaleString() })}`}
+							{` • ${t("stats.frames", { count: usage.total_frames })}`}
 						</p>
 						<StorageBreakdown breakdown={usage.breakdown} />
 					</CardContent>

@@ -264,7 +264,7 @@
 		"days_other": "{{count}} 天",
 		"deleteAllCameras": "从所有摄像头删除 {{label}}？",
 		"deleteCamera": "从 {{camera}} 删除 {{label}}？",
-		"frames": "{{count}} 帧",
+		"frames_other": "{{count, number}} 帧",
 		"olderThanDays_other": "早于 {{count}} 天",
 		"olderThanLabel": "早于",
 		"storageGrowth": "存储增长",
@@ -304,7 +304,7 @@
 	},
 	"storage": {
 		"breakdownTitle": "存储明细",
-		"frames": "{{count}} 帧",
+		"frames_other": "{{count, number}} 帧",
 		"framesLabel": "帧",
 		"manageData": "管理数据",
 		"objectsLabel": "物体",

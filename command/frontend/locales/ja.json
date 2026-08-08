@@ -264,7 +264,7 @@
 		"days_other": "{{count}} 日",
 		"deleteAllCameras": "すべてのカメラから{{label}}を削除しますか？",
 		"deleteCamera": "{{camera}}から{{label}}を削除しますか？",
-		"frames": "{{count}} フレーム",
+		"frames_other": "{{count, number}} フレーム",
 		"olderThanDays_other": "{{count}} 日より前",
 		"olderThanLabel": "それより前",
 		"storageGrowth": "ストレージ増加量",
@@ -304,7 +304,7 @@
 	},
 	"storage": {
 		"breakdownTitle": "ストレージ内訳",
-		"frames": "{{count}} フレーム",
+		"frames_other": "{{count, number}} フレーム",
 		"framesLabel": "フレーム",
 		"manageData": "データを管理",
 		"objectsLabel": "オブジェクト",
