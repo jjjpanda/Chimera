@@ -3,12 +3,13 @@ const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
 
-let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost
+let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths
 try {
 	loadCameras = require("../lib/utils/loadCameras.js")
 	multiInstanceLib = require("../lib/utils/multiInstance.js")
 	trustedSourcesLib = require("../lib/utils/trustedSources.js")
 	normalizeHost = require("../lib/utils/normalizeHost.js")
+	certPaths = require("../lib/utils/certPaths.js")
 } catch (e) {
 	if (e.code === "MODULE_NOT_FOUND") {
 		console.error("Missing dependencies — run `npm install` first.")
@@ -19,6 +20,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
+const { letsencryptPaths } = certPaths
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -240,13 +242,15 @@ const cookieAmbiguousHostWarning = (lines) =>
 
 const autoResolvedCertOnDisk = (lines) => {
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	return !!hostname && ["privkey.pem", "fullchain.pem"].every(f => isFile(`/etc/letsencrypt/live/${hostname}/${f}`))
+	if (!hostname) return false
+	const { key, cert } = letsencryptPaths(hostname)
+	return [key, cert].every(isFile)
 }
 
 const httpsRedirectLoopWarning = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
 		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
-		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
+		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => isFile(getVal(lines, k) || ""))
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
 

@@ -20,7 +20,7 @@ app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const securePort = process.env.gateway_PORT_SECURE || 443
-	const portSuffix = trustProxy || securePort == 443 ? "" : `:${securePort}`
+	const portSuffix = trustProxy || String(securePort) == "443" ? "" : `:${securePort}`
 	const redirectTarget = (() => {
 		try{
 			const url = new URL(gatewayHost())
@@ -35,7 +35,8 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 			next()
 		}
 		else{
-			res.redirect(`https://${redirectTarget || `${req.hostname}${portSuffix}`}${req.url}`)
+			const host = (req.headers.host || "").replace(/:\d+$/, "")
+			res.redirect(`https://${redirectTarget || `${host}${portSuffix}`}${req.url}`)
 		}
 	})
 }

@@ -340,8 +340,18 @@ describe("validateEnvVars https-redirect loop warning", () => {
 	})
 
 	test("no warning when the operator supplies their own cert", () => {
-		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" })
+		const key = path.join(os.tmpdir(), "chimera-test-privkey.pem")
+		const cert = path.join(os.tmpdir(), "chimera-test-fullchain.pem")
+		fs.writeFileSync(key, "")
+		fs.writeFileSync(cert, "")
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: key, certificate_FILEPATH: cert })
 		expect(res.stdout).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(res.status).toBe(0)
+	})
+
+	test("still warns when FILEPATHs are absolute but do not exist on disk", () => {
+		const res = run({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "/certs/does-not-exist-privkey.pem", certificate_FILEPATH: "/certs/does-not-exist-fullchain.pem" })
+		expect(res.stdout).toContain("ERR_TOO_MANY_REDIRECTS")
 		expect(res.status).toBe(0)
 	})
 
