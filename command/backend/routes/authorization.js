@@ -51,7 +51,6 @@ const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
 const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
 const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
-// the throttle slot is one per username and any unauthenticated request takes it, so a long window here locks the real user out for as long as an attacker keeps sending
 const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
