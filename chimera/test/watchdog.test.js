@@ -23,7 +23,8 @@ for (const s of ["command", "livestream", "object", "schedule", "storage"]) proc
 const { spawnSync } = require("child_process")
 const { runCompose } = require("../compose.js")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
-const { checkUrl, rebootCommand, privileged, nextStage, runOnce, reboot, STAGES } = require("../watchdog.js")
+const { WATCHDOG_MIN_INTERVAL_MS } = require("../preflight.js")
+const { checkUrl, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, STAGES } = require("../watchdog.js")
 
 const healthy = () => Promise.resolve({ ok: true, status: 200 })
 const down = () => Promise.resolve({ ok: false, status: 502 })
@@ -61,6 +62,45 @@ describe("health endpoints", () => {
 
 	test("the heartbeat and the watchdog read the same map", () => {
 		expect(require("../../lib/utils/healthChecks.js")()).toEqual(checkUrl())
+	})
+})
+
+describe("settings", () => {
+	afterEach(() => { delete process.env.watchdog_INTERVAL_MS })
+
+	// nothing runs preflight before `npm run watchdog`, so 60 meaning seconds would poll every 60ms
+	test("clamps a seconds-for-milliseconds interval to the floor", () => {
+		process.env.watchdog_INTERVAL_MS = "60"
+		expect(settings().intervalMs).toBe(WATCHDOG_MIN_INTERVAL_MS)
+	})
+
+	test("leaves a sane interval alone, and falls back to a minute when unset", () => {
+		process.env.watchdog_INTERVAL_MS = "30000"
+		expect(settings().intervalMs).toBe(30000)
+		delete process.env.watchdog_INTERVAL_MS
+		expect(settings().intervalMs).toBe(60000)
+	})
+})
+
+describe("restart failures", () => {
+	// a silent failure lets the escalation advance and reboot a host whose stack was never actually restarted
+	test("a compose exit code this user cannot fix is reported, not swallowed", () => {
+		runCompose.mockReturnValueOnce({ status: 1 })
+		restart()
+		expect(process.exitCode).toBe(1)
+		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Docker daemon access"))
+	})
+
+	test("a spawn error is reported too", () => {
+		runCompose.mockReturnValueOnce({ error: new Error("spawn docker ENOENT") })
+		restart()
+		expect(process.exitCode).toBe(1)
+		expect(console.error).toHaveBeenCalledWith("spawn docker ENOENT")
+	})
+
+	test("a clean restart leaves the exit code alone", () => {
+		restart()
+		expect(process.exitCode).toBeUndefined()
 	})
 })
 

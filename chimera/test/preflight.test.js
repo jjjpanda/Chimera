@@ -22,7 +22,7 @@ jest.mock("fs", () => {
 })
 
 const fs = require("fs")
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -90,6 +90,8 @@ describe("varProblem", () => {
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
 	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
 	const dbPasswordVar = { key: "database_PASSWORD", placeholder: "postgres password", optional: false }
+	const watchdogIntervalVar = { key: "watchdog_INTERVAL_MS", placeholder: "Milliseconds between health polls", optional: true }
+	const watchdogFailuresVar = { key: "watchdog_FAILURES", placeholder: "Consecutive failed polls", optional: true }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -177,6 +179,24 @@ describe("varProblem", () => {
 		expect(varProblem(gatewayHostVar, "[::1]")).toBeNull()
 		expect(varProblem(gatewayHostVar, "http://::1")).toBeNull()
 		expect(varProblem(gatewayHostVar, "https://[2001:db8::5]:8443")).toBeNull()
+	})
+
+	test("watchdog_FAILURES: a threshold below 1 acts on the first blip → error", () => {
+		expect(varProblem(watchdogFailuresVar, "0")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "-1")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "1.5")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "1")).toBeNull()
+		expect(varProblem(watchdogFailuresVar, "3")).toBeNull()
+	})
+
+	// 60 meaning "a minute" would poll every 60ms and reach the reboot stage within a second of the first failure
+	test("watchdog_INTERVAL_MS: a seconds-for-milliseconds value → error naming the unit", () => {
+		expect(varProblem(watchdogIntervalVar, "60")).toMatch(/milliseconds/)
+		expect(varProblem(watchdogIntervalVar, "1")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, "4999")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, "abc")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, String(WATCHDOG_MIN_INTERVAL_MS))).toBeNull()
+		expect(varProblem(watchdogIntervalVar, "60000")).toBeNull()
 	})
 
 	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {

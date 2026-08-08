@@ -29,6 +29,9 @@ const MOTION = path.join(ROOT, "motion.conf")
 const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
 
+// a value in the seconds range is a unit mistake: 60 would poll every 60ms and reboot the host within a second of the first failure
+const WATCHDOG_MIN_INTERVAL_MS = 5000
+
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
 
@@ -121,7 +124,8 @@ const varProblem = (v, val) => {
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
 	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
-	if (/^watchdog_(INTERVAL_MS|FAILURES)$/.test(v.key) && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
+	if (v.key === "watchdog_FAILURES" && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
+	if (v.key === "watchdog_INTERVAL_MS" && !(/^\d+$/.test(val) && Number(val) >= WATCHDOG_MIN_INTERVAL_MS)) return `must be milliseconds, an integer >= ${WATCHDOG_MIN_INTERVAL_MS} — 60 is 60ms, not a minute (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
@@ -596,4 +600,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

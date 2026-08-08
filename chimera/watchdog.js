@@ -1,4 +1,4 @@
-const { ENV, readLines, watchdogHostWarning } = require("./preflight.js")
+const { ENV, readLines, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
 require("dotenv").config({ path: ENV })
 const fs = require("fs")
 const os = require("os")
@@ -19,7 +19,8 @@ const NOTHING_TO_POLL = "no service has *_PROXY_ON=true — the gateway routes n
 
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
-	intervalMs: Number(process.env.watchdog_INTERVAL_MS) || 60000,
+	// nothing runs preflight before `npm run watchdog`, so the floor has to hold here too
+	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, Number(process.env.watchdog_INTERVAL_MS) || 60000),
 	threshold: Number(process.env.watchdog_FAILURES) || 3
 })
 
@@ -73,8 +74,8 @@ const reboot = () => {
 
 const restart = () => {
 	const { status, error } = runCompose(RESTART_ARGS)
-	if (error) console.error(error.message)
-	if (status !== 0) console.error(`\`${composeCommand(RESTART_ARGS).join(" ")}\` exited ${status ?? "without status"}`)
+	if (error) return fail(error.message)
+	if (status !== 0) fail(`\`${composeCommand(RESTART_ARGS).join(" ")}\` exited ${status ?? "without status"} — the stack was not restarted; check this user's Docker daemon access, listed in the README watchdog section`)
 }
 
 const readState = () => new Promise(resolve =>

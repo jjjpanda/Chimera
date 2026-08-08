@@ -206,7 +206,7 @@ Your first successful login leaves a second cookie in that browser for a year. I
 
 ```
 watchdog_ON = true            # off by default
-watchdog_INTERVAL_MS = 60000  # self-polling mode only
+watchdog_INTERVAL_MS = 60000  # self-polling mode only, milliseconds, minimum 5000
 watchdog_FAILURES = 3
 ```
 
@@ -221,6 +221,8 @@ watchdog_FAILURES = 3
 **Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every poll and reboots a perfectly healthy host on a loop. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment.
 
 Only services with `<name>_PROXY_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
+
+**Access to the Docker daemon.** The restart stage runs `docker compose up -d --force-recreate`, so whatever account the watchdog runs under needs to reach the daemon socket — `sudo usermod -aG docker chimera`, then a fresh login for the group to take. Without it every restart fails with a permission error and the watchdog escalates to rebooting the host instead. The failure is logged and the run exits `1`, so a cron line that keeps its output will show it.
 
 **Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
 
