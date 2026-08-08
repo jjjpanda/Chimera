@@ -1,7 +1,8 @@
 const supertest = require("supertest")
 
 process.env.gateway_HTTPS_Redirect = "true"
-process.env.gateway_TRUST_PROXY = "true"
+process.env.gateway_TRUST_PROXY = "false"
+process.env.gateway_HOST = ""
 
 jest.mock("memory")
 jest.mock("axios")

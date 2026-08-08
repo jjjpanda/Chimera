@@ -4,10 +4,11 @@ const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
-const { helmetOptions } = require("lib")
+const { helmetOptions, gatewayHost } = require("lib")
 
 var app = express()
-if(process.env.gateway_TRUST_PROXY == "true"){
+const trustProxy = process.env.gateway_TRUST_PROXY == "true"
+if(trustProxy){
 	app.set("trust proxy", 1)
 }
 
@@ -19,14 +20,23 @@ app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const securePort = process.env.gateway_PORT_SECURE || 443
-	const portSuffix = String(securePort) == "443" ? "" : `:${securePort}`
+	const portSuffix = trustProxy || String(securePort) == "443" ? "" : `:${securePort}`
+	const redirectTarget = (() => {
+		try{
+			const url = new URL(gatewayHost())
+			return url.protocol == "https:" ? url.host : `${url.hostname}${portSuffix}`
+		}
+		catch{
+			return ""
+		}
+	})()
 	app.use((req, res, next) => {
 		if(req.secure || req.path.split("/")[1] == ".well-known"){
 			next()
 		}
 		else{
 			const host = (req.headers.host || "").replace(/:\d+$/, "")
-			res.redirect(`https://${host}${portSuffix}${req.url}`)
+			res.redirect(`https://${redirectTarget || `${host}${portSuffix}`}${req.url}`)
 		}
 	})
 }

@@ -659,4 +659,16 @@ describe("runCheck", () => {
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})
+
+	test("prints the https redirect port warning without blocking", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com", command_COOKIE_SECURE: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443" },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("ERR_SSL_PROTOCOL_ERROR")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
 })
