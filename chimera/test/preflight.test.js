@@ -446,6 +446,10 @@ describe("httpsRedirectPortWarning", () => {
 		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "" }))).toBeNull()
 		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "not a valid host" }))).toBeNull()
 	})
+
+	test("gateway_TRUST_PROXY=true rules it out — the container's TLS port and the browser-facing port are meant to differ behind a proxy", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
 })
 
 describe("certbotPortProblem", () => {

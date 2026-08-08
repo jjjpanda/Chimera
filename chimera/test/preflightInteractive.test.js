@@ -662,7 +662,7 @@ describe("runCheck", () => {
 
 	test("prints the https redirect port warning without blocking", () => {
 		setup({
-			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_HOST: "https://cam.example.com", command_COOKIE_SECURE: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443" },
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com", command_COOKIE_SECURE: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443" },
 			answers: []
 		})
 		mockState.modes[".env"] = 0o640

@@ -253,6 +253,7 @@ const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const httpsRedirectPortWarning = (lines) => {
 	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
+	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
 	const url = gatewayUrl(lines)
 	if (urlPart(url, "protocol") !== "https:") return null
 	const hostPort = urlPart(url, "port") || GATEWAY_PORT_SECURE_DEFAULT
