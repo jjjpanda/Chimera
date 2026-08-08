@@ -190,6 +190,101 @@ Your first successful login leaves a second cookie in that browser for a year. I
 - In production pm2 writes no log files; everything streams to container stdout, rotated by the `json-file` driver (`npm run docker:logs`).
 - `chimera` has no `DAC_OVERRIDE`, so `docker compose exec chimera pm2 list` fails as root — use `docker compose exec -u node chimera pm2 list`.
 
+**Coming back after a reboot or a power cut.** `chimera`, `certbot` and `postgres` carry `restart: unless-stopped`, so they return **when the Docker daemon starts** — which is not automatic:
+
+| host | what starts Docker | on a fresh install |
+|---|---|---|
+| Linux + systemd | `sudo systemctl enable --now docker` | often enabled, never guaranteed — check it |
+| Docker Desktop (Windows / macOS) | **login**, not boot — Settings → General → *Start Docker Desktop when you sign in* | off |
+
+Docker Desktop is the trap: it needs a desktop login, so a headless box that reboots unattended stays down indefinitely with every container marked `unless-stopped` and none of them running. Use Docker Engine (Linux) on anything nobody logs into.
+
+`unless-stopped` also does **not** restart a container you stopped by hand. `npm run docker:down` followed by a power cut leaves the stack down after boot, by design — start it again with `npm run docker:up`.
+
+**BIOS power restore.** Neither of the above helps if the machine never turns back on, and most firmware defaults to staying off after mains power returns. The setting is named differently by every vendor:
+
+| vendor | setting | where |
+|---|---|---|
+| Dell | AC Power Recovery | Power Management |
+| HP | After Power Loss | Advanced → Power-On Options |
+| Lenovo | After Power Loss | Power |
+| ASUS | Restore on AC Power Loss | Advanced → APM Configuration |
+| Gigabyte | AC BACK | Settings → Platform Power |
+| MSI | Restore after AC Power Loss | Settings → Advanced → Power Management |
+| Supermicro | Restore on AC Power Loss | Advanced → Power Configuration |
+| Intel NUC | After Power Failure | Power → Secondary Power Settings |
+| Raspberry Pi | none — powers on whenever it has power | n/a |
+
+Chimera never powers a machine off, so neither value can fight the watchdog below — pick on what you want after an outage:
+
+| setting | after a power cut | pick it when |
+|---|---|---|
+| **Power On** | always boots, even if the machine was deliberately off | unattended site, nobody nearby |
+| **Last State** | returns to whatever it was doing | you sometimes shut the box down on purpose and want that to stick |
+
+A UPS is the real answer to brownouts and short cuts. The BIOS setting covers the outage that outlasts the battery.
+
+</details>
+
+<details>
+<summary><b>Watchdog</b></summary>
+
+[chimera/watchdog.js](chimera/watchdog.js) runs **on the host, outside Docker**, and polls the same five gateway health endpoints the in-container heartbeat does. After `watchdog_FAILURES` consecutive failed polls it alerts, then escalates one step: first `docker compose restart`, and if the next round of failures arrives, a host reboot. Then it starts over from the restart and repeats indefinitely — there is no give-up state, and no code path powers the machine off. It cannot survive a kernel hang; only a hardware watchdog does.
+
+```
+watchdog_ON = true            # off by default; blank or false makes every run a no-op
+watchdog_INTERVAL_MS = 60000  # self-polling mode only
+watchdog_FAILURES = 3
+```
+
+`npm run watchdog -- --dry-run` prints the exact restart and reboot commands for this host and exits 0 without running either. Missing reboot command, or a user that cannot reboot, exits non-zero with the reason.
+
+**Two run modes — pick one.** `npm run watchdog` polls on its own timer, but is a long-running process that needs its own restart-at-boot setup. `npm run watchdog:once` does a single pass and exits; the failure count persists in `chimera/watchdog.state.json`, so a scheduler drives it and it survives its own crash.
+
+```cron
+*/5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
+```
+
+```ini
+# /etc/systemd/system/chimera-watchdog.service
+[Unit]
+Description=Chimera watchdog
+[Service]
+Type=oneshot
+User=chimera
+WorkingDirectory=/opt/chimera
+ExecStart=/usr/bin/npm run watchdog:once
+
+# /etc/systemd/system/chimera-watchdog.timer  — sudo systemctl enable --now chimera-watchdog.timer
+[Unit]
+Description=Run the Chimera watchdog every 5 minutes
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
+```
+
+```bat
+schtasks /create /tn "Chimera watchdog" /sc minute /mo 5 /rl HIGHEST /ru SYSTEM ^
+  /tr "cmd /c cd /d C:\chimera && npm run watchdog:once"
+```
+
+**Privilege to reboot.** The script does not solve this for you — it runs the reboot through `sudo -n` whenever it is not already root, so a missing rule fails loudly instead of silently no-opping.
+
+| host | command | what it needs |
+|---|---|---|
+| Linux + systemd | `systemctl reboot` | polkit already allows a local *active* session; a headless service user needs a polkit rule or the sudoers entry below |
+| Linux, no systemd | `shutdown -r now` | sudoers entry below, with the path to `shutdown` |
+| macOS | `shutdown -r now` | `sudo`, no way around it |
+| Windows | `shutdown /r /t 0` | `SeShutdownPrivilege` — an elevated shell, or a Scheduled Task with *run with highest privileges* |
+
+Scope the sudoers rule to the one command, never blanket `NOPASSWD: ALL` (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
+
+```
+chimera ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
+```
+
 </details>
 
 <details>

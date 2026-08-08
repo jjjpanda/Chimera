@@ -48,7 +48,9 @@
     "predocker:restart": "node chimera/preflight.js --check",
     "docker:restart": "node chimera/compose.js restart",
     "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
-    "docker:delete": "node chimera/compose.js down -v"
+    "docker:delete": "node chimera/compose.js down -v",
+    "watchdog": "node chimera/watchdog.js",
+    "watchdog:once": "node chimera/watchdog.js --once"
   },
   "dependencies": {
     "command": "file:./command",
