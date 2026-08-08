@@ -38,7 +38,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 |---|---|---|---|
 | burst | IP | 20 / 15 min | 1 check / 10s |
 | daily | IP | 100 / 24h | 1 check / 15 min |
-| account | username | 10 / 15 min | 1 check / 10s |
+| account | username | 10 / 15 min | 1 check / 15 min |
 
 No budget ends in a hard block. A spent budget throttles to one credential check per window; extra requests get 429 immediately and nothing queues, so a flood cannot build latency. That one check also answers 429 on a wrong password — a 429 does not prove the credentials went unchecked.
 
