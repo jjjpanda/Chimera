@@ -84,6 +84,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const gatewayHostVar = { key: "gateway_HOST", placeholder: "https://gateway.server.example or http://127.0.0.1:8080 (protocol defaults to https:// if omitted)", optional: false }
 	const alertOnVar = { key: "object_ALERT_ON", placeholder: "(true | text | false, default true)", optional: true }
 	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
@@ -158,6 +159,17 @@ describe("varProblem", () => {
 	test("storage_HOST: explicit protocol → null", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+
+	test("gateway_HOST: unparseable → error, matching the boot gate instead of writing it to .env", () => {
+		expect(varProblem(gatewayHostVar, "not a valid host")).toBeTruthy()
+		expect(varProblem(gatewayHostVar, "https://cam.example.com:notaport")).toBeTruthy()
+	})
+
+	test("gateway_HOST: parseable with or without a scheme → null", () => {
+		expect(varProblem(gatewayHostVar, "cam.example.com")).toBeNull()
+		expect(varProblem(gatewayHostVar, "https://cam.example.com:8443")).toBeNull()
+		expect(varProblem(gatewayHostVar, "http://127.0.0.1:8080")).toBeNull()
 	})
 
 	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
@@ -410,11 +422,16 @@ describe("httpsRedirectPortWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
 	test("fires when the TLS listener is on a port gateway_HOST does not name — the redirect lands where nothing serves TLS", () => {
-		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))).toMatch(/ERR_SSL_PROTOCOL_ERROR/)
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))
+		expect(w).toMatch(/ERR_SSL_PROTOCOL_ERROR/)
+		expect(w).toMatch(/visitors to port 443 \(gateway_HOST\)/)
+		expect(w).toMatch(/terminates TLS on port 8443 \(gateway_PORT_SECURE\)/)
 	})
 
 	test("fires when gateway_HOST names a port the TLS listener does not use", () => {
-		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "443", gateway_HOST: "https://192.168.1.50:8443" }))).toBeTruthy()
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "443", gateway_HOST: "https://192.168.1.50:8443" }))
+		expect(w).toMatch(/visitors to port 8443 \(gateway_HOST\)/)
+		expect(w).toMatch(/terminates TLS on port 443 \(gateway_PORT_SECURE\)/)
 	})
 
 	test("matching ports pass", () => {

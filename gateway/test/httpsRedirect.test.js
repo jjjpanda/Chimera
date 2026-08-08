@@ -51,6 +51,7 @@ describe("the redirect target comes from config, not from the request", () => {
 	afterEach(() => {
 		delete process.env.gateway_PORT_SECURE
 		delete process.env.gateway_HOST
+		process.env.gateway_TRUST_PROXY = "true"
 		jest.resetModules()
 	})
 
@@ -90,6 +91,7 @@ describe("the redirect target comes from config, not from the request", () => {
 	})
 
 	test("falls back to the request host when gateway_HOST is unparseable", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "not a valid host"
 		supertest(freshGateway())
@@ -108,11 +110,22 @@ describe("the redirect target comes from config, not from the request", () => {
 	})
 
 	test("an http:// gateway_HOST with a plain port redirects to hostname + gateway_PORT_SECURE", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "http://192.168.1.50:8080"
 		supertest(freshGateway())
 			.get("/command/health")
 			.set("Host", "192.168.1.50:8080")
 			.expect("location", "https://192.168.1.50:8443/command/health", done)
+	})
+
+	test("an http:// gateway_HOST behind a proxy keeps the proxy's port, not the container's TLS port", (done) => {
+		process.env.gateway_TRUST_PROXY = "true"
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "http://cam.example.com"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("X-Forwarded-Proto", "http")
+			.expect("location", "https://cam.example.com/command/health", done)
 	})
 })

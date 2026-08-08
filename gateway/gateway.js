@@ -7,7 +7,8 @@ var {
 const { helmetOptions, gatewayHost } = require("lib")
 
 var app = express()
-if(process.env.gateway_TRUST_PROXY == "true"){
+const trustProxy = process.env.gateway_TRUST_PROXY == "true"
+if(trustProxy){
 	app.set("trust proxy", 1)
 }
 
@@ -19,7 +20,7 @@ app.use(helmet(helmetOptions))
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const securePort = process.env.gateway_PORT_SECURE || 443
-	const portSuffix = securePort == 443 ? "" : `:${securePort}`
+	const portSuffix = trustProxy || securePort == 443 ? "" : `:${securePort}`
 	const redirectTarget = (() => {
 		try{
 			const url = new URL(gatewayHost())
