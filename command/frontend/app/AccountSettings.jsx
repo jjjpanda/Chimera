@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import { useChangePassword } from "./AuthContext.jsx"
+import LanguagePicker from "./LanguagePicker.jsx"
 import { validatePassword } from "../js/password.js"
 import toast from "../js/toast.js"
 import errorMessage from "../js/errors.js"
@@ -50,21 +51,31 @@ const AccountSettings = () => {
 	)
 
 	return (
-		<Card className="max-w-md">
-			<CardHeader className="pb-2">
-				<CardTitle className="text-sm">{t("auth.changePassword")}</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<form onSubmit={submit} className="flex flex-col gap-4 pt-2">
-					{field("currentPassword", t("auth.currentPassword"), t("auth.currentPasswordPlaceholder"), "current-password")}
-					{field("password", t("auth.newPassword"), t("auth.newPasswordPlaceholder"), "new-password")}
-					<p className="text-xs text-muted -mt-3">{errorMessage("PASSWORD_TOO_SHORT")}</p>
-					{field("confirm", t("auth.confirmPassword"), t("auth.reenterNewPasswordPlaceholder"), "new-password")}
-					<p className="text-xs text-muted">{t("auth.signsYouOut")}</p>
-					<Button type="submit" disabled={pending} className="self-start bg-accent text-accent-foreground hover:bg-accent/80">{t("auth.changePassword")}</Button>
-				</form>
-			</CardContent>
-		</Card>
+		<div className="flex flex-col gap-4">
+			<Card className="max-w-md">
+				<CardHeader className="pb-2">
+					<CardTitle className="text-sm">{t("language.preferences")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<LanguagePicker />
+				</CardContent>
+			</Card>
+			<Card className="max-w-md">
+				<CardHeader className="pb-2">
+					<CardTitle className="text-sm">{t("auth.changePassword")}</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<form onSubmit={submit} className="flex flex-col gap-4 pt-2">
+						{field("currentPassword", t("auth.currentPassword"), t("auth.currentPasswordPlaceholder"), "current-password")}
+						{field("password", t("auth.newPassword"), t("auth.newPasswordPlaceholder"), "new-password")}
+						<p className="text-xs text-muted -mt-3">{errorMessage("PASSWORD_TOO_SHORT")}</p>
+						{field("confirm", t("auth.confirmPassword"), t("auth.reenterNewPasswordPlaceholder"), "new-password")}
+						<p className="text-xs text-muted">{t("auth.signsYouOut")}</p>
+						<Button type="submit" disabled={pending} className="self-start bg-accent text-accent-foreground hover:bg-accent/80">{t("auth.changePassword")}</Button>
+					</form>
+				</CardContent>
+			</Card>
+		</div>
 	)
 }
 

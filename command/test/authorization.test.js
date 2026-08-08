@@ -230,7 +230,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.send({ username: "admin", password: "mockedPassword" })
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", theme: "system" })
+			expect(res.body).toEqual({ error: false, role: "user", theme: "system", language: "en" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
 			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
@@ -339,7 +339,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "system" })
+			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "system", language: "en" })
 		})
 
 		test("returns 401 for valid JWT of deleted user", async () => {
@@ -396,6 +396,33 @@ describe("Authorization Routes", () => {
 				.put("/authorization/theme")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ theme })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+	})
+
+	describe("PUT /authorization/language", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).put("/authorization/language").send({ language: "es" })
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 400 for a language outside the allow-list", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language: "xx" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test.each(require("lib").languages)("returns 200 on successful language update (%s)", async (language) => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})

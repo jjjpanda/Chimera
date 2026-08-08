@@ -51,7 +51,7 @@ module.exports = {
 			: res.status(400).json({ error: true, errors: "INVALID_CREDENTIALS" })
 		const serverError = () => res.status(500).json({ error: true })
 
-		pool.query("SELECT hash, role, force_password_change, theme FROM auth WHERE username = $1", [username], (err, values) => {
+		pool.query("SELECT hash, role, force_password_change, theme, language FROM auth WHERE username = $1", [username], (err, values) => {
 			if (err) return serverError()
 			const row = values.rows[0]
 			bcrypt.compare(password === undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
@@ -61,6 +61,7 @@ module.exports = {
 				req.deviceKey = deviceKey(row.hash)
 				req.forcePasswordChange = row.force_password_change
 				req.userTheme = row.theme ?? "system"
+				req.userLanguage = row.language ?? "en"
 				next()
 			})
 		})
@@ -92,7 +93,7 @@ module.exports = {
 					secure: COOKIE_SECURE,
 					sameSite: "lax"
 				})
-				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange, theme: req.userTheme })
+				res.send({ error: false, role: req.userRole, forcePasswordChange: req.forcePasswordChange, theme: req.userTheme, language: req.userLanguage })
 			}
 		)
 	}

@@ -6,6 +6,7 @@ import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
 import { Button } from "../components/ui/button"
 import errorMessage from "../js/errors.js"
+import LanguagePicker from "./LanguagePicker.jsx"
 
 const LoginForm = (props) => {
 	const [loginStatus, , , inputValues, onLoginEnter, updateUsername, updatePassword, loginError] = useLoginSchema(props)
@@ -60,6 +61,7 @@ const LoginForm = (props) => {
 					>
 						{t("auth.signIn")}
 					</Button>
+					<LanguagePicker />
 				</form>
 			</CardContent>
 		</Card>

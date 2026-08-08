@@ -23,10 +23,10 @@ const creationTasks = [
 		columns: ["id", "timestamp", "camera", "size", "count"],
 	},
 	{
-		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, theme VARCHAR(10) DEFAULT 'system');",
+		query: "CREATE TABLE auth(ID SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE, hash VARCHAR, role VARCHAR(10) NOT NULL DEFAULT 'user', last_login TIMESTAMPTZ, force_password_change BOOLEAN NOT NULL DEFAULT FALSE, theme VARCHAR(10) DEFAULT 'system', language VARCHAR(10) DEFAULT 'en');",
 		description: "authorization table",
 		table: "auth",
-		columns: ["id", "username", "hash", "role", "last_login", "force_password_change", "theme"],
+		columns: ["id", "username", "hash", "role", "last_login", "force_password_change", "theme", "language"],
 	},
 	{
 		query: "CREATE TABLE sessions(ID SERIAL PRIMARY KEY, username VARCHAR(50) REFERENCES auth(username) ON DELETE CASCADE, jti VARCHAR UNIQUE NOT NULL, issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), last_seen TIMESTAMPTZ, ip VARCHAR(45), user_agent TEXT, revoked BOOLEAN NOT NULL DEFAULT FALSE);",

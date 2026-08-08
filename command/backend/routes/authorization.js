@@ -1,5 +1,5 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare, rateLimiter } = require("lib")
+var { validateBody, auth, password, languages, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
 const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
@@ -112,9 +112,9 @@ app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) 
 app.post("/login", blockCrossSite, validateBody, ipLimiter, ipDayLimiter, accountLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
-		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
+		const result = await pool.query("SELECT force_password_change, theme, language FROM auth WHERE username = $1", [req.decoded.username])
 		const row = result.rows[0] ?? {}
-		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system" })
+		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system", language: row.language ?? "en" })
 	} catch (e) {
 		sendError(res, e)
 	}
@@ -125,6 +125,17 @@ app.put("/theme", authorize, validateBody, async (req, res) => {
 	if (!["light", "dark", "system"].includes(theme)) return res.status(400).json({ error: true })
 	try {
 		await pool.query("UPDATE auth SET theme = $1 WHERE username = $2", [theme, req.decoded.username])
+		res.json({ error: false })
+	} catch (e) {
+		sendError(res, e)
+	}
+})
+
+app.put("/language", authorize, validateBody, async (req, res) => {
+	const { language } = req.body
+	if (!languages.includes(language)) return res.status(400).json({ error: true })
+	try {
+		await pool.query("UPDATE auth SET language = $1 WHERE username = $2", [language, req.decoded.username])
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)

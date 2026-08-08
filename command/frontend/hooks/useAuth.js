@@ -41,9 +41,9 @@ const attemptLogout = () =>
 		headers: { "Accept": "application/json", "Content-Type": "application/json" },
 	}, authPromiseHandler)
 
-const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false, theme = null) => {
+const handleLoginAttempt = (verified, role, timestamp, setState, forcePasswordChange = false, theme = null, language = null) => {
 	setTimeout(() => {
-		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false, theme: verified ? theme : null }))
+		setState(s => ({ ...s, loggedIn: verified, role: role || null, forcePasswordChange: verified ? forcePasswordChange : false, theme: verified ? theme : null, language: verified ? language : null }))
 		setTimeout(() => {
 			setState(s => ({ ...s, loaded: true }))
 		}, Math.max(0, timeout - (new Date() - timestamp)))
@@ -59,6 +59,7 @@ const useAuth = () => {
 		role: null,
 		forcePasswordChange: false,
 		theme: null,
+		language: null,
 		timestamp: new Date()
 	})
 
@@ -75,7 +76,7 @@ const useAuth = () => {
 				return
 			}
 			attemptVerification().then(res => {
-				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
+				handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme, res.language)
 			})
 		})
 
@@ -97,7 +98,7 @@ const useAuth = () => {
 	const tryLogin = (username, password, callback) => {
 		attemptLogin(username, password).then(res => {
 			callback(!res.error, res.errors)
-			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme)
+			handleLoginAttempt(!res.error, res.role, state.timestamp, setState, res.forcePasswordChange, res.theme, res.language)
 		})
 	}
 
@@ -117,12 +118,12 @@ const useAuth = () => {
 
 	const signOut = (callback) => {
 		attemptLogout().then(res => {
-			if (!res.error) setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null }))
+			if (!res.error) setState(s => ({ ...s, loggedIn: false, role: null, forcePasswordChange: false, theme: null, language: null }))
 			callback(!res.error, res.errors)
 		})
 	}
 
-	return { loaded: state.loaded, setup: state.setup, tokenRequired: state.tokenRequired, loggedIn: state.loggedIn, role: state.role, forcePasswordChange: state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, theme: state.theme }
+	return { loaded: state.loaded, setup: state.setup, tokenRequired: state.tokenRequired, loggedIn: state.loggedIn, role: state.role, forcePasswordChange: state.forcePasswordChange, tryLogin, trySetup, signOut, changePassword, theme: state.theme, language: state.language }
 }
 
 export default useAuth

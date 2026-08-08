@@ -161,6 +161,11 @@
 		"noneDeleted": "None Deleted",
 		"partialDeleted": "{{deleted}}/{{total}} Deleted"
 	},
+	"language": {
+		"label": "Language",
+		"preferences": "Preferences",
+		"saveFailed": "Couldn't save language"
+	},
 	"live": {
 		"hlsNotSupported": "HLS not supported",
 		"liveVideo": "Live Video",
