@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -181,6 +181,11 @@ if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== 
 const redirectLoop = httpsRedirectLoopWarning(envLines)
 if (redirectLoop) {
 	console.log(redirectLoop)
+}
+
+const certUnreadable = certUnreadableWarning(envLines)
+if (certUnreadable) {
+	console.log(certUnreadable)
 }
 
 const redirectPort = httpsRedirectPortWarning(envLines)

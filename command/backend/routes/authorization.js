@@ -38,7 +38,7 @@ if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+const setupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
 const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (req) => `password:${req.decoded?.username ?? ""}` })
 
@@ -63,7 +63,7 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) => {
+app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 	if (typeof username !== "string") return res.status(400).json({ error: true })

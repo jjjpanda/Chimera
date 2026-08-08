@@ -130,9 +130,8 @@ const varProblem = (v, val) => {
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
-// certbot leaves /etc/letsencrypt/live mode 0700 root on the host, so stat throws EACCES for an ordinary account — only ENOENT/ENOTDIR prove the cert is absent.
-const certMaybePresent = (p) => { try { return fs.statSync(p).isFile() } catch (e) { return e.code !== "ENOENT" && e.code !== "ENOTDIR" } }
 const certUnreadable = (p) => { try { fs.statSync(p); return null } catch (e) { return e.code === "ENOENT" || e.code === "ENOTDIR" ? null : e.code } }
+const certMaybePresent = (p) => isFile(p) || certUnreadable(p) !== null
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -244,19 +243,19 @@ const cookieAmbiguousHostWarning = (lines) =>
 		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
 		: null
 
-// mirrors certPaths(): the two FILEPATH overrides win over the auto-resolved pair, and one override alone disables TLS outright
+// mirrors certPaths(): the two FILEPATH overrides win over the auto-resolved pair, one override alone disables TLS outright, and an IP literal has no Let's Encrypt path
 const configuredCertPair = (lines) => {
 	const [key, cert] = ["privateKey_FILEPATH", "certificate_FILEPATH"].map(k => getVal(lines, k) || "")
-	if (key || cert) return key && cert ? [key, cert] : []
+	if (key || cert) return { paths: key && cert ? [key, cert] : [], source: "override" }
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	if (!hostname) return []
+	if (!hostname || hostname.startsWith("[")) return { paths: [], source: "auto" }
 	const auto = letsencryptPaths(hostname)
-	return [auto.key, auto.cert]
+	return { paths: [auto.key, auto.cert], source: "auto" }
 }
 
 const certPairMaybePresent = (lines) => {
-	const pair = configuredCertPair(lines)
-	return pair.length > 0 && pair.every(certMaybePresent)
+	const { paths } = configuredCertPair(lines)
+	return paths.length > 0 && paths.every(certMaybePresent)
 }
 
 const redirectNeedsLocalCert = (lines) =>
@@ -265,16 +264,20 @@ const redirectNeedsLocalCert = (lines) =>
 
 const certUnreadableWarning = (lines) => {
 	if (!redirectNeedsLocalCert(lines)) return null
-	const unreadable = configuredCertPair(lines).map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
+	const unreadable = configuredCertPair(lines).paths.map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
 	return unreadable.length
 		? `WARNING: cannot read ${unreadable.map(([p, code]) => `${p} (${code})`).join(", ")} from this account, so preflight cannot tell whether the certificate is there and will not warn about the redirect loop. Check it yourself with \`sudo test -f <path>\` — /etc/letsencrypt is mode 0700 root outside the container, and a FILEPATH names a path inside the container, which docker-compose.yml need not mount from this host`
 		: null
 }
 
-const httpsRedirectLoopWarning = (lines) =>
-	redirectNeedsLocalCert(lines) && !certPairMaybePresent(lines)
-		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
-		: null
+const OVERRIDE_PATH_CAVEAT = "\n  already mounted your own pair? privateKey_FILEPATH and certificate_FILEPATH name paths inside the container, and preflight can only stat this host, so it cannot see a pair your compose file mounts from somewhere other than /etc/letsencrypt"
+
+const httpsRedirectLoopWarning = (lines) => {
+	if (!redirectNeedsLocalCert(lines) || certPairMaybePresent(lines)) return null
+	const { paths, source } = configuredCertPair(lines)
+	return "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
+		+ (source === "override" && paths.length ? OVERRIDE_PATH_CAVEAT : "")
+}
 
 const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
@@ -283,7 +286,9 @@ const httpsRedirectPortWarning = (lines) => {
 	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
 	const url = gatewayUrl(lines)
 	if (urlPart(url, "protocol") !== "https:") return null
-	const hostPort = urlPart(url, "port") || GATEWAY_PORT_SECURE_DEFAULT
+	// gateway.js only keeps the gateway_HOST port when it names one; otherwise it appends gateway_PORT_SECURE itself
+	const hostPort = urlPart(url, "port")
+	if (!hostPort) return null
 	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
 	return hostPort === securePort
 		? null
