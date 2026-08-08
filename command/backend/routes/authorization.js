@@ -38,7 +38,7 @@ if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+const setupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
 const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (req) => `password:${req.decoded?.username ?? ""}` })
 
@@ -51,7 +51,7 @@ const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
 const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
 const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
-const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: 15 * 60 * 1000, keyFn: accountKeyFn, skip: deviceKnown })
+const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown })
 
 app.get("/status", async (req, res) => {
 	try {
@@ -63,7 +63,7 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) => {
+app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 	if (typeof username !== "string") return res.status(400).json({ error: true })

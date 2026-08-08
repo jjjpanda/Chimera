@@ -1,6 +1,7 @@
 module.exports = {
 	displayName: "chimera",
 	clearMocks: true,
+	restoreMocks: true,
 	moduleFileExtensions: [
 		"js",
 		"json"

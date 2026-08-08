@@ -1098,7 +1098,9 @@ describe("Authorization Routes", () => {
 			expect(Date.now() - start).toBeLessThan(1000)
 		})
 
-		test("the account throttle window is 15 minutes, not the 10-second default ipLimiter uses", async () => {
+		// the throttle slot is one per username and anyone can take it, so a long window would hand an
+		// attacker a permanent lockout of a user who has no device token — a new browser or a password change
+		test("an attacker holding the account throttle slot costs the real user 10 seconds, not 15 minutes", async () => {
 			const username = "throttlewindowvictim"
 			let now = Date.now()
 			jest.spyOn(Date, "now").mockImplementation(() => now)
@@ -1110,25 +1112,24 @@ describe("Authorization Routes", () => {
 					.set("X-Forwarded-For", `192.0.2.${i}`)
 					.send({ username, password: "wrongpassword" })
 			}
-			const first = await supertest(app)
+			const attacker = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.50")
-				.send({ username, password: "mockedPassword" })
-			expect(first.status).toBe(200)
+				.send({ username, password: "wrongpassword" })
+			expect(attacker.status).toBe(429)
 
-			now += 10 * 1000
-			const tenSecondsLater = await supertest(app)
+			const victim = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.51")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(429)
+			expect(victim.status).toBe(429)
 
-			now += 15 * 60 * 1000
-			const fifteenMinutesLater = await supertest(app)
+			now += 10 * 1000 + 1
+			const tenSecondsLater = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(fifteenMinutesLater.status).toBe(200)
+			expect(tenSecondsLater.status).toBe(200)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {

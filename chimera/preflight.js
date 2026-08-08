@@ -119,6 +119,7 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
+	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
@@ -128,6 +129,9 @@ const varProblem = (v, val) => {
 }
 
 const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
+
+const certUnreadable = (p) => { try { fs.statSync(p); return null } catch (e) { return e.code === "ENOENT" || e.code === "ENOTDIR" ? null : e.code } }
+const certMaybePresent = (p) => isFile(p) || certUnreadable(p) !== null
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -239,19 +243,57 @@ const cookieAmbiguousHostWarning = (lines) =>
 		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
 		: null
 
-const autoResolvedCertOnDisk = (lines) => {
+// mirrors certPaths(): the two FILEPATH overrides win over the auto-resolved pair, one override alone disables TLS outright, and an IP literal has no Let's Encrypt path
+const configuredCertPair = (lines) => {
+	const [key, cert] = ["privateKey_FILEPATH", "certificate_FILEPATH"].map(k => getVal(lines, k) || "")
+	if (key || cert) return { paths: key && cert ? [key, cert] : [], source: "override" }
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	if (!hostname) return false
-	const { key, cert } = letsencryptPaths(hostname)
-	return [key, cert].every(isFile)
+	if (!hostname || hostname.startsWith("[")) return { paths: [], source: "auto" }
+	const auto = letsencryptPaths(hostname)
+	return { paths: [auto.key, auto.cert], source: "auto" }
 }
 
-const httpsRedirectLoopWarning = (lines) =>
+const certPairMaybePresent = (lines) => {
+	const { paths } = configuredCertPair(lines)
+	return paths.length > 0 && paths.every(certMaybePresent)
+}
+
+const redirectNeedsLocalCert = (lines) =>
 	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
-		&& getVal(lines, "certbot_ON") !== "true" && !autoResolvedCertOnDisk(lines)
-		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => isFile(getVal(lines, k) || ""))
-		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
+		&& getVal(lines, "certbot_ON") !== "true"
+
+const certUnreadableWarning = (lines) => {
+	if (!redirectNeedsLocalCert(lines)) return null
+	const unreadable = configuredCertPair(lines).paths.map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
+	return unreadable.length
+		? `WARNING: cannot read ${unreadable.map(([p, code]) => `${p} (${code})`).join(", ")} from this account, so preflight cannot tell whether the certificate is there and will not warn about the redirect loop. Check it yourself with \`sudo test -f <path>\` — /etc/letsencrypt is mode 0700 root outside the container, and a FILEPATH names a path inside the container, which docker-compose.yml need not mount from this host`
 		: null
+}
+
+const OVERRIDE_PATH_CAVEAT = "\n  already mounted your own pair? privateKey_FILEPATH and certificate_FILEPATH name paths inside the container, and preflight can only stat this host, so it cannot see a pair your compose file mounts from somewhere other than /etc/letsencrypt"
+
+const httpsRedirectLoopWarning = (lines) => {
+	if (!redirectNeedsLocalCert(lines) || certPairMaybePresent(lines)) return null
+	const { paths, source } = configuredCertPair(lines)
+	return "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
+		+ (source === "override" && paths.length ? OVERRIDE_PATH_CAVEAT : "")
+}
+
+const GATEWAY_PORT_SECURE_DEFAULT = "443"
+
+const httpsRedirectPortWarning = (lines) => {
+	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
+	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
+	const url = gatewayUrl(lines)
+	if (urlPart(url, "protocol") !== "https:") return null
+	// gateway.js only keeps the gateway_HOST port when it names one; otherwise it appends gateway_PORT_SECURE itself
+	const hostPort = urlPart(url, "port")
+	if (!hostPort) return null
+	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
+	return hostPort === securePort
+		? null
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE), so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+}
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
@@ -261,8 +303,6 @@ const certbotPortProblem = (lines) =>
 const setupTokenHint = (lines) => on(lines, "command")
 	? `The first admin account needs setup_TOKEN — read it with \`grep setup_TOKEN ${path.relative(ROOT, ENV)}\`.\n`
 	: null
-
-const GATEWAY_PORT_SECURE_DEFAULT = "443"
 
 const duplicatePortProblems = (lines) => {
 	const keys = ["gateway_PORT", "gateway_PORT_SECURE", ...SERVICE_PREFIXES.map(s => `${s}_PORT`)]
@@ -332,8 +372,9 @@ const runCheck = () => {
 		if (cam.length) failed = true
 	}
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`\n${redirectLoop}`)
+	for (const w of [httpsRedirectLoopWarning(lines), certUnreadableWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`\n${w}`)
+	}
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -469,8 +510,9 @@ const runInteractive = async () => {
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`${redirectLoop}\n`)
+	for (const w of [httpsRedirectLoopWarning(lines), certUnreadableWarning(lines), httpsRedirectPortWarning(lines)]) {
+		if (w) console.log(`${w}\n`)
+	}
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -554,4 +596,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
