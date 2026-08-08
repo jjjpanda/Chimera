@@ -202,7 +202,7 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>Watchdog</b></summary>
 
-[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the same five gateway health endpoints as the in-container heartbeat. After `watchdog_FAILURES` consecutive failed polls it alerts and restarts the stack; if the failures keep coming it reboots the host, then cycles back to the restart. It never powers the machine off, and cannot rescue a kernel hang.
+[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the same gateway health endpoints as the in-container heartbeat. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if the failures keep coming it reboots the host, then cycles back to the restart. It never powers the machine off, and cannot rescue a kernel hang.
 
 ```
 watchdog_ON = true            # off by default
@@ -216,13 +216,19 @@ watchdog_FAILURES = 3
 */5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
 ```
 
-`npm run watchdog -- --dry-run` prints the restart and reboot commands for this host and exits 0 without running either.
+`npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
+
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every poll and reboots a perfectly healthy host on a loop. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment.
+
+Only services with `<name>_PROXY_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
 **Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
 
 ```
 chimera ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
 ```
+
+Check the path with `command -v systemctl` — sudoers matches it literally, and a rule for `/usr/bin` grants nothing on a distro that ships `/bin/systemctl`. `npm run watchdog -- --dry-run` prints the exact command the watchdog will run.
 
 Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
 

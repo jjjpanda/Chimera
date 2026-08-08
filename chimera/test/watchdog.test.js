@@ -1,4 +1,5 @@
 let mockState = {}
+let mockWriteFails = false
 
 jest.mock("child_process", () => ({ spawnSync: jest.fn(() => ({ status: 0 })) }))
 jest.mock("../compose.js", () => ({
@@ -8,11 +9,16 @@ jest.mock("../compose.js", () => ({
 jest.mock("../../lib/utils/webhookAlert.js", () => jest.fn(() => Promise.resolve()))
 jest.mock("../../lib/utils/jsonFileHandling.js", () => ({
 	readJSON: (_p, cb) => cb(null, mockState),
-	writeJSON: (_p, data, cb) => { mockState = data; cb() }
+	writeJSON: (_p, data, cb, onFail) => {
+		if (mockWriteFails) return onFail(new Error("EACCES: permission denied"))
+		mockState = data
+		cb()
+	}
 }))
 
 process.env.gateway_HOST = "http://127.0.0.1:8080"
 process.env.watchdog_FAILURES = "3"
+for (const s of ["command", "livestream", "object", "schedule", "storage"]) process.env[`${s}_PROXY_ON`] = "true"
 
 const { spawnSync } = require("child_process")
 const { runCompose } = require("../compose.js")
@@ -24,12 +30,14 @@ const down = () => Promise.resolve({ ok: false, status: 502 })
 
 beforeEach(() => {
 	mockState = {}
+	mockWriteFails = false
 	global.fetch = jest.fn(down)
 	jest.spyOn(console, "log").mockImplementation(() => {})
 	jest.spyOn(console, "error").mockImplementation(() => {})
 })
 
 afterEach(() => {
+	process.exitCode = undefined
 	jest.restoreAllMocks()
 })
 
@@ -42,6 +50,17 @@ describe("health endpoints", () => {
 			schedule: "http://127.0.0.1:8080/schedule/health",
 			storage: "http://127.0.0.1:8080/storage/health"
 		})
+	})
+
+	// the gateway does not route an unproxied service, so polling it would reboot a healthy host
+	test("an unproxied service is not polled", () => {
+		process.env.object_PROXY_ON = "false"
+		expect(Object.keys(checkUrl())).not.toContain("object")
+		process.env.object_PROXY_ON = "true"
+	})
+
+	test("the heartbeat and the watchdog read the same map", () => {
+		expect(require("../../lib/utils/healthChecks.js")()).toEqual(checkUrl())
 	})
 })
 
@@ -100,22 +119,27 @@ describe("escalation order", () => {
 
 describe("reboot failures", () => {
 	const run = (result) => {
-		const exit = jest.spyOn(process, "exit").mockImplementation(() => {})
 		spawnSync.mockReturnValueOnce(result)
 		reboot()
-		return exit
 	}
 
-	test("exits non-zero naming the missing command", () => {
-		const exit = run({ error: Object.assign(new Error("spawn"), { code: "ENOENT" }) })
-		expect(exit).toHaveBeenCalledWith(1)
+	test("reports a non-zero exit code naming the missing command", () => {
+		run({ error: Object.assign(new Error("spawn"), { code: "ENOENT" }) })
+		expect(process.exitCode).toBe(1)
 		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("reboot command not found"))
 	})
 
-	test("exits non-zero pointing at the missing privilege", () => {
-		const exit = run({ status: 1 })
-		expect(exit).toHaveBeenCalledWith(1)
+	test("reports a non-zero exit code pointing at the missing privilege", () => {
+		run({ status: 1 })
+		expect(process.exitCode).toBe(1)
 		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("cannot reboot the host"))
+	})
+
+	// process.exit would kill the loop, taking the restart stage down with the reboot stage
+	test("a failed reboot leaves the process alive", () => {
+		const exit = jest.spyOn(process, "exit").mockImplementation(() => {})
+		run({ status: 1 })
+		expect(exit).not.toHaveBeenCalled()
 	})
 })
 
@@ -134,7 +158,7 @@ describe("runOnce", () => {
 
 	test("restarts the stack on the threshold, and reboots only on the next one", async () => {
 		await failUntilThreshold()
-		expect(runCompose).toHaveBeenCalledWith(["restart"])
+		expect(runCompose).toHaveBeenCalledWith(["up", "-d", "--force-recreate"])
 		expect(spawnSync).not.toHaveBeenCalled()
 
 		await failUntilThreshold()
@@ -165,7 +189,7 @@ describe("runOnce", () => {
 
 		global.fetch = jest.fn(down)
 		await failUntilThreshold()
-		expect(runCompose).toHaveBeenCalledWith(["restart"])
+		expect(runCompose).toHaveBeenCalledWith(["up", "-d", "--force-recreate"])
 		expect(spawnSync).not.toHaveBeenCalled()
 	})
 
@@ -175,9 +199,17 @@ describe("runOnce", () => {
 		expect(mockState.failures).toBe(1)
 	})
 
+	// a swallowed write error pins the count at 1 forever, so the watchdog never acts on a real outage
+	test("an unwritable state file is reported, not swallowed", async () => {
+		mockWriteFails = true
+		await runOnce()
+		expect(process.exitCode).toBe(1)
+		expect(console.error).toHaveBeenCalledWith(expect.stringContaining("cannot write"))
+	})
+
 	test("a thrown request counts as a failure, so an unreachable gateway escalates", async () => {
 		global.fetch = jest.fn(() => Promise.reject(new Error("ECONNREFUSED")))
 		await failUntilThreshold()
-		expect(runCompose).toHaveBeenCalledWith(["restart"])
+		expect(runCompose).toHaveBeenCalledWith(["up", "-d", "--force-recreate"])
 	})
 })

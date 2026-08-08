@@ -1,16 +1,8 @@
 require("dotenv").config()
-const { gatewayHost } = require("lib")
-
-const baseUrl = gatewayHost()
+const { healthChecks } = require("lib")
 
 module.exports = {
-	checkUrl: {
-		command: `${baseUrl}/command/health`,
-		livestream: `${baseUrl}/livestream/health`,
-		object: `${baseUrl}/object/health`,
-		schedule: `${baseUrl}/schedule/health`,
-		storage: `${baseUrl}/storage/health`
-	},
+	checkUrl: healthChecks(),
 	webhookUrl: process.env.alert_URL,
 	cronString: "*/10 * * * *",
 	consoleOutput: true

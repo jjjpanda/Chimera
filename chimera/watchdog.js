@@ -1,23 +1,21 @@
-require("dotenv").config()
+const { ENV, readLines, watchdogHostWarning } = require("./preflight.js")
+require("dotenv").config({ path: ENV })
 const fs = require("fs")
 const os = require("os")
 const path = require("path")
 const { spawnSync } = require("child_process")
 const { composeCommand, runCompose } = require("./compose.js")
-const gatewayHost = require("../lib/utils/gatewayHost.js")
+const checkUrl = require("../lib/utils/healthChecks.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
 
-const SERVICES = ["command", "livestream", "object", "schedule", "storage"]
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
 const POLL_TIMEOUT_MS = 10000
-const RESTART_ARGS = ["restart"]
-
-const checkUrl = () => {
-	const baseUrl = gatewayHost()
-	return Object.fromEntries(SERVICES.map(s => [s, `${baseUrl}/${s}/health`]))
-}
+// plain `restart` exits 0 without doing anything once the containers are gone
+const RESTART_ARGS = ["up", "-d", "--force-recreate"]
+const NO_REBOOT = `no reboot command known for platform ${process.platform} — the watchdog cannot recover this host`
+const NOTHING_TO_POLL = "no service has *_PROXY_ON=true — the gateway routes no health endpoint to watch"
 
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
@@ -50,26 +48,27 @@ const privileged = (command, platform = process.platform, uid = process.getuid?.
 
 const nextStage = (stage) => (stage + 1) % STAGES.length
 
-const die = (reason) => {
+// a stage that cannot run must not take the loop down with it — the other stage may still work
+const fail = (reason) => {
 	console.error(reason)
-	process.exit(1)
+	process.exitCode = 1
 }
 
 const rebootArgv = () => {
 	const command = rebootCommand()
-	if (!command) die(`no reboot command known for platform ${process.platform} — the watchdog cannot recover this host`)
-	return privileged(command)
+	return command && privileged(command)
 }
 
 const reboot = () => {
 	const argv = rebootArgv()
+	if (!argv) return fail(NO_REBOOT)
 	const [command, ...args] = argv
 	console.log(`watchdog: ${argv.join(" ")}`)
 	const { status, error } = spawnSync(command, args, { stdio: "inherit", shell: process.platform === "win32" })
-	if (error) die(error.code === "ENOENT"
+	if (error) return fail(error.code === "ENOENT"
 		? `reboot command not found: ${command}`
 		: `reboot command failed: ${error.message}`)
-	if (status !== 0) die(`\`${argv.join(" ")}\` exited ${status} — this user cannot reboot the host; grant it the privilege listed in the README watchdog section`)
+	if (status !== 0) fail(`\`${argv.join(" ")}\` exited ${status} — this user cannot reboot the host; grant it the privilege listed in the README watchdog section`)
 }
 
 const restart = () => {
@@ -81,7 +80,10 @@ const restart = () => {
 const readState = () => new Promise(resolve =>
 	readJSON(STATE_FILE, (_, data) => resolve({ failures: 0, stage: 0, ...data })))
 
-const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state, resolve, resolve))
+const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state, resolve, ({ message }) => {
+	fail(`watchdog: cannot write ${STATE_FILE} (${message}) — the failure count cannot survive this run, so the watchdog will never reach its threshold`)
+	resolve()
+}))
 
 const act = async (stage, failed) => {
 	await webhookAlert(`⚠️ Chimera watchdog on ${os.hostname()}: ${stage === "reboot" ? "rebooting the host" : "restarting the stack"}\n${failed.join("\n")}`)
@@ -114,14 +116,19 @@ const loop = async () => {
 }
 
 const dryRun = () => {
+	const argv = rebootArgv()
 	console.log(composeCommand(RESTART_ARGS).join(" "))
-	console.log(rebootArgv().join(" "))
+	console.log(argv ? argv.join(" ") : NO_REBOOT)
+	console.log(Object.values(checkUrl()).join("\n") || NOTHING_TO_POLL)
 }
 
 if (require.main === module) {
+	const schemeWarning = watchdogHostWarning(readLines())
+	if (schemeWarning) console.warn(schemeWarning)
 	if (process.argv.includes("--dry-run")) dryRun()
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
-	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => die(message))
+	else if (!Object.keys(checkUrl()).length) console.log(NOTHING_TO_POLL)
+	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
 }
 
 module.exports = { STAGES, checkUrl, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot }

@@ -22,7 +22,7 @@ jest.mock("fs", () => {
 })
 
 const fs = require("fs")
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -403,6 +403,28 @@ describe("httpsRedirectLoopWarning", () => {
 		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
 		statSpy.mockRestore()
+	})
+})
+
+describe("watchdogHostWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on a scheme-less host — normalizeHost reads it as https, so a plain-HTTP deploy reboot-loops", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reboots a healthy host/)
+	})
+
+	test("an explicit scheme rules it out, either way", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("never fires while the watchdog is off — nothing polls, so nothing reboots", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "false", gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
+	})
+
+	test("names NODE_EXTRA_CA_CERTS, since node's fetch rejects the self-signed pair the FILEPATH vars allow", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "cam.example.com" }))).toMatch(/NODE_EXTRA_CA_CERTS/)
 	})
 })
 

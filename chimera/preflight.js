@@ -211,6 +211,7 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const urlPart = (url, part) => { try { return new URL(url)[part] } catch { return "" } }
 const gatewayUrl = (lines) => normalizeHost(getVal(lines, "gateway_HOST"))
 const rawGatewayHost = (lines) => (getVal(lines, "gateway_HOST") || "").trim()
+const schemelessHost = (lines) => rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
 
 const insecureCookie = (lines) => {
 	if (isServiceOff(lines, "command_COOKIE_SECURE") || getVal(lines, "command_COOKIE_SECURE") === "true") return false
@@ -232,10 +233,15 @@ const cookiePlainHttpProblem = (lines) =>
 
 const cookieAmbiguousHostWarning = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
-		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
+		&& schemelessHost(lines)
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
 		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
+		: null
+
+const watchdogHostWarning = (lines) =>
+	getVal(lines, "watchdog_ON") === "true" && schemelessHost(lines)
+		? "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the watchdog polls https://. On a plain-HTTP deploy every poll fails and the watchdog reboots a healthy host on a loop — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 		: null
 
 const autoResolvedCertOnDisk = (lines) => {
@@ -249,6 +255,8 @@ const httpsRedirectLoopWarning = (lines) =>
 		&& !["privateKey_FILEPATH", "certificate_FILEPATH"].every(k => path.isAbsolute(getVal(lines, k) || ""))
 		? "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		: null
+
+const warnings = (lines) => [httpsRedirectLoopWarning, watchdogHostWarning].map(w => w(lines)).filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
@@ -329,8 +337,7 @@ const runCheck = () => {
 		if (cam.length) failed = true
 	}
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`\n${redirectLoop}`)
+	warnings(lines).forEach(w => console.log(`\n${w}`))
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -466,8 +473,7 @@ const runInteractive = async () => {
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
 
-	const redirectLoop = httpsRedirectLoopWarning(lines)
-	if (redirectLoop) console.log(`${redirectLoop}\n`)
+	warnings(lines).forEach(w => console.log(`${w}\n`))
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -551,4 +557,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

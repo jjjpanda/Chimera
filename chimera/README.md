@@ -77,14 +77,16 @@ Host-side liveness check, the only script here that keeps running after boot. Op
 ```
 npm run watchdog              # self-polling, every watchdog_INTERVAL_MS
 npm run watchdog:once         # one pass, then exit — for a scheduler
-npm run watchdog -- --dry-run # print the restart and reboot commands, exit 0
+npm run watchdog -- --dry-run # print the restart command, the reboot command and the polled URLs, exit 0
 ```
 
-- Polls the five `<gateway_HOST>/<service>/health` endpoints the [heartbeat](../heartbeat.config.js) uses. Any non-2xx or thrown request fails the whole poll; a clean poll resets the count and the stage.
-- Acts after `watchdog_FAILURES` consecutive failed polls, alternating `docker compose restart` and a host reboot, indefinitely. Nothing powers the machine off.
+- Polls the `<gateway_HOST>/<service>/health` endpoints from [healthChecks.js](../lib/utils/healthChecks.js), the same map the [heartbeat](../heartbeat.config.js) uses. Only services with `<name>_PROXY_ON=true` are in it — the gateway routes no health path for the rest, so polling them would read a deliberate opt-out as an outage. Any non-2xx or thrown request fails the whole poll; a clean poll resets the count and the stage.
+- Acts after `watchdog_FAILURES` consecutive failed polls, alternating a stack restart and a host reboot, indefinitely. Nothing powers the machine off.
+- Restarts with `docker compose up -d --force-recreate` through `compose.js`, keeping the `certbot` scaling and the Windows `shell: true` handling. Plain `restart` exits `0` without doing anything once `docker:down` or a half-finished `docker:rebuild` has removed the containers, which would send a recoverable host to a pointless reboot.
 - Runs on the host because the heartbeat is a pm2 app inside `chimera` and dies with what it watches. Neither survives a kernel hang.
-- Restarts through `compose.js`, keeping the `certbot` scaling and the Windows `shell: true` handling.
-- Reboot: `systemctl reboot` (linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (linux without systemd, darwin), `shutdown /r /t 0` (win32), prefixed with `sudo -n` for a non-root posix user. An unknown platform, a missing binary, or a non-zero exit all exit `1` with the reason.
+- Takes `.env` and the compose cwd from `preflight.js`'s `ENV`/`ROOT`, so a scheduler can run this from any directory.
+- Reboot: `systemctl reboot` (linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (linux without systemd, darwin), `shutdown /r /t 0` (win32), prefixed with `sudo -n` for a non-root posix user. An unknown platform, a missing binary, or a non-zero exit sets exit code `1` and logs the reason, but does not tear the process down — the restart stage is still worth running on the next cycle.
 - Awaits the alert before rebooting, which is why `webhookAlert` returns its promise.
-- `watchdog.state.json` holds `{ failures, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs.
+- `watchdog.state.json` holds `{ failures, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs. A write failure is logged and exits `1`, since a count that cannot persist never reaches the threshold.
 - `watchdog_ON` must be `true`; anything else exits `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`, and preflight rejects a non-integer or a value below `1`.
+- Prints preflight's `watchdogHostWarning` on startup rather than running `preflight.js --check` as a `pre` hook: `--check` exits `1` on any unrelated env problem, and npm would then skip the watchdog itself — leaving the host unwatched exactly when it is degraded.
