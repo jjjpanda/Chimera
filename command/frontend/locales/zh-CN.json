@@ -138,7 +138,7 @@
 		"ranAgo": "运行于 {{time}}",
 		"scan": "扫描",
 		"scanResultEmpty": "摄像头 {{camera}}：未发现任何内容",
-		"scanResultFound": "摄像头 {{camera}}：{{count}} 个检测结果",
+		"scanResultFound_other": "摄像头 {{camera}}：{{count}} 个检测结果",
 		"scanningCamera": "正在扫描摄像头 {{camera}}…",
 		"scrubDetections": "拖动检测",
 		"title": "物体检测"
@@ -170,8 +170,7 @@
 		"hlsNotSupported": "不支持 HLS",
 		"liveVideo": "实时视频",
 		"offline": "离线",
-		"offlineManyRestarts": "离线 · 已重启 {{count}} 次",
-		"offlineOneRestart": "离线 · 已重启 1 次",
+		"offlineRestarts_other": "离线 · 已重启 {{count}} 次",
 		"restartAllStreams": "重启所有摄像头流",
 		"restartFailed_other": "{{count}} 个摄像头无法重启",
 		"restartStreams": "重启流",

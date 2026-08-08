@@ -2,7 +2,12 @@ const tags = require("lib/utils/languages.json")
 const { default: i18n, resources } = require("../frontend/js/i18n.js")
 const en = require("../frontend/locales/en.json")
 
-const PLURAL_BASES = ["live.restartFailed", "stats.dayCount", "stats.days", "stats.olderThanDays"]
+const EXEMPT = {
+	"clip.videoCount": "Not a plural pair — the singular is clip.video, a different string. Guarded at ClipMaker.jsx:979.",
+	"clip.archiveCount": "Not a plural pair — the singular is clip.archive, a different string. Guarded at ClipMaker.jsx:986.",
+	"footage.deferredSuffix": "Label form rather than a sentence; reads correctly at 1 in every locale."
+}
+
 const stripPlural = (key) => key.replace(/_(zero|one|two|few|many|other)$/, "")
 const placeholders = (value) => [...value.matchAll(/{{\s*(\w+)[^}]*}}/g)].map(([, name]) => name).sort()
 
@@ -14,7 +19,17 @@ const flatten = (obj, prefix = "") =>
 
 const flat = flatten(en)
 
+const countBases = [...new Set(Object.entries(flat).filter(([, value]) => /{{\s*count\b/.test(value)).map(([key]) => stripPlural(key)))]
+const PLURAL_BASES = countBases.filter(base => !(base in EXEMPT))
+
 afterEach(() => i18n.changeLanguage("en"))
+
+test("every exempted key still exists and is not secretly pluralised", () => {
+	for (const base of Object.keys(EXEMPT)) {
+		expect(flat[base]).toBeDefined()
+		expect(countBases).toContain(base)
+	}
+})
 
 test("every English key holds a non-empty string", () => {
 	for (const [key, value] of Object.entries(flat)) {

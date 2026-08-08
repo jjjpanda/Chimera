@@ -138,7 +138,7 @@
 		"ranAgo": "{{time}} 실행됨",
 		"scan": "스캔",
 		"scanResultEmpty": "카메라 {{camera}}: 아무것도 찾지 못함",
-		"scanResultFound": "카메라 {{camera}}: {{count}}개 감지됨",
+		"scanResultFound_other": "카메라 {{camera}}: {{count}}개 감지됨",
 		"scanningCamera": "카메라 {{camera}} 스캔 중…",
 		"scrubDetections": "감지 탐색",
 		"title": "객체 감지"
@@ -170,8 +170,7 @@
 		"hlsNotSupported": "HLS가 지원되지 않습니다",
 		"liveVideo": "실시간 영상",
 		"offline": "오프라인",
-		"offlineManyRestarts": "오프라인 · {{count}}회 재시작",
-		"offlineOneRestart": "오프라인 · 1회 재시작",
+		"offlineRestarts_other": "오프라인 · {{count}}회 재시작",
 		"restartAllStreams": "모든 카메라 스트림 재시작",
 		"restartFailed_other": "카메라 {{count}}대를 재시작할 수 없습니다",
 		"restartStreams": "스트림 재시작",

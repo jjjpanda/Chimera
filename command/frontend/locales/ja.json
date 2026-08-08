@@ -138,7 +138,7 @@
 		"ranAgo": "{{time}}に実行",
 		"scan": "スキャン",
 		"scanResultEmpty": "カメラ {{camera}}：何も見つかりませんでした",
-		"scanResultFound": "カメラ {{camera}}：{{count}} 件の検出",
+		"scanResultFound_other": "カメラ {{camera}}：{{count}} 件の検出",
 		"scanningCamera": "カメラ {{camera}} をスキャン中…",
 		"scrubDetections": "検出をシーク",
 		"title": "物体検出"
@@ -170,8 +170,7 @@
 		"hlsNotSupported": "HLS はサポートされていません",
 		"liveVideo": "ライブ映像",
 		"offline": "オフライン",
-		"offlineManyRestarts": "オフライン・{{count}} 回再起動",
-		"offlineOneRestart": "オフライン・1 回再起動",
+		"offlineRestarts_other": "オフライン・{{count}} 回再起動",
 		"restartAllStreams": "すべてのカメラストリームを再起動",
 		"restartFailed_other": "{{count}} 台のカメラを再起動できませんでした",
 		"restartStreams": "ストリームを再起動",
