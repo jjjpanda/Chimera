@@ -29,6 +29,15 @@ describe("loginAttempts", () => {
 		expect(blocked).toBe(false)
 	})
 
+	test("eviction drops the soonest-to-expire keys first, so a spent daily budget outlives a flood of short-window ones", () => {
+		const { loginReserve } = makeLoginAttempts()
+		loginReserve("day:ip:attacker", 1, 24 * 60 * 60 * 1000, () => {})
+		for (let i = 0; i < 21000; i++) loginReserve(`flood-${i}`, 100, 15 * 60 * 1000, () => {})
+		let blocked
+		loginReserve("day:ip:attacker", 1, 24 * 60 * 60 * 1000, (b) => { blocked = b })
+		expect(blocked).toBe(true)
+	})
+
 	test("eviction past MAX_KEYS is age-based, not preferential to non-saturated victim counters", () => {
 		const { loginReserve } = makeLoginAttempts()
 		loginReserve("saturated-old", 1, 60000, () => {})

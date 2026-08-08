@@ -530,10 +530,14 @@ describe("certUnreadableWarning", () => {
 describe("httpsRedirectPortWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
-	test("fires when the TLS listener is on a port gateway_HOST does not name — the redirect lands where nothing serves TLS", () => {
-		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))
+	test("stays quiet when gateway_HOST names no port — gateway.js appends gateway_PORT_SECURE itself, so the redirect reaches the listener", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))).toBeNull()
+	})
+
+	test("fires when the TLS listener is on a port gateway_HOST names differently — the redirect lands where nothing serves TLS", () => {
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50:9443" }))
 		expect(w).toMatch(/ERR_SSL_PROTOCOL_ERROR/)
-		expect(w).toMatch(/visitors to port 443 \(gateway_HOST\)/)
+		expect(w).toMatch(/visitors to port 9443 \(gateway_HOST\)/)
 		expect(w).toMatch(/terminates TLS on port 8443 \(gateway_PORT_SECURE\)/)
 	})
 

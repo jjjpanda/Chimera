@@ -13,7 +13,7 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-Forwarded with `X-Forwarded-*` (`xfwd`). Any `Authorization` header on the incoming request is dropped before forwarding. The gateway does no auth of its own — each service enforces its own after the proxy hop.
+The gateway sets `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` itself rather than letting the proxy append to whatever arrived, so a backend on `trust proxy 1` reads one entry and it is the client, not the gateway or the proxy in front of it. Any `Authorization` header on the incoming request is dropped before forwarding. The gateway does no auth of its own — each service enforces its own after the proxy hop.
 
 If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), drop `Authorization` there too. Passing it through from public traffic lets an outsider act as the scheduler.
 
@@ -26,7 +26,7 @@ The gateway runs two listeners:
 
 `gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. It reads `req.secure` — by default the gateway's own TLS socket, which cannot be spoofed.
 
-Everyone lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed — so pick a name every visitor can resolve, and don't put a port on it unless it is `gateway_PORT_SECURE`. With no usable `gateway_HOST` the redirect follows the browser's own `Host` header, which anyone can forge.
+Everyone lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed — so pick a name every visitor can resolve, and don't put a port on it unless it is `gateway_PORT_SECURE`. With no usable `gateway_HOST` the redirect fails closed with a 500 rather than following the browser's own `Host` header, which anyone can forge.
 
 `gateway_TRUST_PROXY=true` enables `trust proxy`, so `req.secure` reads `X-Forwarded-Proto` instead. Set it only when something in front terminates TLS (nginx, a CDN, a tunnel); the redirect loops without it. It stays opt-in because anyone who can reach `gateway_PORT` directly can forge that header and skip the redirect.
 

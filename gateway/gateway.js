@@ -18,6 +18,9 @@ app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"),
 
 app.use(helmet(helmetOptions))
 
+const forwardedProto = (req) => (req.headers["x-forwarded-proto"] || "").split(",").pop().trim().toLowerCase()
+const isSecure = (req) => !!req.socket.encrypted || (trustProxy && forwardedProto(req) == "https")
+
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const securePort = process.env.gateway_PORT_SECURE || 443
 	const portSuffix = trustProxy || String(securePort) == "443" ? "" : `:${securePort}`
@@ -31,18 +34,23 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 		}
 	})()
 	app.use((req, res, next) => {
-		if(req.secure || req.path.split("/")[1] == ".well-known"){
+		if(isSecure(req) || req.path.split("/")[1] == ".well-known"){
 			next()
 		}
+		else if(redirectTarget){
+			res.redirect(`https://${redirectTarget}${req.url}`)
+		}
 		else{
-			const host = (req.headers.host || "").replace(/:\d+$/, "")
-			res.redirect(`https://${redirectTarget || `${host}${portSuffix}`}${req.url}`)
+			res.status(500).send("gateway_HOST is missing or unparseable, so there is no HTTPS redirect target")
 		}
 	})
 }
 
 app.use((req, res, next) => {
 	delete req.headers.authorization
+	req.headers["x-forwarded-for"] = req.ip || req.socket.remoteAddress || ""
+	req.headers["x-forwarded-proto"] = isSecure(req) ? "https" : "http"
+	req.headers["x-forwarded-host"] = req.headers.host || ""
 	next()
 })
 
@@ -71,7 +79,6 @@ for(const apiService of services){
 		}, {
 			target: baseURL,
 			logLevel: "silent",
-			xfwd: true,
 		}))
 	}
 }

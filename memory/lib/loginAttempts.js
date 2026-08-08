@@ -5,7 +5,8 @@ module.exports = () => {
 		if(hits.size > 5000) for(const [k, v] of hits) if(now > v.reset) hits.delete(k)
 		if(hits.size > MAX_KEYS){
 			const target = MAX_KEYS - (MAX_KEYS >> 3)
-			for(const k of hits.keys()){
+			const soonestFirst = [...hits.entries()].sort((a, b) => a[1].reset - b[1].reset)
+			for(const [k] of soonestFirst){
 				if(hits.size <= target) break
 				hits.delete(k)
 			}

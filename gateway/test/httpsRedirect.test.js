@@ -2,6 +2,7 @@ const supertest = require("supertest")
 
 process.env.gateway_HTTPS_Redirect = "true"
 process.env.gateway_TRUST_PROXY = "true"
+process.env.gateway_HOST = "https://cam.example.com"
 const gateway = require("../gateway.js")
 
 jest.mock("memory")
@@ -90,14 +91,18 @@ describe("the redirect target comes from config, not from the request", () => {
 			.expect("location", "https://cam.example.com/command/health", done)
 	})
 
-	test("falls back to the request host when gateway_HOST is unparseable", (done) => {
+	test("fails closed when gateway_HOST is unparseable, rather than letting the request pick the target", (done) => {
 		process.env.gateway_TRUST_PROXY = "false"
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "not a valid host"
 		supertest(freshGateway())
 			.get("/command/health")
-			.set("Host", "192.168.1.50:8080")
-			.expect("location", "https://192.168.1.50:8443/command/health", done)
+			.set("Host", "phish.example.com")
+			.expect(500)
+			.expect((res) => {
+				if (res.headers.location) throw new Error("redirected to a target taken from the request")
+			})
+			.end(done)
 	})
 
 	test("a proxied deploy redirects to the gateway_HOST port, not gateway_PORT_SECURE", (done) => {
