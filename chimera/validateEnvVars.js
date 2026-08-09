@@ -36,7 +36,7 @@ const rawGatewayHost = (process.env.gateway_HOST || "").trim()
 if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
 	try { new URL(gatewayHost()) }
 	catch {
-		console.log("gateway_HOST MUST BE A VALID URL — gateway.js builds the HTTPS redirect target from it and refuses to substitute the client-supplied Host header, so an unparseable value answers every http:// request with a 500 instead of redirecting")
+		console.log("gateway_HOST MUST BE A VALID URL — gateway.js builds the https:// redirect target from it, and will not fall back to the Host header the client sent. An unparseable value answers every http:// request with a 500 instead of a redirect")
 		allEnvPresent = false
 	}
 }
@@ -175,7 +175,7 @@ duplicatePorts.forEach(([k, p]) => {
 })
 
 if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
-	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app, so passwords cross the network in cleartext and the browser drops the Secure cookie, failing the login silently")
+	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app. Passwords cross the network in cleartext, and the browser drops the Secure cookie, so the login fails and says nothing")
 }
 
 redirectWarnings(envLines).forEach(w => console.log(w))

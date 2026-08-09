@@ -239,14 +239,14 @@ const insecureCookie = (lines) => {
 
 const cookieSecureProblem = (lines) =>
 	insecureCookie(lines) && (urlPart(gatewayUrl(lines), "protocol") === "https:" || getVal(lines, "gateway_HTTPS_Redirect") === "true" || getVal(lines, "certbot_ON") === "true")
-		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON), so the session cookie ships without Secure and leaks on the first plain-HTTP request. For a plain-HTTP deploy, give gateway_HOST an explicit http:// prefix and leave gateway_HTTPS_Redirect and certbot_ON false"
+		? "command_COOKIE_SECURE MUST BE true — this deploy serves HTTPS on a non-loopback host (the gateway_HOST scheme, gateway_HTTPS_Redirect, or certbot_ON says so). The session cookie ships without Secure and leaks on the first plain-HTTP request. For a plain-HTTP deploy, give gateway_HOST an explicit http:// prefix, and leave gateway_HTTPS_Redirect and certbot_ON false"
 		: null
 
 const cookiePlainHttpProblem = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
 		&& /^http:\/\//i.test(rawGatewayHost(lines)) && getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(rawGatewayHost(lines), "hostname") || rawGatewayHost(lines).replace(/^https?:\/\//i, ""))
-		? "command_COOKIE_SECURE MUST BE false — gateway_HOST is http:// and neither gateway_HTTPS_Redirect nor certbot_ON marks this deploy HTTPS, so browsers drop the Secure cookie and login loops with no error. For HTTPS, terminate TLS (certbot_ON, your own certs, or a proxy) and write gateway_HOST as https://"
+		? "command_COOKIE_SECURE MUST BE false — gateway_HOST is http://, and neither gateway_HTTPS_Redirect nor certbot_ON marks this deploy as HTTPS. Browsers drop the Secure cookie, so the login loops with no error. For HTTPS, terminate TLS (certbot_ON, your own certs, or a proxy) and write gateway_HOST as https://"
 		: null
 
 const cookieAmbiguousHostWarning = (lines) =>
@@ -254,7 +254,7 @@ const cookieAmbiguousHostWarning = (lines) =>
 		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
-		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers actually reach this deploy over http://, login loops forever — give gateway_HOST an explicit http:// prefix"
+		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers reach this deploy over http://, the login loops forever. Give gateway_HOST an explicit http:// prefix"
 		: null
 
 const configuredCertPair = (lines) => {
@@ -280,16 +280,18 @@ const certUnreadableWarning = (lines) => {
 	const unreadable = configuredCertPair(lines).paths.map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
 	if (!unreadable.length) return null
 	const named = unreadable.map(([p, code]) => `${p} (${code})`).join(", ")
-	const blind = certPairMaybePresent(lines) ? ", and an unreadable path is not proof the certificate is absent, so the redirect-loop warning stays silent" : ""
-	return `WARNING: cannot read ${named} as this user${blind}. The gateway opens the same paths as uid 1000 and leaves the secure listener down if it cannot — /etc/letsencrypt is mode 0700 root, and a FILEPATH names a path inside the container, so docker-compose.yml must mount it and uid 1000 must be able to read it`
+	const blind = certPairMaybePresent(lines) ? "\n  A path this user cannot read is not proof the certificate is absent, so the redirect-loop warning stays silent." : ""
+	return `WARNING: this user cannot read ${named}.${blind}`
+		+ "\n  The gateway opens the same paths as uid 1000. If it cannot open them, the secure listener stays down."
+		+ "\n  /etc/letsencrypt is mode 0700 root. A FILEPATH names a path inside the container, so docker-compose.yml must mount it, and uid 1000 must be able to read it."
 }
 
-const OVERRIDE_PATH_CAVEAT = "\n  already mounted your own pair? privateKey_FILEPATH and certificate_FILEPATH name paths inside the container, and this check can only look at the filesystem it runs on — from the host that is the mount source, not the container path"
+const OVERRIDE_PATH_CAVEAT = "\n  Already mounted your own pair? privateKey_FILEPATH and certificate_FILEPATH name paths inside the container. This check can only look at the filesystem it runs on. From the host, that is the mount source, not the container path."
 
 const httpsRedirectLoopWarning = (lines) => {
 	if (!redirectNeedsLocalCert(lines) || certPairMaybePresent(lines)) return null
 	const { paths, source } = configuredCertPair(lines)
-	return "WARNING: gateway_HTTPS_Redirect=true, but nothing serves https:// here and gateway_TRUST_PROXY is not true, so every page redirects to itself (ERR_TOO_MANY_REDIRECTS). Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true and make it send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
+	return "WARNING: gateway_HTTPS_Redirect=true, but nothing here serves https:// and gateway_TRUST_PROXY is not true. Every page redirects to itself (ERR_TOO_MANY_REDIRECTS).\n  Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true, and make the proxy send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
 		+ (source === "override" && paths.length ? OVERRIDE_PATH_CAVEAT : "")
 }
 
@@ -300,7 +302,7 @@ const httpsRedirectPortWarning = (lines) => {
 	const url = gatewayUrl(lines)
 	if (!urlPart(url, "hostname")) return null
 	if (urlPart(url, "protocol") !== "https:") {
-		return "WARNING: gateway_HTTPS_Redirect=true but gateway_HOST is http:// — the redirect always sends visitors to https://, so the scheme is ignored and any port gateway_HOST names is dropped whenever gateway_TRUST_PROXY=true, landing them on 443. Write gateway_HOST as https:// with the port browsers reach, or turn the redirect off"
+		return "WARNING: gateway_HTTPS_Redirect=true but gateway_HOST is http://. The redirect always sends visitors to https://, so it ignores the scheme. With gateway_TRUST_PROXY=true it also drops any port gateway_HOST names and lands visitors on 443. Write gateway_HOST as https:// with the port browsers reach, or turn the redirect off"
 	}
 	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
 	const hostPort = urlPart(url, "port")
@@ -308,7 +310,7 @@ const httpsRedirectPortWarning = (lines) => {
 	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
 	return hostPort === securePort
 		? null
-		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE), so the redirect lands where nothing terminates TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE). The redirect lands on a port that serves no TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
 }
 
 const redirectWarnings = (lines) =>

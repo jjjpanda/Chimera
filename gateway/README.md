@@ -1,45 +1,95 @@
 # Gateway <img src="../command/frontend/res/logo.png" alt="logo" width="20"/> 
 
-Reverse proxy and single public entrypoint; matches each request by method + path ([services.js](services.js)) and forwards it to that service's `<prefix>_HOST`.
+Reverse proxy and the only public entry point. It matches each request by method and path ([services.js](services.js)), then sends the request to that service's `<prefix>_HOST`.
 
 ---
 # Proxied services
 
-Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path match its start-anchored regexes ([services.js](services.js)):
+The gateway forwards a request only when both of these are true:
 
-- [storage](../storage) — GET, POST, DELETE
-- [schedule](../schedule) — GET, POST
-- [livestream](../livestream) — GET, POST
-- [object](../object) — GET, POST
-- [command](../command) — GET, POST, PUT, PATCH, DELETE
+1. `<prefix>_PROXY_ON=true`.
+2. The method and the path match that service's start-anchored regexes ([services.js](services.js)).
 
-The gateway writes `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` from scratch instead of appending to what the client sent, so a backend on `trust proxy 1` sees exactly one entry and no client can add one in front of it. `gateway_TRUST_PROXY` sets what that entry holds: `false`, the address the gateway sees, which is your front proxy if you run one; `true`, the client address that proxy reports.
+| service | methods |
+|---|---|
+| [storage](../storage) | GET, POST, DELETE |
+| [schedule](../schedule) | GET, POST |
+| [livestream](../livestream) | GET, POST |
+| [object](../object) | GET, POST |
+| [command](../command) | GET, POST, PUT, PATCH, DELETE |
 
-The gateway deletes any `Authorization` header before forwarding. It does no auth itself; each service checks its own.
+## Headers
 
-If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), drop `Authorization` there too. Passing it through from public traffic lets an outsider act as the scheduler.
+The gateway writes `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` itself. It does not add to the values that arrived with the request. A backend on `trust proxy 1` therefore reads exactly one value, and no client can put a value in front of it.
+
+`gateway_TRUST_PROXY` selects the address that goes in `X-Forwarded-For`:
+
+| `gateway_TRUST_PROXY` | address the gateway writes |
+|---|---|
+| `false` | the address the gateway sees. This is your own proxy, if you run one in front. |
+| `true` | the client address that your own proxy reports |
+
+The gateway deletes any `Authorization` header before it forwards the request. The gateway runs no authentication of its own. Each service runs its own after the proxy hop.
+
+If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), delete `Authorization` there too. If you let it through from public traffic, an outsider can act as the scheduler.
 
 ---
 # Ports & TLS
 
-The gateway runs two listeners:
-- `gateway_PORT` — HTTP.
-- `gateway_PORT_SECURE` — HTTPS, key/cert auto-resolved from `gateway_HOST` under `/etc/letsencrypt/live/` (override with `privateKey_FILEPATH` / `certificate_FILEPATH` — both or neither); if either is unreadable the secure listener stays down.
+The gateway opens two listeners:
 
-`gateway_HTTPS_Redirect=true` redirects non-secure requests (except `/.well-known/`) to HTTPS. By default it reads the gateway's own TLS socket, which cannot be spoofed.
+| listener | port | opens when |
+|---|---|---|
+| HTTP | `gateway_PORT` | always |
+| HTTPS | `gateway_PORT_SECURE` (default 443) | the gateway can read both the key and the certificate |
 
-Everyone lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed — so pick a name every visitor can resolve, and don't put a port on it unless it is `gateway_PORT_SECURE`. With no usable `gateway_HOST` the redirect fails closed with a 500 rather than following the browser's own `Host` header, which anyone can forge.
+Where the gateway looks for the pair:
 
-`gateway_TRUST_PROXY=true` turns on Express `trust proxy`. The redirect then also counts a request as secure if `X-Forwarded-Proto` says `https`. It reads the **last** value in that header: each proxy appends, so the last one comes from the proxy in front, while anything a client writes lands first and is ignored. Express's `req.secure` reads the first value, which is why the code does not use it.
+```
+privateKey_FILEPATH and certificate_FILEPATH set?
+├─ yes → those two paths          (set both, or set neither)
+└─ no  → /etc/letsencrypt/live/<gateway_HOST domain>/privkey.pem
+                                                    /fullchain.pem
+```
 
-Set the flag only when something in front terminates TLS (nginx, a CDN, a tunnel), and keep `gateway_PORT` closed to everything but that proxy. Without the flag the redirect loops; with it, anyone who reaches `gateway_PORT` directly can fake the header and skip the redirect.
+If the gateway cannot read either file, the HTTPS listener stays down.
+
+## The HTTPS redirect
+
+`gateway_HTTPS_Redirect=true` sends every non-secure request to HTTPS. Requests under `/.well-known/` are the exception.
+
+Every visitor lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed. Two rules follow:
+
+- Give `gateway_HOST` a name that every visitor can resolve.
+- Put a port on `gateway_HOST` only when it is the same port as `gateway_PORT_SECURE`.
+
+If `gateway_HOST` is not usable, the redirect answers 500. It does not fall back to the browser's own `Host` header, because anyone can forge that header.
+
+## How the redirect decides a request is secure
+
+| `gateway_TRUST_PROXY` | the gateway reads |
+|---|---|
+| `false` | its own TLS socket. Nobody can forge this. |
+| `true` | its own TLS socket, or `X-Forwarded-Proto` |
+
+With `true`, the gateway reads the **last** value in `X-Forwarded-Proto`. Each proxy adds its value at the end, so the last value comes from the proxy directly in front. A client can only add a value at the start, so the gateway ignores it. Express `req.secure` reads the first value, and this is why the code does not use `req.secure`.
+
+Set `gateway_TRUST_PROXY=true` only when both of these are true:
+
+1. Something in front of the gateway terminates TLS (nginx, a CDN, a tunnel).
+2. Nothing but that proxy can reach `gateway_PORT`.
+
+| you get | when |
+|---|---|
+| a redirect loop (`ERR_TOO_MANY_REDIRECTS`) | a proxy holds the certificate, and `gateway_TRUST_PROXY` is not `true` |
+| a redirect that anyone can skip | `gateway_TRUST_PROXY=true`, and outsiders can reach `gateway_PORT` |
 
 ---
 # ACME challenges
 
-Before proxying, serves `/.well-known/` from the repo-root dir (dotfiles allowed) so HTTP-01 challenge files are answered directly and skip the HTTPS redirect. `entrypoint.sh` creates the dir on boot. `helmet` ([lib](../lib) `helmetOptions`) applies to every response except these static files.
+Before it proxies, the gateway serves `/.well-known/` from the repo-root dir, dotfiles included. HTTP-01 challenge files are therefore answered directly and skip the HTTPS redirect. `entrypoint.sh` creates the dir at boot. `helmet` ([lib](../lib) `helmetOptions`) applies to every response except these static files.
 
 ---
 # Config
 
-`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert derive, HTTPS redirect target), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).
+`<prefix>_PROXY_ON`, `<prefix>_HOST`, `gateway_PORT`, `gateway_PORT_SECURE`, `gateway_HOST` (TLS cert path, HTTPS redirect target), `privateKey_FILEPATH` / `certificate_FILEPATH` (TLS override), `gateway_HTTPS_Redirect`, `gateway_TRUST_PROXY`; see [../env.example](../env.example).
