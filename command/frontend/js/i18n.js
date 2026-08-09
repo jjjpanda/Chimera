@@ -11,11 +11,12 @@ i18n.use(initReactI18next).init({
 	interpolation: { escapeValue: false }
 })
 
-export const changeLanguage = async (tag) => {
+export const changeLanguage = async (tag, current = () => true) => {
 	if (LANGUAGES[tag] && !i18n.hasResourceBundle(tag, "translation")) {
 		const [translation] = await LANGUAGES[tag].load()
 		if (translation) i18n.addResourceBundle(tag, "translation", translation.default ?? translation)
 	}
+	if (!current()) return
 	return i18n.changeLanguage(tag)
 }
 

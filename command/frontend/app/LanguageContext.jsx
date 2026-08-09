@@ -36,9 +36,9 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 
 	useEffect(() => {
 		let stale = false
-		changeLanguage(language)
+		changeLanguage(language, () => !stale)
 			.then(() => { if (!stale) applyMomentLocale(language) })
-			.catch(() => toast(i18n.t("language.loadFailed")))
+			.catch(() => { if (!stale) toast(i18n.t("language.loadFailed")) })
 		document.documentElement.lang = language
 		localStorage.setItem("language", language)
 		return () => { stale = true }

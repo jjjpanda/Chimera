@@ -6,16 +6,30 @@ jest.mock("../frontend/js/request.js", () => ({
 
 jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: () => {} }))
 
+// every locale keeps its real definition except load(), which a test can stall to control chunk arrival order
+jest.mock("../frontend/js/languages.js", () => {
+	const actual = jest.requireActual("../frontend/js/languages.js")
+	const stubbed = Object.fromEntries(Object.entries(actual.LANGUAGES).map(([tag, language]) =>
+		[tag, { ...language, load: () => loads[tag] ?? language.load() }]))
+	return { ...actual, LANGUAGES: stubbed }
+})
+
+// i18nSetup.js already loaded js/i18n.js against the real js/languages.js; drop it so both pick up the mock
+jest.resetModules()
+
 const React = require("react")
-const { render, screen, fireEvent, waitFor } = require("@testing-library/react")
+const { render, screen, fireEvent, waitFor, act } = require("@testing-library/react")
 const moment = require("moment")
+const i18n = require("../frontend/js/i18n.js").default
 const { LanguageProvider, useLanguage } = require("../frontend/app/LanguageContext.jsx")
 
 const requests = []
+const loads = {}
 
 beforeEach(() => {
 	localStorage.clear()
 	requests.length = 0
+	Object.keys(loads).forEach((tag) => delete loads[tag])
 	Object.defineProperty(navigator, "languages", { value: ["en-US"], configurable: true })
 })
 
@@ -84,6 +98,26 @@ test("importing the provider leaves moment on en rather than the last defined lo
 
 		expect(freshMoment.locale()).toBe("en")
 	})
+})
+
+test("a chunk that lands after a newer language change does not switch i18next back", async () => {
+	const stall = (tag) => {
+		let land
+		loads[tag] = new Promise((resolve) => { land = () => resolve([]) })
+		return () => land()
+	}
+	const landSpanish = stall("es")
+	const landGerman = stall("de")
+
+	const { rerender } = renderWithProvider({ serverLanguage: "es", loggedIn: true })
+	rerender(React.createElement(LanguageProvider, { serverLanguage: "de", loggedIn: true },
+		React.createElement(Consumer)))
+
+	await act(async () => landGerman())
+	await act(async () => landSpanish())
+
+	expect(i18n.language).toBe("de")
+	expect(screen.getByTestId("language").textContent).toBe("de")
 })
 
 test.each(["hi", "gu"])("%s formats and parses machine timestamps in ASCII digits", async (tag) => {
