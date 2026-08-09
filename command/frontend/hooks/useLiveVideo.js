@@ -25,7 +25,7 @@ const listVideos = (cameras, setState, seqRef) => {
 				videoList: streams.map(({ num, status, restarts }) => {
 					const cam = cameras.find((c) => c.id === num)
 					return {
-						camera: cam ? cam.name : `Camera ${num}`,
+						camera: cam ? cam.name : i18n.t("detections.cameraFallback", { n: num }),
 						online: status === "online",
 						restarts,
 						url: `/livestream/feed/${num}/video.m3u8`

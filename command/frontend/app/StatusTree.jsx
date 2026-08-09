@@ -14,8 +14,6 @@ const StatusDot = ({ status }) => (
 	)} />
 )
 
-const services = ["command", "schedule", "storage", "motion", "database", "livestream", "object", "memory"]
-
 const serviceLabelKeys = {
 	command: "status.svcCommand",
 	schedule: "status.svcSchedule",
@@ -39,10 +37,10 @@ const Status = () => {
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
 				<div className="grid gap-x-2 gap-y-1.5" style={{gridTemplateColumns: "repeat(auto-fill, minmax(4.5rem, 1fr))"}}>
-					{services.map(svc => (
+					{Object.entries(serviceLabelKeys).map(([svc, key]) => (
 						<div key={svc} className="flex items-center gap-1.5 min-w-0">
 							<StatusDot status={status[svc]} />
-							<span className="text-xs text-primary capitalize truncate">{t(serviceLabelKeys[svc])}</span>
+							<span className="text-xs text-primary capitalize truncate">{t(key)}</span>
 						</div>
 					))}
 				</div>
