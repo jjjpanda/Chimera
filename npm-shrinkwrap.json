@@ -48,7 +48,7 @@
     },
     "command": {
       "dependencies": {
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
         "cookie-parser": "^1.4.5",
@@ -120,7 +120,7 @@
     "lib": {
       "dependencies": {
         "axios": "^1.17.0",
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "dotenv": "^16.4.0",
         "jsonwebtoken": "^9.0.0",
         "memory": "file:../memory",
@@ -6621,10 +6621,13 @@
       }
     },
     "node_modules/bcryptjs": {
-      "version": "2.4.3",
-      "resolved": "https://registry.npmjs.org/bcryptjs/-/bcryptjs-2.4.3.tgz",
-      "integrity": "sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ==",
-      "license": "MIT"
+      "version": "3.0.3",
+      "resolved": "https://registry.npmjs.org/bcryptjs/-/bcryptjs-3.0.3.tgz",
+      "integrity": "sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==",
+      "license": "BSD-3-Clause",
+      "bin": {
+        "bcrypt": "bin/bcrypt"
+      }
     },
     "node_modules/binary-extensions": {
       "version": "2.3.0",
@@ -20025,9 +20028,9 @@
       "integrity": "sha512-bopVNp6ugyA150DDuZfPFdt1KZ5a94ZDiwX4hMgZDzF+GttD80lEy8kj98kbyhLXnPvhtIo93mdnLIjpCAeeOw=="
     },
     "bcryptjs": {
-      "version": "2.4.3",
-      "resolved": "https://registry.npmjs.org/bcryptjs/-/bcryptjs-2.4.3.tgz",
-      "integrity": "sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ=="
+      "version": "3.0.3",
+      "resolved": "https://registry.npmjs.org/bcryptjs/-/bcryptjs-3.0.3.tgz",
+      "integrity": "sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g=="
     },
     "binary-extensions": {
       "version": "2.3.0",
@@ -20336,7 +20339,7 @@
         "@testing-library/react": "^16.0.1",
         "@vitejs/plugin-react": "^4.3.3",
         "autoprefixer": "^10.4.20",
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.1.1",
         "cookie-parser": "^1.4.5",
@@ -23159,7 +23162,7 @@
       "version": "file:lib",
       "requires": {
         "axios": "^1.17.0",
-        "bcryptjs": "^2.4.3",
+        "bcryptjs": "^3.0.3",
         "dotenv": "^16.4.0",
         "jsonwebtoken": "^9.0.0",
         "memory": "file:../memory",
