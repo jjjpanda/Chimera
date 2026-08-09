@@ -13,7 +13,9 @@ Proxied only when `<prefix>_PROXY_ON=true`, and only when both method and path m
 - [object](../object) — GET, POST
 - [command](../command) — GET, POST, PUT, PATCH, DELETE
 
-The gateway sets `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` itself rather than letting the proxy append to whatever arrived, so a backend on `trust proxy 1` reads exactly one entry and no client can prepend to it. That entry is the gateway's own peer — a proxy in front, if there is one — unless `gateway_TRUST_PROXY=true`, which takes the client that proxy names instead. Any `Authorization` header on the incoming request is dropped before forwarding. The gateway does no auth of its own — each service enforces its own after the proxy hop.
+The gateway writes `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host` from scratch instead of appending to what the client sent, so a backend on `trust proxy 1` sees exactly one entry and no client can add one in front of it. `gateway_TRUST_PROXY` sets what that entry holds: `false`, the address the gateway sees, which is your front proxy if you run one; `true`, the client address that proxy reports.
+
+The gateway deletes any `Authorization` header before forwarding. It does no auth itself; each service checks its own.
 
 If you run your own proxy in front of Chimera (nginx, Caddy, a load balancer), drop `Authorization` there too. Passing it through from public traffic lets an outsider act as the scheduler.
 
@@ -28,7 +30,9 @@ The gateway runs two listeners:
 
 Everyone lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed — so pick a name every visitor can resolve, and don't put a port on it unless it is `gateway_PORT_SECURE`. With no usable `gateway_HOST` the redirect fails closed with a 500 rather than following the browser's own `Host` header, which anyone can forge.
 
-`gateway_TRUST_PROXY=true` enables `trust proxy`, and the redirect then also accepts `X-Forwarded-Proto` — the **last** entry, set by the proxy in front, not the first, which a client can prepend. Express's `req.secure` takes the first, which is why it is not used here. Set the flag only when something in front terminates TLS (nginx, a CDN, a tunnel); the redirect loops without it, and anyone who can reach `gateway_PORT` directly can forge the header and skip it.
+`gateway_TRUST_PROXY=true` turns on Express `trust proxy`. The redirect then also counts a request as secure if `X-Forwarded-Proto` says `https`. It reads the **last** value in that header: each proxy appends, so the last one comes from the proxy in front, while anything a client writes lands first and is ignored. Express's `req.secure` reads the first value, which is why the code does not use it.
+
+Set the flag only when something in front terminates TLS (nginx, a CDN, a tunnel), and keep `gateway_PORT` closed to everything but that proxy. Without the flag the redirect loops; with it, anyone who reaches `gateway_PORT` directly can fake the header and skip the redirect.
 
 ---
 # ACME challenges

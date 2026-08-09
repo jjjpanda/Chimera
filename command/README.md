@@ -44,7 +44,7 @@ No budget ends in a hard block. A spent budget throttles to one credential check
 
 A response under 400, or a 5xx, refunds the slot; every 4xx spends it. A request stopped at the burst stage never reaches the daily budget, which keeps a flood of 429s from draining a shared address's day.
 
-`req.ip` reads the single `X-Forwarded-For` entry the gateway writes, so a forged header cannot buy a fresh budget — but only while the gateway is the sole reachable port. A published `command_PORT` or an off-box `command_HOST` lets anyone write that entry and shop for a key. What the entry names follows `gateway_TRUST_PROXY`: off, it is the gateway's peer, which behind a front proxy is that proxy; on, it is the client the proxy named.
+The gateway overwrites `X-Forwarded-For` with one entry of its own, so a client cannot fake the address `req.ip` returns. This only holds while the gateway is the one reachable port. A published `command_PORT` or an off-box `command_HOST` lets anyone set that header and pick their own budget key. `gateway_TRUST_PROXY` sets what the entry holds: `false`, the address the gateway sees, which is your front proxy if you run one; `true`, the client address that proxy reports.
 
 ## Device tokens
 
