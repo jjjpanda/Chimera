@@ -6,14 +6,13 @@ const pick = async (page, label) => {
 	await page.getByRole("option", { name: label }).click()
 }
 
-const capturePuts = async (page, puts, response = json({ error: false })) =>
-	page.route("**/authorization/language", (route) => {
-		if (route.request().method() === "PUT") {
-			puts.push(JSON.parse(route.request().postData()))
-			route.fulfill(response)
-		} else {
-			route.fallback()
-		}
+// hold is an optional promise the test resolves to control when the save settles
+const capturePuts = async (page, puts, response = json({ error: false }), hold) =>
+	page.route("**/authorization/language", async (route) => {
+		if (route.request().method() !== "PUT") return route.fallback()
+		puts.push(JSON.parse(route.request().postData()))
+		if (hold) await hold
+		return route.fulfill(response)
 	})
 
 test.describe("language", () => {
@@ -47,18 +46,24 @@ test.describe("language", () => {
 		await expect.poll(() => page.evaluate(() => localStorage.getItem("language"))).toBe("de")
 	})
 
-	test("shows a toast in the active language when saving fails", async ({ page }) => {
+	test("a failed save toasts in the active language and rolls the selection back", async ({ page }) => {
+		let release
+		const held = new Promise((resolve) => { release = resolve })
 		await mockApi(page, {
 			"POST /authorization/login": json({ error: false, role: "admin", theme: "system", language: "es" })
 		})
-		await capturePuts(page, [], json({ error: true }, 500))
+		await capturePuts(page, [], json({ error: true }, 500), held)
 		await page.goto("/")
 		await login(page)
 		await page.getByRole("button", { name: "Cuenta" }).click()
 
 		await pick(page, "Deutsch")
+		// the German bundle is on screen before the save fails, so the toast's language is not a race
+		await expect(page.getByRole("button", { name: "Passwort ändern" })).toBeVisible()
+		release()
 
-		await expect(page.getByText("No se pudo guardar el idioma")).toBeVisible()
+		await expect(page.getByText("Sprache konnte nicht gespeichert werden")).toBeVisible()
+		await expect(page.getByRole("button", { name: "Cambiar contraseña" })).toBeVisible()
 	})
 
 	test("server language on login overrides the local default", async ({ page }) => {

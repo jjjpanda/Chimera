@@ -1,7 +1,11 @@
 /** @jest-environment jsdom */
 
+// a test that cares about the save's outcome queues a response; the rest never resolve, as before
 jest.mock("../frontend/js/request.js", () => ({
-	request: (...args) => { requests.push(args) }
+	request: (...args) => {
+		requests.push(args)
+		if (responses.length) args[2](Promise.resolve(responses.shift()))
+	}
 }))
 
 jest.mock("../frontend/js/toast.js", () => ({ __esModule: true, default: () => {} }))
@@ -24,29 +28,35 @@ const i18n = require("../frontend/js/i18n.js").default
 const { LanguageProvider, useLanguage } = require("../frontend/app/LanguageContext.jsx")
 
 const requests = []
+const responses = []
 const loads = {}
 
 beforeEach(() => {
 	localStorage.clear()
 	requests.length = 0
+	responses.length = 0
+	picked = "ja"
 	Object.keys(loads).forEach((tag) => delete loads[tag])
 	Object.defineProperty(navigator, "languages", { value: ["en-US"], configurable: true })
 })
 
+// the language the Consumer's button picks; a test that needs an unloaded bundle points it elsewhere
+let picked = "ja"
+
 const Consumer = () => {
 	const { language, applyLanguage } = useLanguage()
-	return React.createElement("button", { "data-testid": "language", onClick: () => applyLanguage("ja") }, language)
+	return React.createElement("button", { "data-testid": "language", onClick: () => applyLanguage(picked) }, language)
 }
 
 const renderWithProvider = (props) => render(
 	React.createElement(LanguageProvider, props, React.createElement(Consumer))
 )
 
-test("logging in applies the server language and persists it", () => {
+test("logging in applies the server language and persists it once its bundle loads", async () => {
 	renderWithProvider({ serverLanguage: "ko", loggedIn: true })
 
 	expect(screen.getByTestId("language").textContent).toBe("ko")
-	expect(localStorage.getItem("language")).toBe("ko")
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("ko"))
 	expect(document.documentElement.lang).toBe("ko")
 })
 
@@ -59,11 +69,29 @@ test("a fresh login with no server language lands on en rather than a stale loca
 })
 
 test("a logged-out render falls back to navigator.language on the base tag", () => {
-	Object.defineProperty(navigator, "languages", { value: ["pt-PT"], configurable: true })
+	Object.defineProperty(navigator, "languages", { value: ["es-MX"], configurable: true })
 
 	renderWithProvider({ serverLanguage: "ko", loggedIn: false })
 
-	expect(screen.getByTestId("language").textContent).toBe("pt-BR")
+	expect(screen.getByTestId("language").textContent).toBe("es")
+})
+
+// the shipped zh and pt bundles are Simplified Chinese and Brazilian Portuguese, so other scripts/regions must not claim them
+test.each([
+	[["pt-PT", "fr"], "fr"],
+	[["zh-TW", "ja"], "ja"],
+	[["zh-Hant", "ja"], "ja"],
+	[["zh-HK", "ja"], "ja"],
+	[["zh-Hans"], "zh-CN"],
+	[["zh-SG"], "zh-CN"],
+	[["zh"], "zh-CN"],
+	[["pt"], "pt-BR"]
+])("%s resolves to %s", (languages, expected) => {
+	Object.defineProperty(navigator, "languages", { value: languages, configurable: true })
+
+	renderWithProvider({ serverLanguage: null, loggedIn: false })
+
+	expect(screen.getByTestId("language").textContent).toBe(expected)
 })
 
 test("an unsupported navigator language falls back to en", () => {
@@ -118,6 +146,50 @@ test("a chunk that lands after a newer language change does not switch i18next b
 
 	expect(i18n.language).toBe("de")
 	expect(screen.getByTestId("language").textContent).toBe("de")
+})
+
+test("a locale chunk that lands after a newer language change leaves moment on the current language", async () => {
+	let landHindi
+	// importing moment/locale/hi calls defineLocale, which switches moment's global locale as the chunk lands
+	loads["hi"] = new Promise((resolve) => { landHindi = resolve })
+		.then(() => { require("moment/locale/hi"); moment.locale("hi"); return [] })
+	Object.defineProperty(navigator, "languages", { value: ["hi"], configurable: true })
+
+	const { rerender } = renderWithProvider({ serverLanguage: null, loggedIn: false })
+	rerender(React.createElement(LanguageProvider, { serverLanguage: "en", loggedIn: true },
+		React.createElement(Consumer)))
+	await waitFor(() => expect(moment.locale()).toBe("en"))
+
+	await act(async () => { landHindi() })
+
+	expect(moment.locale()).toBe("en")
+	expect(i18n.language).toBe("en")
+})
+
+test("a locale chunk that fails to load reverts the selection instead of persisting it", async () => {
+	const rejected = Promise.reject(new Error("chunk 404"))
+	rejected.catch(() => {})
+	loads["ru"] = rejected
+	picked = "ru"
+	renderWithProvider({ serverLanguage: "en", loggedIn: true })
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("en"))
+
+	fireEvent.click(screen.getByTestId("language"))
+
+	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("en"))
+	expect(localStorage.getItem("language")).toBe("en")
+	expect(document.documentElement.lang).toBe("en")
+})
+
+test("a failed save reverts the selection so the next login does not silently undo it", async () => {
+	renderWithProvider({ serverLanguage: "en", loggedIn: true })
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("en"))
+	responses.push({ ok: false })
+
+	fireEvent.click(screen.getByTestId("language"))
+
+	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("en"))
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("en"))
 })
 
 test.each(["hi", "gu"])("%s formats and parses machine timestamps in ASCII digits", async (tag) => {

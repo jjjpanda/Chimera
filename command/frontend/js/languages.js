@@ -14,11 +14,18 @@ export const LANGUAGES = {
 	"gu": { label: "ગુજરાતી", moment: "gu", cronstrue: "en", load: () => Promise.all([import("../locales/gu.json"), import("moment/locale/gu")]) }
 }
 
+// zh and pt each ship a single script/region variant, so a tag only matches when it asks for that variant
+const VARIANT_SUBTAGS = { "zh-CN": ["hans", "cn", "sg"], "pt-BR": ["br"] }
+
 export const resolveLanguage = (tag) => {
 	if (typeof tag !== "string" || !tag) return null
-	if (tags.includes(tag)) return tag
-	const base = tag.split("-")[0].toLowerCase()
-	return tags.find((t) => t.split("-")[0].toLowerCase() === base) ?? null
+	const lower = tag.toLowerCase()
+	const exact = tags.find((t) => t.toLowerCase() === lower)
+	if (exact) return exact
+	const [base, ...subtags] = lower.split("-")
+	const variant = Object.keys(VARIANT_SUBTAGS).find((t) => t.toLowerCase().split("-")[0] === base)
+	if (variant) return !subtags.length || subtags.some((s) => VARIANT_SUBTAGS[variant].includes(s)) ? variant : null
+	return tags.find((t) => t.toLowerCase().split("-")[0] === base) ?? null
 }
 
 export const detectLanguage = () =>
