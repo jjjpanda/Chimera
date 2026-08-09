@@ -207,6 +207,9 @@
 		"yes": "예"
 	},
 	"schedule": {
+		"actionDelete": "삭제",
+		"actionRestart": "재시작",
+		"actionStop": "중지",
 		"actions": "작업",
 		"all": "전체",
 		"camFallback": "카메라 {{id}}",
@@ -232,6 +235,7 @@
 		"skip": "건너뛰기",
 		"status": "상태",
 		"task": "작업",
+		"taskActionFailed": "작업을 {{action}}할 수 없습니다",
 		"upcoming": "예정됨",
 		"url": "URL",
 		"video": "비디오",
@@ -322,5 +326,13 @@
 		"light": "라이트",
 		"saveFailed": "테마를 저장하지 못했습니다",
 		"system": "시스템"
+	},
+	"units": {
+		"bytes_other": "바이트",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }

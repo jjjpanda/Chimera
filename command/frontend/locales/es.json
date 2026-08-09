@@ -213,6 +213,9 @@
 		"yes": "Sí"
 	},
 	"schedule": {
+		"actionDelete": "eliminar",
+		"actionRestart": "reiniciar",
+		"actionStop": "detener",
 		"actions": "Acciones",
 		"all": "Todo",
 		"camFallback": "cám {{id}}",
@@ -238,6 +241,7 @@
 		"skip": "Omitir",
 		"status": "Estado",
 		"task": "Tarea",
+		"taskActionFailed": "No se pudo {{action}} la tarea",
 		"upcoming": "Próximo",
 		"url": "URL",
 		"video": "Video",
@@ -338,5 +342,15 @@
 		"light": "claro",
 		"saveFailed": "No se pudo guardar el tema",
 		"system": "sistema"
+	},
+	"units": {
+		"bytes_many": "bytes",
+		"bytes_one": "byte",
+		"bytes_other": "bytes",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }

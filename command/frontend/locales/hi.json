@@ -210,6 +210,9 @@
 		"yes": "हां"
 	},
 	"schedule": {
+		"actionDelete": "रद्द",
+		"actionRestart": "पुनः आरंभ",
+		"actionStop": "बंद",
 		"actions": "कार्रवाइयां",
 		"all": "सभी",
 		"camFallback": "कैम {{id}}",
@@ -235,6 +238,7 @@
 		"skip": "छोड़ें",
 		"status": "स्थिति",
 		"task": "कार्य",
+		"taskActionFailed": "कार्य {{action}} नहीं कर सके",
 		"upcoming": "आगामी",
 		"url": "URL",
 		"video": "वीडियो",
@@ -330,5 +334,14 @@
 		"light": "हल्का",
 		"saveFailed": "थीम सहेजी नहीं जा सकी",
 		"system": "सिस्टम"
+	},
+	"units": {
+		"bytes_one": "बाइट",
+		"bytes_other": "बाइट",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }

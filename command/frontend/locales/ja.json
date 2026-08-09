@@ -207,6 +207,9 @@
 		"yes": "はい"
 	},
 	"schedule": {
+		"actionDelete": "削除",
+		"actionRestart": "再起動",
+		"actionStop": "停止",
 		"actions": "操作",
 		"all": "すべて",
 		"camFallback": "カメラ {{id}}",
@@ -232,6 +235,7 @@
 		"skip": "スキップ",
 		"status": "ステータス",
 		"task": "タスク",
+		"taskActionFailed": "タスクを{{action}}できませんでした",
 		"upcoming": "次回予定",
 		"url": "URL",
 		"video": "ビデオ",
@@ -322,5 +326,13 @@
 		"light": "ライト",
 		"saveFailed": "テーマを保存できませんでした",
 		"system": "システム"
+	},
+	"units": {
+		"bytes_other": "バイト",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }
