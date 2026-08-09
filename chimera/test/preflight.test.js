@@ -379,6 +379,21 @@ describe("cookieAmbiguousHostWarning", () => {
 	})
 })
 
+const mockCertFs = (readable = [], unreadable = [], code = "EACCES") => {
+	const spies = [
+		jest.spyOn(fs, "openSync").mockImplementation((p) => {
+			if (readable.includes(p)) return 3
+			const err = unreadable.includes(p) ? code : "ENOENT"
+			throw Object.assign(new Error(err), { code: err })
+		}),
+		jest.spyOn(fs, "fstatSync").mockImplementation(() => ({ isFile: () => true })),
+		jest.spyOn(fs, "closeSync").mockImplementation(() => {})
+	]
+	return () => spies.forEach(s => s.mockRestore())
+}
+
+const LE = ["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"]
+
 describe("httpsRedirectLoopWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
@@ -399,18 +414,15 @@ describe("httpsRedirectLoopWarning", () => {
 	})
 
 	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/certs/privkey.pem", "/certs/fullchain.pem"].includes(p)) return { isFile: () => true }
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs(["/certs/privkey.pem", "/certs/fullchain.pem"])
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("both FILEPATHs absolute but missing on disk still fires — an absolute path alone does not prove the cert is there", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
+		const restore = mockCertFs()
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("only privateKey_FILEPATH set still fires — certPaths.js requires both-or-neither and disables TLS entirely on a mismatched pair", () => {
@@ -432,63 +444,60 @@ describe("httpsRedirectLoopWarning", () => {
 	})
 
 	test("auto-resolved cert files on disk for gateway_HOST rule it out — a certbot run on the host outside chimera's own flow still holds the certificate", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) return { isFile: () => true }
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs(LE)
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("still fires when only one of the two auto-resolved cert files exists", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (p === "/etc/letsencrypt/live/cam.example.com/privkey.pem") return { isFile: () => true }
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs([LE[0]])
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("still fires when gateway_HOST is set but no cert files exist there yet", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
+		const restore = mockCertFs()
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
-		statSpy.mockRestore()
+		restore()
+	})
+
+	test("fires for an IPv4-literal gateway_HOST — Let's Encrypt issues for domain names only, so there is no auto-resolved pair to find", () => {
+		const restore = mockCertFs()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://192.168.1.50" }))).toBeTruthy()
+		restore()
 	})
 
 	test("stays quiet when the auto-resolved cert dir is unreadable — certbot-entry.sh leaves it mode 0710, and EACCES is not proof the cert is absent", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) throw Object.assign(new Error("EACCES"), { code: "EACCES" })
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs([], LE)
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		restore()
+	})
+
+	test("a cert that stats fine but cannot be opened counts as unreadable — handleSecureServerStart reads the file, it does not stat it", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => ({ isFile: () => true }))
+		const restore = mockCertFs([], LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toMatch("(EACCES)")
+		restore()
 		statSpy.mockRestore()
 	})
 
 	test("fires when the FILEPATH overrides are missing even though an auto-resolved pair is on disk — certPaths() gives the overrides precedence", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) return { isFile: () => true }
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs(LE)
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("fires when only one FILEPATH is set and an auto-resolved pair is on disk — a half-set override disables TLS entirely", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) return { isFile: () => true }
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs(LE)
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com", privateKey_FILEPATH: "/certs/privkey.pem" }))).toBeTruthy()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("stays quiet when a configured FILEPATH is unreadable", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/certs/privkey.pem", "/certs/fullchain.pem"].includes(p)) throw Object.assign(new Error("EACCES"), { code: "EACCES" })
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs([], ["/certs/privkey.pem", "/certs/fullchain.pem"])
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
-		statSpy.mockRestore()
+		restore()
 	})
 })
 
@@ -496,34 +505,42 @@ describe("certUnreadableWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
 	test("names the unreadable path and its errno, so EACCES does not read as a certificate", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation((p) => {
-			if (["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"].includes(p)) throw Object.assign(new Error("EACCES"), { code: "EACCES" })
-			throw Object.assign(new Error("ENOENT"), { code: "ENOENT" })
-		})
+		const restore = mockCertFs([], LE)
 		const w = certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))
 		expect(w).toMatch("/etc/letsencrypt/live/cam.example.com/privkey.pem (EACCES)")
 		expect(w).toMatch("/etc/letsencrypt/live/cam.example.com/fullchain.pem (EACCES)")
-		statSpy.mockRestore()
+		expect(w).toMatch("the redirect-loop warning stays silent")
+		restore()
 	})
 
 	test("fires for an unreadable FILEPATH override — a container path need not exist on the host", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("EACCES"), { code: "EACCES" }) })
+		const restore = mockCertFs([], ["/etc/ssl/private/key.pem", "/etc/ssl/certs/cert.pem"])
 		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/etc/ssl/private/key.pem", certificate_FILEPATH: "/etc/ssl/certs/cert.pem" }))).toMatch("/etc/ssl/private/key.pem (EACCES)")
-		statSpy.mockRestore()
+		restore()
+	})
+
+	test("a mixed pair does not claim the loop warning stayed silent — one unreadable path and one missing fires both", () => {
+		const opts = { gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/etc/ssl/private/key.pem", certificate_FILEPATH: "/etc/ssl/certs/cert.pem" }
+		const restore = mockCertFs([], ["/etc/ssl/private/key.pem"])
+		expect(httpsRedirectLoopWarning(lines(opts))).toBeTruthy()
+		const w = certUnreadableWarning(lines(opts))
+		expect(w).toMatch("/etc/ssl/private/key.pem (EACCES)")
+		expect(w).not.toMatch("stays silent")
+		restore()
 	})
 
 	test("stays quiet when the paths are merely absent — httpsRedirectLoopWarning already speaks for that", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("ENOENT"), { code: "ENOENT" }) })
+		const restore = mockCertFs()
 		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
-		statSpy.mockRestore()
+		restore()
 	})
 
 	test("stays quiet when nothing here has to hold a certificate", () => {
-		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => { throw Object.assign(new Error("EACCES"), { code: "EACCES" }) })
+		const restore = mockCertFs([], LE)
 		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
 		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
 		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
-		statSpy.mockRestore()
+		restore()
 	})
 })
 
@@ -568,8 +585,12 @@ describe("httpsRedirectPortWarning", () => {
 		expect(httpsRedirectPortWarning(lines({ gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
 	})
 
-	test("an explicit http:// gateway_HOST names the plain port, not the TLS one, so it says nothing", () => {
-		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
+	test("an explicit http:// gateway_HOST fires — the redirect targets https:// regardless, so the scheme contradicts itself", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://192.168.1.50:8080" }))).toMatch(/gateway_HOST is http:\/\//)
+	})
+
+	test("an http:// gateway_HOST behind a trusted proxy still fires — the port it names is the one gateway.js drops", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://cam.example.com:8443" }))).toMatch(/gateway_HOST is http:\/\//)
 	})
 
 	test("a blank or unparseable gateway_HOST names no port to disagree with", () => {

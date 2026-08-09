@@ -1,4 +1,4 @@
-const { ENV, readLines, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
+const { ENV, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
 require("dotenv").config({ path: ENV })
 const fs = require("fs")
 const os = require("os")
@@ -15,6 +15,10 @@ const POLL_TIMEOUT_MS = 10000
 const RESTART_ARGS = ["up", "-d", "--force-recreate"]
 const NO_REBOOT = `no reboot command known for platform ${process.platform} — the watchdog cannot recover this host`
 const NOTHING_TO_POLL = "no service has *_PROXY_ON=true — the gateway routes no health endpoint to watch"
+
+// dotenv never overrides an already-set variable, so a systemd Environment= or an exported shell var wins over .env.
+// The warning has to read what settings() and checkUrl() read, or it stays silent on exactly the setups that break.
+const envLines = (env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
 
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
@@ -121,7 +125,7 @@ const dryRun = () => {
 }
 
 if (require.main === module) {
-	const schemeWarning = watchdogHostWarning(readLines())
+	const schemeWarning = watchdogHostWarning(envLines())
 	if (schemeWarning) console.warn(schemeWarning)
 	if (process.argv.includes("--dry-run")) dryRun()
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
@@ -129,4 +133,4 @@ if (require.main === module) {
 	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, checkUrl, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot }
+module.exports = { STAGES, checkUrl, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot }

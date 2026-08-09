@@ -23,8 +23,8 @@ for (const s of ["command", "livestream", "object", "schedule", "storage"]) proc
 const { spawnSync } = require("child_process")
 const { runCompose } = require("../compose.js")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
-const { WATCHDOG_MIN_INTERVAL_MS } = require("../preflight.js")
-const { checkUrl, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, STAGES } = require("../watchdog.js")
+const { WATCHDOG_MIN_INTERVAL_MS, watchdogHostWarning } = require("../preflight.js")
+const { checkUrl, envLines, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, STAGES } = require("../watchdog.js")
 
 const healthy = () => Promise.resolve({ ok: true, status: 200 })
 const down = () => Promise.resolve({ ok: false, status: 502 })
@@ -251,5 +251,19 @@ describe("runOnce", () => {
 		global.fetch = jest.fn(() => Promise.reject(new Error("ECONNREFUSED")))
 		await failUntilThreshold()
 		expect(runCompose).toHaveBeenCalledWith(["up", "-d", "--force-recreate"])
+	})
+})
+
+// a systemd Environment= or an exported shell var beats .env, and the scheme warning has to see it
+describe("scheme warning source", () => {
+	test("reads what process.env holds, not the .env file", () => {
+		expect(watchdogHostWarning(envLines({ watchdog_ON: "true", gateway_HOST: "chimera.lan" })))
+			.toContain("no scheme")
+		expect(watchdogHostWarning(envLines({ watchdog_ON: "true", gateway_HOST: "http://chimera.lan" }))).toBeNull()
+		expect(watchdogHostWarning(envLines({ gateway_HOST: "chimera.lan" }))).toBeNull()
+	})
+
+	test("an unset key reads as empty, not as the string undefined", () => {
+		expect(envLines({})).toEqual(["watchdog_ON = ", "gateway_HOST = "])
 	})
 })

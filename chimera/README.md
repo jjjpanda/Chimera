@@ -49,7 +49,11 @@ npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
 
 - Seeding blanks every right-hand side, since `env.example` holds a description rather than a value. A line whose comment starts with `# default` is the exception — that value is real (Docker paths, Postgres host and port), so it is copied as-is and never prompted for.
 - Checks presence, types, ranges, formats, and secret length — 32+ for `SECRETKEY` and any `_AUTH` / `_TOKEN` / `_PASSWORD` key. Interactive offers a `crypto.randomBytes(32)` value for those and uses it on a blank Enter.
-- Cross-checks: `object_ON` requires `livestream_ON`; `command_COOKIE_SECURE` must be `true` on an HTTPS deploy at a non-loopback host, and `false` when `gateway_HOST` carries an explicit `http://` prefix with neither `gateway_HTTPS_Redirect` nor `certbot_ON` set; `gateway_PORT` must be `80` when `certbot_ON=true`, the only port compose publishes for the HTTP-01 challenge; no two enabled services may share a port (including `gateway_PORT` / `gateway_PORT_SECURE`), since the second to bind fails with `EADDRINUSE`.
+- Cross-checks:
+  - `object_ON` requires `livestream_ON`.
+  - `command_COOKIE_SECURE` must be `true` on an HTTPS deploy at a non-loopback host. It must be `false` when `gateway_HOST` carries an explicit `http://` prefix and neither `gateway_HTTPS_Redirect` nor `certbot_ON` is set.
+  - `gateway_PORT` must be `80` when `certbot_ON=true`. Compose publishes no other port, so nothing else can answer the HTTP-01 challenge.
+  - No two enabled services may share a port, `gateway_PORT` and `gateway_PORT_SECURE` included. The second to bind fails with `EADDRINUSE`.
 - No value may contain `#` — dotenv reads it as a comment. Checked on wizard answers and on values already in the file.
 - The walk repeats until stable, since answering one key can unskip an earlier one. `livestream_ON`/`object_ON`, `gateway_HOST`/`command_COOKIE_SECURE`, and `certbot_ON`/`gateway_PORT` are re-asked as pairs — each is valid alone, so one pass would never revisit them.
 - EOF (Ctrl-D) aborts with exit `1` and says whether anything was written. `.env` is written once, after the schema walk goes quiet, so aborting mid-walk leaves no half-filled file. Seeding and the motion.conf/camera prompts fall outside that write, so an abort there keeps a complete `.env` and any conf already created. Re-running picks up from disk.
@@ -72,7 +76,7 @@ Exits `1` when anything is unresolved. Exports helpers reused by `validateEnvVar
 ---
 # watchdog.js — `npm run watchdog`
 
-Host-side liveness check, the only script here that keeps running after boot. Operator setup is in the root [README](../README.md) under *Watchdog*.
+Host-side liveness check, the only script here that keeps running after boot. It supervises nothing about itself, so both run modes need something outside it — a scheduler for `--once`, a systemd unit or pm2 for the self-polling mode. Operator setup for both is in the root [README](../README.md) under *Watchdog*.
 
 ```
 npm run watchdog              # self-polling, every watchdog_INTERVAL_MS
@@ -90,3 +94,4 @@ npm run watchdog -- --dry-run # print the restart command, the reboot command an
 - `watchdog.state.json` holds `{ failures, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs. A write failure is logged and exits `1`, since a count that cannot persist never reaches the threshold.
 - `watchdog_ON` must be `true`; anything else exits `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`. Preflight rejects a non-integer, a threshold below `1`, and an interval below `WATCHDOG_MIN_INTERVAL_MS` (5000) — `60` meaning seconds would poll every 60ms and reboot the host inside a second. `settings()` clamps to the same floor, since nothing runs preflight before `npm run watchdog`.
 - Prints preflight's `watchdogHostWarning` on startup rather than running `preflight.js --check` as a `pre` hook: `--check` exits `1` on any unrelated env problem, and npm would then skip the watchdog itself — leaving the host unwatched exactly when it is degraded.
+- Feeds that warning from `process.env` (`envLines()`), not from the `.env` file. dotenv does not overwrite a variable that is already set, so a systemd `Environment=`/`EnvironmentFile=` or an exported shell var is what `settings()` and `checkUrl()` really see. Reading the file instead would keep the warning silent on the setups most likely to break.

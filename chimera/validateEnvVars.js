@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, redirectWarnings, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -36,7 +36,7 @@ const rawGatewayHost = (process.env.gateway_HOST || "").trim()
 if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
 	try { new URL(gatewayHost()) }
 	catch {
-		console.log("gateway_HOST MUST BE A VALID URL — an unparseable value falls back to the client-supplied Host header (gateway.js reads req.headers.host, whatever gateway_TRUST_PROXY says), letting a forged Host pick the HTTPS redirect target")
+		console.log("gateway_HOST MUST BE A VALID URL — gateway.js builds the https:// redirect target from it, and will not fall back to the Host header the client sent. An unparseable value answers every http:// request with a 500 instead of a redirect")
 		allEnvPresent = false
 	}
 }
@@ -175,23 +175,10 @@ duplicatePorts.forEach(([k, p]) => {
 })
 
 if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
-	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app, so passwords cross the network in cleartext and the browser drops the Secure cookie, failing the login silently")
+	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app. Passwords cross the network in cleartext, and the browser drops the Secure cookie, so the login fails and says nothing")
 }
 
-const redirectLoop = httpsRedirectLoopWarning(envLines)
-if (redirectLoop) {
-	console.log(redirectLoop)
-}
-
-const certUnreadable = certUnreadableWarning(envLines)
-if (certUnreadable) {
-	console.log(certUnreadable)
-}
-
-const redirectPort = httpsRedirectPortWarning(envLines)
-if (redirectPort) {
-	console.log(redirectPort)
-}
+redirectWarnings(envLines).forEach(w => console.log(w))
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
