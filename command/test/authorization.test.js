@@ -899,6 +899,10 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
+		// the limiters resolve their skips together before reserving, so a skip decision costs
+		// more than one microtask tick — drain the queue rather than counting ticks
+		const flush = () => new Promise(setImmediate)
+
 		const run = (mw, ip, statusCode = 400) => {
 			const req = { headers: {}, ip, path: "/login" }
 			let onFinish
@@ -965,13 +969,13 @@ describe("Authorization Routes", () => {
 
 			const next1 = jest.fn()
 			mw(makeReq("16.16.16.16"), makeRes(), next1)
-			await Promise.resolve()
+			await flush()
 			expect(next1).toHaveBeenCalled()
 
 			const res2 = makeRes()
 			const next2 = jest.fn()
 			mw(makeReq("16.16.16.16"), res2, next2)
-			await Promise.resolve()
+			await flush()
 			expect(next2).toHaveBeenCalled()
 			expect(res2.status).not.toHaveBeenCalled()
 		})
@@ -983,15 +987,41 @@ describe("Authorization Routes", () => {
 
 			const next1 = jest.fn()
 			mw(makeReq("17.17.17.17"), makeRes(), next1)
-			await Promise.resolve()
+			await flush()
 			expect(next1).toHaveBeenCalled()
 
 			const res2 = makeRes()
 			const next2 = jest.fn()
 			mw(makeReq("17.17.17.17"), res2, next2)
-			await Promise.resolve()
+			await flush()
 			expect(next2).not.toHaveBeenCalled()
 			expect(res2.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a chain refuses on the first spent budget, and hands back what the later ones reserved", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, keyFn: (req) => `chain:ip:${req.ip}` },
+				{ windowMs: 60000, max: 3, keyFn: () => "chain:shared" },
+			])
+			expect(run(mw, "9.9.9.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			// the two refusals reserved the shared budget together with the per-IP one, so
+			// without the release these two would already be refused
+			expect(run(mw, "9.9.9.2").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.3").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.4").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a throttled-through budget still lets the later ones decide", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 60000, keyFn: (req) => `throttled:ip:${req.ip}` },
+				{ windowMs: 60000, max: 1, keyFn: () => "throttled:account" },
+			])
+			expect(run(mw, "9.9.8.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.8.1").res.status).toHaveBeenCalledWith(429)
 		})
 
 		test("is wired onto POST /setup and returns 429 once exhausted", async () => {

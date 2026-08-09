@@ -52,4 +52,38 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 			.set("X-Forwarded-Proto", "https,http")
 			.expect(302, done)
 	})
+
+	// a CDN in front of an nginx that appends sends "https,http": the CDN saw https, nginx saw
+	// the plain hop to the gateway. Reading nginx's entry redirects an https visit back to itself
+	test("gateway_TRUST_PROXY=2 reads the hop two out, so a CDN in front of a proxy does not loop", (done) => {
+		process.env.gateway_TRUST_PROXY = "2"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("X-Forwarded-Proto", "https,http")
+			.expect((res) => {
+				if (res.status === 302) throw new Error("redirected despite the CDN reporting https")
+			})
+			.end(done)
+	})
+
+	// nginx configured the standard way replaces the header, so two hops leave one value —
+	// the count is clamped to the frontmost entry, the same way express indexes X-Forwarded-For
+	test("gateway_TRUST_PROXY=2 clamps to the only value when a proxy replaces the header", (done) => {
+		process.env.gateway_TRUST_PROXY = "2"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("X-Forwarded-Proto", "https")
+			.expect((res) => {
+				if (res.status === 302) throw new Error("redirected despite the proxy reporting https")
+			})
+			.end(done)
+	})
+
+	test("a value that is neither true, false nor a number trusts nothing", (done) => {
+		process.env.gateway_TRUST_PROXY = "yes"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("X-Forwarded-Proto", "https")
+			.expect(302, done)
+	})
 })

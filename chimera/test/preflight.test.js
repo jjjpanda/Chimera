@@ -172,11 +172,22 @@ describe("varProblem", () => {
 		expect(varProblem(gatewayHostVar, "http://127.0.0.1:8080")).toBeNull()
 	})
 
-	test("gateway_HOST: a bare IPv6 literal → null, bracketed or not — new URL() only takes the bracketed form", () => {
-		expect(varProblem(gatewayHostVar, "::1")).toBeNull()
+	// an unbracketed "::1:8443" is a valid address as well as a port, and reading it the wrong
+	// way redirects every visitor somewhere nobody serves, so preflight asks for the brackets
+	test("gateway_HOST: a bare IPv6 literal → asks for brackets; a bracketed one → null", () => {
+		expect(varProblem(gatewayHostVar, "::1")).toMatch(/must bracket an IPv6 literal/)
+		expect(varProblem(gatewayHostVar, "http://::1")).toMatch(/must bracket an IPv6 literal/)
+		expect(varProblem(gatewayHostVar, "https://::1:8443")).toMatch(/must bracket an IPv6 literal/)
 		expect(varProblem(gatewayHostVar, "[::1]")).toBeNull()
-		expect(varProblem(gatewayHostVar, "http://::1")).toBeNull()
 		expect(varProblem(gatewayHostVar, "https://[2001:db8::5]:8443")).toBeNull()
+	})
+
+	test("gateway_TRUST_PROXY: true, false or a hop count → null; anything else → error", () => {
+		const v = { key: "gateway_TRUST_PROXY", placeholder: "(false | true | how many proxies)", optional: true }
+		expect(varProblem(v, "true")).toBeNull()
+		expect(varProblem(v, "false")).toBeNull()
+		expect(varProblem(v, "2")).toBeNull()
+		expect(varProblem(v, "yes")).toMatch(/must be true, false, or the number of proxies/)
 	})
 
 	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
@@ -527,8 +538,12 @@ describe("certUnreadableWarning", () => {
 describe("httpsRedirectPortWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
-	test("stays quiet when gateway_HOST names no port — gateway.js appends gateway_PORT_SECURE itself, so the redirect reaches the listener", () => {
-		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))).toBeNull()
+	// the redirect reaches the listener, but gateway_HOST no longer names the address browsers
+	// use, and that is the address storage share links and certbot hand out
+	test("fires when gateway_HOST names no port but gateway.js appends one — the two disagree on the public address", () => {
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))
+		expect(w).toMatch(/visitors to https:\/\/192\.168\.1\.50:8443/)
+		expect(w).toMatch(/gateway_HOST is https:\/\/192\.168\.1\.50\./)
 	})
 
 	test("fires when the TLS listener is on a port gateway_HOST names differently — the redirect lands where nothing serves TLS", () => {

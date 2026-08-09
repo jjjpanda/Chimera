@@ -144,14 +144,26 @@ describe("the redirect target comes from config, not from the request", () => {
 			.expect("location", "https://cam.example.com:8443/command/health", done)
 	})
 
-	test("a bare IPv6 gateway_HOST is bracketed, not dropped as unparseable", (done) => {
+	test("a bracketed IPv6 gateway_HOST takes gateway_PORT_SECURE", (done) => {
+		process.env.gateway_TRUST_PROXY = "false"
+		process.env.gateway_PORT_SECURE = "8443"
+		process.env.gateway_HOST = "https://[::1]"
+		supertest(freshGateway())
+			.get("/command/health")
+			.set("Host", "[::1]:8080")
+			.expect("location", "https://[::1]:8443/command/health", done)
+	})
+
+	// "::1:8443" is a valid address as well as one way of writing [::1] port 8443, so the
+	// gateway refuses rather than sending every visitor to whichever reading it guessed
+	test("an unbracketed IPv6 gateway_HOST answers 500 instead of redirecting to a guess", (done) => {
 		process.env.gateway_TRUST_PROXY = "false"
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "::1"
 		supertest(freshGateway())
 			.get("/command/health")
 			.set("Host", "[::1]:8080")
-			.expect("location", "https://[::1]:8443/command/health", done)
+			.expect(500, done)
 	})
 
 	test("an http:// gateway_HOST behind a proxy keeps the proxy's port, not the container's TLS port", (done) => {

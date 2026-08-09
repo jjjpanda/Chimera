@@ -28,6 +28,7 @@ The gateway writes `X-Forwarded-For`, `X-Forwarded-Proto` and `X-Forwarded-Host`
 |---|---|
 | `false` | the address the gateway sees. This is your own proxy, if you run one in front. |
 | `true` | the client address that your own proxy reports |
+| a number | the address reported that many hops out, for a CDN in front of your own proxy |
 
 The gateway deletes any `Authorization` header before it forwards the request. The gateway runs no authentication of its own. Each service runs its own after the proxy hop.
 
@@ -71,10 +72,13 @@ If `gateway_HOST` is not usable, the redirect answers 500. It does not fall back
 |---|---|
 | `false` | its own TLS socket. Nobody can forge this. |
 | `true` | its own TLS socket, or `X-Forwarded-Proto` |
+| a number | the same, counting that many proxies |
 
-With `true`, the gateway reads the **last** value in `X-Forwarded-Proto`. Each proxy adds its value at the end, so the last value comes from the proxy directly in front. A client can only add a value at the start, so the gateway ignores it. Express `req.secure` reads the first value, and this is why the code does not use `req.secure`.
+The gateway counts back from the end of `X-Forwarded-Proto` by the number of trusted hops. Each proxy adds its value at the end, so with `true` — one hop — the gateway reads the last value, the one written by the proxy directly in front. A client can only add a value at the start, so the gateway ignores it. Express `req.secure` reads the first value, which a client can forge, and this is why the code does not use `req.secure`.
 
-Set `gateway_TRUST_PROXY=true` only when both of these are true:
+Set `gateway_TRUST_PROXY=2` when a CDN sits in front of your own proxy and that proxy adds to the header instead of replacing it. The header arrives as `https,http`: the CDN saw https, your proxy saw the plain hop to the gateway. With `1` the gateway reads `http` and redirects an https visit back to itself, which the CDN sends round again (`ERR_TOO_MANY_REDIRECTS`). Count the proxies between the visitor and the gateway.
+
+Set `gateway_TRUST_PROXY` above `false` only when both of these are true:
 
 1. Something in front of the gateway terminates TLS (nginx, a CDN, a tunnel).
 2. Nothing but that proxy can reach `gateway_PORT`.

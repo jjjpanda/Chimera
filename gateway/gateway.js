@@ -4,12 +4,13 @@ const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
-const { helmetOptions, gatewayHost } = require("lib")
+const { helmetOptions, redirectTarget, trustProxyHops } = require("lib")
 
 var app = express()
-const trustProxy = process.env.gateway_TRUST_PROXY == "true"
+const trustHops = trustProxyHops()
+const trustProxy = trustHops > 0
 if(trustProxy){
-	app.set("trust proxy", 1)
+	app.set("trust proxy", trustHops)
 }
 
 app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"), {
@@ -18,27 +19,25 @@ app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"),
 
 app.use(helmet(helmetOptions))
 
-const forwardedProto = (req) => (req.headers["x-forwarded-proto"] || "").split(",").pop().trim().toLowerCase()
+// Read the entry the outermost trusted hop wrote: count back from the end by the number of hops,
+// the same way req.ip picks the client out of X-Forwarded-For. With one hop that is the last
+// entry, so a client prepending its own "https" cannot skip the redirect. With a CDN in front of
+// nginx, gateway_TRUST_PROXY=2 reads the CDN's entry instead of nginx's view of the local hop —
+// express's req.secure always takes the first entry, which is why this does not use it.
+const forwardedProto = (req) => {
+	const values = (req.headers["x-forwarded-proto"] || "").split(",")
+	return (values[values.length - trustHops] ?? values[0]).trim().toLowerCase()
+}
 const isSecure = (req) => !!req.socket.encrypted || (trustProxy && forwardedProto(req) == "https")
 
 if(process.env.gateway_HTTPS_Redirect == "true"){
-	const securePort = process.env.gateway_PORT_SECURE || 443
-	const portSuffix = trustProxy || String(securePort) == "443" ? "" : `:${securePort}`
-	const redirectTarget = (() => {
-		try{
-			const url = new URL(gatewayHost())
-			return url.protocol == "https:" && url.port ? url.host : `${url.hostname}${portSuffix}`
-		}
-		catch{
-			return ""
-		}
-	})()
+	const target = redirectTarget({ trustProxy })
 	app.use((req, res, next) => {
 		if(isSecure(req) || req.path.split("/")[1] == ".well-known"){
 			next()
 		}
-		else if(redirectTarget){
-			res.redirect(`https://${redirectTarget}${req.url}`)
+		else if(target){
+			res.redirect(`https://${target}${req.url}`)
 		}
 		else{
 			res.status(500).send("gateway_HOST is missing or unparseable, so there is no HTTPS redirect target")
