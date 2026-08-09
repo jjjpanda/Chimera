@@ -210,6 +210,9 @@
 		"yes": "Yes"
 	},
 	"schedule": {
+		"actionDelete": "delete",
+		"actionRestart": "restart",
+		"actionStop": "stop",
 		"actions": "Actions",
 		"all": "All",
 		"camFallback": "cam {{id}}",
@@ -235,6 +238,7 @@
 		"skip": "Skip",
 		"status": "Status",
 		"task": "Task",
+		"taskActionFailed": "Couldn't {{action}} task",
 		"upcoming": "Upcoming",
 		"url": "URL",
 		"video": "Video",
@@ -330,5 +334,14 @@
 		"light": "light",
 		"saveFailed": "Couldn't save theme",
 		"system": "system"
+	},
+	"units": {
+		"bytes_one": "Byte",
+		"bytes_other": "Bytes",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }

@@ -216,6 +216,9 @@
 		"yes": "Да"
 	},
 	"schedule": {
+		"actionDelete": "удалить",
+		"actionRestart": "перезапустить",
+		"actionStop": "остановить",
 		"actions": "Действия",
 		"all": "Все",
 		"camFallback": "кам. {{id}}",
@@ -241,6 +244,7 @@
 		"skip": "Пропустить",
 		"status": "Статус",
 		"task": "Задача",
+		"taskActionFailed": "Не удалось {{action}} задачу",
 		"upcoming": "Предстоящие",
 		"url": "URL",
 		"video": "Видео",
@@ -346,5 +350,16 @@
 		"light": "светлая",
 		"saveFailed": "Не удалось сохранить тему",
 		"system": "системная"
+	},
+	"units": {
+		"bytes_few": "байта",
+		"bytes_many": "байт",
+		"bytes_one": "байт",
+		"bytes_other": "байта",
+		"gb": "ГБ",
+		"kb": "КБ",
+		"mb": "МБ",
+		"pb": "ПБ",
+		"tb": "ТБ"
 	}
 }

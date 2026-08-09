@@ -213,6 +213,9 @@
 		"yes": "Oui"
 	},
 	"schedule": {
+		"actionDelete": "supprimer",
+		"actionRestart": "redémarrer",
+		"actionStop": "arrêter",
 		"actions": "Actions",
 		"all": "Tout",
 		"camFallback": "cam {{id}}",
@@ -238,6 +241,7 @@
 		"skip": "Ignorer",
 		"status": "Statut",
 		"task": "Tâche",
+		"taskActionFailed": "Impossible de {{action}} la tâche",
 		"upcoming": "À venir",
 		"url": "URL",
 		"video": "Vidéo",
@@ -338,5 +342,15 @@
 		"light": "clair",
 		"saveFailed": "Impossible d'enregistrer le thème",
 		"system": "système"
+	},
+	"units": {
+		"bytes_many": "octets",
+		"bytes_one": "octet",
+		"bytes_other": "octets",
+		"gb": "Go",
+		"kb": "Ko",
+		"mb": "Mo",
+		"pb": "Po",
+		"tb": "To"
 	}
 }

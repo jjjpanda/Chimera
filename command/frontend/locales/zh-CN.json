@@ -207,6 +207,9 @@
 		"yes": "是"
 	},
 	"schedule": {
+		"actionDelete": "删除",
+		"actionRestart": "重启",
+		"actionStop": "停止",
 		"actions": "操作",
 		"all": "全部",
 		"camFallback": "摄像头 {{id}}",
@@ -232,6 +235,7 @@
 		"skip": "跳过",
 		"status": "状态",
 		"task": "任务",
+		"taskActionFailed": "无法{{action}}任务",
 		"upcoming": "即将到来",
 		"url": "URL",
 		"video": "视频",
@@ -322,5 +326,13 @@
 		"light": "浅色",
 		"saveFailed": "无法保存主题设置",
 		"system": "跟随系统"
+	},
+	"units": {
+		"bytes_other": "字节",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }

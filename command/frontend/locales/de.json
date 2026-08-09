@@ -210,6 +210,9 @@
 		"yes": "Ja"
 	},
 	"schedule": {
+		"actionDelete": "löschen",
+		"actionRestart": "neu starten",
+		"actionStop": "stoppen",
 		"actions": "Aktionen",
 		"all": "Alle",
 		"camFallback": "Kam {{id}}",
@@ -235,6 +238,7 @@
 		"skip": "Überspringen",
 		"status": "Status",
 		"task": "Aufgabe",
+		"taskActionFailed": "Konnte Aufgabe nicht {{action}}",
 		"upcoming": "Bevorstehend",
 		"url": "URL",
 		"video": "Video",
@@ -330,5 +334,14 @@
 		"light": "hell",
 		"saveFailed": "Design konnte nicht gespeichert werden",
 		"system": "system"
+	},
+	"units": {
+		"bytes_one": "Byte",
+		"bytes_other": "Byte",
+		"gb": "GB",
+		"kb": "KB",
+		"mb": "MB",
+		"pb": "PB",
+		"tb": "TB"
 	}
 }
