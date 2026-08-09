@@ -26,11 +26,9 @@ const saveLanguage = (language, onFailure) =>
 
 export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 	const [language, setLanguage] = useState(() => resolveLanguage(localStorage.getItem("language")) ?? detectLanguage())
-	// the selection in effect, and the last one that actually loaded — a rejected or superseded load falls back to it
 	const selected = useRef(language)
 	const loaded = useRef("en")
 
-	// both a failed chunk and a failed save leave the app on the language it was already able to render
 	const rollback = (previous, messageKey) => () => {
 		toast(i18n.t(messageKey))
 		setLanguage(previous)
@@ -51,7 +49,6 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 					document.documentElement.lang = language
 					localStorage.setItem("language", language)
 				}
-				// a superseded chunk defines its moment locale as it lands, so the selected one has to re-assert itself
 				applyMomentLocale(selected.current)
 			})
 			.catch(() => {

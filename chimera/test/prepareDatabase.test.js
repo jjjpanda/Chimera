@@ -1,7 +1,7 @@
 jest.mock("pg", () => ({ Pool: jest.fn(() => ({ query: jest.fn(), on: jest.fn() })) }))
 
 const { Pool } = require("pg")
-const { creationTasks, columnDefinitions, missingColumns, runCreationTasks } = require("../prepareDatabase.js")
+const { creationTasks, missingColumns, runCreationTasks } = require("../prepareDatabase.js")
 const poolConfig = Pool.mock.calls[0][0]
 const poolInstance = Pool.mock.results[0].value
 
@@ -75,22 +75,6 @@ describe("prepareDatabase migration tasks", () => {
 		}
 	})
 
-	test("every CREATE TABLE column carries a definition an ALTER TABLE can reuse", () => {
-		for (const t of creationTasks.filter(t => /CREATE TABLE/.test(t.query))) {
-			const definitions = columnDefinitions(t.query)
-			expect(Object.keys(definitions)).toEqual(t.columns)
-			for (const column of t.columns) expect(definitions[column].trim()).not.toBe("")
-		}
-	})
-
-	test("columnDefinitions keeps types, sizes and defaults intact", () => {
-		const auth = columnDefinitions(creationTasks.find(t => t.table === "auth").query)
-		expect(auth.language).toBe("VARCHAR(10) DEFAULT 'en'")
-		expect(auth.theme).toBe("VARCHAR(10) DEFAULT 'system'")
-		expect(auth.force_password_change).toBe("BOOLEAN NOT NULL DEFAULT FALSE")
-		expect(columnDefinitions("CREATE INDEX IF NOT EXISTS idx ON t(a);")).toEqual({})
-	})
-
 	test("missingColumns reports columns absent from information_schema", async () => {
 		poolInstance.query.mockResolvedValueOnce({ rows: [{ column_name: "id" }, { column_name: "username" }, { column_name: "hash" }] })
 		const missing = await missingColumns("auth", ["id", "username", "hash", "role", "theme"])
@@ -124,25 +108,20 @@ describe("runCreationTasks", () => {
 		expect(issues).toBe(false)
 	})
 
-	test("an existing table (42P07) missing expected columns adds them instead of demanding a wipe", async () => {
-		const log = jest.spyOn(console, "log").mockImplementation(() => {})
+	test("an existing table (42P07) missing expected columns reports issues", async () => {
 		poolInstance.query.mockImplementation((query, params) => {
 			if (/information_schema/.test(query)) {
-				if (params[0] === "auth") return Promise.resolve(columnRows(["id", "username", "hash", "role", "last_login", "force_password_change"]))
-				return Promise.resolve(columnRows(creationTasks.find((t) => t.table === params[0]).columns))
+				return params[0] === "auth" ? Promise.resolve(columnRows(["id", "username", "hash", "role"])) : Promise.resolve(columnRows(["id"]))
 			}
 			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
 			return Promise.resolve({ rows: [] })
 		})
-		await expect(runCreationTasks()).resolves.toBe(false)
-		expect(poolInstance.query).toHaveBeenCalledWith("ALTER TABLE auth ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'system';")
-		expect(poolInstance.query).toHaveBeenCalledWith("ALTER TABLE auth ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en';")
-		expect(log).toHaveBeenCalledWith(expect.stringContaining("added missing columns: theme, language"))
-		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("docker:delete"))
-		log.mockRestore()
+		const issues = await runCreationTasks()
+		expect(issues).toBe(true)
 	})
 
-	test("an older auth table adds every column it lacks, in DDL order", async () => {
+	test("an older auth table lists exactly which columns are missing", async () => {
+		const log = jest.spyOn(console, "log").mockImplementation(() => {})
 		poolInstance.query.mockImplementation((query, params) => {
 			if (/information_schema/.test(query)) {
 				if (params[0] === "auth") return Promise.resolve(columnRows(["id", "username", "hash"]))
@@ -151,30 +130,8 @@ describe("runCreationTasks", () => {
 			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
 			return Promise.resolve({ rows: [] })
 		})
-		await expect(runCreationTasks()).resolves.toBe(false)
-		const altered = poolInstance.query.mock.calls.map(([q]) => q).filter((q) => /^ALTER TABLE auth/.test(q))
-		expect(altered).toEqual([
-			"ALTER TABLE auth ADD COLUMN IF NOT EXISTS role VARCHAR(10) NOT NULL DEFAULT 'user';",
-			"ALTER TABLE auth ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ;",
-			"ALTER TABLE auth ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN NOT NULL DEFAULT FALSE;",
-			"ALTER TABLE auth ADD COLUMN IF NOT EXISTS theme VARCHAR(10) DEFAULT 'system';",
-			"ALTER TABLE auth ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en';"
-		])
-	})
-
-	test("a column that cannot be added still reports issues and how to start fresh", async () => {
-		const log = jest.spyOn(console, "log").mockImplementation(() => {})
-		poolInstance.query.mockImplementation((query, params) => {
-			if (/information_schema/.test(query)) {
-				if (params[0] === "auth") return Promise.resolve(columnRows(["id", "username", "hash", "role", "last_login", "force_password_change", "theme"]))
-				return Promise.resolve(columnRows(creationTasks.find((t) => t.table === params[0]).columns))
-			}
-			if (/ALTER TABLE/.test(query)) return Promise.reject(new Error("permission denied for table auth"))
-			if (/CREATE TABLE/.test(query)) return Promise.reject({ code: "42P07" })
-			return Promise.resolve({ rows: [] })
-		})
 		await expect(runCreationTasks()).resolves.toBe(true)
-		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: language. Run 'npm run docker:delete'"))
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: role, last_login, force_password_change, theme"))
 		// docker:delete is `compose down -v`, which never touches the /etc/letsencrypt bind mount
 		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("footage/certs"))
 		log.mockRestore()

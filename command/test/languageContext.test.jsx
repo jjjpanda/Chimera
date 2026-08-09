@@ -1,6 +1,5 @@
 /** @jest-environment jsdom */
 
-// a test that cares about the save's outcome queues a response; the rest never resolve, as before
 jest.mock("../frontend/js/request.js", () => ({
 	request: (...args) => {
 		requests.push(args)
@@ -40,7 +39,6 @@ beforeEach(() => {
 	Object.defineProperty(navigator, "languages", { value: ["en-US"], configurable: true })
 })
 
-// the language the Consumer's button picks; a test that needs an unloaded bundle points it elsewhere
 let picked = "ja"
 
 const Consumer = () => {
@@ -76,7 +74,6 @@ test("a logged-out render falls back to navigator.language on the base tag", () 
 	expect(screen.getByTestId("language").textContent).toBe("es")
 })
 
-// the shipped zh and pt bundles are Simplified Chinese and Brazilian Portuguese, so other scripts/regions must not claim them
 test.each([
 	[["pt-PT", "fr"], "fr"],
 	[["zh-TW", "ja"], "ja"],
@@ -150,7 +147,6 @@ test("a chunk that lands after a newer language change does not switch i18next b
 
 test("a locale chunk that lands after a newer language change leaves moment on the current language", async () => {
 	let landHindi
-	// importing moment/locale/hi calls defineLocale, which switches moment's global locale as the chunk lands
 	loads["hi"] = new Promise((resolve) => { landHindi = resolve })
 		.then(() => { require("moment/locale/hi"); moment.locale("hi"); return [] })
 	Object.defineProperty(navigator, "languages", { value: ["hi"], configurable: true })

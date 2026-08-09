@@ -6,7 +6,6 @@ const pick = async (page, label) => {
 	await page.getByRole("option", { name: label }).click()
 }
 
-// hold is an optional promise the test resolves to control when the save settles
 const capturePuts = async (page, puts, response = json({ error: false }), hold) =>
 	page.route("**/authorization/language", async (route) => {
 		if (route.request().method() !== "PUT") return route.fallback()
@@ -58,7 +57,6 @@ test.describe("language", () => {
 		await page.getByRole("button", { name: "Cuenta" }).click()
 
 		await pick(page, "Deutsch")
-		// the German bundle is on screen before the save fails, so the toast's language is not a race
 		await expect(page.getByRole("button", { name: "Passwort ändern" })).toBeVisible()
 		release()
 

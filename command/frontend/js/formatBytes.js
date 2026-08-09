@@ -1,6 +1,5 @@
 import i18n from "./i18n.js"
 
-// 1024-based magnitudes, so the labels are the binary ones rather than Intl's decimal kB/MB
 const UNITS = ["units.kb", "units.mb", "units.gb", "units.tb", "units.pb"]
 
 export default (bytes, decimals = 2) => {
