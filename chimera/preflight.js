@@ -22,7 +22,8 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
-const { letsencryptPaths, isIpLiteral } = certPaths
+const { letsencryptPaths, isIpLiteral, isFile } = certPaths
+const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -123,7 +124,7 @@ const varProblem = (v, val) => {
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
 	if (v.key === "gateway_HOST" && normalizeHost.bareIPv6(val)) return `must bracket an IPv6 literal, or the port cannot be told apart from the address — write https://[${val.replace(/^https?:\/\//i, "")}] (got "${val}")`
 	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
-	if (v.key === "gateway_TRUST_PROXY" && val !== "true" && val !== "false" && !/^\d+$/.test(val)) return `must be true, false, or the number of proxies in front (got "${val}")`
+	if (v.key === "gateway_TRUST_PROXY" && !validTrustProxy(val)) return `must be true, false, or the number of proxies in front (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
@@ -131,8 +132,6 @@ const varProblem = (v, val) => {
 	if (t === "port" && !(/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 65535)) return `must be a port from 1 to 65535 (got "${val}")`
 	return null
 }
-
-const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
 const ABSENT = "ENOENT"
 const certStatus = (p) => {
@@ -268,12 +267,10 @@ const configuredCertPair = (lines) => {
 	return { paths: [auto.key, auto.cert], source: "auto" }
 }
 
-// Every warning below needs the same two files. Open them once: six syscall sets per path on a
-// slow bind mount is wasteful, and a renewal landing mid-run made the answers contradict.
 const certPairStatus = (lines) => {
 	const { paths, source } = configuredCertPair(lines)
 	const statuses = paths.map(p => [p, certStatus(p)])
-	return { paths, source, statuses, maybePresent: statuses.length > 0 && statuses.every(([, code]) => code !== ABSENT) }
+	return { source, statuses, maybePresent: statuses.length > 0 && statuses.every(([, code]) => code !== ABSENT) }
 }
 
 const trustsProxy = (lines) => trustProxyHops(getVal(lines, "gateway_TRUST_PROXY") || "") > 0
@@ -297,15 +294,13 @@ const OVERRIDE_PATH_CAVEAT = "\n  Already mounted your own pair? privateKey_FILE
 
 const httpsRedirectLoopWarning = (lines, pair = certPairStatus(lines)) => {
 	if (!redirectNeedsLocalCert(lines) || pair.maybePresent) return null
-	const { paths, source } = pair
+	const { statuses, source } = pair
 	return "WARNING: gateway_HTTPS_Redirect=true, but nothing here serves https:// and gateway_TRUST_PROXY is not true. Every page redirects to itself (ERR_TOO_MANY_REDIRECTS).\n  Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true, and make the proxy send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
-		+ (source === "override" && paths.length ? OVERRIDE_PATH_CAVEAT : "")
+		+ (source === "override" && statuses.length ? OVERRIDE_PATH_CAVEAT : "")
 }
 
 const GATEWAY_PORT_SECURE_DEFAULT = redirectTarget.DEFAULT_SECURE_PORT
 
-// Asks gateway.js where it would send the visitor rather than restating its rules, so the two
-// cannot drift, and compares that against the gateway_HOST share links and certbot use.
 const httpsRedirectPortWarning = (lines) => {
 	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
 	const url = gatewayUrl(lines)
@@ -316,8 +311,8 @@ const httpsRedirectPortWarning = (lines) => {
 	if (trustsProxy(lines)) return null
 	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
 	const target = redirectTarget({ host: url, securePort, trustProxy: false })
-	const targetPort = urlPart(`https://${target}`, "port") || GATEWAY_PORT_SECURE_DEFAULT
-	if (targetPort !== securePort) return `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${targetPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE). The redirect lands on a port that serves no TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+	const hostPort = urlPart(url, "port")
+	if (hostPort && hostPort !== securePort) return `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE). The redirect lands on a port that serves no TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
 	return target === urlPart(url, "host")
 		? null
 		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to https://${target}, but gateway_HOST is ${url}. Storage share links and certbot use gateway_HOST, so they name a port nothing listens on. Write the TLS port into gateway_HOST: https://${target}`

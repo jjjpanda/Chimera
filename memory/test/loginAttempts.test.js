@@ -38,8 +38,6 @@ describe("loginAttempts", () => {
 		expect(blocked).toBe(true)
 	})
 
-	// the account counter is the shortest-lived key in the map, so evicting by expiry dropped
-	// exactly the counter that was blocking and handed the attacker a fresh 10 guesses
 	test("a per-account counter at its max survives a flood, even though it expires first", () => {
 		const { loginReserve } = makeLoginAttempts()
 		for (let i = 0; i < 10; i++) loginReserve("user:victim", 10, 15 * 60 * 1000, () => {})

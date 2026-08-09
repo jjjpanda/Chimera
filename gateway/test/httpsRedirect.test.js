@@ -154,8 +154,6 @@ describe("the redirect target comes from config, not from the request", () => {
 			.expect("location", "https://[::1]:8443/command/health", done)
 	})
 
-	// "::1:8443" is a valid address as well as one way of writing [::1] port 8443, so the
-	// gateway refuses rather than sending every visitor to whichever reading it guessed
 	test("an unbracketed IPv6 gateway_HOST answers 500 instead of redirecting to a guess", (done) => {
 		process.env.gateway_TRUST_PROXY = "false"
 		process.env.gateway_PORT_SECURE = "8443"

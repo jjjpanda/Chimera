@@ -899,8 +899,6 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
-		// the limiters resolve their skips together before reserving, so a skip decision costs
-		// more than one microtask tick — drain the queue rather than counting ticks
 		const flush = () => new Promise(setImmediate)
 
 		const run = (mw, ip, statusCode = 400) => {
@@ -1007,8 +1005,6 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "9.9.9.1").next).toHaveBeenCalled()
 			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
 			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
-			// the two refusals reserved the shared budget together with the per-IP one, so
-			// without the release these two would already be refused
 			expect(run(mw, "9.9.9.2").next).toHaveBeenCalled()
 			expect(run(mw, "9.9.9.3").next).toHaveBeenCalled()
 			expect(run(mw, "9.9.9.4").res.status).toHaveBeenCalledWith(429)

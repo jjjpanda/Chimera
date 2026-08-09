@@ -33,12 +33,12 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const { rateLimit: baseRateLimit, rateLimitChain: baseRateLimitChain, client: memoryClient } = rateLimiter("AUTH")
+const { rateLimitChain: baseRateLimitChain, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
 const releasing = (opts) => ({ ...opts, releaseOnSuccess: true })
-const rateLimit = (opts) => baseRateLimit(releasing(opts))
 const rateLimitChain = (optsList) => baseRateLimitChain(optsList.map(releasing))
+const rateLimit = (opts) => rateLimitChain([opts])
 
 const setupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
@@ -51,8 +51,6 @@ const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
 const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
-// One middleware, not three chained ones: the three budgets reserve together, so a shared-memory
-// deploy pays one round-trip per login instead of three in a row.
 const loginLimiter = rateLimitChain([
 	{ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn },
 	{ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown },

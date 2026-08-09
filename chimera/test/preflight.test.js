@@ -172,8 +172,6 @@ describe("varProblem", () => {
 		expect(varProblem(gatewayHostVar, "http://127.0.0.1:8080")).toBeNull()
 	})
 
-	// an unbracketed "::1:8443" is a valid address as well as a port, and reading it the wrong
-	// way redirects every visitor somewhere nobody serves, so preflight asks for the brackets
 	test("gateway_HOST: a bare IPv6 literal → asks for brackets; a bracketed one → null", () => {
 		expect(varProblem(gatewayHostVar, "::1")).toMatch(/must bracket an IPv6 literal/)
 		expect(varProblem(gatewayHostVar, "http://::1")).toMatch(/must bracket an IPv6 literal/)
@@ -538,8 +536,6 @@ describe("certUnreadableWarning", () => {
 describe("httpsRedirectPortWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
-	// the redirect reaches the listener, but gateway_HOST no longer names the address browsers
-	// use, and that is the address storage share links and certbot hand out
 	test("fires when gateway_HOST names no port but gateway.js appends one — the two disagree on the public address", () => {
 		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))
 		expect(w).toMatch(/visitors to https:\/\/192\.168\.1\.50:8443/)

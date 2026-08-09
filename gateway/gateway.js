@@ -19,11 +19,6 @@ app.use("/.well-known/", express.static(path.join(__dirname, "../.well-known/"),
 
 app.use(helmet(helmetOptions))
 
-// Read the entry the outermost trusted hop wrote: count back from the end by the number of hops,
-// the same way req.ip picks the client out of X-Forwarded-For. With one hop that is the last
-// entry, so a client prepending its own "https" cannot skip the redirect. With a CDN in front of
-// nginx, gateway_TRUST_PROXY=2 reads the CDN's entry instead of nginx's view of the local hop —
-// express's req.secure always takes the first entry, which is why this does not use it.
 const forwardedProto = (req) => {
 	const values = (req.headers["x-forwarded-proto"] || "").split(",")
 	return (values[values.length - trustHops] ?? values[0]).trim().toLowerCase()
