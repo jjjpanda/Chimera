@@ -83,6 +83,46 @@ const creationTasks = [
 	},
 ]
 
+// splits a CREATE TABLE body on its top-level commas, so each column keeps the type and defaults an ALTER TABLE needs
+function columnDefinitions(query) {
+	const body = /CREATE TABLE \w+\((.*)\);/.exec(query)?.[1]
+	if (!body) return {}
+	const defs = []
+	let depth = 0
+	let current = ""
+	for (const char of body) {
+		if (char === "(") depth++
+		else if (char === ")") depth--
+		else if (char === "," && depth === 0) {
+			defs.push(current)
+			current = ""
+			continue
+		}
+		current += char
+	}
+	defs.push(current)
+	return Object.fromEntries(defs.map((def) => {
+		const [name, ...definition] = def.trim().split(/\s+/)
+		return [name.toLowerCase(), definition.join(" ")]
+	}))
+}
+
+async function addColumns(query, table, missing) {
+	const definitions = columnDefinitions(query)
+	const added = []
+	const failed = []
+	for (const column of missing) {
+		try {
+			if (!definitions[column]) throw new Error("no definition in the CREATE TABLE statement")
+			await pool.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS ${column} ${definitions[column]};`)
+			added.push(column)
+		} catch {
+			failed.push(column)
+		}
+	}
+	return { added, failed }
+}
+
 async function missingColumns(table, columns) {
 	const { rows } = await pool.query(
 		"SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND table_schema = current_schema()",
@@ -104,8 +144,10 @@ async function runCreationTasks() {
 			if (e && e.code == "42P07" && table) {
 				try {
 					const missing = await missingColumns(table, columns)
-					ok = missing.length === 0
-					if (!ok) detail = ` — missing columns: ${missing.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage, then start fresh.`
+					const { added, failed } = missing.length ? await addColumns(query, table, missing) : { added: [], failed: [] }
+					ok = failed.length === 0
+					if (added.length) detail = ` — added missing columns: ${added.join(", ")}`
+					if (!ok) detail += ` — missing columns: ${failed.join(", ")}. Run 'npm run docker:delete' to wipe the database AND all stored footage, then start fresh.`
 				} catch (schemaError) {
 					ok = false
 					detail = ` — failed to verify schema: ${schemaError.message}`
@@ -136,7 +178,7 @@ async function runCreationTasks() {
 	return issues
 }
 
-module.exports = { creationTasks, missingColumns, runCreationTasks }
+module.exports = { creationTasks, columnDefinitions, missingColumns, runCreationTasks }
 
 if (require.main === module) {
 	runCreationTasks()
