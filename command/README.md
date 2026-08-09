@@ -44,7 +44,7 @@ No budget ends in a hard block. A spent budget throttles to one credential check
 
 A response under 400, or a 5xx, refunds the slot; every 4xx spends it. A request stopped at the burst stage never reaches the daily budget, which keeps a flood of 429s from draining a shared address's day.
 
-`req.ip` reads the single `X-Forwarded-For` entry the gateway writes, so a header a client forged cannot raise the limit. This holds only while the gateway is the sole reachable port — a published `command_PORT` or an off-box `command_HOST` lets anyone write that entry and shop for a key. What the entry names depends on `gateway_TRUST_PROXY`: with it off the gateway records its own peer, which behind a front proxy is that proxy; with it on, and that proxy setting `X-Forwarded-For`, each client gets its own budget.
+`req.ip` reads the single `X-Forwarded-For` entry the gateway writes, so a forged header cannot buy a fresh budget — but only while the gateway is the sole reachable port. A published `command_PORT` or an off-box `command_HOST` lets anyone write that entry and shop for a key. What the entry names follows `gateway_TRUST_PROXY`: off, it is the gateway's peer, which behind a front proxy is that proxy; on, it is the client the proxy named.
 
 ## Device tokens
 
@@ -57,7 +57,7 @@ The cookie also carries `dk`, a SHA-256 digest of the password hash it was issue
 These budgets are tuned to keep legitimate users in, not to guarantee an attacker is stopped. The consequences:
 
 - Any proxy in front of the gateway (CDN, nginx, tunnel) becomes that peer unless `gateway_TRUST_PROXY=true`, so by default the whole site shares one set of per-IP budgets.
-- The account budget throttles to one check every 10 seconds, not one per window, so an attacker rotating source addresses still gets roughly 8,600 guesses a day at one username — the per-IP budgets cap each address, not the account. A longer throttle would instead let that attacker hold a user with no device token out of their own account.
+- The account budget throttles to one check every 10 seconds, not one per window, so an attacker rotating addresses still gets ~8,600 guesses a day at one username. A longer throttle would instead let them hold a user with no device token out of their own account.
 - Clients behind one egress IP (home router, CGNAT) share the per-IP budgets and contend for the single throttle slot, even when the attack targets someone else.
 - A throttle slot is one per key and any request takes it, so a user with no device token waits out the window an attacker is holding.
 - `knownDevice` matches username and current password hash, not a live session, so a shared browser lets a later user inherit the skip.
