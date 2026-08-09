@@ -92,7 +92,7 @@
         "@testing-library/react": "^16.0.1",
         "@vitejs/plugin-react": "^4.3.3",
         "autoprefixer": "^10.4.20",
-        "postcss": "^8.4.49",
+        "postcss": "^8.5.26",
         "tailwindcss": "^3.4.15",
         "tailwindcss-animate": "^1.0.7",
         "vite": "^7.3.6"
@@ -12843,9 +12843,9 @@
       }
     },
     "node_modules/postcss": {
-      "version": "8.5.16",
-      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.16.tgz",
-      "integrity": "sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==",
+      "version": "8.5.26",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+      "integrity": "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==",
       "dev": true,
       "funding": [
         {
@@ -12863,7 +12863,7 @@
       ],
       "license": "MIT",
       "dependencies": {
-        "nanoid": "^3.3.12",
+        "nanoid": "^3.3.17",
         "picocolors": "^1.1.1",
         "source-map-js": "^1.2.1"
       },
@@ -20353,7 +20353,7 @@
         "memory": "file:../memory",
         "moment": "^2.29.1",
         "pg": "^8.11.0",
-        "postcss": "^8.4.49",
+        "postcss": "^8.5.26",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
         "react-responsive": "^10.0.0",
@@ -24200,12 +24200,12 @@
       "integrity": "sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg=="
     },
     "postcss": {
-      "version": "8.5.16",
-      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.16.tgz",
-      "integrity": "sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==",
+      "version": "8.5.26",
+      "resolved": "https://registry.npmjs.org/postcss/-/postcss-8.5.26.tgz",
+      "integrity": "sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==",
       "dev": true,
       "requires": {
-        "nanoid": "^3.3.12",
+        "nanoid": "^3.3.17",
         "picocolors": "^1.1.1",
         "source-map-js": "^1.2.1"
       }
