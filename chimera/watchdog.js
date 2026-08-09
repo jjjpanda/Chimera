@@ -21,9 +21,7 @@ const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? mess
 
 const checkUrl = () => healthChecks({ localOnly: true })
 
-// dotenv never overrides an already-set variable, so a systemd Environment= or an exported shell var wins over .env.
-// The warning has to read what settings() and checkUrl() read, or it stays silent on exactly the setups that break.
-const envLines = (env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
+const envLines =(env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
 
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
