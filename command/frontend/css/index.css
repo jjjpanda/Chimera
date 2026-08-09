@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant pointer-coarse (@media (pointer: coarse));
 
-@theme {
+@theme static {
 	--color-bg: rgb(218 218 222);
 	--color-surface: rgb(228 228 232);
 	--color-surface-raised: rgb(210 210 215);
@@ -53,6 +53,12 @@
 
 	* {
 		@apply border-border;
+	}
+
+	/* Tailwind v3 preflight set this; v4 preflight does not. */
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
 	}
 }
 
