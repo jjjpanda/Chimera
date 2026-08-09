@@ -122,7 +122,7 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
-	if (v.key === "gateway_HOST" && normalizeHost.bareIPv6(val)) return `must bracket an IPv6 literal, or the port cannot be told apart from the address — write https://[${val.replace(/^https?:\/\//i, "")}] (got "${val}")`
+	if (v.key === "gateway_HOST" && normalizeHost.bareIPv6(val)) return `must bracket an IPv6 literal, or the port cannot be told apart from the address — write https://[address] or https://[address]:port (got "${val}")`
 	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "gateway_TRUST_PROXY" && !validTrustProxy(val)) return `must be true, false, or the number of proxies in front (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
