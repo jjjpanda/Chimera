@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, redirectWarnings, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -36,7 +36,7 @@ const rawGatewayHost = (process.env.gateway_HOST || "").trim()
 if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
 	try { new URL(gatewayHost()) }
 	catch {
-		console.log("gateway_HOST MUST BE A VALID URL — an unparseable value falls back to the client-supplied Host header (gateway.js reads req.headers.host, whatever gateway_TRUST_PROXY says), letting a forged Host pick the HTTPS redirect target")
+		console.log("gateway_HOST MUST BE A VALID URL — gateway.js builds the HTTPS redirect target from it and refuses to substitute the client-supplied Host header, so an unparseable value answers every http:// request with a 500 instead of redirecting")
 		allEnvPresent = false
 	}
 }
@@ -178,20 +178,7 @@ if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== 
 	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app, so passwords cross the network in cleartext and the browser drops the Secure cookie, failing the login silently")
 }
 
-const redirectLoop = httpsRedirectLoopWarning(envLines)
-if (redirectLoop) {
-	console.log(redirectLoop)
-}
-
-const certUnreadable = certUnreadableWarning(envLines)
-if (certUnreadable) {
-	console.log(certUnreadable)
-}
-
-const redirectPort = httpsRedirectPortWarning(envLines)
-if (redirectPort) {
-	console.log(redirectPort)
-}
+redirectWarnings(envLines).forEach(w => console.log(w))
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
