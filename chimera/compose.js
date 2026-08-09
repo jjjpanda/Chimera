@@ -2,7 +2,7 @@ const { spawnSync } = require("child_process")
 const { ROOT, readLines, getVal } = require("./preflight.js")
 
 const composeArgs = (lines, args = []) =>
-	args[0] === "up" && getVal(lines, "certbot_ON") !== "true" ? [...args, "--scale", "certbot=0"] : args
+	args[0] === "up" && (process.env.certbot_ON ?? getVal(lines, "certbot_ON")) !== "true" ? [...args, "--scale", "certbot=0"] : args
 
 const composeCommand = (args) => ["docker", "compose", ...composeArgs(readLines(), args)]
 

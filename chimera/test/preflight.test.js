@@ -623,6 +623,20 @@ describe("watchdogHostWarning", () => {
 	test("names NODE_EXTRA_CA_CERTS, since node's fetch rejects the self-signed pair the FILEPATH vars allow", () => {
 		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "cam.example.com" }))).toMatch(/NODE_EXTRA_CA_CERTS/)
 	})
+
+	test("fires on an explicit https:// host no public CA issues for", () => {
+		for (const host of ["https://cam.lan", "https://chimera", "https://192.168.1.50:8443", "https://nvr.internal"]) {
+			expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: host }))).toMatch(/NODE_EXTRA_CA_CERTS/)
+		}
+	})
+
+	test("a publicly resolvable https:// host stays quiet — its certificate chains to a public CA", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("http:// on a private name stays quiet", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://cam.lan" }))).toBeNull()
+	})
 })
 
 describe("certbotPortProblem", () => {
