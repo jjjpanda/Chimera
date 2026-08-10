@@ -214,7 +214,7 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>Watchdog</b></summary>
 
-[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the gateway health endpoints of the services that run on this host. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if every endpoint keeps failing it reboots the host, then cycles back to the restart. A partial outage only ever restarts the stack — one slow service does not take the machine down. It never powers the machine off, and cannot rescue a kernel hang.
+[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the gateway health endpoints of the services that run on this host. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if every endpoint keeps failing it reboots the host, then cycles back to the restart. A partial outage only ever restarts the stack — one slow service does not take the machine down. It never powers the machine off, and cannot rescue a kernel hang. The alert goes to `alert_URL`; leave that blank and the stack restarts and the host reboots with no notification at all.
 
 A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
 
@@ -265,7 +265,9 @@ A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` a
 
 Only services with `<name>_PROXY_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
-**Access to the Docker daemon.** The restart stage runs `docker compose up -d --force-recreate`, so whatever account the watchdog runs under needs to reach the daemon socket — `sudo usermod -aG docker chimera`, then a fresh login for the group to take. Without it every restart fails with a permission error and the watchdog escalates to rebooting the host instead. The failure is logged and the run exits `1`, so a cron line that keeps its output will show it.
+**Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it: the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
+
+**Access to the Docker daemon.** The restart stage runs `docker compose up -d --force-recreate`, so whatever account the watchdog runs under needs to reach the daemon socket — `sudo usermod -aG docker chimera`, then a fresh login for the group to take. Without it every restart fails with a permission error and rolls the escalation back, so the watchdog retries the restart on every later threshold and never reaches the reboot. The failure is logged and the run exits `1`, so a cron line that keeps its output will show it.
 
 **Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
 

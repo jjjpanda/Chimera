@@ -120,7 +120,7 @@ const runOnce = async () => {
 	const total = failed.length === Object.keys(urls).length
 	const stage = (total && STAGES[state.stage]) || STAGES[0]
 	await resetCounts(total ? nextStage(state.stage) : state.stage)
-	if (!await act(stage, failed)) await resetCounts(state.stage)
+	if (!await act(stage, failed) && stage === STAGES[0]) await resetCounts(state.stage)
 }
 
 const loop = async () => {

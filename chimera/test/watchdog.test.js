@@ -224,6 +224,19 @@ describe("runOnce", () => {
 		expect(spawnSync).toHaveBeenCalledTimes(2)
 	})
 
+	// rolling the reboot stage back pins it there forever, so restart — the one action that still works — never runs again
+	test("a reboot this user cannot perform still hands the next escalation back to restart", async () => {
+		spawnSync.mockReturnValue({ status: 1 })
+		await failUntilThreshold()
+		await failUntilThreshold()
+		expect(spawnSync).toHaveBeenCalledTimes(1)
+		expect(mockState.stage).toBe(0)
+
+		await failUntilThreshold()
+		expect(runCompose).toHaveBeenCalledTimes(2)
+		expect(spawnSync).toHaveBeenCalledTimes(1)
+	})
+
 	test("alerts before the reboot command runs", async () => {
 		await failUntilThreshold()
 		await failUntilThreshold()
