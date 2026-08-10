@@ -1093,7 +1093,7 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${10 + i}`)
-					.send({ username: `dosvictim`, password: "wrongpassword" })
+					.send({ username: "dosvictim", password: "wrongpassword" })
 			}
 			const res = await supertest(app)
 				.post("/authorization/login")
