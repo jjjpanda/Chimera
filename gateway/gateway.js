@@ -21,7 +21,8 @@ app.use(helmet(helmetOptions))
 
 const forwardedProto = (req) => {
 	const values = (req.headers["x-forwarded-proto"] || "").split(",")
-	return (values[values.length - trustHops] ?? values[0]).trim().toLowerCase()
+	const index = Math.max(0, values.length - trustHops)
+	return (values[index] ?? values[0]).trim().toLowerCase()
 }
 const isSecure = (req) => !!req.socket.encrypted || (trustProxy && forwardedProto(req) == "https")
 

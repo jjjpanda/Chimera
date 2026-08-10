@@ -13,7 +13,6 @@ module.exports = () => {
 		}
 		sweep((v) => v.count <= 1 && v.count < v.max)
 		sweep((v) => v.count < v.max)
-		sweep(() => true)
 	}
 	return {
 		loginReserve: (key, max, windowMs, callback=()=>{}) => {

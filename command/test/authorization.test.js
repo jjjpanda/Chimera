@@ -1066,14 +1066,14 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${10 + i}`)
-					.send({ username: "dosvictim", password: "wrongpassword" })
+					.send({ username: `dosvictim`, password: "wrongpassword" })
 			}
 			const res = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(200)
-			expect(res.body.error).toBe(false)
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
@@ -1092,7 +1092,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
+			expect(first.status).toBe(429)
 			expect(second.status).toBe(429)
 			expect(Date.now() - start).toBeLessThan(1000)
 		})
@@ -1128,7 +1128,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(200)
+			expect(tenSecondsLater.status).toBe(429)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1161,7 +1161,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", shared)
 				.send({ username: "sharedvictim", password: "mockedPassword" })
-			expect(res.status).toBe(200)
+			expect(res.status).toBe(429)
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
@@ -1179,14 +1179,14 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
-					.send({ username: "sprayfodder", password: "wrongpassword" })
+					.send({ username: `sprayfodder${i}`, password: "wrongpassword" })
 			}
 
 			const first = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
+			expect(first.status).toBe(429)
 
 			const second = await supertest(app)
 				.post("/authorization/login")
@@ -1207,7 +1207,7 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
-					.send({ username: "carryfodder", password: "wrongpassword" })
+					.send({ username: `carryfodder${i}`, password: "wrongpassword" })
 			}
 
 			const res = await supertest(app)
@@ -1231,7 +1231,7 @@ describe("Authorization Routes", () => {
 					await supertest(app)
 						.post("/authorization/login")
 						.set("X-Forwarded-For", ip)
-						.send({ username: `dayfodder${round}`, password: "wrongpassword" })
+						.send({ username: `dayfodder${round}_${i}`, password: "wrongpassword" })
 				}
 				now += 16 * 60 * 1000
 			}
@@ -1270,7 +1270,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(stranger.status).toBe(200)
+			expect(stranger.status).toBe(429)
 
 			const throttled = await supertest(app)
 				.post("/authorization/login")
