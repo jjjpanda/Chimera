@@ -131,7 +131,7 @@ describe("runCreationTasks", () => {
 			return Promise.resolve({ rows: [] })
 		})
 		await expect(runCreationTasks()).resolves.toBe(true)
-		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: role, last_login, force_password_change, theme"))
+		expect(log).toHaveBeenCalledWith(expect.stringContaining("missing columns: role, last_login, force_password_change, theme, language."))
 		// docker:delete is `compose down -v`, which never touches the /etc/letsencrypt bind mount
 		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("footage/certs"))
 		log.mockRestore()
