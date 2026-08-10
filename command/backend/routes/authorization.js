@@ -33,10 +33,12 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const { rateLimit: baseRateLimit, client: memoryClient } = rateLimiter("AUTH")
+const { rateLimitChain: baseRateLimitChain, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
+const releasing = (opts) => ({ ...opts, releaseOnSuccess: true })
+const rateLimitChain = (optsList) => baseRateLimitChain(optsList.map(releasing))
+const rateLimit = (opts) => rateLimitChain([opts])
 
 const setupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
@@ -49,9 +51,11 @@ const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
 const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
 
-const ipLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn })
-const ipDayLimiter = rateLimit({ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown })
-const accountLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown })
+const loginLimiter = rateLimitChain([
+	{ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn },
+	{ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown },
+	{ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown },
+])
 
 app.get("/status", async (req, res) => {
 	try {
@@ -92,7 +96,7 @@ app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) 
 	}
 })
 
-app.post("/login", blockCrossSite, validateBody, ipLimiter, ipDayLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, loginLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme, language FROM auth WHERE username = $1", [req.decoded.username])
@@ -263,4 +267,5 @@ app.post("/logout", authorize, async (req, res) => {
 })
 
 app.rateLimit = rateLimit
+app.rateLimitChain = rateLimitChain
 module.exports = app

@@ -117,14 +117,26 @@ Chimera ships no webfont beyond Latin, Cyrillic and Greek, so Chinese, Japanese,
 
 Look at the address you type in the browser, then match it:
 
-- **`http://`** — set `command_COOKIE_SECURE=false`. Give `gateway_HOST` an explicit `http://` prefix (`http://192.168.1.50:8080`) and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false`.
-- **`https://`** — set `command_COOKIE_SECURE=true`, however the certificate gets there. If something in front of Chimera holds the certificate (nginx, a CDN, a tunnel), also set `gateway_TRUST_PROXY=true`, or `gateway_HTTPS_Redirect=true` sends every page back to itself.
+| you type | `command_COOKIE_SECURE` | also do this |
+|---|---|---|
+| `http://…` | `false` | give `gateway_HOST` an explicit `http://` prefix (`http://192.168.1.50:8080`), and leave `gateway_HTTPS_Redirect` and `certbot_ON` at `false` |
+| `https://…` | `true` | if something in front of Chimera holds the certificate (nginx, a CDN, a tunnel), also set `gateway_TRUST_PROXY=true`. If you do not, `gateway_HTTPS_Redirect=true` sends every page back to itself. |
 
-Get it backwards and you pay either way: `true` on plain HTTP breaks login outright, `false` on HTTPS quietly drops the `Secure` flag from your login cookies.
+Get it backwards and you pay either way:
+
+- `true` on plain HTTP breaks the login outright.
+- `false` on HTTPS drops the `Secure` flag from your login cookies, and tells you nothing.
 
 An HTTPS port is published either way — `gateway_PORT_SECURE`, or 443 when you leave it blank — so name a free port if something else already holds 443.
 
-The config check blocks on `false` while something says HTTPS, and on `true` when `gateway_HOST` carries an explicit `http://` prefix. Left bare, the host reads as HTTPS, so `true` is merely ambiguous — the boot check warns instead of blocking. Nothing is checked when `command_ON=false`, or when `gateway_HOST` is blank or loopback.
+What the config check does:
+
+| your setting | result |
+|---|---|
+| `false`, and something says this deploy is HTTPS | blocked |
+| `true`, and `gateway_HOST` has an explicit `http://` prefix | blocked |
+| `true`, and `gateway_HOST` has no prefix | warned at boot. A bare host reads as HTTPS, so `true` is only ambiguous. |
+| `command_ON=false`, or `gateway_HOST` blank or loopback | not checked |
 
 Why the cookie can't just read the request: [command](command#config).
 
