@@ -3,13 +3,15 @@ const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
 
-let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths
+let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths, redirectTarget, trustProxyHops
 try {
 	loadCameras = require("../lib/utils/loadCameras.js")
 	multiInstanceLib = require("../lib/utils/multiInstance.js")
 	trustedSourcesLib = require("../lib/utils/trustedSources.js")
 	normalizeHost = require("../lib/utils/normalizeHost.js")
 	certPaths = require("../lib/utils/certPaths.js")
+	redirectTarget = require("../lib/utils/redirectTarget.js")
+	trustProxyHops = require("../lib/utils/trustProxyHops.js")
 } catch (e) {
 	if (e.code === "MODULE_NOT_FOUND") {
 		console.error("Missing dependencies — run `npm install` first.")
@@ -20,7 +22,8 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
-const { letsencryptPaths, isIpLiteral } = certPaths
+const { letsencryptPaths, isIpLiteral, isFile } = certPaths
+const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
 const ENV = path.join(ROOT, ".env")
@@ -121,7 +124,9 @@ const varProblem = (v, val) => {
 	if (v.key === "chimeraInstances" && !validInstances(val)) return `must be "max", -1, or an integer >= 0 (got "${val}")`
 	if (v.key === "scheduler_TRUSTED_SOURCES" && !validTrustedSources(val)) return `must be comma-separated IPs/CIDRs or proxy-addr names like "loopback" (got "${val}")`
 	if (v.key === "storage_HOST" && !/^https?:\/\//i.test(val)) return `must start with http:// or https:// (got "${val}")`
+	if (v.key === "gateway_HOST" && normalizeHost.bareIPv6(val)) return `must bracket an IPv6 literal, or the port cannot be told apart from the address — write https://[address] or https://[address]:port (got "${val}")`
 	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
+	if (v.key === "gateway_TRUST_PROXY" && !validTrustProxy(val)) return `must be true, false, or the number of proxies in front (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (v.key === "watchdog_FAILURES" && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
 	if (v.key === "watchdog_INTERVAL_MS" && !(/^\d+$/.test(val) && Number(val) >= WATCHDOG_MIN_INTERVAL_MS)) return `must be milliseconds, an integer >= ${WATCHDOG_MIN_INTERVAL_MS} — 60 is 60ms, not a minute (got "${val}")`
@@ -131,8 +136,6 @@ const varProblem = (v, val) => {
 	if (t === "port" && !(/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 65535)) return `must be a port from 1 to 65535 (got "${val}")`
 	return null
 }
-
-const isFile = (p) => { try { return fs.statSync(p).isFile() } catch { return false } }
 
 const ABSENT = "ENOENT"
 const certStatus = (p) => {
@@ -148,8 +151,6 @@ const certStatus = (p) => {
 		if (fd !== undefined) fs.closeSync(fd)
 	}
 }
-const certUnreadable = (p) => { const code = certStatus(p); return code === ABSENT ? null : code }
-const certMaybePresent = (p) => certStatus(p) !== ABSENT
 
 const motionDirProblem = () => !isFile(MOTION) && fs.existsSync(MOTION)
 	? "is a directory — Docker creates one when the bind-mounted file is missing; run `rm -rf motion.conf && cp motion.conf.example motion.conf`"
@@ -283,21 +284,24 @@ const configuredCertPair = (lines) => {
 	return { paths: [auto.key, auto.cert], source: "auto" }
 }
 
-const certPairMaybePresent = (lines) => {
-	const { paths } = configuredCertPair(lines)
-	return paths.length > 0 && paths.every(certMaybePresent)
+const certPairStatus = (lines) => {
+	const { paths, source } = configuredCertPair(lines)
+	const statuses = paths.map(p => [p, certStatus(p)])
+	return { source, statuses, maybePresent: statuses.length > 0 && statuses.every(([, code]) => code !== ABSENT) }
 }
 
+const trustsProxy = (lines) => trustProxyHops(getVal(lines, "gateway_TRUST_PROXY") || "") > 0
+
 const redirectNeedsLocalCert = (lines) =>
-	getVal(lines, "gateway_HTTPS_Redirect") === "true" && getVal(lines, "gateway_TRUST_PROXY") !== "true"
+	getVal(lines, "gateway_HTTPS_Redirect") === "true" && !trustsProxy(lines)
 		&& getVal(lines, "certbot_ON") !== "true"
 
-const certUnreadableWarning = (lines) => {
+const certUnreadableWarning = (lines, pair = certPairStatus(lines)) => {
 	if (!redirectNeedsLocalCert(lines)) return null
-	const unreadable = configuredCertPair(lines).paths.map(p => [p, certUnreadable(p)]).filter(([, code]) => code)
+	const unreadable = pair.statuses.filter(([, code]) => code && code !== ABSENT)
 	if (!unreadable.length) return null
 	const named = unreadable.map(([p, code]) => `${p} (${code})`).join(", ")
-	const blind = certPairMaybePresent(lines) ? "\n  A path this user cannot read is not proof the certificate is absent, so the redirect-loop warning stays silent." : ""
+	const blind = pair.maybePresent ? "\n  A path this user cannot read is not proof the certificate is absent, so the redirect-loop warning stays silent." : ""
 	return `WARNING: this user cannot read ${named}.${blind}`
 		+ "\n  The gateway opens the same paths as uid 1000. If it cannot open them, the secure listener stays down."
 		+ "\n  /etc/letsencrypt is mode 0700 root. A FILEPATH names a path inside the container, so docker-compose.yml must mount it, and uid 1000 must be able to read it."
@@ -305,14 +309,14 @@ const certUnreadableWarning = (lines) => {
 
 const OVERRIDE_PATH_CAVEAT = "\n  Already mounted your own pair? privateKey_FILEPATH and certificate_FILEPATH name paths inside the container. This check can only look at the filesystem it runs on. From the host, that is the mount source, not the container path."
 
-const httpsRedirectLoopWarning = (lines) => {
-	if (!redirectNeedsLocalCert(lines) || certPairMaybePresent(lines)) return null
-	const { paths, source } = configuredCertPair(lines)
+const httpsRedirectLoopWarning = (lines, pair = certPairStatus(lines)) => {
+	if (!redirectNeedsLocalCert(lines) || pair.maybePresent) return null
+	const { statuses, source } = pair
 	return "WARNING: gateway_HTTPS_Redirect=true, but nothing here serves https:// and gateway_TRUST_PROXY is not true. Every page redirects to itself (ERR_TOO_MANY_REDIRECTS).\n  Who holds the certificate?\n  this machine — set certbot_ON=true, or give privateKey_FILEPATH and certificate_FILEPATH absolute paths to your cert pair\n  a proxy or tunnel — set gateway_TRUST_PROXY=true, and make the proxy send X-Forwarded-Proto (nginx: proxy_set_header X-Forwarded-Proto $scheme)"
-		+ (source === "override" && paths.length ? OVERRIDE_PATH_CAVEAT : "")
+		+ (source === "override" && statuses.length ? OVERRIDE_PATH_CAVEAT : "")
 }
 
-const GATEWAY_PORT_SECURE_DEFAULT = "443"
+const GATEWAY_PORT_SECURE_DEFAULT = redirectTarget.DEFAULT_SECURE_PORT
 
 const httpsRedirectPortWarning = (lines) => {
 	if (getVal(lines, "gateway_HTTPS_Redirect") !== "true") return null
@@ -321,17 +325,20 @@ const httpsRedirectPortWarning = (lines) => {
 	if (urlPart(url, "protocol") !== "https:") {
 		return "WARNING: gateway_HTTPS_Redirect=true but gateway_HOST is http://. The redirect always sends visitors to https://, so it ignores the scheme. With gateway_TRUST_PROXY=true it also drops any port gateway_HOST names and lands visitors on 443. Write gateway_HOST as https:// with the port browsers reach, or turn the redirect off"
 	}
-	if (getVal(lines, "gateway_TRUST_PROXY") === "true") return null
-	const hostPort = urlPart(url, "port")
-	if (!hostPort) return null
+	if (trustsProxy(lines)) return null
 	const securePort = getVal(lines, "gateway_PORT_SECURE") || GATEWAY_PORT_SECURE_DEFAULT
-	return hostPort === securePort
+	const target = redirectTarget({ host: url, securePort, trustProxy: false })
+	const hostPort = urlPart(url, "port")
+	if (hostPort && hostPort !== securePort) return `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE). The redirect lands on a port that serves no TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+	return target === urlPart(url, "host")
 		? null
-		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to port ${hostPort} (gateway_HOST), but this deploy terminates TLS on port ${securePort} (gateway_PORT_SECURE). The redirect lands on a port that serves no TLS (ERR_SSL_PROTOCOL_ERROR). Give gateway_HOST and gateway_PORT_SECURE the same port`
+		: `WARNING: gateway_HTTPS_Redirect=true sends http:// visitors to https://${target}, but gateway_HOST is ${url}. Storage share links and certbot use gateway_HOST, so they name a port nothing listens on. Write the TLS port into gateway_HOST: https://${target}`
 }
 
-const redirectWarnings = (lines) =>
-	[httpsRedirectLoopWarning(lines), certUnreadableWarning(lines), httpsRedirectPortWarning(lines)].filter(Boolean)
+const redirectWarnings = (lines) => {
+	const pair = certPairStatus(lines)
+	return [httpsRedirectLoopWarning(lines, pair), certUnreadableWarning(lines, pair), httpsRedirectPortWarning(lines)].filter(Boolean)
+}
 
 const warnings = (lines) => [...redirectWarnings(lines), watchdogHostWarning(lines)].filter(Boolean)
 

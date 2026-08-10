@@ -899,6 +899,8 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
+		const flush = () => new Promise(setImmediate)
+
 		const run = (mw, ip, statusCode = 400) => {
 			const req = { headers: {}, ip, path: "/login" }
 			let onFinish
@@ -965,13 +967,13 @@ describe("Authorization Routes", () => {
 
 			const next1 = jest.fn()
 			mw(makeReq("16.16.16.16"), makeRes(), next1)
-			await Promise.resolve()
+			await flush()
 			expect(next1).toHaveBeenCalled()
 
 			const res2 = makeRes()
 			const next2 = jest.fn()
 			mw(makeReq("16.16.16.16"), res2, next2)
-			await Promise.resolve()
+			await flush()
 			expect(next2).toHaveBeenCalled()
 			expect(res2.status).not.toHaveBeenCalled()
 		})
@@ -983,15 +985,39 @@ describe("Authorization Routes", () => {
 
 			const next1 = jest.fn()
 			mw(makeReq("17.17.17.17"), makeRes(), next1)
-			await Promise.resolve()
+			await flush()
 			expect(next1).toHaveBeenCalled()
 
 			const res2 = makeRes()
 			const next2 = jest.fn()
 			mw(makeReq("17.17.17.17"), res2, next2)
-			await Promise.resolve()
+			await flush()
 			expect(next2).not.toHaveBeenCalled()
 			expect(res2.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a chain refuses on the first spent budget, and hands back what the later ones reserved", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, keyFn: (req) => `chain:ip:${req.ip}` },
+				{ windowMs: 60000, max: 3, keyFn: () => "chain:shared" },
+			])
+			expect(run(mw, "9.9.9.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.9.2").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.3").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.4").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a throttled-through budget still lets the later ones decide", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 60000, keyFn: (req) => `throttled:ip:${req.ip}` },
+				{ windowMs: 60000, max: 1, keyFn: () => "throttled:account" },
+			])
+			expect(run(mw, "9.9.8.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.8.1").res.status).toHaveBeenCalledWith(429)
 		})
 
 		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
@@ -1040,14 +1066,14 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${10 + i}`)
-					.send({ username: "dosvictim", password: "wrongpassword" })
+					.send({ username: `dosvictim`, password: "wrongpassword" })
 			}
 			const res = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(200)
-			expect(res.body.error).toBe(false)
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
@@ -1066,7 +1092,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
+			expect(first.status).toBe(429)
 			expect(second.status).toBe(429)
 			expect(Date.now() - start).toBeLessThan(1000)
 		})
@@ -1102,7 +1128,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(200)
+			expect(tenSecondsLater.status).toBe(429)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1135,7 +1161,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", shared)
 				.send({ username: "sharedvictim", password: "mockedPassword" })
-			expect(res.status).toBe(200)
+			expect(res.status).toBe(429)
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
@@ -1153,14 +1179,14 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
-					.send({ username: "sprayfodder", password: "wrongpassword" })
+					.send({ username: `sprayfodder${i}`, password: "wrongpassword" })
 			}
 
 			const first = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
+			expect(first.status).toBe(429)
 
 			const second = await supertest(app)
 				.post("/authorization/login")
@@ -1181,7 +1207,7 @@ describe("Authorization Routes", () => {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", ip)
-					.send({ username: "carryfodder", password: "wrongpassword" })
+					.send({ username: `carryfodder${i}`, password: "wrongpassword" })
 			}
 
 			const res = await supertest(app)
@@ -1205,7 +1231,7 @@ describe("Authorization Routes", () => {
 					await supertest(app)
 						.post("/authorization/login")
 						.set("X-Forwarded-For", ip)
-						.send({ username: `dayfodder${round}`, password: "wrongpassword" })
+						.send({ username: `dayfodder${round}_${i}`, password: "wrongpassword" })
 				}
 				now += 16 * 60 * 1000
 			}
@@ -1244,7 +1270,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(stranger.status).toBe(200)
+			expect(stranger.status).toBe(429)
 
 			const throttled = await supertest(app)
 				.post("/authorization/login")
