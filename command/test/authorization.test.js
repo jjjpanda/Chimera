@@ -1020,6 +1020,18 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "9.9.8.1").res.status).toHaveBeenCalledWith(429)
 		})
 
+		test("a request the first budget throttles through does not spend the later ones", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 1, keyFn: (req) => `spend:ip:${req.ip}` },
+				{ windowMs: 60000, max: 2, keyFn: () => "spend:day" },
+			])
+			expect(run(mw, "9.9.7.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.1", 429).next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.2").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.3").res.status).toHaveBeenCalledWith(429)
+		})
+
 		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {
@@ -1072,8 +1084,8 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
@@ -1092,7 +1104,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 			expect(second.status).toBe(429)
 			expect(Date.now() - start).toBeLessThan(1000)
 		})
@@ -1128,7 +1140,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(429)
+			expect(tenSecondsLater.status).toBe(200)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1161,7 +1173,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", shared)
 				.send({ username: "sharedvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
+			expect(res.status).toBe(200)
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
@@ -1186,7 +1198,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 
 			const second = await supertest(app)
 				.post("/authorization/login")
@@ -1270,7 +1282,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(stranger.status).toBe(429)
+			expect(stranger.status).toBe(200)
 
 			const throttled = await supertest(app)
 				.post("/authorization/login")
