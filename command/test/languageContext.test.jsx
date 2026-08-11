@@ -107,13 +107,23 @@ test("picking a language pre-login changes it without calling the server", () =>
 	expect(requests).toHaveLength(0)
 })
 
-test("picking a language while logged in saves it to the server", () => {
+test("picking a language while logged in saves it to the server once its bundle loads", async () => {
 	renderWithProvider({ serverLanguage: "en", loggedIn: true })
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("en"))
+	expect(requests).toHaveLength(0)
+
 	fireEvent.click(screen.getByTestId("language"))
 
-	expect(requests).toHaveLength(1)
+	await waitFor(() => expect(requests).toHaveLength(1))
 	expect(requests[0][0]).toBe("/authorization/language")
 	expect(JSON.parse(requests[0][1].body)).toEqual({ language: "ja" })
+})
+
+test("logging in does not write the language the server just supplied back to it", async () => {
+	renderWithProvider({ serverLanguage: "ko", loggedIn: true })
+
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("ko"))
+	expect(requests).toHaveLength(0)
 })
 
 test("importing the provider leaves moment on en rather than the last defined locale", () => {
@@ -175,6 +185,7 @@ test("a locale chunk that fails to load reverts the selection instead of persist
 	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("en"))
 	expect(localStorage.getItem("language")).toBe("en")
 	expect(document.documentElement.lang).toBe("en")
+	expect(requests).toHaveLength(0)
 })
 
 test("a failed save reverts the selection so the next login does not silently undo it", async () => {

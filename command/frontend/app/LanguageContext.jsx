@@ -28,7 +28,7 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 	const [language, setLanguage] = useState(() => resolveLanguage(localStorage.getItem("language")) ?? detectLanguage())
 	const selected = useRef(language)
 	const loaded = useRef("en")
-	const pending = useRef(language)
+	const picked = useRef(null)
 
 	const rollback = (previous, messageKey) => () => {
 		toast(i18n.t(messageKey))
@@ -46,9 +46,16 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 		changeLanguage(language, () => !stale)
 			.then(() => {
 				if (!stale) {
+					const previous = loaded.current
 					loaded.current = language
 					document.documentElement.lang = language
 					localStorage.setItem("language", language)
+					if (loggedIn && picked.current === language) {
+						picked.current = null
+						saveLanguage(language, () => {
+							if (!stale) rollback(previous, "language.saveFailed")()
+						})
+					}
 				}
 				applyMomentLocale(selected.current)
 			})
@@ -60,12 +67,8 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 	}, [language])
 
 	const applyLanguage = (next) => {
-		const previous = language
-		pending.current = next
+		picked.current = next
 		setLanguage(next)
-		if (loggedIn) saveLanguage(next, () => {
-			if (pending.current === next) rollback(previous, "language.saveFailed")()
-		})
 	}
 
 	return (
