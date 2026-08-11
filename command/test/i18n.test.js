@@ -25,7 +25,9 @@ const flatten = (obj, prefix = "") =>
 
 const flat = flatten(en)
 
-const countBases = [...new Set(Object.entries(flat).filter(([, value]) => /{{\s*count\b/.test(value)).map(([key]) => stripPlural(key)))]
+const suffixedBases = Object.keys(flat).filter(key => /_(zero|one|two|few|many|other)$/.test(key)).map(stripPlural)
+const interpolatedBases = Object.entries(flat).filter(([, value]) => /{{\s*count\b/.test(value)).map(([key]) => stripPlural(key))
+const countBases = [...new Set([...suffixedBases, ...interpolatedBases])]
 const PLURAL_BASES = countBases.filter(base => !(base in EXEMPT))
 
 afterEach(() => i18n.changeLanguage("en"))

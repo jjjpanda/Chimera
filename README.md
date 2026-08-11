@@ -112,6 +112,8 @@ No users exist yet, so you land on a setup screen. It wants a username, a passwo
 
 Chimera ships no webfont beyond Latin, Cyrillic and Greek, so Chinese, Japanese, Korean, Hindi and Gujarati render in whatever font the viewer's own device provides. Windows, macOS, iOS and Android all carry those scripts. A bare Linux desktop with no CJK or Indic fonts installed will show boxes instead of glyphs — install the matching Noto family to fix it.
 
+`cronstrue`, the library that turns a schedule's cron expression into a sentence, has no Hindi or Gujarati translation, so those two languages show that one sentence in English while the rest of the UI stays localized.
+
 <details>
 <summary><b>HTTP or HTTPS?</b> — the login cookie has to agree with it</summary>
 
