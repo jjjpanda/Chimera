@@ -26,6 +26,8 @@ Checks every required env var — all checks run (no short-circuit), so one run 
 - `object_MODEL_SHA256` is required only once `object_MODEL_URL` is set. Without it object still starts but fails every scan on a retry backoff, so this check blocks boot instead.
 - Re-reads the raw `.env` file (not `process.env`) for every key, to catch a `#` dotenv already truncated silently — see `preflight.js` below.
 - Absolute-path checks: key/cert/ffmpeg/ffprobe files; `storage_FOLDERPATH` / `livestream_FOLDERPATH` folders. Only the folders are stat-confirmed, so a `_FILEPATH` naming a missing file still passes. `storage_MOTION_CONF_FILEPATH` skips the path check and is read-tested instead.
+- An unparseable `gateway_HOST` blocks boot — the gateway builds its redirect target from it and never falls back to the `Host` header, so every `http://` request would answer `500`.
+- Reprints preflight's redirect warnings. They never block boot.
 - A `database_PASSWORD` under 32 characters now blocks boot. Postgres reads `POSTGRES_PASSWORD_FILE` only when it first initializes an empty `chimera-pgdata` volume, so lengthening the value in `.env` alone desyncs it from the stored password. Rotate the stored one first (`docker compose exec postgres psql -U "$database_USER" -c "ALTER USER \"$database_USER\" WITH PASSWORD '<new value>'"`), then restart — `npm run docker:delete` would also wipe the `chimera-storage` footage volume.
 
 ---
@@ -54,6 +56,11 @@ npm run preflight -- --check # report-only, exits 1 if blocked (CI, non-TTY)
   - `command_COOKIE_SECURE` must be `true` on an HTTPS deploy at a non-loopback host. It must be `false` when `gateway_HOST` carries an explicit `http://` prefix and neither `gateway_HTTPS_Redirect` nor `certbot_ON` is set.
   - `gateway_PORT` must be `80` when `certbot_ON=true`. Compose publishes no other port, so nothing else can answer the HTTP-01 challenge.
   - No two enabled services may share a port, `gateway_PORT` and `gateway_PORT_SECURE` included. The second to bind fails with `EADDRINUSE`.
+- Value formats: `gateway_HOST` must parse as a URL and must bracket an IPv6 literal (`https://[::1]:8443`), or the port cannot be told apart from the address. `gateway_TRUST_PROXY` must be `true`, `false`, or the number of proxies in front. `storage_HOST` needs an explicit `http://` or `https://`.
+- Redirect warnings — reported, never blocking — when `gateway_HTTPS_Redirect=true` and:
+  - no certificate is reachable and `gateway_TRUST_PROXY` is off: every page redirects to itself (`ERR_TOO_MANY_REDIRECTS`). The pair is the two `FILEPATH`s when set, else `/etc/letsencrypt/live/<gateway_HOST hostname>/{privkey,fullchain}.pem` — IP literals included, since a hand-placed pair there works.
+  - a cert path exists but this user cannot open it: unreadable is not proof of absent, so this replaces the loop warning.
+  - `gateway_HOST` is `http://`, or names a port other than `gateway_PORT_SECURE`: the redirect lands where no TLS listens.
 - No value may contain `#` — dotenv reads it as a comment. Checked on wizard answers and on values already in the file.
 - The walk repeats until stable, since answering one key can unskip an earlier one. `livestream_ON`/`object_ON`, `gateway_HOST`/`command_COOKIE_SECURE`, and `certbot_ON`/`gateway_PORT` are re-asked as pairs — each is valid alone, so one pass would never revisit them.
 - EOF (Ctrl-D) aborts with exit `1` and says whether anything was written. `.env` is written once, after the schema walk goes quiet, so aborting mid-walk leaves no half-filled file. Seeding and the motion.conf/camera prompts fall outside that write, so an abort there keeps a complete `.env` and any conf already created. Re-running picks up from disk.

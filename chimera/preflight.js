@@ -22,7 +22,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
-const { letsencryptPaths, isIpLiteral, isFile } = certPaths
+const { letsencryptPaths, isFile } = certPaths
 const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
@@ -262,7 +262,7 @@ const configuredCertPair = (lines) => {
 	const [key, cert] = ["privateKey_FILEPATH", "certificate_FILEPATH"].map(k => getVal(lines, k) || "")
 	if (key || cert) return { paths: key && cert ? [key, cert] : [], source: "override" }
 	const hostname = urlPart(gatewayUrl(lines), "hostname")
-	if (!hostname || isIpLiteral(hostname)) return { paths: [], source: "auto" }
+	if (!hostname) return { paths: [], source: "auto" }
 	const auto = letsencryptPaths(hostname)
 	return { paths: [auto.key, auto.cert], source: "auto" }
 }
