@@ -470,9 +470,15 @@ describe("httpsRedirectLoopWarning", () => {
 		restore()
 	})
 
-	test("fires for an IPv4-literal gateway_HOST — Let's Encrypt issues for domain names only, so there is no auto-resolved pair to find", () => {
+	test("fires for an IPv4-literal gateway_HOST with no pair on disk — Let's Encrypt cannot issue for an IP, so nothing puts one there", () => {
 		const restore = mockCertFs()
 		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://192.168.1.50" }))).toBeTruthy()
+		restore()
+	})
+
+	test("stays quiet for an IPv4-literal gateway_HOST whose hand-placed pair is on disk — certPaths() keeps that pair and the secure listener comes up", () => {
+		const restore = mockCertFs(["/etc/letsencrypt/live/192.168.1.50/privkey.pem", "/etc/letsencrypt/live/192.168.1.50/fullchain.pem"])
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://192.168.1.50" }))).toBeNull()
 		restore()
 	})
 

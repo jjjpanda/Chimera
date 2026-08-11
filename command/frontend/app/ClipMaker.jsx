@@ -202,7 +202,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 						aria-valuemax={100}
 						aria-valuenow={Math.round(ts)}
 						aria-valuetext={`Start ${Math.round(ts)}%`}
-						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${ts}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-start") }}
 						onKeyDown={(e) => onTrimKey(e, "start")}
@@ -215,7 +215,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 						aria-valuemax={100}
 						aria-valuenow={Math.round(te)}
 						aria-valuetext={`End ${Math.round(te)}%`}
-						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${te}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-end") }}
 						onKeyDown={(e) => onTrimKey(e, "end")}
@@ -232,7 +232,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 					aria-valuemax={Math.max(0, frameCount - 1)}
 					aria-valuenow={scrubIdx}
 					aria-valuetext={`Frame ${scrubIdx + 1} of ${frameCount}`}
-					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8 pointer-coarse:size-11"}`}
+					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8 pointer-coarse:size-11"}`}
 					style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
 					onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "scrub") }}
 					onKeyDown={onScrubKey}
