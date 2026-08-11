@@ -56,7 +56,7 @@ module.exports = {
 			const row = values.rows[0]
 			bcrypt.compare(password === undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
 				if (err) return serverError()
-				if (!success || !row || !row.hash) return deny()
+				if (req.throttled || !success || !row || !row.hash) return deny()
 				req.userRole = row.role
 				req.deviceKey = deviceKey(row.hash)
 				req.forcePasswordChange = row.force_password_change
