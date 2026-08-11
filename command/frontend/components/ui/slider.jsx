@@ -17,7 +17,7 @@ const Slider = React.forwardRef(({ className, value, defaultValue, "aria-label":
 				<SliderPrimitive.Range className="absolute h-full bg-accent" />
 			</SliderPrimitive.Track>
 			{Array.from({ length: thumbCount }).map((_, i) => (
-				<SliderPrimitive.Thumb key={i} aria-label={ariaLabel} className="block size-4 rounded-full border border-accent bg-accent shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50" />
+				<SliderPrimitive.Thumb key={i} aria-label={ariaLabel} className="block size-4 rounded-full border border-accent bg-accent shadow-sm transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:pointer-events-none disabled:opacity-50" />
 			))}
 		</SliderPrimitive.Root>
 	)
