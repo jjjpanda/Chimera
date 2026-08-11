@@ -28,6 +28,7 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 	const [language, setLanguage] = useState(() => resolveLanguage(localStorage.getItem("language")) ?? detectLanguage())
 	const selected = useRef(language)
 	const loaded = useRef("en")
+	const pending = useRef(language)
 
 	const rollback = (previous, messageKey) => () => {
 		toast(i18n.t(messageKey))
@@ -60,8 +61,11 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 
 	const applyLanguage = (next) => {
 		const previous = language
+		pending.current = next
 		setLanguage(next)
-		if (loggedIn) saveLanguage(next, rollback(previous, "language.saveFailed"))
+		if (loggedIn) saveLanguage(next, () => {
+			if (pending.current === next) rollback(previous, "language.saveFailed")()
+		})
 	}
 
 	return (

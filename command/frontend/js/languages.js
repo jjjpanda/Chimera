@@ -16,18 +16,25 @@ export const LANGUAGES = {
 
 const VARIANT_SUBTAGS = { "zh-CN": ["hans", "cn", "sg"], "pt-BR": ["br"] }
 
-export const resolveLanguage = (tag) => {
+export const resolveLanguage = (tag, lenient = false) => {
 	if (typeof tag !== "string" || !tag) return null
 	const lower = tag.toLowerCase()
 	const exact = tags.find((t) => t.toLowerCase() === lower)
 	if (exact) return exact
 	const [base, ...subtags] = lower.split("-")
 	const variant = Object.keys(VARIANT_SUBTAGS).find((t) => t.toLowerCase().split("-")[0] === base)
-	if (variant) return !subtags.length || subtags.some((s) => VARIANT_SUBTAGS[variant].includes(s)) ? variant : null
+	if (variant) {
+		if (!subtags.length || subtags.some((s) => VARIANT_SUBTAGS[variant].includes(s))) return variant
+		if (!lenient) return null
+	}
 	return tags.find((t) => t.toLowerCase().split("-")[0] === base) ?? null
 }
 
-export const detectLanguage = () =>
-	(navigator.languages?.length ? navigator.languages : [navigator.language]).map(resolveLanguage).find(Boolean) ?? "en"
+export const detectLanguage = () => {
+	const candidates = navigator.languages?.length ? navigator.languages : [navigator.language]
+	return candidates.map((tag) => resolveLanguage(tag)).find(Boolean)
+		?? candidates.map((tag) => resolveLanguage(tag, true)).find(Boolean)
+		?? "en"
+}
 
 export default tags
