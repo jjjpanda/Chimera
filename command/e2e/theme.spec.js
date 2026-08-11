@@ -91,6 +91,41 @@ test.describe("theme", () => {
 		await expect.poll(() => page.evaluate(() => localStorage.getItem("theme"))).toBe("dark")
 	})
 
+	const palettes = {
+		light: {
+			bg: "rgb(218, 218, 222)",
+			primary: "rgb(9, 9, 11)",
+			border: "rgb(180, 180, 185)",
+			accent: "rgb(125, 54, 146)",
+			accentForeground: "rgb(255, 255, 255)"
+		},
+		dark: {
+			bg: "rgb(5, 5, 5)",
+			primary: "rgb(245, 245, 247)",
+			border: "rgb(39, 39, 42)",
+			accent: "rgb(110, 45, 133)",
+			accentForeground: "rgb(255, 255, 255)"
+		}
+	}
+
+	for (const [mode, palette] of Object.entries(palettes)) {
+		test(`theme tokens resolve to the ${mode} palette`, async ({ page }) => {
+			await mockApi(page)
+			await page.emulateMedia({ colorScheme: mode })
+			await page.goto("/")
+
+			const signIn = page.getByRole("button", { name: "Sign In" })
+			await expect(signIn).toBeVisible()
+
+			const body = page.locator("body")
+			await expect(body).toHaveCSS("background-color", palette.bg)
+			await expect(body).toHaveCSS("color", palette.primary)
+			await expect(body).toHaveCSS("border-color", palette.border)
+			await expect(signIn).toHaveCSS("background-color", palette.accent)
+			await expect(signIn).toHaveCSS("color", palette.accentForeground)
+		})
+	}
+
 	test("server theme on login overrides the local default", async ({ page }) => {
 		await mockApi(page, {
 			"POST /authorization/login": json({ error: false, role: "admin", theme: "light" })

@@ -57,7 +57,7 @@ const Feed = ({ video, hideLabel }) => {
 		<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
 			<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
 			{!hideLabel && (
-				<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-sm">
+				<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-xs">
 					<span
 						className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger pointer-events-auto")}
 						title={video.online ? undefined : video.restarts ? t("live.offlineRestarts", { count: video.restarts }) : t("live.offline")}

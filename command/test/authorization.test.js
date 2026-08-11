@@ -1047,6 +1047,18 @@ describe("Authorization Routes", () => {
 			expect(run(mw, "9.9.8.1").res.status).toHaveBeenCalledWith(429)
 		})
 
+		test("a request the first budget throttles through still spends the later ones", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 1, keyFn: (req) => `spend:ip:${req.ip}` },
+				{ windowMs: 60000, max: 2, keyFn: () => "spend:day" },
+			])
+			expect(run(mw, "9.9.7.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.1", 429).next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.2").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.7.3").res.status).toHaveBeenCalledWith(429)
+		})
+
 		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {

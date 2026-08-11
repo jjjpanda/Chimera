@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react"
 import path from "path"
 
 export default defineConfig(({ mode }) => {
-const env = loadEnv(mode, path.resolve(__dirname, ".."), "")
+const env = loadEnv(mode, path.resolve(import.meta.dirname, ".."), "")
 const gatewayTarget = `http://localhost:${env.gateway_PORT}`
 return {
 	root: "frontend",
@@ -12,17 +12,7 @@ return {
 	resolve: {
 		extensions: [".js", ".jsx", ".json"],
 		alias: {
-			"@": path.resolve(__dirname, "frontend")
-		}
-	},
-	esbuild: {
-		loader: "jsx",
-		include: /\.jsx?$/,
-		exclude: /node_modules/
-	},
-	optimizeDeps: {
-		esbuildOptions: {
-			loader: { ".js": "jsx" }
+			"@": path.resolve(import.meta.dirname, "frontend")
 		}
 	},
 	build: {
