@@ -202,6 +202,87 @@ Your first successful login leaves a second cookie in that browser for a year. I
 - In production pm2 writes no log files; everything streams to container stdout, rotated by the `json-file` driver (`npm run docker:logs`).
 - `chimera` has no `DAC_OVERRIDE`, so `docker compose exec chimera pm2 list` fails as root — use `docker compose exec -u node chimera pm2 list`.
 
+**Coming back after a reboot or a power cut.** `chimera`, `certbot` and `postgres` carry `restart: unless-stopped`, so they come back once the Docker daemon starts — which is not automatic:
+
+- Linux: `sudo systemctl enable --now docker`.
+- Docker Desktop (Windows / macOS): turn on Settings → General → *Start Docker Desktop when you sign in*. That is a login, not a boot, so a machine nobody signs into stays down — run Docker Engine on Linux there instead.
+- `unless-stopped` does not restart a container you stopped yourself, so a stack left down by `npm run docker:down` stays down across a reboot. Start it with `npm run docker:up`.
+- None of the above helps if the machine never powers back on. Enable power restore in the firmware — vendors all name that setting differently, so look up yours.
+
+</details>
+
+<details>
+<summary><b>Watchdog</b></summary>
+
+[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the gateway health endpoints of the services that run on this host. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if every endpoint keeps failing it reboots the host, then cycles back to the restart. A partial outage only ever restarts the stack — one slow service does not take the machine down. It never powers the machine off, and cannot rescue a kernel hang. The alert goes to `alert_URL`; leave that blank and the stack restarts and the host reboots with no notification at all.
+
+A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
+
+```
+watchdog_ON = true            # off by default
+watchdog_INTERVAL_MS = 60000  # self-polling mode only, milliseconds, minimum 5000
+watchdog_FAILURES = 3
+```
+
+`npm run watchdog:once` runs a single pass for cron, a systemd timer or Task Scheduler, keeping the failure count in `chimera/watchdog.state.json`:
+
+```cron
+*/5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
+```
+
+`npm run watchdog` polls on its own timer instead. It is an ordinary foreground process: it ends when the terminal closes, and nothing brings it back after the reboot it just caused. Give it a supervisor that starts at boot.
+
+```ini
+# /etc/systemd/system/chimera-watchdog.service — then: sudo systemctl enable --now chimera-watchdog
+[Unit]
+Description=Chimera host watchdog
+Requires=docker.service
+After=docker.service
+
+[Service]
+User=chimera
+WorkingDirectory=/opt/chimera
+ExecStart=/usr/bin/npm run watchdog
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+pm2 does the same on any platform, macOS and Windows included:
+
+```bash
+pm2 start npm --name chimera-watchdog -- run watchdog
+pm2 save && pm2 startup   # run the command pm2 startup prints
+```
+
+A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` and any variable exported before pm2 starts win over `.env`, because dotenv never overwrites a variable that is already set.
+
+`npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
+
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every poll and reboots a perfectly healthy host on a loop. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment.
+
+Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
+
+**Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it: the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
+
+**Write access to `chimera/`.** The failure count lives in `chimera/watchdog.state.json`, next to the script. A checkout leaves that directory writable only by the account that made it, and the group membership above adds no write bit, so a separate `User=` cannot create the file: every run logs the write failure, starts the count at zero again and never reaches `watchdog_FAILURES`, leaving a watchdog that polls and alerts but never restarts or reboots. Either run the unit as the installing account, or `sudo chown chimera /opt/chimera/chimera`.
+
+**Access to the Docker daemon.** The restart stage runs `docker compose up -d --force-recreate`, so whatever account the watchdog runs under needs to reach the daemon socket — `sudo usermod -aG docker chimera`, then a fresh login for the group to take. Without it every restart fails with a permission error and rolls the escalation back, so the watchdog retries the restart on every later threshold and never reaches the reboot. The failure is logged and the run exits `1`, so a cron line that keeps its output will show it.
+
+The rollback is deliberate — a stack that was never restarted has not earned a reboot — but it applies to every failed restart, not just the permission one. A daemon that is stopped or wedged fails the compose command the same way, so the watchdog stays on the restart stage and never reboots the host, which is the one thing that would clear it. `sudo systemctl enable --now docker` covers that case; the watchdog does not.
+
+**Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
+
+```
+chimera ALL=(root) NOPASSWD: /usr/bin/systemctl reboot
+```
+
+Check the path with `command -v systemctl` — sudoers matches it literally, and a rule for `/usr/bin` grants nothing on a distro that ships `/bin/systemctl`. `npm run watchdog -- --dry-run` prints the exact command the watchdog will run.
+
+Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
+
 </details>
 
 <details>

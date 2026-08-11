@@ -22,7 +22,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
-const { letsencryptPaths, isFile } = certPaths
+const { letsencryptPaths, isFile, isIpLiteral } = certPaths
 const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
@@ -31,6 +31,8 @@ const ENV_EXAMPLE = path.join(ROOT, "env.example")
 const MOTION = path.join(ROOT, "motion.conf")
 const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
+
+const WATCHDOG_MIN_INTERVAL_MS = 5000
 
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
@@ -126,6 +128,8 @@ const varProblem = (v, val) => {
 	if (v.key === "gateway_HOST" && !urlPart(normalizeHost(val), "hostname")) return `must be a valid URL (got "${val}")`
 	if (v.key === "gateway_TRUST_PROXY" && !validTrustProxy(val)) return `must be true, false, or the number of proxies in front (got "${val}")`
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
+	if (v.key === "watchdog_FAILURES" && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
+	if (v.key === "watchdog_INTERVAL_MS" && !(/^\d+$/.test(val) && Number(val) >= WATCHDOG_MIN_INTERVAL_MS)) return `must be milliseconds, an integer >= ${WATCHDOG_MIN_INTERVAL_MS} — 60 is 60ms, not a minute (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
@@ -231,6 +235,7 @@ const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const urlPart = (url, part) => { try { return new URL(url)[part] } catch { return "" } }
 const gatewayUrl = (lines) => normalizeHost(getVal(lines, "gateway_HOST"))
 const rawGatewayHost = (lines) => (getVal(lines, "gateway_HOST") || "").trim()
+const schemelessHost = (lines) => rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
 
 const insecureCookie = (lines) => {
 	if (isServiceOff(lines, "command_COOKIE_SECURE") || getVal(lines, "command_COOKIE_SECURE") === "true") return false
@@ -252,11 +257,23 @@ const cookiePlainHttpProblem = (lines) =>
 
 const cookieAmbiguousHostWarning = (lines) =>
 	!isServiceOff(lines, "command_COOKIE_SECURE") && getVal(lines, "command_COOKIE_SECURE") === "true"
-		&& rawGatewayHost(lines) !== "" && !/^https?:\/\//i.test(rawGatewayHost(lines))
+		&& schemelessHost(lines)
 		&& getVal(lines, "gateway_HTTPS_Redirect") !== "true" && getVal(lines, "certbot_ON") !== "true"
 		&& !LOOPBACK.includes(urlPart(gatewayUrl(lines), "hostname") || rawGatewayHost(lines))
 		? "WARNING: gateway_HOST has no scheme, so it reads as https://. If browsers reach this deploy over http://, the login loops forever. Give gateway_HOST an explicit http:// prefix"
 		: null
+
+const PRIVATE_SUFFIX = /\.(lan|local|internal|intranet|home\.arpa)$/i
+const privateHostname = (host) => !!host && (isIpLiteral(host) || !host.includes(".") || PRIVATE_SUFFIX.test(host))
+
+const watchdogHostWarning = (lines) => {
+	if (getVal(lines, "watchdog_ON") !== "true") return null
+	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the watchdog polls https://. On a plain-HTTP deploy every poll fails and the watchdog reboots a healthy host on a loop — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
+	const url = gatewayUrl(lines)
+	return urlPart(url, "protocol") === "https:" && privateHostname(urlPart(url, "hostname"))
+		? "WARNING: watchdog_ON=true and gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the watchdog restarts the stack and then reboots a healthy host on a loop — point NODE_EXTRA_CA_CERTS at the CA that signed it"
+		: null
+}
 
 const configuredCertPair = (lines) => {
 	const [key, cert] = ["privateKey_FILEPATH", "certificate_FILEPATH"].map(k => getVal(lines, k) || "")
@@ -322,6 +339,8 @@ const redirectWarnings = (lines) => {
 	const pair = certPairStatus(lines)
 	return [httpsRedirectLoopWarning(lines, pair), certUnreadableWarning(lines, pair), httpsRedirectPortWarning(lines)].filter(Boolean)
 }
+
+const warnings = (lines) => [...redirectWarnings(lines), watchdogHostWarning(lines)].filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
@@ -400,7 +419,7 @@ const runCheck = () => {
 		if (cam.length) failed = true
 	}
 
-	for (const w of redirectWarnings(lines)) console.log(`\n${w}`)
+	for (const w of warnings(lines)) console.log(`\n${w}`)
 
 	if (failed) {
 		console.log("\nBlocked. Run `npm run preflight` to fix interactively.")
@@ -536,7 +555,7 @@ const runInteractive = async () => {
 	const envOk = !probs.length
 	console.log(`.env ${envOk ? OK : BAD}\n`)
 
-	for (const w of redirectWarnings(lines)) console.log(`${w}\n`)
+	for (const w of warnings(lines)) console.log(`${w}\n`)
 
 	const needCams = camerasNeeded(lines)
 	let motionOk = true, camOk = true
@@ -620,4 +639,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, redirectWarnings, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, warnings, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }

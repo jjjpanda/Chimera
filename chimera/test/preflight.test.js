@@ -22,7 +22,7 @@ jest.mock("fs", () => {
 })
 
 const fs = require("fs")
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -90,6 +90,8 @@ describe("varProblem", () => {
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
 	const memoryTokenVar = { key: "memory_AUTH_TOKEN", placeholder: "Header token to connect to memory socket", optional: false }
 	const dbPasswordVar = { key: "database_PASSWORD", placeholder: "postgres password", optional: false }
+	const watchdogIntervalVar = { key: "watchdog_INTERVAL_MS", placeholder: "Milliseconds between health polls", optional: true }
+	const watchdogFailuresVar = { key: "watchdog_FAILURES", placeholder: "Consecutive failed polls", optional: true }
 
 	test("required unset → error", () => {
 		expect(varProblem(strVar, undefined)).toBeTruthy()
@@ -178,6 +180,24 @@ describe("varProblem", () => {
 		expect(varProblem(gatewayHostVar, "https://::1:8443")).toMatch(/must bracket an IPv6 literal/)
 		expect(varProblem(gatewayHostVar, "[::1]")).toBeNull()
 		expect(varProblem(gatewayHostVar, "https://[2001:db8::5]:8443")).toBeNull()
+	})
+
+	test("watchdog_FAILURES: a threshold below 1 acts on the first blip → error", () => {
+		expect(varProblem(watchdogFailuresVar, "0")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "-1")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "1.5")).toBeTruthy()
+		expect(varProblem(watchdogFailuresVar, "1")).toBeNull()
+		expect(varProblem(watchdogFailuresVar, "3")).toBeNull()
+	})
+
+	// 60 meaning "a minute" would poll every 60ms and reach the reboot stage within a second of the first failure
+	test("watchdog_INTERVAL_MS: a seconds-for-milliseconds value → error naming the unit", () => {
+		expect(varProblem(watchdogIntervalVar, "60")).toMatch(/milliseconds/)
+		expect(varProblem(watchdogIntervalVar, "1")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, "4999")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, "abc")).toBeTruthy()
+		expect(varProblem(watchdogIntervalVar, String(WATCHDOG_MIN_INTERVAL_MS))).toBeNull()
+		expect(varProblem(watchdogIntervalVar, "60000")).toBeNull()
 	})
 
 	test("gateway_TRUST_PROXY: true, false or a hop count → null; anything else → error", () => {
@@ -597,6 +617,42 @@ describe("httpsRedirectPortWarning", () => {
 
 	test("gateway_TRUST_PROXY=true rules it out — the container's TLS port and the browser-facing port are meant to differ behind a proxy", () => {
 		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+})
+
+describe("watchdogHostWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires on a scheme-less host — normalizeHost reads it as https, so a plain-HTTP deploy reboot-loops", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reboots a healthy host/)
+	})
+
+	test("an explicit scheme rules it out, either way", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("never fires while the watchdog is off — nothing polls, so nothing reboots", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "false", gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
+	})
+
+	test("names NODE_EXTRA_CA_CERTS, since node's fetch rejects the self-signed pair the FILEPATH vars allow", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "cam.example.com" }))).toMatch(/NODE_EXTRA_CA_CERTS/)
+	})
+
+	test("fires on an explicit https:// host no public CA issues for", () => {
+		for (const host of ["https://cam.lan", "https://chimera", "https://192.168.1.50:8443", "https://nvr.internal"]) {
+			expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: host }))).toMatch(/NODE_EXTRA_CA_CERTS/)
+		}
+	})
+
+	test("a publicly resolvable https:// host stays quiet — its certificate chains to a public CA", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("http:// on a private name stays quiet", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://cam.lan" }))).toBeNull()
 	})
 })
 
