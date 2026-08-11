@@ -23,10 +23,12 @@ const checkUrl = () => healthChecks({ localOnly: true })
 
 const envLines =(env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
 
+const numOrDefault = (value, fallback) => value && !Number.isNaN(Number(value)) ? Number(value) : fallback
+
 const settings = () => ({
 	enabled: process.env.watchdog_ON === "true",
-	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, Number(process.env.watchdog_INTERVAL_MS) || 60000),
-	threshold: Number(process.env.watchdog_FAILURES) || 3
+	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, numOrDefault(process.env.watchdog_INTERVAL_MS, 60000)),
+	threshold: Math.max(1, numOrDefault(process.env.watchdog_FAILURES, 3))
 })
 
 const poll = async (urls = checkUrl()) => {

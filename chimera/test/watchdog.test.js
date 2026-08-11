@@ -92,6 +92,13 @@ describe("settings", () => {
 		delete process.env.watchdog_INTERVAL_MS
 		expect(settings().intervalMs).toBe(60000)
 	})
+
+	// "0" is falsy, so `Number(value) || 3` would fall through to the default instead of clamping to 1
+	test("clamps a zero threshold to the floor instead of falling back to the default", () => {
+		process.env.watchdog_FAILURES = "0"
+		expect(settings().threshold).toBe(1)
+		process.env.watchdog_FAILURES = "3"
+	})
 })
 
 describe("restart failures", () => {

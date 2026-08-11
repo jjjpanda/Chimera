@@ -263,7 +263,7 @@ A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` a
 
 **Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every poll and reboots a perfectly healthy host on a loop. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment.
 
-Only services with `<name>_PROXY_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
+Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
 **Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it: the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
 
