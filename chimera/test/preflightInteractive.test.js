@@ -457,6 +457,25 @@ describe("runInteractive certbotPortProblem", () => {
 	})
 })
 
+describe("runInteractive httpsRedirectLoopWarning", () => {
+	const REDIRECT_ENV = { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true" }
+
+	test("prints the warning after the .env check when nothing here can serve https://", async () => {
+		setup({ env: REDIRECT_ENV, answers: [] })
+		const { out, exitCode } = await run()
+		expect(out).toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("says nothing when gateway_TRUST_PROXY=true rules it out", async () => {
+		setup({ env: { ...REDIRECT_ENV, gateway_TRUST_PROXY: "true" }, answers: [] })
+		const { out, exitCode } = await run()
+		expect(out).not.toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(exitCode).toBe(0)
+	})
+})
+
 describe("runInteractive duplicatePortProblems", () => {
 	const EXAMPLE_WITH_GATEWAY_PORTS = `${EXAMPLE}\ngateway_PORT = Port number\ngateway_PORT_SECURE = Port number ***`
 	const PORT_BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_PORT: "443" }
@@ -627,5 +646,29 @@ describe("runCheck", () => {
 		const { out, exitCode } = runCheckOnce()
 		expect(out).toContain("cam1.conf mode 0644")
 		expect(exitCode).toBe(1)
+	})
+
+	test("prints the https redirect loop warning without blocking", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true" },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("ERR_TOO_MANY_REDIRECTS")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("prints the https redirect port warning without blocking", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET, gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com:9443", command_COOKIE_SECURE: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443" },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("ERR_SSL_PROTOCOL_ERROR")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
 	})
 })

@@ -21,7 +21,8 @@ jest.mock("fs", () => {
 	}
 })
 
-const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const fs = require("fs")
+const { parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -83,6 +84,7 @@ describe("varProblem", () => {
 	const optVar = { key: "alert_TZ", placeholder: "IANA tz ***", optional: true }
 	const instancesVar = { key: "chimeraInstances", placeholder: "Number of instances", optional: false }
 	const storageHostVar = { key: "storage_HOST", placeholder: "https://storage.server.example or http://127.0.0.1:8081", optional: false }
+	const gatewayHostVar = { key: "gateway_HOST", placeholder: "https://gateway.server.example or http://127.0.0.1:8080 (protocol defaults to https:// if omitted)", optional: false }
 	const alertOnVar = { key: "object_ALERT_ON", placeholder: "(true | text | false, default true)", optional: true }
 	const tokenVar = { key: "setup_TOKEN", placeholder: "required token gating /authorization/setup", optional: false }
 	const schedulerAuthVar = { key: "scheduler_AUTH", placeholder: "Authorization token for scheduler server", optional: false }
@@ -157,6 +159,33 @@ describe("varProblem", () => {
 	test("storage_HOST: explicit protocol → null", () => {
 		expect(varProblem(storageHostVar, "http://127.0.0.1:8081")).toBeNull()
 		expect(varProblem(storageHostVar, "https://storage.server.example")).toBeNull()
+	})
+
+	test("gateway_HOST: unparseable → error, matching the boot gate instead of writing it to .env", () => {
+		expect(varProblem(gatewayHostVar, "not a valid host")).toBeTruthy()
+		expect(varProblem(gatewayHostVar, "https://cam.example.com:notaport")).toBeTruthy()
+	})
+
+	test("gateway_HOST: parseable with or without a scheme → null", () => {
+		expect(varProblem(gatewayHostVar, "cam.example.com")).toBeNull()
+		expect(varProblem(gatewayHostVar, "https://cam.example.com:8443")).toBeNull()
+		expect(varProblem(gatewayHostVar, "http://127.0.0.1:8080")).toBeNull()
+	})
+
+	test("gateway_HOST: a bare IPv6 literal → asks for brackets; a bracketed one → null", () => {
+		expect(varProblem(gatewayHostVar, "::1")).toMatch(/must bracket an IPv6 literal/)
+		expect(varProblem(gatewayHostVar, "http://::1")).toMatch(/must bracket an IPv6 literal/)
+		expect(varProblem(gatewayHostVar, "https://::1:8443")).toMatch(/must bracket an IPv6 literal/)
+		expect(varProblem(gatewayHostVar, "[::1]")).toBeNull()
+		expect(varProblem(gatewayHostVar, "https://[2001:db8::5]:8443")).toBeNull()
+	})
+
+	test("gateway_TRUST_PROXY: true, false or a hop count → null; anything else → error", () => {
+		const v = { key: "gateway_TRUST_PROXY", placeholder: "(false | true | how many proxies)", optional: true }
+		expect(varProblem(v, "true")).toBeNull()
+		expect(varProblem(v, "false")).toBeNull()
+		expect(varProblem(v, "2")).toBeNull()
+		expect(varProblem(v, "yes")).toMatch(/must be true, false, or the number of proxies/)
 	})
 
 	test("setup_TOKEN: under 32 characters → error, so preflight blocks what validateEnvVars would crash-loop on", () => {
@@ -336,6 +365,238 @@ describe("cookieAmbiguousHostWarning", () => {
 
 	test("a blank gateway_HOST has nothing to be ambiguous about", () => {
 		expect(cookieAmbiguousHostWarning(lines({ gateway_HOST: "", command_COOKIE_SECURE: "true" }))).toBeNull()
+	})
+})
+
+const mockCertFs = (readable = [], unreadable = [], code = "EACCES") => {
+	const spies = [
+		jest.spyOn(fs, "openSync").mockImplementation((p) => {
+			if (readable.includes(p)) return 3
+			const err = unreadable.includes(p) ? code : "ENOENT"
+			throw Object.assign(new Error(err), { code: err })
+		}),
+		jest.spyOn(fs, "fstatSync").mockImplementation(() => ({ isFile: () => true })),
+		jest.spyOn(fs, "closeSync").mockImplementation(() => {})
+	]
+	return () => spies.forEach(s => s.mockRestore())
+}
+
+const LE = ["/etc/letsencrypt/live/cam.example.com/privkey.pem", "/etc/letsencrypt/live/cam.example.com/fullchain.pem"]
+
+describe("httpsRedirectLoopWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires when the redirect is on and nothing here gives this machine a certificate", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", privateKey_FILEPATH: "", certificate_FILEPATH: "" }))).toMatch(/ERR_TOO_MANY_REDIRECTS/)
+	})
+
+	test("fires when those lines are missing from .env entirely, not merely blank", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true" }))).toBeTruthy()
+	})
+
+	test("certbot_ON=true rules it out — certbot gets this machine its own certificate", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true" }))).toBeNull()
+	})
+
+	test("gateway_TRUST_PROXY=true rules it out — the proxy in front says which scheme the visitor used", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true" }))).toBeNull()
+	})
+
+	test("both FILEPATHs set rules it out — the operator supplied a matched certificate pair", () => {
+		const restore = mockCertFs(["/certs/privkey.pem", "/certs/fullchain.pem"])
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+		restore()
+	})
+
+	test("both FILEPATHs absolute but missing on disk still fires — an absolute path alone does not prove the cert is there", () => {
+		const restore = mockCertFs()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+		restore()
+	})
+
+	test("only privateKey_FILEPATH set still fires — certPaths.js requires both-or-neither and disables TLS entirely on a mismatched pair", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "" }))).toBeTruthy()
+	})
+
+	test("only certificate_FILEPATH set still fires — same both-or-neither gap", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+	})
+
+	test("placeholder prose in the FILEPATHs still fires — `cp env.example .env` leaves the description behind, not a path", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "Custom TLS private key path (overrides auto-resolve)", certificate_FILEPATH: "Custom TLS certificate path (overrides auto-resolve)" }))).toBeTruthy()
+	})
+
+	test("never fires while the redirect is off — nothing redirects, so nothing can loop", () => {
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "false" }))).toBeNull()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "" }))).toBeNull()
+		expect(httpsRedirectLoopWarning(lines({}))).toBeNull()
+	})
+
+	test("auto-resolved cert files on disk for gateway_HOST rule it out — a certbot run on the host outside chimera's own flow still holds the certificate", () => {
+		const restore = mockCertFs(LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		restore()
+	})
+
+	test("still fires when only one of the two auto-resolved cert files exists", () => {
+		const restore = mockCertFs([LE[0]])
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
+		restore()
+	})
+
+	test("still fires when gateway_HOST is set but no cert files exist there yet", () => {
+		const restore = mockCertFs()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeTruthy()
+		restore()
+	})
+
+	test("fires for an IPv4-literal gateway_HOST with no pair on disk — Let's Encrypt cannot issue for an IP, so nothing puts one there", () => {
+		const restore = mockCertFs()
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://192.168.1.50" }))).toBeTruthy()
+		restore()
+	})
+
+	test("stays quiet for an IPv4-literal gateway_HOST whose hand-placed pair is on disk — certPaths() keeps that pair and the secure listener comes up", () => {
+		const restore = mockCertFs(["/etc/letsencrypt/live/192.168.1.50/privkey.pem", "/etc/letsencrypt/live/192.168.1.50/fullchain.pem"])
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://192.168.1.50" }))).toBeNull()
+		restore()
+	})
+
+	test("stays quiet when the auto-resolved cert dir is unreadable — certbot-entry.sh leaves it mode 0710, and EACCES is not proof the cert is absent", () => {
+		const restore = mockCertFs([], LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		restore()
+	})
+
+	test("a cert that stats fine but cannot be opened counts as unreadable — handleSecureServerStart reads the file, it does not stat it", () => {
+		const statSpy = jest.spyOn(fs, "statSync").mockImplementation(() => ({ isFile: () => true }))
+		const restore = mockCertFs([], LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toMatch("(EACCES)")
+		restore()
+		statSpy.mockRestore()
+	})
+
+	test("fires when the FILEPATH overrides are missing even though an auto-resolved pair is on disk — certPaths() gives the overrides precedence", () => {
+		const restore = mockCertFs(LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeTruthy()
+		restore()
+	})
+
+	test("fires when only one FILEPATH is set and an auto-resolved pair is on disk — a half-set override disables TLS entirely", () => {
+		const restore = mockCertFs(LE)
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com", privateKey_FILEPATH: "/certs/privkey.pem" }))).toBeTruthy()
+		restore()
+	})
+
+	test("stays quiet when a configured FILEPATH is unreadable", () => {
+		const restore = mockCertFs([], ["/certs/privkey.pem", "/certs/fullchain.pem"])
+		expect(httpsRedirectLoopWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/certs/privkey.pem", certificate_FILEPATH: "/certs/fullchain.pem" }))).toBeNull()
+		restore()
+	})
+})
+
+describe("certUnreadableWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("names the unreadable path and its errno, so EACCES does not read as a certificate", () => {
+		const restore = mockCertFs([], LE)
+		const w = certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))
+		expect(w).toMatch("/etc/letsencrypt/live/cam.example.com/privkey.pem (EACCES)")
+		expect(w).toMatch("/etc/letsencrypt/live/cam.example.com/fullchain.pem (EACCES)")
+		expect(w).toMatch("the redirect-loop warning stays silent")
+		restore()
+	})
+
+	test("fires for an unreadable FILEPATH override — a container path need not exist on the host", () => {
+		const restore = mockCertFs([], ["/etc/ssl/private/key.pem", "/etc/ssl/certs/cert.pem"])
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/etc/ssl/private/key.pem", certificate_FILEPATH: "/etc/ssl/certs/cert.pem" }))).toMatch("/etc/ssl/private/key.pem (EACCES)")
+		restore()
+	})
+
+	test("a mixed pair does not claim the loop warning stayed silent — one unreadable path and one missing fires both", () => {
+		const opts = { gateway_HTTPS_Redirect: "true", privateKey_FILEPATH: "/etc/ssl/private/key.pem", certificate_FILEPATH: "/etc/ssl/certs/cert.pem" }
+		const restore = mockCertFs([], ["/etc/ssl/private/key.pem"])
+		expect(httpsRedirectLoopWarning(lines(opts))).toBeTruthy()
+		const w = certUnreadableWarning(lines(opts))
+		expect(w).toMatch("/etc/ssl/private/key.pem (EACCES)")
+		expect(w).not.toMatch("stays silent")
+		restore()
+	})
+
+	test("stays quiet when the paths are merely absent — httpsRedirectLoopWarning already speaks for that", () => {
+		const restore = mockCertFs()
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		restore()
+	})
+
+	test("stays quiet when nothing here has to hold a certificate", () => {
+		const restore = mockCertFs([], LE)
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "false", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(certUnreadableWarning(lines({ gateway_HTTPS_Redirect: "true", certbot_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		restore()
+	})
+})
+
+describe("httpsRedirectPortWarning", () => {
+	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
+
+	test("fires when gateway_HOST names no port but gateway.js appends one — the two disagree on the public address", () => {
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50" }))
+		expect(w).toMatch(/visitors to https:\/\/192\.168\.1\.50:8443/)
+		expect(w).toMatch(/gateway_HOST is https:\/\/192\.168\.1\.50\./)
+	})
+
+	test("fires when the TLS listener is on a port gateway_HOST names differently — the redirect lands where nothing serves TLS", () => {
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50:9443" }))
+		expect(w).toMatch(/ERR_SSL_PROTOCOL_ERROR/)
+		expect(w).toMatch(/visitors to port 9443 \(gateway_HOST\)/)
+		expect(w).toMatch(/terminates TLS on port 8443 \(gateway_PORT_SECURE\)/)
+	})
+
+	test("fires when gateway_HOST names a port the TLS listener does not use", () => {
+		const w = httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "443", gateway_HOST: "https://192.168.1.50:8443" }))
+		expect(w).toMatch(/visitors to port 8443 \(gateway_HOST\)/)
+		expect(w).toMatch(/terminates TLS on port 443 \(gateway_PORT_SECURE\)/)
+	})
+
+	test("matching ports pass", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "8080", gateway_PORT_SECURE: "8443", gateway_HOST: "https://192.168.1.50:8443" }))).toBeNull()
+	})
+
+	test("a bare gateway_HOST reads as https on 443, so a blank gateway_PORT_SECURE matches it", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT: "80", gateway_HOST: "cam.example.com" }))).toBeNull()
+	})
+
+	test("an explicit :443 in gateway_HOST is the same 443 the default names", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com:443" }))).toBeNull()
+	})
+
+	test("a blank gateway_PORT_SECURE still fires against a non-443 gateway_HOST — the listener falls back to 443", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_HOST: "https://cam.example.com:8443" }))).toBeTruthy()
+	})
+
+	test("never fires while the redirect is off — nothing redirects, so nothing can miss the listener", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "false", gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(httpsRedirectPortWarning(lines({ gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+	})
+
+	test("an explicit http:// gateway_HOST fires — the redirect targets https:// regardless, so the scheme contradicts itself", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://192.168.1.50:8080" }))).toMatch(/gateway_HOST is http:\/\//)
+	})
+
+	test("an http:// gateway_HOST behind a trusted proxy still fires — the port it names is the one gateway.js drops", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "http://cam.example.com:8443" }))).toMatch(/gateway_HOST is http:\/\//)
+	})
+
+	test("a blank or unparseable gateway_HOST names no port to disagree with", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "" }))).toBeNull()
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "not a valid host" }))).toBeNull()
+	})
+
+	test("gateway_TRUST_PROXY=true rules it out — the container's TLS port and the browser-facing port are meant to differ behind a proxy", () => {
+		expect(httpsRedirectPortWarning(lines({ gateway_HTTPS_Redirect: "true", gateway_TRUST_PROXY: "true", gateway_PORT_SECURE: "8443", gateway_HOST: "https://cam.example.com" }))).toBeNull()
 	})
 })
 

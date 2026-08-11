@@ -3,13 +3,17 @@ module.exports = () => {
 	const MAX_KEYS = 20000
 	const prune = (now) => {
 		if(hits.size > 5000) for(const [k, v] of hits) if(now > v.reset) hits.delete(k)
-		if(hits.size > MAX_KEYS){
-			const target = MAX_KEYS - (MAX_KEYS >> 3)
-			for(const k of hits.keys()){
-				if(hits.size <= target) break
-				hits.delete(k)
+		if(hits.size <= MAX_KEYS) return
+		const target = MAX_KEYS - (MAX_KEYS >> 3)
+		const sweep = (evictable) => {
+			for(const [k, v] of hits){
+				if(hits.size <= target) return
+				if(evictable(v)) hits.delete(k)
 			}
 		}
+		sweep((v) => v.count <= 1 && v.count < v.max)
+		sweep((v) => v.count < v.max)
+		sweep(() => true)
 	}
 	return {
 		loginReserve: (key, max, windowMs, callback=()=>{}) => {

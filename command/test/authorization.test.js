@@ -899,6 +899,8 @@ describe("Authorization Routes", () => {
 	describe("rateLimit", () => {
 		const { rateLimit } = require("../backend/routes/authorization.js")
 
+		const flush = () => new Promise(setImmediate)
+
 		const run = (mw, ip, statusCode = 400) => {
 			const req = { headers: {}, ip, path: "/login" }
 			let onFinish
@@ -949,16 +951,103 @@ describe("Authorization Routes", () => {
 			expect(second.res.status).toHaveBeenCalledWith(429)
 		})
 
-		test("is wired onto POST /login and returns 429 once exhausted", async () => {
+		test("with throttleMs, a spent budget lets exactly one request through per window, then blocks", () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, throttleMs: 60000 })
+			expect(run(mw, "15.15.15.15").next).toHaveBeenCalled()
+			expect(run(mw, "15.15.15.15").next).toHaveBeenCalled()
+			const { res, next } = run(mw, "15.15.15.15")
+			expect(next).not.toHaveBeenCalled()
+			expect(res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("skip resolving true bypasses the limiter entirely, even after the budget is spent", async () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, skip: async () => true })
+			const makeReq = (ip) => ({ headers: {}, ip, path: "/login" })
+			const makeRes = () => ({ statusCode: 400, status: jest.fn().mockReturnThis(), json: jest.fn(), on: jest.fn() })
+
+			const next1 = jest.fn()
+			mw(makeReq("16.16.16.16"), makeRes(), next1)
+			await flush()
+			expect(next1).toHaveBeenCalled()
+
+			const res2 = makeRes()
+			const next2 = jest.fn()
+			mw(makeReq("16.16.16.16"), res2, next2)
+			await flush()
+			expect(next2).toHaveBeenCalled()
+			expect(res2.status).not.toHaveBeenCalled()
+		})
+
+		test("skip resolving false runs the limiter as normal", async () => {
+			const mw = rateLimit({ windowMs: 60000, max: 1, skip: async () => false })
+			const makeReq = (ip) => ({ headers: {}, ip, path: "/login" })
+			const makeRes = () => ({ statusCode: 400, status: jest.fn().mockReturnThis(), json: jest.fn(), on: jest.fn() })
+
+			const next1 = jest.fn()
+			mw(makeReq("17.17.17.17"), makeRes(), next1)
+			await flush()
+			expect(next1).toHaveBeenCalled()
+
+			const res2 = makeRes()
+			const next2 = jest.fn()
+			mw(makeReq("17.17.17.17"), res2, next2)
+			await flush()
+			expect(next2).not.toHaveBeenCalled()
+			expect(res2.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a chain refuses on the first spent budget, and hands back what the later ones reserved", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, keyFn: (req) => `chain:ip:${req.ip}` },
+				{ windowMs: 60000, max: 3, keyFn: () => "chain:shared" },
+			])
+			expect(run(mw, "9.9.9.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.9.1").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.9.2").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.3").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.9.4").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a throttled-through budget still lets the later ones decide", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 60000, keyFn: (req) => `throttled:ip:${req.ip}` },
+				{ windowMs: 60000, max: 1, keyFn: () => "throttled:account" },
+			])
+			expect(run(mw, "9.9.8.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.8.1").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("a request the first budget throttles through still spends the later ones", () => {
+			const { rateLimitChain } = require("../backend/routes/authorization.js")
+			const mw = rateLimitChain([
+				{ windowMs: 60000, max: 1, throttleMs: 1, keyFn: (req) => `spend:ip:${req.ip}` },
+				{ windowMs: 60000, max: 2, keyFn: () => "spend:day" },
+			])
+			expect(run(mw, "9.9.7.1").next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.1", 429).next).toHaveBeenCalled()
+			expect(run(mw, "9.9.7.2").res.status).toHaveBeenCalledWith(429)
+			expect(run(mw, "9.9.7.3").res.status).toHaveBeenCalledWith(429)
+		})
+
+		test("is wired onto POST /setup and returns 429 once exhausted", async () => {
 			let res
 			for (let i = 0; i < 11; i++) {
 				res = await supertest(app)
-					.post("/authorization/login")
+					.post("/authorization/setup")
 					.set("X-Forwarded-For", "198.51.100.23")
-					.send({ username: "admin", password: "wrongpassword" })
+					.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			}
 			expect(res.status).toBe(429)
 			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+
+			const otherIp = await supertest(app)
+				.post("/authorization/setup")
+				.set("X-Forwarded-For", "198.51.100.24")
+				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
+			expect(otherIp.status).toBe(403)
 		})
 
 		test("empty-body 400s do not count toward the login lockout", async () => {
@@ -995,8 +1084,8 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(200)
-			expect(res.body.error).toBe(false)
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
@@ -1015,9 +1104,43 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(200)
+			expect(first.status).toBe(429)
 			expect(second.status).toBe(429)
 			expect(Date.now() - start).toBeLessThan(1000)
+		})
+
+		// the throttle slot is one per username and anyone can take it, so a long window would hand an
+		// attacker a permanent lockout of a user who has no device token — a new browser or a password change
+		test("an attacker holding the account throttle slot costs the real user 10 seconds, not 15 minutes", async () => {
+			const username = "throttlewindowvictim"
+			let now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
+
+			for (let i = 0; i < 10; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", `192.0.2.${i}`)
+					.send({ username, password: "wrongpassword" })
+			}
+			const attacker = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.50")
+				.send({ username, password: "wrongpassword" })
+			expect(attacker.status).toBe(429)
+
+			const victim = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.51")
+				.send({ username, password: "mockedPassword" })
+			expect(victim.status).toBe(429)
+
+			now += 10 * 1000 + 1
+			const tenSecondsLater = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "192.0.2.52")
+				.send({ username, password: "mockedPassword" })
+			expect(tenSecondsLater.status).toBe(429)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1037,6 +1160,148 @@ describe("Authorization Routes", () => {
 			expect(results.every((r) => r.status === 429)).toBe(true)
 			expect(Date.now() - start).toBeLessThan(1000)
 		})
+
+		test("a flood against other usernames does not lock out a user sharing the egress IP", async () => {
+			const shared = "198.18.0.7"
+			for (let i = 0; i < 20; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", shared)
+					.send({ username: `sharedtarget${i}`, password: "wrongpassword" })
+			}
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", shared)
+				.send({ username: "sharedvictim", password: "mockedPassword" })
+			expect(res.status).toBe(429)
+		})
+
+		// one username for the whole spray, so the per-username throttle refuses most
+		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 20
+		test("a spent per-IP budget throttles instead of blocking, and a device token does not skip it", async () => {
+			const ip = "198.18.3.3"
+			const agent = supertest.agent(app)
+			const enrol = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "198.18.9.9")
+				.send({ username: "iptokenuser", password: "mockedPassword" })
+			expect(enrol.status).toBe(200)
+
+			for (let i = 0; i < 20; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", ip)
+					.send({ username: `sprayfodder${i}`, password: "wrongpassword" })
+			}
+
+			const first = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "sprayvictim", password: "mockedPassword" })
+			expect(first.status).toBe(429)
+
+			const second = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "sprayvictim", password: "mockedPassword" })
+			expect(second.status).toBe(429)
+
+			const known = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "iptokenuser", password: "mockedPassword" })
+			expect(known.status).toBe(429)
+		}, 30000)
+
+		test("a spent per-IP budget answers 429 on a wrong password for an untouched username", async () => {
+			const ip = "198.18.5.5"
+			for (let i = 0; i < 20; i++) {
+				await supertest(app)
+					.post("/authorization/login")
+					.set("X-Forwarded-For", ip)
+					.send({ username: `carryfodder${i}`, password: "wrongpassword" })
+			}
+
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "carryvictim", password: "wrongpassword" })
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
+		}, 30000)
+
+		// Date.now is mocked so the 15-minute burst window can renew while the daily
+		// window stays open — six renewed bursts overspend the daily 100 on purpose,
+		// so an assertion never lands on the exact request that empties the budget
+		test("the daily per-IP ceiling holds after the burst window renews", async () => {
+			const ip = "198.18.7.7"
+			let now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
+			for (let round = 0; round < 6; round++) {
+				for (let i = 0; i < 20; i++) {
+					await supertest(app)
+						.post("/authorization/login")
+						.set("X-Forwarded-For", ip)
+						.send({ username: `dayfodder${round}_${i}`, password: "wrongpassword" })
+				}
+				now += 16 * 60 * 1000
+			}
+			const res = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "dayvictim", password: "wrongpassword" })
+			expect(res.status).toBe(429)
+			expect(res.body.errors).toBe("Too many attempts")
+		}, 30000)
+
+		test("a device token skips the per-IP daily budget, so a spent day does not throttle returning users", async () => {
+			const ip = "198.18.7.8"
+			let now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
+			jest.spyOn(bcrypt, "compare").mockImplementation((pw, hash, cb) => cb(null, pw === "mockedPassword"))
+
+			const agent = supertest.agent(app)
+			const enrol = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", "198.18.7.9")
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(enrol.status).toBe(200)
+
+			for (let round = 0; round < 6; round++) {
+				for (let i = 0; i < 20; i++) {
+					await supertest(app)
+						.post("/authorization/login")
+						.set("X-Forwarded-For", ip)
+						.send({ username: `daytokenfodder${round}_${i}`, password: "wrongpassword" })
+				}
+				now += 16 * 60 * 1000
+			}
+
+			const stranger = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(stranger.status).toBe(429)
+
+			const throttled = await supertest(app)
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(throttled.status).toBe(429)
+
+			const first = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(first.status).toBe(200)
+
+			const second = await agent
+				.post("/authorization/login")
+				.set("X-Forwarded-For", ip)
+				.send({ username: "daytokenuser", password: "mockedPassword" })
+			expect(second.status).toBe(200)
+		}, 30000)
 
 		test("a device token from an earlier login skips the throttle", async () => {
 			const agent = supertest.agent(app)

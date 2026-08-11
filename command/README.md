@@ -13,7 +13,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 - theme and password changes
 - list cameras (RTSP credentials stripped) for the web app
 
-`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when no admin exists; it cannot reset or take over an existing account. `/setup` is public but rate-limited.
+`setup_TOKEN` is required — the service won't boot without it ([server.js](server.js)). A valid token bootstraps the first admin only when none exists; it cannot take over an existing account. `/setup` is public but rate-limited.
 
 ---
 # Web app
@@ -27,24 +27,49 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 
 `command_ON`, `command_PORT`, `command_HOST`, `command_PROXY_ON`, `command_COOKIE_SECURE`, `SECRETKEY`, `setup_TOKEN`; see [../env.example](../env.example).
 
-`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is config, not `req.secure`: `trust proxy` makes Express read `X-Forwarded-Proto`, which a client can prepend to, and the gateway's `xfwd` appends rather than overwrites — so the request cannot be trusted to describe its own transport. Which value to pick: [env.example](../env.example).
+`command_COOKIE_SECURE` sets the `Secure` flag on the auth cookie. It is a config value, not `req.secure`. With `trust proxy`, `req.secure` reads `X-Forwarded-Proto`, and a client can add a value at the start of that header. A request therefore cannot be trusted to describe its own transport. To pick a value: [env.example](../env.example).
 
 ---
 # Login limits
 
-Three controls run on `POST /authorization/login`, in order:
+`POST /authorization/login` counts against three limits in order, then it checks the password. [authorization.js](backend/routes/authorization.js) holds the allowances, the windows, and the throttle intervals.
 
-- **Per IP** — 10 tries per 15 minutes. `req.ip` comes from the last `X-Forwarded-For` entry, which the gateway appends, so a forged header cannot raise the limit. This holds only while the gateway is the sole reachable port.
-- **Per username** — 10 tries per 15 minutes. A success refunds its slot, and so does a 5xx; only a rejected password spends one. Once the budget is spent, nothing refunds it — a correct password gets the user in, but the throttle below stays on for the rest of the window.
-- **Throttle** — once the per-username budget is spent, one credential check per `THROTTLE_WINDOW_MS` (10s). Extra requests get 429 straight away. Nothing is queued, so a flood cannot build latency or hold sockets open. The check that does run answers 429 too when the password is wrong, so a 429 does not prove the credentials went unchecked. Only a correct password gets through, with 200.
+| limit | counted per | a device token skips it |
+|---|---|---|
+| burst | IP address | no |
+| daily | IP address | yes |
+| account | username | yes |
 
-A successful login also sets `devicetoken`, a year-long signed cookie naming that username. A login carrying a valid one skips the per-username budget and the throttle, so an attacker cannot lock a user out of a device they have already used. Only the per-IP limit stays, which gives 10 tries per 15 minutes **per address** — so a token replayed from many addresses gets 10 tries from each, with no per-username limit at all. The cookie is `httpOnly` and signed, so a script cannot read it; theft needs access to the device or its browser profile.
+No limit ends in a hard block. Once a limit is used up, the route runs one password check per window and answers 429 to every other request at once. Nothing waits in a queue, so a flood cannot build latency. That one check also answers 429 when the password is wrong, so a 429 does not prove the password went unchecked.
 
-The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against, and `knownDevice` re-reads that hash on every login. Any password change — a user reset, an admin reset, or deleting and recreating the account — changes the digest and voids every device token for that username, which restores the per-username cap. This is the remediation path after a device is stolen. Revoking sessions alone does not void the cookie; reset the password.
+| response | the slot is |
+|---|---|
+| below 400 | refunded |
+| 4xx | used |
+| 5xx | refunded |
 
-Two gaps stay open:
+A request that the burst limit stops never reaches the daily limit. A flood of 429s therefore cannot use up the day of a shared address.
 
-- A user on a device with no `devicetoken` can still be throttled while an attack is running.
-- `knownDevice` matches the username and current password hash, not a live session. On a shared browser, a later user skips the per-username limits for the username that logged in before them.
+## Which address the limits count
 
-Logout keeps the cookie on purpose — it exists to survive session expiry.
+The gateway replaces `X-Forwarded-For` with one value of its own, so a client cannot fake the address that `req.ip` returns. This holds only while the gateway is the one port outsiders can reach. A published `command_PORT`, or a `command_HOST` on another machine, lets anyone write that header and choose their own key. Which address the gateway writes: [gateway](../gateway#headers).
+
+## Device tokens
+
+A successful login sets `devicetoken`. It is a signed `httpOnly` cookie, it lasts one year, and it names the username. It skips the limits marked above, so the failures of other people cannot lock a user out of a device they already use. The burst limit still applies, so a stolen token is still capped.
+
+The cookie also carries `dk`, a SHA-256 digest of the password hash it was issued against. `knownDevice` re-checks `dk` at every login. A password change therefore voids every token for that username. This is how you recover from a stolen device: if you only revoke the sessions, the cookie stays valid. Logout keeps the cookie on purpose, because the cookie has to survive the end of a session.
+
+## What these limits do not do
+
+These limits are tuned to keep real users in. They do not guarantee that an attacker is stopped. The costs:
+
+| the limit | what it costs you |
+|---|---|
+| `gateway_TRUST_PROXY` is not `true` | every visitor behind a front proxy (CDN, nginx, tunnel) counts as one address, so the whole site shares one set of per-IP limits |
+| the account limit throttles to one check per 10 seconds, not one per window | an attacker who changes address still gets about 8,600 guesses a day at one username. A longer throttle would instead let the attacker hold a user with no device token out of their own account. |
+| clients share one exit address (home router, CGNAT) | they share the per-IP limits and compete for the single throttle slot, even when the attack targets somebody else |
+| a key has one throttle slot, and any request takes it | a user with no device token waits out the window that an attacker holds |
+| `knownDevice` matches the username and the current password hash, not a live session | on a shared browser, a later user inherits the skip |
+| nothing caps attempts across addresses | run a cluster (`chimeraInstances`) to spread the load. A cluster also forces `memory_ON=true`, which keeps the limits shared. |
+| `bcryptjs` holds the event loop for a whole cost-10 check | many logins at once from one address stall every route |

@@ -8,6 +8,8 @@ try{
 catch{
 	process.exit(1)
 }
+process.env.gateway_HTTPS_Redirect = "false"
+process.env.gateway_TRUST_PROXY = "false"
 const gateway = require("../server.js").app
 
 jest.mock("memory")

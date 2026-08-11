@@ -46,7 +46,7 @@ module.exports = {
 
 	passwordCheck: (req, res, next) => {
 		const { username, password } = req.body
-		const deny = () => req.accountThrottled
+		const deny = () => req.throttled
 			? res.status(429).json({ error: true, errors: "Too many attempts" })
 			: res.status(400).json({ error: true, errors: "Invalid username or password" })
 		const serverError = () => res.status(500).json({ error: true })
@@ -56,7 +56,7 @@ module.exports = {
 			const row = values.rows[0]
 			bcrypt.compare(password === undefined ? "" : password, row && row.hash ? row.hash : DUMMY_HASH, (err, success) => {
 				if (err) return serverError()
-				if (!success || !row || !row.hash) return deny()
+				if (req.throttled || !success || !row || !row.hash) return deny()
 				req.userRole = row.role
 				req.deviceKey = deviceKey(row.hash)
 				req.forcePasswordChange = row.force_password_change

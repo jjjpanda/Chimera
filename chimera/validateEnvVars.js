@@ -1,7 +1,7 @@
 require("dotenv").config()
 const fs = require("fs")
 const path = require("path")
-const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
+const { parseSchema, isServiceOff, typeOf, isSecret, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, redirectWarnings, certbotPortProblem, duplicatePortProblems, hashTruncated } = require("./preflight.js")
 const { multiInstance, validInstances } = require("../lib/utils/multiInstance.js")
 const { validTrustedSources } = require("../lib/utils/trustedSources.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
@@ -14,13 +14,13 @@ const placeholders = new Map(schema.map(v => [v.key, v.placeholder]))
 
 const instances = (process.env.chimeraInstances || "").trim()
 if (instances !== "" && !validInstances(instances)) {
-	console.log("chimeraInstances MUST BE \"max\", -1, OR AN INTEGER >= 0 — pm2 only runs cluster_mode for those; anything below -1 forks N processes that all bind the same port")
+	console.log("chimeraInstances MUST BE \"max\", -1, OR AN INTEGER >= 0 — pm2 runs cluster_mode only for those")
 	allEnvPresent = false
 }
 
 const trustedSources = (process.env.scheduler_TRUSTED_SOURCES || "").trim()
 if (trustedSources !== "" && !validTrustedSources(trustedSources)) {
-	console.log("scheduler_TRUSTED_SOURCES MUST BE COMMA-SEPARATED IPs/CIDRs OR proxy-addr NAMES LIKE \"loopback\" — proxy-addr.compile throws at import and crash-loops every service")
+	console.log("scheduler_TRUSTED_SOURCES MUST BE COMMA-SEPARATED IPs/CIDRs OR proxy-addr NAMES LIKE \"loopback\" — an unparseable value crash-loops every service")
 	allEnvPresent = false
 }
 
@@ -28,8 +28,17 @@ const envLines = Object.entries(process.env).map(([k, v]) => `${k} = ${v}`)
 
 const rawStorageHost = (process.env.storage_HOST || "").trim()
 if (!isServiceOff(envLines, "storage_HOST") && rawStorageHost !== "" && !/^https?:\/\//i.test(rawStorageHost)) {
-	console.log("storage_HOST MUST START WITH http:// OR https:// — scheduled tasks and the gateway proxy dial it directly and storage only ever serves plain HTTP, so an implied https:// fails the TLS handshake on every request")
+	console.log("storage_HOST MUST START WITH http:// OR https:// — storage serves plain HTTP, so an implied https:// fails the TLS handshake")
 	allEnvPresent = false
+}
+
+const rawGatewayHost = (process.env.gateway_HOST || "").trim()
+if (!isServiceOff(envLines, "gateway_HOST") && rawGatewayHost !== "") {
+	try { new URL(gatewayHost()) }
+	catch {
+		console.log("gateway_HOST MUST BE A VALID URL — gateway.js builds the https:// redirect target from it, and will not fall back to the Host header the client sent. An unparseable value answers every http:// request with a 500 instead of a redirect")
+		allEnvPresent = false
+	}
 }
 
 const objectFeed = objectFeedProblem(envLines)
@@ -45,7 +54,7 @@ try {
 }
 catch (e) {
 	if (e.code !== "ENOENT") {
-		console.log(`CANNOT READ ${rawEnvPath} (${e.code}) — dotenv swallows this, so every variable reads as unset; the container opens it as uid 1000, not root`)
+		console.log(`CANNOT READ ${rawEnvPath} (${e.code}) — the container opens it as uid 1000, and dotenv reports nothing, so every variable reads as unset`)
 		allEnvPresent = false
 	}
 }
@@ -142,14 +151,14 @@ if (!isServiceOff(envLines, "storage_MOTION_CONF_FILEPATH") && motionConfPath) {
 		fs.readFileSync(motionConfPath)
 	} catch (e) {
 		if (e.code !== "ENOENT") {
-			console.log(`CANNOT READ ${motionConfPath} (${e.code}) — motion opens this as uid 1000; an unreadable file crash-loops the motion process instead of failing here`)
+			console.log(`CANNOT READ ${motionConfPath} (${e.code}) — motion opens this as uid 1000 and crash-loops without it`)
 			allEnvPresent = false
 		}
 	}
 }
 
 if (multiInstance(instances) && process.env.memory_ON !== "true") {
-	console.log("FORCING memory_ON=true — chimeraInstances asks for a cluster; instances coordinate through the memory socket")
+	console.log("FORCING memory_ON=true — a cluster coordinates through the memory socket")
 	process.env.memory_ON = "true"
 }
 
@@ -166,8 +175,10 @@ duplicatePorts.forEach(([k, p]) => {
 })
 
 if (process.env.certbot_ON === "true" && process.env.gateway_HTTPS_Redirect !== "true") {
-	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 stays open for HTTP-01 and keeps serving the whole app, so the login form and password cross the network in cleartext and the browser then drops the Secure session cookie, silently failing the login")
+	console.log("WARNING: certbot_ON=true but gateway_HTTPS_Redirect is not true — port 80 keeps serving the whole app. Passwords cross the network in cleartext, and the browser drops the Secure cookie, so the login fails and says nothing")
 }
+
+redirectWarnings(envLines).forEach(w => console.log(w))
 
 const LOOPBACK = ["localhost", "127.0.0.1", "::1", "[::1]"]
 const originOf = (url) => { try { return new URL(url).host } catch { return "" } }
@@ -180,7 +191,7 @@ if (cookieProblem) {
 	allEnvPresent = false
 }
 else if (insecureCookie(envLines)) {
-	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true for a non-loopback gateway_HOST reached over HTTPS (leave false only for plain-HTTP deploys)")
+	console.log("WARNING: auth cookie may be sent over plaintext HTTP — set command_COOKIE_SECURE=true if browsers reach gateway_HOST over HTTPS")
 }
 else if (ambiguousHost) {
 	console.log(ambiguousHost)
@@ -191,10 +202,10 @@ const gwOrigin = originOf(gatewayHost())
 const stOrigin = originOf(storageHost())
 const stHostname = hostnameOf(storageHost())
 if (scheduleOn && gwOrigin && gwOrigin === stOrigin) {
-	console.log("WARNING: storage_HOST points at gateway_HOST — the gateway strips Authorization on every proxied request, so scheduled tasks 401 whatever scheduler_TRUSTED_SOURCES says; point storage_HOST straight at the storage service")
+	console.log("WARNING: storage_HOST points at gateway_HOST — the gateway strips Authorization, so every scheduled task 401s; point storage_HOST straight at the storage service")
 }
 else if (scheduleOn && stHostname && !LOOPBACK.includes(stHostname) && trustedSources === "") {
-	console.log("WARNING: storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset — storage trusts only loopback peers by default, so every scheduled task 401s with nothing but a webhook alert; set scheduler_TRUSTED_SOURCES to the address/CIDR the schedule service connects from")
+	console.log("WARNING: storage_HOST is not loopback but scheduler_TRUSTED_SOURCES is unset — storage trusts only loopback, so every scheduled task 401s; set it to the address/CIDR the schedule service connects from")
 }
 
 if(allEnvPresent){

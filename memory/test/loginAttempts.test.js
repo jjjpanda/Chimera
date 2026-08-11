@@ -29,15 +29,30 @@ describe("loginAttempts", () => {
 		expect(blocked).toBe(false)
 	})
 
-	test("eviction past MAX_KEYS is age-based, not preferential to non-saturated victim counters", () => {
+	test("a spent daily budget outlives a flood of fresh short-window keys", () => {
 		const { loginReserve } = makeLoginAttempts()
-		loginReserve("saturated-old", 1, 60000, () => {})
-		loginReserve("victim", 10, 60000, () => {})
-		for (let i = 0; i < 20000; i++) loginReserve(`flood-${i}`, 100, 60000, () => {})
-		let victimBlocked
-		loginReserve("victim", 10, 60000, (b) => { victimBlocked = b })
-		let saturatedBlocked
-		loginReserve("saturated-old", 1, 60000, (b) => { saturatedBlocked = b })
-		expect(victimBlocked).toBe(saturatedBlocked)
+		loginReserve("day:ip:attacker", 1, 24 * 60 * 60 * 1000, () => {})
+		for (let i = 0; i < 21000; i++) loginReserve(`flood-${i}`, 100, 15 * 60 * 1000, () => {})
+		let blocked
+		loginReserve("day:ip:attacker", 1, 24 * 60 * 60 * 1000, (b) => { blocked = b })
+		expect(blocked).toBe(true)
+	})
+
+	test("a per-account counter at its max survives a flood, even though it expires first", () => {
+		const { loginReserve } = makeLoginAttempts()
+		for (let i = 0; i < 10; i++) loginReserve("user:victim", 10, 15 * 60 * 1000, () => {})
+		for (let i = 0; i < 21000; i++) loginReserve(`day:ip:flood-${i}`, 100, 24 * 60 * 60 * 1000, () => {})
+		let blocked
+		loginReserve("user:victim", 10, 15 * 60 * 1000, (b) => { blocked = b })
+		expect(blocked).toBe(true)
+	})
+
+	test("a saturated counter outlives a flood of same-window keys that are still under their max", () => {
+		const { loginReserve } = makeLoginAttempts()
+		loginReserve("saturated", 1, 60000, () => {})
+		for (let i = 0; i < 21000; i++) loginReserve(`flood-${i}`, 100, 60000, () => {})
+		let blocked
+		loginReserve("saturated", 1, 60000, (b) => { blocked = b })
+		expect(blocked).toBe(true)
 	})
 })

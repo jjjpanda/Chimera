@@ -41,7 +41,10 @@ afterEach(() => {
 	while (tmp.length) fs.rmSync(tmp.pop(), { recursive: true, force: true })
 })
 
-describe("grant_gateway_read", () => {
+// a bare Windows PATH has no sh on it, so grant_gateway_read can never be spawned there
+const hasSh = spawnSync("sh", ["-c", "exit 0"]).status === 0
+
+;(hasSh ? describe : describe.skip)("grant_gateway_read", () => {
 	// win32 and WSL's /mnt/c report a fixed mode whatever chmod does, and these assertions opt out there
 	const probe = fs.mkdtempSync(path.join(os.tmpdir(), "certbot-modeprobe-"))
 	fs.chmodSync(probe, 0o600)

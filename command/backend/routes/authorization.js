@@ -33,37 +33,29 @@ const assertNotLastAdmin = async (client, message) => {
 	if (admins.rows.length <= 1) throw new HttpError(400, message)
 }
 
-const { makeReserve, rateLimit: baseRateLimit, releaseOnSuccess, client: memoryClient } = rateLimiter("AUTH")
+const { rateLimitChain: baseRateLimitChain, client: memoryClient } = rateLimiter("AUTH")
 if (memoryClient) auth.connectSessionSync(memoryClient)
 
-const rateLimit = (opts) => baseRateLimit({ ...opts, releaseOnSuccess: true })
+const releasing = (opts) => ({ ...opts, releaseOnSuccess: true })
+const rateLimitChain = (optsList) => baseRateLimitChain(optsList.map(releasing))
+const rateLimit = (opts) => rateLimitChain([opts])
 
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
+const setupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 })
 
 const passwordLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyFn: (req) => `password:${req.decoded?.username ?? ""}` })
 
 const THROTTLE_WINDOW_MS = 10000
 
 const accountKeyFn = (req) => `user:${typeof req.body?.username === "string" ? req.body.username : ""}`
+const ipKeyFn = (req) => `ip:${req.ip || ""}`
 
-const accountLimiter = (() => {
-	const budget = makeReserve({ windowMs: 15 * 60 * 1000, max: 10, keyFn: accountKeyFn })
-	const throttle = makeReserve({ windowMs: THROTTLE_WINDOW_MS, max: 1, keyFn: (req) => `throttle:${accountKeyFn(req)}` })
-	// knownDevice never rejects — it answers false for a bad token, a bad signature or a failed query
-	return (req, res, next) => knownDevice(req).then((known) => {
-		if (known) return next()
-		budget(req, (blocked, release) => {
-			req.accountThrottled = blocked
-			if (!blocked) {
-				releaseOnSuccess(res, release)
-				return next()
-			}
-			throttle(req, (tooSoon) => tooSoon
-				? res.status(429).json({ error: true, errors: "Too many attempts" })
-				: next())
-		})
-	})
-})()
+const deviceKnown = (req) => (req.deviceKnown ??= knownDevice(req))
+
+const loginLimiter = rateLimitChain([
+	{ windowMs: 15 * 60 * 1000, max: 20, throttleMs: THROTTLE_WINDOW_MS, keyFn: ipKeyFn },
+	{ windowMs: 24 * 60 * 60 * 1000, max: 100, throttleMs: 15 * 60 * 1000, keyFn: (req) => `day:${ipKeyFn(req)}`, skip: deviceKnown },
+	{ windowMs: 15 * 60 * 1000, max: 10, throttleMs: THROTTLE_WINDOW_MS, keyFn: accountKeyFn, skip: deviceKnown },
+])
 
 app.get("/status", async (req, res) => {
 	try {
@@ -75,7 +67,7 @@ app.get("/status", async (req, res) => {
 	}
 })
 
-app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) => {
+app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) => {
 	const { username, password, token } = req.body
 	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
@@ -104,7 +96,7 @@ app.post("/setup", blockCrossSite, validateBody, loginLimiter, async (req, res) 
 	}
 })
 
-app.post("/login", blockCrossSite, validateBody, loginLimiter, accountLimiter, passwordCheck, login)
+app.post("/login", blockCrossSite, validateBody, loginLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
 		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
@@ -264,4 +256,5 @@ app.post("/logout", authorize, async (req, res) => {
 })
 
 app.rateLimit = rateLimit
+app.rateLimitChain = rateLimitChain
 module.exports = app
