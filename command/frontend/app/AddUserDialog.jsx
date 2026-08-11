@@ -71,7 +71,7 @@ const AddUserDialog = ({ onAdded }) => {
 					<div className="flex flex-col gap-4 pt-2">
 						<p className="text-sm text-muted">User created. Share this temporary password with them:</p>
 						<div className="flex items-center gap-2">
-							<code className="flex-1 rounded bg-surface border border-border px-3 py-2 text-sm text-primary font-mono break-all">{tempPassword}</code>
+							<code className="flex-1 rounded-sm bg-surface border border-border px-3 py-2 text-sm text-primary font-mono break-all">{tempPassword}</code>
 							<Button size="sm" variant="outline" className="border-border text-primary hover:bg-surface-raised shrink-0" onClick={copyPassword}>{copied ? "Copied!" : "Copy"}</Button>
 						</div>
 						<DialogFooter>

@@ -27,7 +27,7 @@ const CameraGridMini = ({ slots, renderCell, cellLabel, onCellClick, centerIcon,
 							type="button"
 							aria-label={cellLabel(slot) != null ? String(cellLabel(slot)) : "Open camera"}
 							onClick={(e) => { e.stopPropagation(); onCellClick(slot) }}
-							className="absolute inset-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+							className="absolute inset-0 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
 						/>
 					)}
 				</div>
@@ -36,7 +36,7 @@ const CameraGridMini = ({ slots, renderCell, cellLabel, onCellClick, centerIcon,
 				type="button"
 				aria-label={activateLabel}
 				onClick={(e) => { e.stopPropagation(); onActivate() }}
-				className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+				className="absolute inset-0 m-auto z-10 rounded-full shadow-lg size-14 flex items-center justify-center bg-accent text-accent-foreground cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
 			>
 				{centerIcon}
 			</button>
