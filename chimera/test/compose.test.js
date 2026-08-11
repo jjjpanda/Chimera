@@ -52,6 +52,14 @@ describe("composeCommand", () => {
 		readLines.mockReturnValue(lines({ certbot_ON: "false" }))
 		expect(composeCommand(["up", "-d"])).toEqual(["docker", "compose", "up", "-d", "--scale", "certbot=0"])
 	})
+
+	test("a .env this user cannot read falls back to process.env — a throw here would kill the watchdog's poll loop", () => {
+		readLines.mockImplementation(() => { throw Object.assign(new Error("EACCES: permission denied, open '.env'"), { code: "EACCES" }) })
+		expect(composeCommand(["up", "-d", "--force-recreate"])).toEqual(["docker", "compose", "up", "-d", "--force-recreate", "--scale", "certbot=0"])
+
+		process.env.certbot_ON = "true"
+		expect(composeCommand(["up", "-d"])).toEqual(["docker", "compose", "up", "-d"])
+	})
 })
 
 describe("runCompose", () => {

@@ -4,7 +4,9 @@ const { ROOT, readLines, getVal } = require("./preflight.js")
 const composeArgs = (lines, args = []) =>
 	args[0] === "up" && (process.env.certbot_ON ?? getVal(lines, "certbot_ON")) !== "true" ? [...args, "--scale", "certbot=0"] : args
 
-const composeCommand = (args) => ["docker", "compose", ...composeArgs(readLines(), args)]
+const certbotLines = () => { try { return readLines() } catch { return [] } }
+
+const composeCommand = (args) => ["docker", "compose", ...composeArgs(certbotLines(), args)]
 
 const runCompose = (args) => {
 	const [cmd, ...rest] = composeCommand(args)
