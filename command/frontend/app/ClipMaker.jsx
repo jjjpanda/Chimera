@@ -1,4 +1,5 @@
 import React, { useId, useState, useMemo, useRef, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { useRole } from "./AuthContext"
 import { ImageOff, Square, Minus, Plus, ZoomIn, Check, X, Rewind, LayoutGrid, RectangleHorizontal, Save, SkipBack, ScanEye } from "lucide-react"
@@ -49,6 +50,7 @@ const parseFrameTime = (url) => {
 }
 
 const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrimChange, trimming, disabled, markers = [] }) => {
+	const { t } = useTranslation()
 	const trackRef = useRef(null)
 	const scrubIdxRef = useRef(scrubIdx)
 	const trimRangeRef = useRef(trimRange)
@@ -197,11 +199,11 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 					<div
 						role="slider"
 						tabIndex={0}
-						aria-label="Trim start"
+						aria-label={t("clip.trimStart")}
 						aria-valuemin={0}
 						aria-valuemax={100}
 						aria-valuenow={Math.round(ts)}
-						aria-valuetext={`Start ${Math.round(ts)}%`}
+						aria-valuetext={t("clip.trimStartValue", { value: Math.round(ts) })}
 						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${ts}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-start") }}
@@ -210,11 +212,11 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 					<div
 						role="slider"
 						tabIndex={0}
-						aria-label="Trim end"
+						aria-label={t("clip.trimEnd")}
 						aria-valuemin={0}
 						aria-valuemax={100}
 						aria-valuenow={Math.round(te)}
-						aria-valuetext={`End ${Math.round(te)}%`}
+						aria-valuetext={t("clip.trimEndValue", { value: Math.round(te) })}
 						className="absolute inset-y-0 w-5 bg-accent rounded-sm cursor-ew-resize z-10 touch-none focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
 						style={{ left: `${te}%`, transform: "translateX(-50%)" }}
 						onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "trim-end") }}
@@ -227,11 +229,11 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 				<div
 					role="slider"
 					tabIndex={0}
-					aria-label="Scrub position"
+					aria-label={t("clip.scrubPosition")}
 					aria-valuemin={0}
 					aria-valuemax={Math.max(0, frameCount - 1)}
 					aria-valuenow={scrubIdx}
-					aria-valuetext={`Frame ${scrubIdx + 1} of ${frameCount}`}
+					aria-valuetext={t("clip.frameOf", { current: scrubIdx + 1, total: frameCount })}
 					className={`absolute rounded-full bg-primary ring-2 ring-accent shadow-lg z-20 touch-none cursor-grab transition-[width,height,opacity] focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${trimming ? "w-4 h-4 opacity-50" : "w-8 h-8 pointer-coarse:size-11"}`}
 					style={{ left: `${scrubPct}%`, transform: "translateX(-50%)" }}
 					onPointerDown={(e) => { e.stopPropagation(); startDrag(e, "scrub") }}
@@ -243,6 +245,7 @@ const CompoundSlider = ({ frameCount, scrubIdx, onScrubChange, trimRange, onTrim
 }
 
 const ClipMakerMini = () => {
+	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const [cameras] = useCameras()
 	const [snapshots, setSnapshots] = useState({})
@@ -269,7 +272,7 @@ const ClipMakerMini = () => {
 		<CameraGridMini
 			slots={slots}
 			onActivate={() => navigate("/clip")}
-			activateLabel="Open clip maker"
+			activateLabel={t("clip.openClipMaker")}
 			onCellClick={cam => navigate(`/clip?camera=${cam.id}`)}
 			cellLabel={cam => cam.name}
 			centerIcon={<Rewind className="size-6" />}
@@ -281,6 +284,7 @@ const ClipMakerMini = () => {
 }
 
 const ClipMakerFull = () => {
+	const { t } = useTranslation()
 	const uid = useId()
 	const isDesktop = useMediaQuery({ query: "(min-width: 601px)" })
 	const role = useRole()
@@ -555,7 +559,7 @@ const ClipMakerFull = () => {
 	const loadPreview = (overrideStart, overrideEnd, idxs = activeIdxs) => {
 		if (loading) return
 		const ids = idxs.map(i => cameras[i]?.id)
-		if (!ids.length || ids.some(id => id == null)) return toast("No camera selected")
+		if (!ids.length || ids.some(id => id == null)) return toast(t("clip.noCameraSelected"))
 		const start = moment(overrideStart ?? startDate)
 		const end   = moment(overrideEnd   ?? endDate)
 		setLoadedParams({ start, end, number, cams: [...ids].sort() })
@@ -620,7 +624,7 @@ const ClipMakerFull = () => {
 	const generate = (type) => {
 		if (!canGenerate) return
 		const ids = activeIdxs.map(i => cameras[i]?.id)
-		if (!ids.length || ids.some(id => id == null)) return toast("No camera selected")
+		if (!ids.length || ids.some(id => id == null)) return toast(t("clip.noCameraSelected"))
 		setSubmitting(true)
 		setCams(prev => prev.map(c => ids.includes(c.id) ? { ...c, generating: type } : c))
 		const endpoint = type === "video" ? "/convert/createVideo" : "/convert/createZip"
@@ -637,15 +641,16 @@ const ClipMakerFull = () => {
 				if (!data || data.error || !data.url) {
 					failed++
 					lastFail = data
-					if (total > 1) toast(`Failed: ${cameras.find(c => c.id === camId)?.name ?? camId}`)
+					if (total > 1) toast(t("clip.failedCamera", { name: cameras.find(c => c.id === camId)?.name ?? camId }))
 				}
 				if (done < total) return
 				if (failed === total) {
 					setSubmitting(false)
-					toast(total === 1 && lastFail && !lastFail.error && !lastFail.url ? "No frames found" : "Generation failed")
+					toast(total === 1 && lastFail && !lastFail.error && !lastFail.url ? t("clip.noFramesFound") : t("clip.generationFailed"))
 				} else {
-					const noun = type === "video" ? "Video" : "Archive"
-					toast(`${total > 1 ? noun + "s" : noun} queued`)
+					toast(type === "video"
+						? (total > 1 ? t("clip.videosQueued") : t("clip.videoQueued"))
+						: (total > 1 ? t("clip.archivesQueued") : t("clip.archiveQueued")))
 					navTimer.current = setTimeout(() => navigate("/recordings"), 1500)
 				}
 			}))
@@ -675,7 +680,7 @@ const ClipMakerFull = () => {
 
 	return (
 		<div className="flex flex-col gap-0">
-			<h1 className="px-2 pt-2 pb-1.5 text-lg font-semibold">clip maker</h1>
+			<h1 className="px-2 pt-2 pb-1.5 text-lg font-semibold">{t("clip.title")}</h1>
 
 			<div
 				className="relative w-full grid gap-px bg-border overflow-hidden"
@@ -715,7 +720,7 @@ const ClipMakerFull = () => {
 									)}
 									{c.fetching && (
 										<div className="absolute inset-0 flex items-center justify-center bg-black/40">
-											<span className="text-xs text-muted">Loading…</span>
+											<span className="text-xs text-muted">{t("common.loading")}</span>
 										</div>
 									)}
 									{cells.length > 1 && (
@@ -773,7 +778,7 @@ const ClipMakerFull = () => {
 									</Button>
 									<Button size="sm" className="h-6 gap-1 px-2 text-xs" onClick={zoomIn}>
 										<Check className="size-3" />
-										Confirm
+										{t("clip.confirm")}
 									</Button>
 								</div>
 							) : (
@@ -781,13 +786,13 @@ const ClipMakerFull = () => {
 									{cams.some(c => c.detections.length > 0) && (
 										<label className="flex items-center gap-1 cursor-pointer select-none text-xs text-muted">
 											<ScanEye className="size-3.5" />
-											Boxes
+											{t("clip.boxes")}
 											<Switch checked={showBoxes} onCheckedChange={setShowBoxes} />
 										</label>
 									)}
 									<Button variant="outline" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setTrimming(true)}>
 										<ZoomIn className="size-3" />
-										Time Zoom
+										{t("clip.timeZoom")}
 									</Button>
 								</div>
 							)
@@ -806,7 +811,7 @@ const ClipMakerFull = () => {
 			<div className="flex flex-col gap-4 px-2 pt-1 pb-3">
 				<div className="grid grid-cols-2 gap-3">
 					<div className="flex flex-col gap-1.5">
-						<Label id={`${uid}-camera-label`} htmlFor={multiCam && isDesktop ? undefined : `${uid}-camera`}>Camera{multiCam ? "s" : ""}</Label>
+						<Label id={`${uid}-camera-label`} htmlFor={multiCam && isDesktop ? undefined : `${uid}-camera`}>{multiCam ? t("clip.cameras") : t("clip.camera")}</Label>
 						{multiCam && isDesktop ? (
 							<div className="flex flex-col gap-1">
 								<div role="group" aria-labelledby={`${uid}-camera-label`} className="flex flex-wrap gap-1">
@@ -826,7 +831,7 @@ const ClipMakerFull = () => {
 											</Button>
 										)
 									})}
-									<Button size="sm" variant="ghost" className="h-7 px-2" aria-label="Switch to single camera" onClick={toggleMultiCam}>
+									<Button size="sm" variant="ghost" className="h-7 px-2" aria-label={t("clip.switchToSingleCamera")} onClick={toggleMultiCam}>
 										<RectangleHorizontal className="size-3" />
 									</Button>
 								</div>
@@ -834,7 +839,7 @@ const ClipMakerFull = () => {
 						) : (
 							<div className="flex gap-1">
 								<Select value={camera == null ? "" : String(camera)} onValueChange={v => setCamera(parseInt(v))}>
-									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder="Select camera" /></SelectTrigger>
+									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder={t("clip.selectCamera")} /></SelectTrigger>
 									<SelectContent>
 										{cameras.map((cam, i) => (
 											<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
@@ -842,7 +847,7 @@ const ClipMakerFull = () => {
 									</SelectContent>
 								</Select>
 								{isDesktop && (
-									<Button size="icon" variant="ghost" className="shrink-0 size-9" aria-label="Switch to multi-camera" onClick={toggleMultiCam}>
+									<Button size="icon" variant="ghost" className="shrink-0 size-9" aria-label={t("clip.switchToMultiCamera")} onClick={toggleMultiCam}>
 										<LayoutGrid className="size-4" />
 									</Button>
 								)}
@@ -850,7 +855,7 @@ const ClipMakerFull = () => {
 						)}
 					</div>
 					<div className="flex flex-col gap-1.5">
-						<Label htmlFor={`${uid}-frames`}>Frames</Label>
+						<Label htmlFor={`${uid}-frames`}>{t("clip.frames")}</Label>
 						<div className="flex items-center gap-2">
 							<Button variant="outline" size="icon" className="size-9 pointer-coarse:size-11 shrink-0" onClick={() => setNumber(n => Math.max(frameLimits.min, n - 10))}>
 								<Minus className="size-4" />
@@ -873,9 +878,9 @@ const ClipMakerFull = () => {
 
 				<div className="flex flex-col gap-3 p-2 bg-muted/5 border border-border/50 rounded-lg">
 					<div className="flex flex-col gap-1">
-						<Label id={`${uid}-range-label`}>Time Range</Label>
+						<Label id={`${uid}-range-label`}>{t("clip.timeRange")}</Label>
 						<div role="group" aria-labelledby={`${uid}-range-label`} className="flex items-center gap-2 justify-end flex-wrap">
-							<span className="text-xs text-muted/50">preset</span>
+							<span className="text-xs text-muted/50">{t("clip.preset")}</span>
 							<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelPreset} disabled={!pendingPreset}>
 								<X className="size-3" />
 							</Button>
@@ -894,15 +899,15 @@ const ClipMakerFull = () => {
 						</div>
 					</div>
 					<div className="grid grid-cols-2 gap-x-3 gap-y-2">
-						<Label htmlFor={`${uid}-start-date`} className="text-xs">Start</Label>
-						<Label htmlFor={`${uid}-end-date`} className="text-xs">End</Label>
+						<Label htmlFor={`${uid}-start-date`} className="text-xs">{t("clip.start")}</Label>
+						<Label htmlFor={`${uid}-end-date`} className="text-xs">{t("clip.end")}</Label>
 						<Input id={`${uid}-start-date`} type="date" value={startDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setStartDate, "date", e.target.value)} />
 						<Input id={`${uid}-end-date`} type="date" value={endDate.format("YYYY-MM-DD")}
 							onChange={e => setDatePart(setEndDate, "date", e.target.value)} />
-						<Input aria-label="Start time" type="time" step="1" value={startDate.format("HH:mm:ss")}
+						<Input aria-label={t("clip.startTime")} type="time" step="1" value={startDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setStartDate, "time", e.target.value)} />
-						<Input aria-label="End time" type="time" step="1" value={endDate.format("HH:mm:ss")}
+						<Input aria-label={t("clip.endTime")} type="time" step="1" value={endDate.format("HH:mm:ss")}
 							onChange={e => setDatePart(setEndDate, "time", e.target.value)} />
 					</div>
 				</div>
@@ -915,19 +920,19 @@ const ClipMakerFull = () => {
 									variant="outline"
 									className="flex-1"
 									disabled={!canGenerate}
-									title={paramsStale ? "Reload images to apply the changed camera/range/frames" : undefined}
+									title={paramsStale ? t("clip.reloadToApply") : undefined}
 								>
-									<Save className="size-4" /> Generate
+									<Save className="size-4" /> {t("clip.generate")}
 								</Button>
 							</DialogTrigger>
 							<DialogContent className="max-w-xs p-8">
 								<DialogHeader>
-									<DialogTitle>Generate</DialogTitle>
+									<DialogTitle>{t("clip.generate")}</DialogTitle>
 								</DialogHeader>
 								<div className="flex flex-col gap-4">
 									<div className="flex flex-col gap-3">
 										<div className="flex items-center justify-between gap-4">
-											<Label htmlFor={`${uid}-fps`}>FPS</Label>
+											<Label htmlFor={`${uid}-fps`}>{t("clip.fps")}</Label>
 											<div className="flex items-center gap-2">
 												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setFps(f => Math.max(1, f - 5))}>
 													<Minus className="size-4" />
@@ -946,7 +951,7 @@ const ClipMakerFull = () => {
 											</div>
 										</div>
 										<div className="flex items-center justify-between gap-4">
-											<Label htmlFor={`${uid}-skip`}>Skip</Label>
+											<Label htmlFor={`${uid}-skip`}>{t("clip.skip")}</Label>
 											<div className="flex items-center gap-2">
 												<Button variant="outline" size="icon" className="size-8 pointer-coarse:size-11 shrink-0" onClick={() => setSkip(s => Math.max(1, s - 1))}>
 													<Minus className="size-4" />
@@ -971,14 +976,14 @@ const ClipMakerFull = () => {
 											disabled={!canGenerate}
 											onClick={() => generate("video")}
 										>
-											{anyGenerating ? "Generating…" : activeIdxs.length > 1 ? `Video ×${activeIdxs.length}` : "Video"}
+											{anyGenerating ? t("clip.generating") : activeIdxs.length > 1 ? t("clip.videoCount", { count: activeIdxs.length }) : t("clip.video")}
 										</Button>
 										<Button
 											variant="outline"
 											disabled={!canGenerate}
 											onClick={() => generate("zip")}
 										>
-											{anyGenerating ? "Generating…" : activeIdxs.length > 1 ? `Archive ×${activeIdxs.length}` : "Archive"}
+											{anyGenerating ? t("clip.generating") : activeIdxs.length > 1 ? t("clip.archiveCount", { count: activeIdxs.length }) : t("clip.archive")}
 										</Button>
 									</div>
 								</div>
@@ -992,11 +997,11 @@ const ClipMakerFull = () => {
 						disabled={loading || activeIdxs.length === 0}
 					>
 						<SkipBack className="size-4" />
-						{anyFetching ? "Fetching…" : anyDownloading ? "Loading…" : hasLoadedFrames ? "Reload Images" : "Load Images"}
+						{anyFetching ? t("clip.fetching") : anyDownloading ? t("common.loading") : hasLoadedFrames ? t("clip.reloadImages") : t("clip.loadImages")}
 					</Button>
 				</div>
 				{paramsStale && (
-					<p className="-mt-2 text-xs text-amber-500/90">camera, range, or frame count changed — reload images to apply.</p>
+					<p className="-mt-2 text-xs text-amber-500/90">{t("clip.paramsStaleNote")}</p>
 				)}
 			</div>
 		</div>

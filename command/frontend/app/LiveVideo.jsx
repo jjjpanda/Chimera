@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import Hls from "hls.js"
+import { useTranslation } from "react-i18next"
 import useLiveVideo from "../hooks/useLiveVideo.js"
 import useCameras from "../hooks/useCameras.js"
 import useSquarifyVideos from "../hooks/useSquarifyVideo.js"
@@ -11,6 +12,7 @@ import { RefreshCw } from "lucide-react"
 import { cn } from "../lib/utils"
 
 const HlsPlayer = ({ src, className }) => {
+	const { t } = useTranslation()
 	const videoRef = useRef(null)
 	const [unsupported] = useState(
 		() => !Hls.isSupported() && !document.createElement("video").canPlayType("application/vnd.apple.mpegurl")
@@ -44,27 +46,31 @@ const HlsPlayer = ({ src, className }) => {
 	}, [src])
 
 	if (unsupported)
-		return <div className={cn(className, "flex items-center justify-center text-sm text-muted")}>HLS not supported</div>
+		return <div className={cn(className, "flex items-center justify-center text-sm text-muted")}>{t("live.hlsNotSupported")}</div>
 
 	return <video ref={videoRef} controls playsInline className={className} />
 }
 
-const Feed = ({ video, hideLabel }) => (
-	<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
-		<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
-		{!hideLabel && (
-			<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-xs">
-				<span
-					className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger pointer-events-auto")}
-					title={video.online ? undefined : `Offline${video.restarts ? ` · ${video.restarts} restart${video.restarts === 1 ? "" : "s"}` : ""}`}
-				/>
-				<span className="text-sm font-medium text-white">{video.camera}</span>
-			</div>
-		)}
-	</div>
-)
+const Feed = ({ video, hideLabel }) => {
+	const { t } = useTranslation()
+	return (
+		<div className="relative aspect-video w-full overflow-hidden rounded-lg bg-black">
+			<HlsPlayer src={video.url} className="absolute inset-0 h-full w-full object-contain" />
+			{!hideLabel && (
+				<div className="pointer-events-none absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/55 px-2 py-0.5 backdrop-blur-xs">
+					<span
+						className={cn("size-2 rounded-full shrink-0", video.online ? "bg-emerald-500" : "bg-danger pointer-events-auto")}
+						title={video.online ? undefined : video.restarts ? t("live.offlineRestarts", { count: video.restarts }) : t("live.offline")}
+					/>
+					<span className="text-sm font-medium text-white">{video.camera}</span>
+				</div>
+			)}
+		</div>
+	)
+}
 
 const LiveVideo = (props) => {
+	const { t } = useTranslation()
 	const [cameras] = useCameras()
 	const [state, , restart] = useLiveVideo(cameras)
 	const [videos, setVideos] = useState([])
@@ -84,9 +90,9 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-3">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title={t("live.restartAllStreams")}>
 						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
-						{state.restarting ? "Restarting…" : "Restart streams"}
+						{state.restarting ? t("live.restarting") : t("live.restartStreams")}
 					</Button>
 				</div>
 				{state.videoList.map((video) => (
@@ -100,9 +106,9 @@ const LiveVideo = (props) => {
 		return (
 			<div className="flex flex-col gap-2">
 				<div className="flex justify-end">
-					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title="Restart all camera streams">
+					<Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={restart} disabled={state.restarting} title={t("live.restartAllStreams")}>
 						<RefreshCw className={cn("size-3.5", state.restarting && "animate-spin")} />
-						{state.restarting ? "Restarting…" : "Restart streams"}
+						{state.restarting ? t("live.restarting") : t("live.restartStreams")}
 					</Button>
 				</div>
 				{videos.map((row, ri) => (
@@ -121,9 +127,9 @@ const LiveVideo = (props) => {
 	return (
 		<Card className="h-full">
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
-				<CardTitle className="text-sm">Live Video</CardTitle>
+				<CardTitle className="text-sm">{t("live.liveVideo")}</CardTitle>
 				<div className="flex items-center gap-1">
-					<Button variant="ghost" size="icon" className="size-6" onClick={restart} disabled={state.restarting} title="Restart streams">
+					<Button variant="ghost" size="icon" className="size-6" onClick={restart} disabled={state.restarting} title={t("live.restartStreams")}>
 						<RefreshCw className={cn("size-3", state.restarting && "animate-spin")} />
 					</Button>
 					<NavigateToRoute to="/live" />

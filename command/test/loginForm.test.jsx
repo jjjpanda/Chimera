@@ -38,12 +38,21 @@ test("each field is reachable by its visible label", () => {
 })
 
 test("a rejected login is announced rather than only shown", () => {
-	const tryLogin = jest.fn((username, password, cb) => cb(false, null))
+	const tryLogin = jest.fn((username, password, cb) => cb(false, "INVALID_CREDENTIALS"))
 	render(React.createElement(LoginForm, { tryLogin }))
 
 	fireEvent.click(screen.getByText("Sign In"))
 
 	expect(screen.getByRole("alert").textContent).toBe("Invalid username or password.")
+})
+
+test("a server error code is resolved to its English wording", () => {
+	const tryLogin = jest.fn((username, password, cb) => cb(false, "TOO_MANY_ATTEMPTS"))
+	render(React.createElement(LoginForm, { tryLogin }))
+
+	fireEvent.click(screen.getByText("Sign In"))
+
+	expect(screen.getByRole("alert").textContent).toBe("Too many attempts")
 })
 
 test("submit does not trigger native page navigation", () => {

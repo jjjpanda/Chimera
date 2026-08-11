@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
+import i18n from "../js/i18n.js"
 
 const ThemeContext = createContext()
 
@@ -14,7 +15,7 @@ const saveTheme = (theme) =>
 		body: JSON.stringify({ theme })
 	}, (prom) => prom
 		.then((res) => { if (!res.ok) throw new Error() })
-		.catch(() => toast("Couldn't save theme")))
+		.catch(() => toast(i18n.t("theme.saveFailed"))))
 
 export const ThemeProvider = ({ serverTheme, loggedIn, children }) => {
 	const [theme, setTheme] = useState(() => localStorage.getItem("theme") ?? "system")

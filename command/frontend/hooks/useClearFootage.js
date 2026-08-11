@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
+import i18n from "../js/i18n.js"
 
 const useClearFootage = (cameras, onDone) => {
 	const [days, setDays] = useState(3)
@@ -11,7 +12,7 @@ const useClearFootage = (cameras, onDone) => {
 		if (!pending) return
 		setDeleting(true)
 		setPending(null)
-		const remove = toast("Attempting Delete…", 0)
+		const remove = toast(i18n.t("footage.attemptingDelete"), 0)
 
 		const deleteCamera = (camId) => request(days === 0 ? "/file/pathDelete" : "/file/pathClean", {
 			method: "POST",
@@ -29,9 +30,9 @@ const useClearFootage = (cameras, onDone) => {
 			const deleted = results.filter(r => r?.deleted).length
 			const deferred = results.filter(r => r?.deferred && !r?.deleted).length
 			const total = results.length
-			const suffix = deferred ? ` — ${deferred} Deferred, Export Running` : ""
-			const counted = deleted === 0 ? `None Deleted${suffix}` : deleted === total ? "Files Deleted" : `${deleted}/${total} Deleted${suffix}`
-			toast(deferred && deferred === total ? "Deferred — Export Running" : counted)
+			const suffix = deferred ? i18n.t("footage.deferredSuffix", { count: deferred }) : ""
+			const counted = deleted === 0 ? i18n.t("footage.noneDeleted") + suffix : deleted === total ? i18n.t("footage.filesDeleted") : i18n.t("footage.partialDeleted", { deleted, total }) + suffix
+			toast(deferred && deferred === total ? i18n.t("footage.deferredExportRunning") : counted)
 			setDeleting(false)
 			onDone()
 		})

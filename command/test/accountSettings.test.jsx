@@ -6,7 +6,7 @@ const { MemoryRouter } = require("react-router-dom")
 const AccountSettings = require("../frontend/app/AccountSettings.jsx").default
 const AuthContext = require("../frontend/app/AuthContext.jsx").default
 const { routeToIndex, indexToRoute, adminRoutes } = require("../frontend/js/routeIndexMapping.js")
-const { PASSWORD_REQUIREMENT } = require("../frontend/js/password.js")
+const PASSWORD_REQUIREMENT = require("../frontend/js/errors.js").default("PASSWORD_TOO_SHORT")
 
 const renderForm = (changePassword) =>
 	render(React.createElement(AuthContext.Provider, { value: { role: "user", signOut: jest.fn(), changePassword } },

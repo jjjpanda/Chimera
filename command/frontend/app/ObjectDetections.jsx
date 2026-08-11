@@ -2,7 +2,9 @@ import React, { useMemo, useRef, useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import moment from "moment"
 import { RefreshCw, ScanEye, AlertCircle, ImageOff } from "lucide-react"
+import { useTranslation } from "react-i18next"
 
+import i18n from "../js/i18n.js"
 import useObjectDetections from "../hooks/useObjectDetections.js"
 import usePreviewHeight from "../hooks/usePreviewHeight"
 import { useRole } from "./AuthContext.jsx"
@@ -16,7 +18,7 @@ import ResizeHandle from "../components/ResizeHandle.jsx"
 import CameraGridMini from "../components/CameraGridMini.jsx"
 import { padSlots } from "../js/grid.js"
 
-const cameraName = (status, n) => status?.cameraNames?.[n] || `Camera ${n}`
+const cameraName = (status, n) => status?.cameraNames?.[n] || i18n.t("detections.cameraFallback", { n })
 
 const groupDetections = (detections) => {
 	const byImage = new Map()
@@ -29,6 +31,7 @@ const groupDetections = (detections) => {
 }
 
 const DetectionImage = ({ image, boxes, cover = false, height }) => {
+	const { t } = useTranslation()
 	const [dims, setDims] = useState({ w: 416, h: 416 })
 	const [pad, setPad] = useState({ top: 0, bot: 0, left: 0, right: 0 })
 
@@ -46,7 +49,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 			<div className="relative w-full h-full overflow-hidden">
 				<img
 					src={`/object/captures/${image}`}
-					alt="detection"
+					alt={t("detections.detectionAlt")}
 					className="absolute inset-0 w-full h-full object-cover object-top"
 					onLoad={handleLoad}
 				/>
@@ -65,7 +68,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 		>
 			<img
 				src={`/object/captures/${image}`}
-				alt="detection"
+				alt={t("detections.detectionAlt")}
 				className="absolute"
 				style={{
 					width: `${(dims.w / contentW) * 100}%`,
@@ -81,6 +84,7 @@ const DetectionImage = ({ image, boxes, cover = false, height }) => {
 }
 
 const ObjectDetectionsMini = () => {
+	const { t } = useTranslation()
 	const navigate = useNavigate()
 	const { detections, status } = useObjectDetections()
 	const groups = useMemo(() => groupDetections(detections), [detections])
@@ -100,7 +104,7 @@ const ObjectDetectionsMini = () => {
 		<CameraGridMini
 			slots={slots}
 			onActivate={() => navigate("/objects")}
-			activateLabel="Open object detections"
+			activateLabel={t("detections.openObjectDetections")}
 			onCellClick={g => navigate(`/objects?camera=${g.camera}`)}
 			cellLabel={g => cameraName(status, g.camera)}
 			centerIcon={<ScanEye className="size-6" />}
@@ -110,6 +114,7 @@ const ObjectDetectionsMini = () => {
 }
 
 const ObjectDetectionsFull = () => {
+	const { t } = useTranslation()
 	const role = useRole()
 	const { status, detections, loadStatus, loadDetections, scan } = useObjectDetections()
 	const groups = useMemo(() => groupDetections(detections), [detections])
@@ -146,10 +151,10 @@ const ObjectDetectionsFull = () => {
 	const currentGroup = camGroups[scrubIdx] ?? null
 
 	const runScan = (camera) => {
-		toast(`Scanning camera ${camera}…`)
+		toast(t("detections.scanningCamera", { camera }))
 		scan(camera, (res) => {
 			const n = res?.detections?.length ?? 0
-			toast(n ? `Camera ${camera}: ${n} detection(s)` : `Camera ${camera}: nothing found`)
+			toast(n ? t("detections.scanResultFound", { camera, count: n }) : t("detections.scanResultEmpty", { camera }))
 			loadStatus()
 			loadDetections()
 		})
@@ -161,7 +166,7 @@ const ObjectDetectionsFull = () => {
 	return (
 		<div className="flex flex-col gap-0">
 			<div className="flex items-center justify-between px-2 pt-2 pb-1.5">
-				<h1 className="text-lg font-semibold">object detection</h1>
+				<h1 className="text-lg font-semibold">{t("detections.title")}</h1>
 				<Button variant="ghost" size="sm" onClick={() => { loadStatus(); loadDetections() }}>
 					<RefreshCw className="size-4" />
 				</Button>
@@ -185,7 +190,7 @@ const ObjectDetectionsFull = () => {
 						step={1}
 						value={[scrubIdx]}
 						onValueChange={([v]) => setScrubIdx(v)}
-						aria-label="Scrub detections"
+						aria-label={t("detections.scrubDetections")}
 					/>
 					<div className="flex justify-between text-[11px] text-muted -mt-1 pb-1">
 						<span>{currentGroup ? moment(currentGroup.time).format("MM/DD HH:mm:ss") : ""}</span>
@@ -200,24 +205,24 @@ const ObjectDetectionsFull = () => {
 						<div className="text-[11px] text-muted">
 							{camStatus.error
 								? <span className="inline-flex items-center gap-1 text-danger"><AlertCircle className="size-3" />{camStatus.error}</span>
-								: camStatus.lastRun ? `ran ${moment(camStatus.lastRun).fromNow()}` : "idle"}
+								: camStatus.lastRun ? t("detections.ranAgo", { time: moment(camStatus.lastRun).fromNow() }) : t("detections.idle")}
 						</div>
 						{role === "admin" && (
-							<Button variant="secondary" size="sm" onClick={() => runScan(Number(selectedCam))}>Scan</Button>
+							<Button variant="secondary" size="sm" onClick={() => runScan(Number(selectedCam))}>{t("detections.scan")}</Button>
 						)}
 					</div>
 				)}
 				{config && (
 					<div className="flex flex-wrap gap-1.5">
-						<Badge variant="outline">confidence {config.confidence}</Badge>
-						<Badge variant="outline">every {config.intervalMs}ms</Badge>
+						<Badge variant="outline">{t("detections.confidence", { value: config.confidence })}</Badge>
+						<Badge variant="outline">{t("detections.interval", { ms: config.intervalMs })}</Badge>
 						{(config.classes || []).length > 0 && (
-							<Badge variant="outline">classes: {config.classes.join(", ")}</Badge>
+							<Badge variant="outline">{t("detections.classes", { list: config.classes.join(", ") })}</Badge>
 						)}
 					</div>
 				)}
 				{cameras.length === 0 && (
-					<span className="text-xs text-muted">No active workers (detection runs on the prime instance only).</span>
+					<span className="text-xs text-muted">{t("detections.noActiveWorkers")}</span>
 				)}
 			</div>
 
