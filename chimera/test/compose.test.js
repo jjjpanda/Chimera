@@ -14,6 +14,7 @@ const lines = (env) => Object.entries(env).map(([k, v]) => `${k} = ${v}`)
 beforeEach(() => {
 	jest.clearAllMocks()
 	readLines.mockReturnValue([])
+	delete process.env.certbot_ON
 })
 
 describe("composeArgs", () => {

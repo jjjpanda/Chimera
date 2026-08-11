@@ -29,7 +29,7 @@ const { spawnSync } = require("child_process")
 const { runCompose } = require("../compose.js")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { WATCHDOG_MIN_INTERVAL_MS, watchdogHostWarning } = require("../preflight.js")
-const { checkUrl, configProblem, envProblem, envLines, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, STAGES, NO_HOST, NOTHING_TO_POLL } = require("../watchdog.js")
+const { checkUrl, configProblem, envProblem, envLines, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, STAGES, NO_HOST, NOTHING_TO_POLL } = require("../watchdog.js")
 
 const healthy = () => Promise.resolve({ ok: true, status: 200 })
 const down = () => Promise.resolve({ ok: false, status: 502 })
@@ -322,6 +322,41 @@ describe("runOnce", () => {
 		global.fetch = jest.fn(() => Promise.reject(new Error("ECONNREFUSED")))
 		await failUntilThreshold()
 		expect(runCompose).toHaveBeenCalledWith(["up", "-d", "--force-recreate"])
+	})
+})
+
+// the README makes --dry-run the way an operator checks the sudoers path before trusting the reboot
+describe("dryRun", () => {
+	const printed = () => console.log.mock.calls.map(([line]) => line)
+
+	test("prints the restart command, the reboot command and the polled URLs, and runs none of them", () => {
+		dryRun()
+		expect(printed()).toEqual([
+			"docker compose up -d --force-recreate",
+			privileged(rebootCommand()).join(" "),
+			Object.values(checkUrl()).join("\n")
+		])
+		expect(runCompose).not.toHaveBeenCalled()
+		expect(spawnSync).not.toHaveBeenCalled()
+		expect(global.fetch).not.toHaveBeenCalled()
+	})
+
+	test("says so when the platform has no reboot command, instead of printing a blank line", () => {
+		const platform = Object.getOwnPropertyDescriptor(process, "platform")
+		Object.defineProperty(process, "platform", { ...platform, value: "aix" })
+		try {
+			dryRun()
+			expect(printed()[1]).toContain("no reboot command known for platform")
+		} finally {
+			Object.defineProperty(process, "platform", platform)
+		}
+	})
+
+	test("says so when nothing is polled, instead of printing a blank line", () => {
+		for (const s of SERVICES) process.env[`${s}_PROXY_ON`] = "false"
+		dryRun()
+		expect(printed()[2]).toBe(NOTHING_TO_POLL)
+		for (const s of SERVICES) process.env[`${s}_PROXY_ON`] = "true"
 	})
 })
 

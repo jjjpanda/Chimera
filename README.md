@@ -267,7 +267,11 @@ Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. T
 
 **Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it: the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
 
+**Write access to `chimera/`.** The failure count lives in `chimera/watchdog.state.json`, next to the script. A checkout leaves that directory writable only by the account that made it, and the group membership above adds no write bit, so a separate `User=` cannot create the file: every run logs the write failure, starts the count at zero again and never reaches `watchdog_FAILURES`, leaving a watchdog that polls and alerts but never restarts or reboots. Either run the unit as the installing account, or `sudo chown chimera /opt/chimera/chimera`.
+
 **Access to the Docker daemon.** The restart stage runs `docker compose up -d --force-recreate`, so whatever account the watchdog runs under needs to reach the daemon socket — `sudo usermod -aG docker chimera`, then a fresh login for the group to take. Without it every restart fails with a permission error and rolls the escalation back, so the watchdog retries the restart on every later threshold and never reaches the reboot. The failure is logged and the run exits `1`, so a cron line that keeps its output will show it.
+
+The rollback is deliberate — a stack that was never restarted has not earned a reboot — but it applies to every failed restart, not just the permission one. A daemon that is stopped or wedged fails the compose command the same way, so the watchdog stays on the restart stage and never reboots the host, which is the one thing that would clear it. `sudo systemctl enable --now docker` covers that case; the watchdog does not.
 
 **Privilege to reboot.** On posix the reboot goes through `sudo -n` unless already root, so grant that one command and nothing more (`sudo visudo -f /etc/sudoers.d/chimera-watchdog`):
 

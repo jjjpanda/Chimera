@@ -161,4 +161,4 @@ if (require.main === module) {
 	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NOTHING_TO_POLL, checkUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot }
+module.exports = { STAGES, NO_HOST, NOTHING_TO_POLL, checkUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun }
