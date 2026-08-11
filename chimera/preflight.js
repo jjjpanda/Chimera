@@ -22,7 +22,7 @@ try {
 const { parseConf, buildFullUrl, urlProblem } = loadCameras
 const { multiInstance, validInstances } = multiInstanceLib
 const { validTrustedSources } = trustedSourcesLib
-const { letsencryptPaths, isFile } = certPaths
+const { letsencryptPaths, isFile, isIpLiteral } = certPaths
 const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
