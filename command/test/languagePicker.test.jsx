@@ -35,8 +35,8 @@ beforeEach(() => {
 
 const flush = () => act(async () => {})
 
-const renderPicker = async (props) => {
-	const view = render(React.createElement(LanguageProvider, props, React.createElement(LanguagePicker)))
+const renderPicker = async (props, pickerProps) => {
+	const view = render(React.createElement(LanguageProvider, props, React.createElement(LanguagePicker, pickerProps)))
 	await flush()
 	return view
 }
@@ -80,4 +80,21 @@ test("picking an option pre-login applies it without calling the server", async 
 
 	expect(screen.getByRole("combobox").textContent).toBe(LANGUAGES["de"].label)
 	expect(requests).toHaveLength(0)
+})
+
+test("a collapsible picker hides the select behind Change language", async () => {
+	await renderPicker({ serverLanguage: null, loggedIn: false }, { collapsible: true })
+
+	expect(screen.queryByRole("combobox")).toBeNull()
+	expect(screen.getByRole("button", { name: "Change language" })).toBeTruthy()
+})
+
+test("Change language reveals the select, still on the default language", async () => {
+	await renderPicker({ serverLanguage: null, loggedIn: false }, { collapsible: true })
+
+	fireEvent.click(screen.getByRole("button", { name: "Change language" }))
+	await flush()
+
+	expect(screen.getByRole("combobox").textContent).toBe(LANGUAGES["en"].label)
+	expect(screen.queryByRole("button", { name: "Change language" })).toBeNull()
 })

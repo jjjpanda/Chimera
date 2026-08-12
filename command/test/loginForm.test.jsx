@@ -55,6 +55,17 @@ test("a server error code is resolved to its English wording", () => {
 	expect(screen.getByRole("alert").textContent).toBe("Too many attempts")
 })
 
+test("the language picker stays collapsed until Change language is clicked, which must not submit the form", () => {
+	const tryLogin = jest.fn()
+	render(React.createElement(LoginForm, { tryLogin }))
+	expect(screen.queryByRole("combobox")).toBeNull()
+
+	fireEvent.click(screen.getByText("Change language"))
+
+	expect(screen.getByRole("combobox")).toBeTruthy()
+	expect(tryLogin).not.toHaveBeenCalled()
+})
+
 test("submit does not trigger native page navigation", () => {
 	const tryLogin = jest.fn()
 	render(React.createElement(LoginForm, { tryLogin }))

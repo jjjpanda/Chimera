@@ -61,7 +61,7 @@ const LoginForm = (props) => {
 					>
 						{t("auth.signIn")}
 					</Button>
-					<LanguagePicker />
+					<LanguagePicker collapsible />
 				</form>
 			</CardContent>
 		</Card>

@@ -162,6 +162,7 @@
 		"partialDeleted": "{{deleted}}/{{total}} 件削除済み"
 	},
 	"language": {
+		"change": "言語を変更",
 		"label": "言語",
 		"loadFailed": "言語を読み込めませんでした",
 		"preferences": "環境設定",

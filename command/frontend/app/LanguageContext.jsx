@@ -3,7 +3,7 @@ import moment from "moment"
 import { request } from "../js/request.js"
 import toast from "../js/toast.js"
 import i18n, { changeLanguage } from "../js/i18n.js"
-import { resolveLanguage, detectLanguage, LANGUAGES } from "../js/languages.js"
+import { resolveLanguage, LANGUAGES } from "../js/languages.js"
 
 const identity = (s) => s
 
@@ -25,18 +25,19 @@ const saveLanguage = (language, onFailure) =>
 		.catch(onFailure))
 
 export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
-	const [language, setLanguage] = useState(() => resolveLanguage(localStorage.getItem("language")) ?? detectLanguage())
+	const [language, setLanguage] = useState(() => resolveLanguage(localStorage.getItem("language")) ?? "en")
 	const selected = useRef(language)
 	const loaded = useRef("en")
 	const picked = useRef(null)
 
 	const rollback = (previous, messageKey) => () => {
+		picked.current = null
 		toast(i18n.t(messageKey))
 		setLanguage(previous)
 	}
 
 	useEffect(() => {
-		if (!loggedIn) return
+		if (!loggedIn || picked.current) return
 		setLanguage(resolveLanguage(serverLanguage) ?? "en")
 	}, [serverLanguage, loggedIn])
 
@@ -64,7 +65,7 @@ export const LanguageProvider = ({ serverLanguage, loggedIn, children }) => {
 				if (!stale) rollback(loaded.current, "language.loadFailed")()
 			})
 		return () => { stale = true }
-	}, [language])
+	}, [language, loggedIn])
 
 	const applyLanguage = (next) => {
 		picked.current = next
