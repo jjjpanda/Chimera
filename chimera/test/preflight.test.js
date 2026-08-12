@@ -623,8 +623,15 @@ describe("httpsRedirectPortWarning", () => {
 describe("watchdogHostWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
-	test("fires on a scheme-less host — normalizeHost reads it as https, so a plain-HTTP deploy reboot-loops", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reboots a healthy host/)
+	test("fires on a scheme-less host — normalizeHost reads it as https, so a plain-HTTP deploy alerts on every poll", () => {
+		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reports the site unreachable/)
+	})
+
+	// the stages read http://127.0.0.1:<gateway_PORT>, so no gateway_HOST fault can reach them
+	test("no warning claims a gateway_HOST fault reboots the host", () => {
+		for (const host of ["192.168.1.50:8080", "https://chimera.lan", "https://192.168.1.50"]) {
+			expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: host })) ?? "").not.toMatch(/reboot/)
+		}
 	})
 
 	test("an explicit scheme rules it out, either way", () => {

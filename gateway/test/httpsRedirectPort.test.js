@@ -28,7 +28,7 @@ describe("gateway_HTTPS_Redirect with no usable gateway_HOST", () => {
 
 	test("refuses the request instead of redirecting to the Host header the client sent", (done) => {
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "phish.example.com")
 			.expect(500)
 			.expect((res) => {
@@ -40,7 +40,7 @@ describe("gateway_HTTPS_Redirect with no usable gateway_HOST", () => {
 	test("refuses on a non-443 gateway_PORT_SECURE too — the port never makes the target trustworthy", (done) => {
 		process.env.gateway_PORT_SECURE = "8443"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "phish.example.com:8080")
 			.expect(500, done)
 	})

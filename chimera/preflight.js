@@ -268,10 +268,11 @@ const privateHostname = (host) => !!host && (isIpLiteral(host) || !host.includes
 
 const watchdogHostWarning = (lines) => {
 	if (getVal(lines, "watchdog_ON") !== "true") return null
-	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the watchdog polls https://. On a plain-HTTP deploy every poll fails and the watchdog reboots a healthy host on a loop — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
+	// restart and reboot read http://127.0.0.1:<gateway_PORT>, so a bad gateway_HOST only ever costs a false alert
+	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 	const url = gatewayUrl(lines)
 	return urlPart(url, "protocol") === "https:" && privateHostname(urlPart(url, "hostname"))
-		? "WARNING: watchdog_ON=true and gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the watchdog restarts the stack and then reboots a healthy host on a loop — point NODE_EXTRA_CA_CERTS at the CA that signed it"
+		? "WARNING: watchdog_ON=true and gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the reachability check reports the site unreachable every time — point NODE_EXTRA_CA_CERTS at the CA that signed it"
 		: null
 }
 

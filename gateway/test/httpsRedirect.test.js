@@ -11,14 +11,14 @@ jest.mock("axios")
 describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 	test("redirects a plain request with no X-Forwarded-Proto", (done) => {
 		supertest(gateway)
-			.get("/command/health")
+			.get("/clip")
 			.expect(302)
 			.expect("location", /^https:\/\//, done)
 	})
 
 	test("X-Forwarded-Proto: https passes through — the proxy already served TLS", (done) => {
 		supertest(gateway)
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect((res) => {
 				if (res.status === 302) throw new Error("redirected despite a trusted X-Forwarded-Proto")
@@ -28,7 +28,7 @@ describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 
 	test("X-Forwarded-Proto: http still redirects", (done) => {
 		supertest(gateway)
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "http")
 			.expect(302, done)
 	})
@@ -40,6 +40,26 @@ describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 				if (res.status === 302) throw new Error("redirected the ACME challenge")
 			})
 			.end(done)
+	})
+
+	// the host watchdog polls these over loopback http. A 302 comes from this middleware, before any
+	// proxy hop, so it would report every service up while the whole stack was down
+	test.each(["command", "livestream", "object", "schedule", "storage"])(
+		"/%s/health is exempt so the loopback probe reaches the service, not this redirect",
+		(service, done) => {
+			supertest(gateway)
+				.get(`/${service}/health`)
+				.expect((res) => {
+					if (res.status === 302) throw new Error(`redirected /${service}/health`)
+				})
+				.end(done)
+		}
+	)
+
+	test("the exemption is the exact health path, not any path containing it", (done) => {
+		supertest(gateway)
+			.get("/command/health/../../secret")
+			.expect(302, done)
 	})
 })
 
@@ -60,35 +80,35 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "https://192.168.1.50:8443"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "192.168.1.50:8080")
 			.expect(302)
-			.expect("location", "https://192.168.1.50:8443/command/health", done)
+			.expect("location", "https://192.168.1.50:8443/clip", done)
 	})
 
 	test("drops the client's port when gateway_PORT_SECURE is 443", (done) => {
 		process.env.gateway_PORT_SECURE = "443"
 		process.env.gateway_HOST = "https://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "cam.example.com:8080")
-			.expect("location", "https://cam.example.com/command/health", done)
+			.expect("location", "https://cam.example.com/clip", done)
 	})
 
 	test("an unset gateway_PORT_SECURE reads as 443", (done) => {
 		process.env.gateway_HOST = "https://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "cam.example.com:8080")
-			.expect("location", "https://cam.example.com/command/health", done)
+			.expect("location", "https://cam.example.com/clip", done)
 	})
 
 	test("the host comes from gateway_HOST, so a forged Host header cannot pick the target", (done) => {
 		process.env.gateway_HOST = "https://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "phish.example.com")
-			.expect("location", "https://cam.example.com/command/health", done)
+			.expect("location", "https://cam.example.com/clip", done)
 	})
 
 	test("fails closed when gateway_HOST is unparseable, rather than letting the request pick the target", (done) => {
@@ -96,7 +116,7 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "not a valid host"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "phish.example.com")
 			.expect(500)
 			.expect((res) => {
@@ -109,9 +129,9 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "https://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "cam.example.com")
-			.expect("location", "https://cam.example.com/command/health", done)
+			.expect("location", "https://cam.example.com/clip", done)
 	})
 
 	test("an http:// gateway_HOST with a plain port redirects to hostname + gateway_PORT_SECURE", (done) => {
@@ -119,9 +139,9 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "http://192.168.1.50:8080"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "192.168.1.50:8080")
-			.expect("location", "https://192.168.1.50:8443/command/health", done)
+			.expect("location", "https://192.168.1.50:8443/clip", done)
 	})
 
 	test("an https:// gateway_HOST with no port takes gateway_PORT_SECURE — the scheme alone does not mean 443", (done) => {
@@ -129,9 +149,9 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "https://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "cam.example.com:8080")
-			.expect("location", "https://cam.example.com:8443/command/health", done)
+			.expect("location", "https://cam.example.com:8443/clip", done)
 	})
 
 	test("a scheme-less gateway_HOST reads as https:// and still takes gateway_PORT_SECURE", (done) => {
@@ -139,9 +159,9 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "cam.example.com:8080")
-			.expect("location", "https://cam.example.com:8443/command/health", done)
+			.expect("location", "https://cam.example.com:8443/clip", done)
 	})
 
 	test("a bracketed IPv6 gateway_HOST takes gateway_PORT_SECURE", (done) => {
@@ -149,9 +169,9 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "https://[::1]"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "[::1]:8080")
-			.expect("location", "https://[::1]:8443/command/health", done)
+			.expect("location", "https://[::1]:8443/clip", done)
 	})
 
 	test("an unbracketed IPv6 gateway_HOST answers 500 instead of redirecting to a guess", (done) => {
@@ -159,7 +179,7 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "::1"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("Host", "[::1]:8080")
 			.expect(500, done)
 	})
@@ -169,8 +189,8 @@ describe("the redirect target comes from config, not from the request", () => {
 		process.env.gateway_PORT_SECURE = "8443"
 		process.env.gateway_HOST = "http://cam.example.com"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "http")
-			.expect("location", "https://cam.example.com/command/health", done)
+			.expect("location", "https://cam.example.com/clip", done)
 	})
 })

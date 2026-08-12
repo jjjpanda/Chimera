@@ -16,10 +16,15 @@ const POLL_TIMEOUT_MS = 10000
 const RESTART_ARGS = ["up", "-d", "--force-recreate"]
 const NO_REBOOT = `no reboot command known for platform ${process.platform} — the watchdog cannot recover this host`
 const NOTHING_TO_POLL = "no service has both *_ON=true and *_PROXY_ON=true — nothing runs on this host that the gateway routes a health endpoint for"
-const NO_HOST = "gateway_HOST is empty — every health URL would be a relative path that fetch cannot parse, so every poll would read as an outage and reboot a healthy host"
+const NO_PORT = "gateway_PORT is not a usable port — the restart and reboot stages poll the stack at http://127.0.0.1:<gateway_PORT>, so without it every poll would read as an outage and reboot a healthy host"
+const NO_HOST = "gateway_HOST is empty — nothing to try for the reachability alert; restart and reboot are unaffected"
 const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? message}) and watchdog_ON is not set in the environment either — every setting reads as unset, and the watchdog would exit clean while polling nothing`
 
-const checkUrl = () => healthChecks({ localOnly: true })
+/** Drives restart and reboot. Loopback only, so no outage between this host and the internet can arm them. */
+const checkUrl = () => healthChecks({ localOnly: true, base: healthChecks.localBase() })
+
+/** Alert only. The address a visitor types, which no action here can repair. */
+const reachUrl = () => (gatewayHost() ? healthChecks({ localOnly: true }) : {})
 
 const envLines =(env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
 
@@ -88,7 +93,7 @@ const restart = () => {
 }
 
 const readState = () => new Promise(resolve =>
-	readJSON(STATE_FILE, (_, data) => resolve({ failures: 0, healthy: 0, stage: 0, ...data })))
+	readJSON(STATE_FILE, (_, data) => resolve({ failures: 0, healthy: 0, stage: 0, unreachable: 0, unreachableAlerted: false, ...data })))
 
 const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state, resolve, ({ message }) => {
 	fail(`watchdog: cannot write ${STATE_FILE} (${message}) — the failure count cannot survive this run, so the watchdog will never reach its threshold`)
@@ -100,14 +105,37 @@ const act = async (stage, failed) => {
 	return stage === "reboot" ? reboot() : restart()
 }
 
-const resetCounts = (stage) => writeState({ failures: 0, healthy: 0, stage })
+const resetCounts = (state, stage) => writeState({ ...state, failures: 0, healthy: 0, stage })
 
 const recover = (state, threshold) => {
 	if (state.failures) console.log("watchdog: healthy again, failure count reset")
 	const healthy = state.healthy + 1
 	const cleared = healthy >= threshold
 	if (cleared && state.stage) console.log(`watchdog: ${healthy} healthy polls in a row, escalation reset to ${STAGES[0]}`)
-	return writeState({ failures: 0, healthy: cleared ? 0 : healthy, stage: cleared ? 0 : state.stage })
+	return writeState({ ...state, failures: 0, healthy: cleared ? 0 : healthy, stage: cleared ? 0 : state.stage })
+}
+
+/**
+ * Runs only when every service already answered on loopback, so a failure here means the stack is
+ * up and the path to it is not. Restarting or rebooting cannot mend that path, so this only alerts.
+ */
+const reachability = async (state, threshold) => {
+	const urls = reachUrl()
+	if (!Object.keys(urls).length) return {}
+	const base = gatewayHost()
+	const failed = await poll(urls)
+	if (!failed.length) {
+		if (state.unreachableAlerted) {
+			console.log(`watchdog: ${base} answers again`)
+			await webhookAlert(`✅ Chimera on ${os.hostname()}: ${base} answers again`)
+		}
+		return { unreachable: 0, unreachableAlerted: false }
+	}
+	const unreachable = state.unreachable + 1
+	console.log(`watchdog: ${unreachable}/${threshold} failed polls of ${base} while every service answers here — alert only — ${failed.join(", ")}`)
+	if (unreachable < threshold || state.unreachableAlerted) return { unreachable, unreachableAlerted: state.unreachableAlerted }
+	await webhookAlert(`⚠️ Chimera on ${os.hostname()}: every service answers on this host, but ${base} does not, so nobody can reach it. Check DNS, the router and anything proxying in front. Nothing will be restarted or rebooted.\n${failed.join("\n")}`)
+	return { unreachable, unreachableAlerted: true }
 }
 
 const runOnce = async () => {
@@ -115,14 +143,14 @@ const runOnce = async () => {
 	const urls = checkUrl()
 	const failed = await poll(urls)
 	const state = await readState()
-	if (!failed.length) return recover(state, threshold)
+	if (!failed.length) return recover({ ...state, ...await reachability(state, threshold) }, threshold)
 	const failures = state.failures + 1
 	console.log(`watchdog: ${failures}/${threshold} consecutive failures — ${failed.join(", ")}`)
 	if (failures < threshold) return writeState({ ...state, failures, healthy: 0 })
 	const total = failed.length === Object.keys(urls).length
 	const stage = (total && STAGES[state.stage]) || STAGES[0]
-	await resetCounts(total ? nextStage(state.stage) : state.stage)
-	if (!await act(stage, failed) && stage === STAGES[0]) await resetCounts(state.stage)
+	await resetCounts(state, total ? nextStage(state.stage) : state.stage)
+	if (!await act(stage, failed) && stage === STAGES[0]) await resetCounts(state, state.stage)
 }
 
 const loop = async () => {
@@ -138,6 +166,7 @@ const dryRun = () => {
 	console.log(composeCommand(RESTART_ARGS).join(" "))
 	console.log(argv ? argv.join(" ") : NO_REBOOT)
 	console.log(Object.values(checkUrl()).join("\n") || NOTHING_TO_POLL)
+	console.log(Object.values(reachUrl()).join("\n") || (gatewayHost() ? NOTHING_TO_POLL : NO_HOST))
 }
 
 const envProblem = (error = envError, env = process.env) => error && !env.watchdog_ON ? unreadableEnv(error) : null
@@ -146,13 +175,14 @@ const configProblem = () => {
 	const unreadable = envProblem()
 	if (unreadable) return unreadable
 	if (!settings().enabled) return null
-	if (!gatewayHost()) return NO_HOST
+	if (!healthChecks.localBase()) return NO_PORT
 	return Object.keys(checkUrl()).length ? null : NOTHING_TO_POLL
 }
 
 if (require.main === module) {
 	const hostWarning = watchdogHostWarning(envLines())
 	if (hostWarning) console.warn(hostWarning)
+	if (settings().enabled && !gatewayHost()) console.warn(NO_HOST)
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
 	if (dry) dryRun()
@@ -161,4 +191,4 @@ if (require.main === module) {
 	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NOTHING_TO_POLL, checkUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun }
