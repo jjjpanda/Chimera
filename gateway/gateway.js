@@ -4,7 +4,7 @@ const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
-const { helmetOptions, redirectTarget, trustProxyHops, healthChecks } = require("lib")
+const { helmetOptions, redirectTarget, trustProxyHops, isHealthPath } = require("lib")
 
 var app = express()
 const trustHops = trustProxyHops()
@@ -31,7 +31,7 @@ if(process.env.gateway_HTTPS_Redirect == "true"){
 	app.use((req, res, next) => {
 		// the host watchdog polls the health paths over loopback http, and they return a fixed
 		// 200 with no session and nothing to disclose, so redirecting them buys nothing
-		if(isSecure(req) || req.path.split("/")[1] == ".well-known" || healthChecks.isHealthPath(req.path)){
+		if(isSecure(req) || req.path.split("/")[1] == ".well-known" || isHealthPath(req.path)){
 			next()
 		}
 		else if(target){

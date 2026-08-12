@@ -19,7 +19,9 @@ jest.mock("../../lib/utils/jsonFileHandling.js", () => ({
 const SERVICES = ["command", "livestream", "object", "schedule", "storage"]
 
 // a public address the host has to leave the building to reach — the case the local probe exists for
-process.env.gateway_HOST = "https://cams.example.com"
+const GATEWAY_HOST = "https://cams.example.com"
+
+process.env.gateway_HOST = GATEWAY_HOST
 process.env.gateway_PORT = "8080"
 process.env.watchdog_FAILURES = "3"
 for (const s of SERVICES) {
@@ -35,6 +37,7 @@ const { checkUrl, reachUrl, configProblem, envProblem, envLines, settings, reboo
 
 const healthy = () => Promise.resolve({ ok: true, status: 200 })
 const down = () => Promise.resolve({ ok: false, status: 502 })
+const rounds = async (n) => { for (let i = 0; i < n; i++) await runOnce() }
 
 beforeEach(() => {
 	mockState = {}
@@ -46,6 +49,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	process.exitCode = undefined
+	process.env.gateway_HOST = GATEWAY_HOST
 	jest.restoreAllMocks()
 })
 
@@ -59,7 +63,6 @@ describe("health endpoints", () => {
 			schedule: "http://127.0.0.1:8080/schedule/health",
 			storage: "http://127.0.0.1:8080/storage/health"
 		})
-		expect(Object.values(checkUrl()).join()).not.toContain("cams.example.com")
 	})
 
 	test("the alert-only poll goes to the address a visitor types", () => {
@@ -80,7 +83,7 @@ describe("health endpoints", () => {
 	test("an off-box service the gateway proxies is not polled", () => {
 		process.env.storage_ON = "false"
 		expect(Object.keys(checkUrl())).not.toContain("storage")
-		expect(Object.keys(require("../../lib/utils/healthChecks.js")())).toContain("storage")
+		expect(Object.keys(require("../../lib/utils/healthChecks.js").healthChecks())).toContain("storage")
 		process.env.storage_ON = "true"
 	})
 
@@ -88,7 +91,6 @@ describe("health endpoints", () => {
 		process.env.gateway_HOST = ""
 		expect(reachUrl()).toEqual({})
 		expect(Object.keys(checkUrl())).toHaveLength(5)
-		process.env.gateway_HOST = "https://cams.example.com"
 	})
 })
 
@@ -218,9 +220,7 @@ describe("reboot failures", () => {
 })
 
 describe("runOnce", () => {
-	const failUntilThreshold = async () => {
-		for (let i = 0; i < 3; i++) await runOnce()
-	}
+	const failUntilThreshold = () => rounds(3)
 
 	test("does nothing until the threshold is reached", async () => {
 		await runOnce()
@@ -295,7 +295,7 @@ describe("runOnce", () => {
 		expect(spawnSync).toHaveBeenCalledTimes(1)
 
 		global.fetch = jest.fn(healthy)
-		for (let i = 0; i < 3; i++) await runOnce()
+		await rounds(3)
 		expect(mockState).toMatchObject({ failures: 0, stage: 0 })
 	})
 
@@ -314,7 +314,7 @@ describe("runOnce", () => {
 	// /object/health answers in-band with inference and can outrun the 10s timeout under load
 	test("a partial outage restarts the stack but never reboots the host", async () => {
 		global.fetch = jest.fn((url) => (url.includes("/object/") ? down() : healthy()))
-		for (let i = 0; i < 9; i++) await runOnce()
+		await rounds(9)
 		expect(runCompose).toHaveBeenCalledTimes(3)
 		expect(spawnSync).not.toHaveBeenCalled()
 	})
@@ -344,7 +344,6 @@ describe("runOnce", () => {
 // while the recorder is fine. Restarting cannot mend that path, and rebooting loses footage
 describe("reachability alert", () => {
 	const split = (local, remote) => jest.fn((url) => (url.startsWith("http://127.0.0.1:") ? local() : remote()))
-	const rounds = async (n) => { for (let i = 0; i < n; i++) await runOnce() }
 
 	beforeEach(() => { global.fetch = split(healthy, down) })
 
@@ -385,7 +384,6 @@ describe("reachability alert", () => {
 		expect(global.fetch.mock.calls.every(([url]) => url.startsWith("http://127.0.0.1:"))).toBe(true)
 	})
 
-	// the loopback probe is the authority: a reachable public address does not excuse a dead stack
 	test("a dead stack still escalates even when gateway_HOST answers", async () => {
 		global.fetch = split(down, healthy)
 		await rounds(3)
@@ -397,7 +395,6 @@ describe("reachability alert", () => {
 		await rounds(30)
 		expect(webhookAlert).not.toHaveBeenCalled()
 		expect(spawnSync).not.toHaveBeenCalled()
-		process.env.gateway_HOST = "https://cams.example.com"
 	})
 })
 
@@ -443,14 +440,12 @@ describe("dryRun", () => {
 
 		process.env.gateway_HOST = ""
 		dryRun()
-		expect(printed()[7]).toBe(NO_HOST)
-		process.env.gateway_HOST = "https://cams.example.com"
+		expect(printed().at(-1)).toBe(NO_HOST)
 	})
 })
 
 describe("configProblem", () => {
 	afterEach(() => {
-		process.env.gateway_HOST = "https://cams.example.com"
 		process.env.gateway_PORT = "8080"
 		delete process.env.watchdog_ON
 	})
@@ -468,8 +463,7 @@ describe("configProblem", () => {
 		expect(configProblem()).toBe(NO_PORT)
 	})
 
-	// the stages read loopback now, so a missing gateway_HOST costs the alert and nothing else
-	test("an empty gateway_HOST no longer blocks startup", () => {
+	test("an empty gateway_HOST does not block startup — it costs the alert and nothing else", () => {
 		process.env.watchdog_ON = "true"
 		process.env.gateway_HOST = ""
 		expect(configProblem()).toBeNull()

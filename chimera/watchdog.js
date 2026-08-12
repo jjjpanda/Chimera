@@ -5,7 +5,7 @@ const os = require("os")
 const path = require("path")
 const { spawnSync } = require("child_process")
 const { composeCommand, runCompose } = require("./compose.js")
-const healthChecks = require("../lib/utils/healthChecks.js")
+const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
@@ -20,8 +20,8 @@ const NO_PORT = "gateway_PORT is not a usable port — the restart and reboot st
 const NO_HOST = "gateway_HOST is empty — nothing to try for the reachability alert; restart and reboot are unaffected"
 const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? message}) and watchdog_ON is not set in the environment either — every setting reads as unset, and the watchdog would exit clean while polling nothing`
 
-/** Drives restart and reboot. Loopback only, so no outage between this host and the internet can arm them. */
-const checkUrl = () => healthChecks({ localOnly: true, base: healthChecks.localBase() })
+/** Drives restart and reboot. */
+const checkUrl = () => healthChecks({ localOnly: true, base: loopbackHost() })
 
 /** Alert only. The address a visitor types, which no action here can repair. */
 const reachUrl = () => (gatewayHost() ? healthChecks({ localOnly: true }) : {})
@@ -93,15 +93,17 @@ const restart = () => {
 }
 
 const readState = () => new Promise(resolve =>
-	readJSON(STATE_FILE, (_, data) => resolve({ failures: 0, healthy: 0, stage: 0, unreachable: 0, unreachableAlerted: false, ...data })))
+	readJSON(STATE_FILE, (_, data) => resolve({ failures: 0, healthy: 0, stage: 0, unreachable: 0, ...data })))
 
 const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state, resolve, ({ message }) => {
 	fail(`watchdog: cannot write ${STATE_FILE} (${message}) — the failure count cannot survive this run, so the watchdog will never reach its threshold`)
 	resolve()
 }))
 
+const alert = (emoji, text) => webhookAlert(`${emoji} Chimera watchdog on ${os.hostname()}: ${text}`)
+
 const act = async (stage, failed) => {
-	await webhookAlert(`⚠️ Chimera watchdog on ${os.hostname()}: ${stage === "reboot" ? "rebooting the host" : "restarting the stack"}\n${failed.join("\n")}`)
+	await alert("⚠️", `${stage === "reboot" ? "rebooting the host" : "restarting the stack"}\n${failed.join("\n")}`)
 	return stage === "reboot" ? reboot() : restart()
 }
 
@@ -115,27 +117,24 @@ const recover = (state, threshold) => {
 	return writeState({ ...state, failures: 0, healthy: cleared ? 0 : healthy, stage: cleared ? 0 : state.stage })
 }
 
-/**
- * Runs only when every service already answered on loopback, so a failure here means the stack is
- * up and the path to it is not. Restarting or rebooting cannot mend that path, so this only alerts.
- */
+/** Runs only when every service already answered on loopback, so a failure here means the stack is up and the path to it is not. */
 const reachability = async (state, threshold) => {
 	const urls = reachUrl()
 	if (!Object.keys(urls).length) return {}
 	const base = gatewayHost()
+	const alerted = state.unreachable >= threshold
 	const failed = await poll(urls)
 	if (!failed.length) {
-		if (state.unreachableAlerted) {
+		if (alerted) {
 			console.log(`watchdog: ${base} answers again`)
-			await webhookAlert(`✅ Chimera on ${os.hostname()}: ${base} answers again`)
+			await alert("✅", `${base} answers again`)
 		}
-		return { unreachable: 0, unreachableAlerted: false }
+		return { unreachable: 0 }
 	}
 	const unreachable = state.unreachable + 1
 	console.log(`watchdog: ${unreachable}/${threshold} failed polls of ${base} while every service answers here — alert only — ${failed.join(", ")}`)
-	if (unreachable < threshold || state.unreachableAlerted) return { unreachable, unreachableAlerted: state.unreachableAlerted }
-	await webhookAlert(`⚠️ Chimera on ${os.hostname()}: every service answers on this host, but ${base} does not, so nobody can reach it. Check DNS, the router and anything proxying in front. Nothing will be restarted or rebooted.\n${failed.join("\n")}`)
-	return { unreachable, unreachableAlerted: true }
+	if (unreachable >= threshold && !alerted) await alert("⚠️", `every service answers on this host, but ${base} does not, so nobody can reach it. Check DNS, the router and anything proxying in front. Nothing will be restarted or rebooted.\n${failed.join("\n")}`)
+	return { unreachable }
 }
 
 const runOnce = async () => {
@@ -143,7 +142,10 @@ const runOnce = async () => {
 	const urls = checkUrl()
 	const failed = await poll(urls)
 	const state = await readState()
-	if (!failed.length) return recover({ ...state, ...await reachability(state, threshold) }, threshold)
+	if (!failed.length) {
+		const reach = await reachability(state, threshold)
+		return recover({ ...state, ...reach }, threshold)
+	}
 	const failures = state.failures + 1
 	console.log(`watchdog: ${failures}/${threshold} consecutive failures — ${failed.join(", ")}`)
 	if (failures < threshold) return writeState({ ...state, failures, healthy: 0 })
@@ -175,7 +177,7 @@ const configProblem = () => {
 	const unreadable = envProblem()
 	if (unreadable) return unreadable
 	if (!settings().enabled) return null
-	if (!healthChecks.localBase()) return NO_PORT
+	if (!loopbackHost()) return NO_PORT
 	return Object.keys(checkUrl()).length ? null : NOTHING_TO_POLL
 }
 
