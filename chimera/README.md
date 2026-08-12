@@ -91,16 +91,15 @@ npm run watchdog:once         # one pass, then exit — for a scheduler
 npm run watchdog -- --dry-run # print the restart command, the reboot command and both URL sets, exit 0
 ```
 
-**Polling** — two sets from [healthChecks.js](../lib/utils/healthChecks.js), both narrowed by `localOnly`, both with a 10s timeout. They do not have the same powers.
+**Polling** — two sets from [healthChecks.js](../lib/utils/healthChecks.js), both narrowed by `localOnly`, both with a 10s timeout.
 
 | set | base | can restart or reboot |
 |---|---|---|
 | stack | `http://127.0.0.1:<gateway_PORT>` | yes |
 | reachability | `gateway_HOST` | no — alert only |
 
-- Only the loopback set arms an action. It skips DNS, TLS and anything proxying in front, so a dropped ISP link, a router with no NAT hairpin, or an expired certificate cannot reboot a recorder that is running fine. `docker-compose.yml` publishes `gateway_PORT` on the host, and `gateway.js` exempts the health paths from the HTTPS redirect, so the probe reaches the service rather than a 302.
-- The reachability set runs only on a poll where every service already answered on loopback. That is the one case it can report something new — the stack is up and the path to it is not — and it keeps a real outage from alerting twice. It alerts once when it crosses `watchdog_FAILURES`, once more when the address answers again, and never touches the escalation stage.
-- An empty `gateway_HOST` turns the reachability alert off and leaves the stages working. An unusable `gateway_PORT` is fatal at startup — without it every poll would read as an outage.
+- Only the loopback set arms an action. It skips DNS, TLS and anything proxying in front, so an outage between this host and the internet cannot reboot a recorder that is running fine.
+- An unusable `gateway_PORT` is fatal at startup; an empty `gateway_HOST` only turns the alert off.
 - A service is polled only with `<name>_PROXY_ON=true` *and* `<name>_ON=true`. `_PROXY_ON` alone means the gateway proxies it, not that it runs here — rebooting this host would never fix a fault on another machine. The [heartbeat](../heartbeat.config.js) keeps the wider map; it only alerts.
 - Runs on the host: the heartbeat is a pm2 app inside `chimera` and dies with what it watches. Neither survives a kernel hang.
 - Takes `.env` and the compose cwd from `preflight.js`'s `ENV`/`ROOT`, so a scheduler can run it from any directory.

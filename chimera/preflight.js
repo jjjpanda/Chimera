@@ -268,7 +268,6 @@ const privateHostname = (host) => !!host && (isIpLiteral(host) || !host.includes
 
 const watchdogHostWarning = (lines) => {
 	if (getVal(lines, "watchdog_ON") !== "true") return null
-	// restart and reboot read http://127.0.0.1:<gateway_PORT>, so a bad gateway_HOST only ever costs a false alert
 	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 	const url = gatewayUrl(lines)
 	return urlPart(url, "protocol") === "https:" && privateHostname(urlPart(url, "hostname"))

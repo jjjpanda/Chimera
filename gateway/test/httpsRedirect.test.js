@@ -42,8 +42,6 @@ describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 			.end(done)
 	})
 
-	// the host watchdog polls these over loopback http. A 302 comes from this middleware, before any
-	// proxy hop, so it would report every service up while the whole stack was down
 	test.each(["command", "livestream", "object", "schedule", "storage"])(
 		"/%s/health is exempt so the loopback probe reaches the service, not this redirect",
 		(service, done) => {

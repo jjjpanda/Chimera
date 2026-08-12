@@ -20,10 +20,8 @@ const NO_PORT = "gateway_PORT is not a usable port — the restart and reboot st
 const NO_HOST = "gateway_HOST is empty — nothing to try for the reachability alert; restart and reboot are unaffected"
 const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? message}) and watchdog_ON is not set in the environment either — every setting reads as unset, and the watchdog would exit clean while polling nothing`
 
-/** Drives restart and reboot. */
 const checkUrl = () => healthChecks({ localOnly: true, base: loopbackHost() })
 
-/** Alert only. The address a visitor types, which no action here can repair. */
 const reachUrl = () => (gatewayHost() ? healthChecks({ localOnly: true }) : {})
 
 const envLines =(env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
@@ -117,7 +115,6 @@ const recover = (state, threshold) => {
 	return writeState({ ...state, failures: 0, healthy: cleared ? 0 : healthy, stage: cleared ? 0 : state.stage })
 }
 
-/** Runs only when every service already answered on loopback, so a failure here means the stack is up and the path to it is not. */
 const reachability = async (state, threshold) => {
 	const urls = reachUrl()
 	if (!Object.keys(urls).length) return {}

@@ -29,8 +29,6 @@ const isSecure = (req) => !!req.socket.encrypted || (trustProxy && forwardedProt
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const target = redirectTarget({ trustProxy })
 	app.use((req, res, next) => {
-		// the host watchdog polls the health paths over loopback http, and they return a fixed
-		// 200 with no session and nothing to disclose, so redirecting them buys nothing
 		if(isSecure(req) || req.path.split("/")[1] == ".well-known" || isHealthPath(req.path)){
 			next()
 		}

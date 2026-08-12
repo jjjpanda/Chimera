@@ -18,7 +18,6 @@ jest.mock("../../lib/utils/jsonFileHandling.js", () => ({
 
 const SERVICES = ["command", "livestream", "object", "schedule", "storage"]
 
-// a public address the host has to leave the building to reach — the case the local probe exists for
 const GATEWAY_HOST = "https://cams.example.com"
 
 process.env.gateway_HOST = GATEWAY_HOST
@@ -54,7 +53,6 @@ afterEach(() => {
 })
 
 describe("health endpoints", () => {
-	// DNS, TLS, the router and anything proxying in front must not be able to arm a reboot
 	test("the stage-driving poll goes to the published gateway port on loopback, never to gateway_HOST", () => {
 		expect(checkUrl()).toEqual({
 			command: "http://127.0.0.1:8080/command/health",
@@ -340,8 +338,6 @@ describe("runOnce", () => {
 	})
 })
 
-// an ISP outage, a router with no NAT hairpin, or a DNS hiccup makes every gateway_HOST poll fail
-// while the recorder is fine. Restarting cannot mend that path, and rebooting loses footage
 describe("reachability alert", () => {
 	const split = (local, remote) => jest.fn((url) => (url.startsWith("http://127.0.0.1:") ? local() : remote()))
 
@@ -377,7 +373,6 @@ describe("reachability alert", () => {
 		expect(webhookAlert).toHaveBeenCalledTimes(3)
 	})
 
-	// otherwise a real outage sends the escalation alert and this one on the same poll
 	test("the address is not polled at all while the stack itself is failing", async () => {
 		global.fetch = split(down, down)
 		await rounds(1)
@@ -455,8 +450,6 @@ describe("configProblem", () => {
 		expect(configProblem()).toBeNull()
 	})
 
-	// without it every URL would be "/command/health", which fetch cannot parse. Every poll would
-	// then "fail" and the watchdog would restart and reboot a host that is fine
 	test("an unusable gateway_PORT is a startup error, not six failed polls", () => {
 		process.env.watchdog_ON = "true"
 		process.env.gateway_PORT = ""

@@ -229,8 +229,6 @@ Your first successful login leaves a second cookie in that browser for a year. I
 | is the stack running? | `http://127.0.0.1:<gateway_PORT>` — the machine's own port | restart, then reboot |
 | can a visitor get in? | `gateway_HOST` — the address you type in a browser | alert, nothing else |
 
-Only the first one restarts or reboots. A recorder that is running fine but temporarily cut off — your internet dropped, your router will not let the machine reach its own public address, the certificate expired — sends you a message and keeps recording. Restarting cannot mend a broken route, and a reboot during an outage costs you footage.
-
 A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
 
 ```
@@ -276,7 +274,7 @@ A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` a
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
-**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and mails you an outage that is not happening. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything — those read the machine's own port.
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
 
 Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
