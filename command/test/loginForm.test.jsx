@@ -38,12 +38,32 @@ test("each field is reachable by its visible label", () => {
 })
 
 test("a rejected login is announced rather than only shown", () => {
-	const tryLogin = jest.fn((username, password, cb) => cb(false, null))
+	const tryLogin = jest.fn((username, password, cb) => cb(false, "INVALID_CREDENTIALS"))
 	render(React.createElement(LoginForm, { tryLogin }))
 
 	fireEvent.click(screen.getByText("Sign In"))
 
 	expect(screen.getByRole("alert").textContent).toBe("Invalid username or password.")
+})
+
+test("a server error code is resolved to its English wording", () => {
+	const tryLogin = jest.fn((username, password, cb) => cb(false, "TOO_MANY_ATTEMPTS"))
+	render(React.createElement(LoginForm, { tryLogin }))
+
+	fireEvent.click(screen.getByText("Sign In"))
+
+	expect(screen.getByRole("alert").textContent).toBe("Too many attempts")
+})
+
+test("the language picker stays collapsed until Change language is clicked, which must not submit the form", () => {
+	const tryLogin = jest.fn()
+	render(React.createElement(LoginForm, { tryLogin }))
+	expect(screen.queryByRole("combobox")).toBeNull()
+
+	fireEvent.click(screen.getByText("Change language"))
+
+	expect(screen.getByRole("combobox")).toBeTruthy()
+	expect(tryLogin).not.toHaveBeenCalled()
 })
 
 test("submit does not trigger native page navigation", () => {

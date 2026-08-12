@@ -21,7 +21,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 
 	test("X-Forwarded-Proto: https does not bypass the redirect — the header is forgeable", (done) => {
 		supertest(gateway)
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect(302, done)
 	})
@@ -29,7 +29,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("an unset gateway_TRUST_PROXY reads the same as false", (done) => {
 		delete process.env.gateway_TRUST_PROXY
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect(302, done)
 	})
@@ -37,7 +37,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("gateway_TRUST_PROXY=true is what lets the header through", (done) => {
 		process.env.gateway_TRUST_PROXY = "true"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect((res) => {
 				if (res.status === 302) throw new Error("redirected despite a trusted X-Forwarded-Proto")
@@ -48,7 +48,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("a trusted proxy that appends rather than overwrites does not let the client's value win", (done) => {
 		process.env.gateway_TRUST_PROXY = "true"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https,http")
 			.expect(302, done)
 	})
@@ -56,7 +56,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("gateway_TRUST_PROXY=2 reads the hop two out, so a CDN in front of a proxy does not loop", (done) => {
 		process.env.gateway_TRUST_PROXY = "2"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https,http")
 			.expect((res) => {
 				if (res.status === 302) throw new Error("redirected despite the CDN reporting https")
@@ -67,7 +67,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("gateway_TRUST_PROXY=2 clamps to the only value when a proxy replaces the header", (done) => {
 		process.env.gateway_TRUST_PROXY = "2"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect((res) => {
 				if (res.status === 302) throw new Error("redirected despite the proxy reporting https")
@@ -78,7 +78,7 @@ describe("gateway_HTTPS_Redirect without gateway_TRUST_PROXY", () => {
 	test("a value that is neither true, false nor a number trusts nothing", (done) => {
 		process.env.gateway_TRUST_PROXY = "yes"
 		supertest(freshGateway())
-			.get("/command/health")
+			.get("/clip")
 			.set("X-Forwarded-Proto", "https")
 			.expect(302, done)
 	})

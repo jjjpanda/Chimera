@@ -57,7 +57,9 @@ If the gateway cannot read either file, the HTTPS listener stays down.
 
 ## The HTTPS redirect
 
-`gateway_HTTPS_Redirect=true` sends every non-secure request to HTTPS. Requests under `/.well-known/` are the exception.
+`gateway_HTTPS_Redirect=true` sends every non-secure request to HTTPS. Two paths are the exception: anything under `/.well-known/`, and the five `/<service>/health` paths.
+
+The health paths answer a fixed `200` with no session, so a redirect protects nothing and would hide an outage: it runs before the proxy hop, so a 302 proves only that the gateway process is alive. The host [watchdog](../chimera#watchdogjs--npm-run-watchdog) reads them over loopback http.
 
 Every visitor lands on `gateway_HOST` and `gateway_PORT_SECURE`, whatever address they typed. Two rules follow:
 

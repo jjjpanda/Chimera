@@ -40,7 +40,7 @@ Three access levels: public, session (`authorize`), admin (`requireAdmin`). Auth
 | daily | IP address | yes |
 | account | username | yes |
 
-No limit ends in a hard block. Once a limit is used up, the route runs one password check per window and answers 429 to every other request at once. Nothing waits in a queue, so a flood cannot build latency. That one check also answers 429 when the password is wrong, so a 429 does not prove the password went unchecked.
+No limit ends in a hard block. Once a limit is used up, the route runs one password check per window and answers 429 to every other request at once. Nothing waits in a queue, so a flood cannot build latency. That one check decides the request: a correct password logs in, a wrong one answers 429, so a 429 does not prove the password went unchecked.
 
 | response | the slot is |
 |---|---|

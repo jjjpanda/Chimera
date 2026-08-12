@@ -1,8 +1,8 @@
 var express = require("express")
-var { validateBody, auth, password, timingSafeCompare, rateLimiter } = require("lib")
+var { validateBody, auth, password, languages, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
-const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
+const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout", "/authorization/language"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
 const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).send({ error: "forbidden" }) : next())
 
@@ -11,7 +11,7 @@ const { randomBytes } = require("crypto")
 
 const app = express.Router()
 
-const { minLength: MIN_PASSWORD_LENGTH, requirement: PASSWORD_REQUIREMENT } = password
+const { minLength: MIN_PASSWORD_LENGTH } = password
 const isValidPassword = (p) => typeof p === "string" && p.length >= MIN_PASSWORD_LENGTH
 
 const sendError = (res, e) => {
@@ -69,10 +69,10 @@ app.get("/status", async (req, res) => {
 
 app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) => {
 	const { username, password, token } = req.body
-	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+	if (!timingSafeCompare(token, process.env.setup_TOKEN)) return res.status(403).json({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 	if (typeof username !== "string") return res.status(400).json({ error: true })
-	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
-	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: "PASSWORD_TOO_SHORT" })
+	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "INVALID_USERNAME" })
 	try {
 		const hash = await hashPassword(password)
 		const result = await withTransaction(async (client) => {
@@ -99,9 +99,9 @@ app.post("/setup", blockCrossSite, validateBody, setupLimiter, async (req, res) 
 app.post("/login", blockCrossSite, validateBody, loginLimiter, passwordCheck, login)
 app.post("/verify", authorize, async (req, res) => {
 	try {
-		const result = await pool.query("SELECT force_password_change, theme FROM auth WHERE username = $1", [req.decoded.username])
+		const result = await pool.query("SELECT force_password_change, theme, language FROM auth WHERE username = $1", [req.decoded.username])
 		const row = result.rows[0] ?? {}
-		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system" })
+		res.json({ error: false, role: req.decoded.role, forcePasswordChange: row.force_password_change ?? false, theme: row.theme ?? "system", language: row.language ?? "en" })
 	} catch (e) {
 		sendError(res, e)
 	}
@@ -112,6 +112,17 @@ app.put("/theme", authorize, validateBody, async (req, res) => {
 	if (!["light", "dark", "system"].includes(theme)) return res.status(400).json({ error: true })
 	try {
 		await pool.query("UPDATE auth SET theme = $1 WHERE username = $2", [theme, req.decoded.username])
+		res.json({ error: false })
+	} catch (e) {
+		sendError(res, e)
+	}
+})
+
+app.put("/language", authorize, validateBody, async (req, res) => {
+	const { language } = req.body
+	if (!languages.includes(language)) return res.status(400).json({ error: true })
+	try {
+		await pool.query("UPDATE auth SET language = $1 WHERE username = $2", [language, req.decoded.username])
 		res.json({ error: false })
 	} catch (e) {
 		sendError(res, e)
@@ -130,7 +141,7 @@ app.get("/users", authorize, requireAdmin, async (req, res) => {
 app.post("/users", authorize, requireAdmin, validateBody, async (req, res) => {
 	const { username, role } = req.body
 	if (typeof username !== "string" || !username.trim() || !role) return res.status(400).json({ error: true })
-	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
+	if (!/^[a-zA-Z0-9_.-]{3,50}$/.test(username)) return res.status(400).json({ error: true, errors: "INVALID_USERNAME" })
 	if (!["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	try {
 		const tempPassword = randomBytes(16).toString("hex")
@@ -147,7 +158,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 	const { username } = req.params
 	const { password, role } = req.body
 	if (password === undefined && role === undefined) return res.status(400).json({ error: true })
-	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
+	if (password !== undefined && !isValidPassword(password)) return res.status(400).json({ error: true, errors: "PASSWORD_TOO_SHORT" })
 	if (role !== undefined && !["admin", "user"].includes(role)) return res.status(400).json({ error: true })
 	let hash
 	try {
@@ -156,7 +167,7 @@ app.patch("/users/:username", authorize, requireAdmin, validateBody, async (req,
 		}
 		await withTransaction(async (client) => {
 			const target = await getUserOr404(client, username)
-			if (target.role === "admin" && role === "user") await assertNotLastAdmin(client, "cannot demote last admin")
+			if (target.role === "admin" && role === "user") await assertNotLastAdmin(client, "CANNOT_DEMOTE_LAST_ADMIN")
 			const updates = []
 			const values = []
 			if (role !== undefined) {
@@ -212,7 +223,7 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 	try {
 		await withTransaction(async (client) => {
 			const target = await getUserOr404(client, username)
-			if (target.role === "admin") await assertNotLastAdmin(client, "cannot delete last admin")
+			if (target.role === "admin") await assertNotLastAdmin(client, "CANNOT_DELETE_LAST_ADMIN")
 			await client.query("DELETE FROM auth WHERE username = $1", [username])
 		})
 		auth.invalidateUser(username)
@@ -224,13 +235,13 @@ app.delete("/users/:username", authorize, requireAdmin, async (req, res) => {
 
 app.post("/password", authorize, validateBody, passwordLimiter, async (req, res) => {
 	const { password, currentPassword } = req.body
-	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: PASSWORD_REQUIREMENT })
+	if (!isValidPassword(password)) return res.status(400).json({ error: true, errors: "PASSWORD_TOO_SHORT" })
 	const username = req.decoded.username
 	try {
 		await withTransaction(async (client) => {
 			const current = (await client.query("SELECT hash, force_password_change FROM auth WHERE username = $1", [username])).rows[0]
 			if (!current) throw new HttpError(404)
-			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "Current password is incorrect")
+			if (!current.force_password_change && !(await bcrypt.compare(currentPassword ?? "", current.hash))) throw new HttpError(400, "WRONG_CURRENT_PASSWORD")
 			const hash = await hashPassword(password)
 			await client.query("UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2", [hash, username])
 			await client.query("UPDATE sessions SET revoked = TRUE WHERE username = $1 AND jti IS DISTINCT FROM $2", [username, req.decoded.jti])

@@ -1,4 +1,5 @@
 import React from "react"
+import { useTranslation } from "react-i18next"
 import useChimeraStatus from "../hooks/useChimeraStatus"
 import useCameras from "../hooks/useCameras.js"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
@@ -13,23 +14,33 @@ const StatusDot = ({ status }) => (
 	)} />
 )
 
-const services = ["command", "schedule", "storage", "motion", "database", "livestream", "object", "memory"]
+const serviceLabelKeys = {
+	command: "status.svcCommand",
+	schedule: "status.svcSchedule",
+	storage: "status.svcStorage",
+	motion: "status.svcMotion",
+	database: "status.svcDatabase",
+	livestream: "status.svcLivestream",
+	object: "status.svcObject",
+	memory: "status.svcMemory"
+}
 
 const Status = () => {
+	const { t } = useTranslation()
 	const [status] = useChimeraStatus()
 	const [cameras] = useCameras()
 
 	return (
 		<Card className="h-full">
 			<CardHeader className="pb-2">
-				<CardTitle className="text-sm">Status</CardTitle>
+				<CardTitle className="text-sm">{t("status.title")}</CardTitle>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
 				<div className="grid gap-x-2 gap-y-1.5" style={{gridTemplateColumns: "repeat(auto-fill, minmax(4.5rem, 1fr))"}}>
-					{services.map(svc => (
+					{Object.entries(serviceLabelKeys).map(([svc, key]) => (
 						<div key={svc} className="flex items-center gap-1.5 min-w-0">
 							<StatusDot status={status[svc]} />
-							<span className="text-xs text-primary capitalize truncate">{svc}</span>
+							<span className="text-xs text-primary capitalize truncate">{t(key)}</span>
 						</div>
 					))}
 				</div>

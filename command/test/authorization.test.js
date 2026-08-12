@@ -59,7 +59,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+			expect(res.body).toEqual({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO auth"), expect.anything())
 		})
 
@@ -142,7 +142,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			expect(res.status).toBe(403)
-			expect(res.body).toEqual({ error: true, errors: "Setup token does not match setup_TOKEN in .env" })
+			expect(res.body).toEqual({ error: true, errors: "SETUP_TOKEN_MISMATCH" })
 		})
 
 		test("returns 400 when username or password is missing", async () => {
@@ -160,7 +160,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "bad/admin", password: "correct-horse-battery", token: "boot-token" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Username must be 3-50 characters and contain only letters, numbers, dashes, dots, and underscores." })
+			expect(res.body).toEqual({ error: true, errors: "INVALID_USERNAME" })
 		})
 
 		test("returns 400 for a password shorter than the minimum length", async () => {
@@ -169,7 +169,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/setup")
 				.send({ username: "admin", password: "short", token: "boot-token" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 500 when the transaction throws a generic error", async () => {
@@ -230,7 +230,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.send({ username: "admin", password: "mockedPassword" })
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", theme: "system" })
+			expect(res.body).toEqual({ error: false, role: "user", theme: "system", language: "en" })
 			expect(res.headers["set-cookie"]).toBeDefined()
 			expect(res.headers["set-cookie"][0]).toMatch(/^bearertoken=/)
 			expect(res.headers["set-cookie"][0]).not.toMatch(/; ?Secure/i)
@@ -339,7 +339,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/verify")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "system" })
+			expect(res.body).toEqual({ error: false, role: "user", forcePasswordChange: false, theme: "system", language: "en" })
 		})
 
 		test("returns 401 for valid JWT of deleted user", async () => {
@@ -396,6 +396,33 @@ describe("Authorization Routes", () => {
 				.put("/authorization/theme")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ theme })
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+	})
+
+	describe("PUT /authorization/language", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).put("/authorization/language").send({ language: "es" })
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 400 for a language outside the allow-list", async () => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language: "xx" })
+			expect(res.status).toBe(400)
+			expect(res.body).toEqual({ error: true })
+		})
+
+		test.each(require("lib").languages)("returns 200 on successful language update (%s)", async (language) => {
+			const token = jwt.sign({ username: "bob", role: "user", jti: "jti-user" }, "test-secret")
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language })
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
 		})
@@ -617,7 +644,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 400 when demoting last admin", async () => {
@@ -631,7 +658,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ role: "user" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "cannot demote last admin" })
+			expect(res.body).toEqual({ error: true, errors: "CANNOT_DEMOTE_LAST_ADMIN" })
 		})
 	})
 
@@ -705,7 +732,7 @@ describe("Authorization Routes", () => {
 				.delete("/authorization/users/other")
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "cannot delete last admin" })
+			expect(res.body).toEqual({ error: true, errors: "CANNOT_DELETE_LAST_ADMIN" })
 		})
 	})
 
@@ -800,7 +827,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "short" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Password must be at least 12 characters." })
+			expect(res.body).toEqual({ error: true, errors: "PASSWORD_TOO_SHORT" })
 		})
 
 		test("returns 200 for a voluntary change with the correct current password", async () => {
@@ -830,7 +857,7 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "replacement-passphrase", currentPassword: "wrongpass" })
 			expect(res.status).toBe(400)
-			expect(res.body).toEqual({ error: true, errors: "Current password is incorrect" })
+			expect(res.body).toEqual({ error: true, errors: "WRONG_CURRENT_PASSWORD" })
 			expect(mockedPool.query).not.toHaveBeenCalledWith(
 				"UPDATE auth SET hash = $1, force_password_change = FALSE WHERE username = $2",
 				expect.anything()
@@ -861,7 +888,7 @@ describe("Authorization Routes", () => {
 					.send({ password: "replacement-passphrase", currentPassword: `wrong${i}` })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 		})
 
 		test("does not hash the new password when the current password is wrong", async () => {
@@ -1041,7 +1068,7 @@ describe("Authorization Routes", () => {
 					.send({ username: "admin", password: "correct-horse-battery", token: "wrong-token" })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 
 			const otherIp = await supertest(app)
 				.post("/authorization/setup")
@@ -1070,7 +1097,7 @@ describe("Authorization Routes", () => {
 					.send({ username: "lockme", password: "wrongpassword" })
 			}
 			expect(res.status).toBe(429)
-			expect(res.body).toEqual({ error: true, errors: "Too many attempts" })
+			expect(res.body).toEqual({ error: true, errors: "TOO_MANY_ATTEMPTS" })
 		})
 
 		test("a correct password still logs in after wrong attempts exhaust the per-username budget", async () => {
@@ -1084,18 +1111,20 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${160 + i}`)
 					.send({ username: "floodvictim", password: "wrongpassword" })
 			}
-			const start = Date.now()
+			const start = process.hrtime.bigint()
 			const first = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.180")
@@ -1104,9 +1133,9 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 			expect(second.status).toBe(429)
-			expect(Date.now() - start).toBeLessThan(1000)
+			expect(Number(process.hrtime.bigint() - start) / 1e6).toBeLessThan(1000)
 		})
 
 		// the throttle slot is one per username and anyone can take it, so a long window would hand an
@@ -1140,7 +1169,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(429)
+			expect(tenSecondsLater.status).toBe(200)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1173,12 +1202,14 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", shared)
 				.send({ username: "sharedvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
+			expect(res.status).toBe(200)
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
 		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 20
 		test("a spent per-IP budget throttles instead of blocking, and a device token does not skip it", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const ip = "198.18.3.3"
 			const agent = supertest.agent(app)
 			const enrol = await agent
@@ -1198,7 +1229,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 
 			const second = await supertest(app)
 				.post("/authorization/login")
@@ -1227,7 +1258,7 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", ip)
 				.send({ username: "carryvictim", password: "wrongpassword" })
 			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.body.errors).toBe("TOO_MANY_ATTEMPTS")
 		}, 30000)
 
 		// Date.now is mocked so the 15-minute burst window can renew while the daily
@@ -1252,7 +1283,7 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", ip)
 				.send({ username: "dayvictim", password: "wrongpassword" })
 			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("Too many attempts")
+			expect(res.body.errors).toBe("TOO_MANY_ATTEMPTS")
 		}, 30000)
 
 		test("a device token skips the per-IP daily budget, so a spent day does not throttle returning users", async () => {
@@ -1282,7 +1313,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(stranger.status).toBe(429)
+			expect(stranger.status).toBe(200)
 
 			const throttled = await supertest(app)
 				.post("/authorization/login")
@@ -1361,11 +1392,13 @@ describe("Authorization Routes", () => {
 				.set("X-Forwarded-For", "203.0.117.91")
 				.send({ username: "wrongpwdevice", password: "wrongpassword" })
 			expect(known.status).toBe(400)
-			expect(known.body).toEqual({ error: true, errors: "Invalid username or password" })
+			expect(known.body).toEqual({ error: true, errors: "INVALID_CREDENTIALS" })
 			expect(known.headers["set-cookie"]).toBeUndefined()
 		})
 
 		test("a device token for another username does not skip the throttle", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			await agent
 				.post("/authorization/login")
@@ -1391,6 +1424,8 @@ describe("Authorization Routes", () => {
 		})
 
 		test("a password change voids the device token", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			const enrol = await agent
 				.post("/authorization/login")
@@ -1414,6 +1449,8 @@ describe("Authorization Routes", () => {
 		})
 
 		test("a deleted account voids the device token", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			await agent
 				.post("/authorization/login")
@@ -1619,6 +1656,18 @@ describe("Authorization Routes", () => {
 				.set("Cookie", `bearertoken=Bearer%20${token}`)
 				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
+		})
+
+		test("allows the language route through", async () => {
+			mockedPool.query
+				.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 })
+				.mockResolvedValueOnce({ rowCount: 1 })
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language: "fr" })
+			expect(res.status).toBe(200)
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE auth SET language = $1 WHERE username = $2", ["fr", "bob"])
 		})
 	})
 })

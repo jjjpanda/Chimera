@@ -1,7 +1,8 @@
 import React, { useId, useState, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useRole } from "./AuthContext"
 import moment from "moment"
-import cronstrue from "cronstrue"
+import cronstrue from "cronstrue/i18n"
 import cronParser from "cron-parser"
 import { Trash2, Minus, Plus, ArrowRight, RefreshCw } from "lucide-react"
 
@@ -34,11 +35,13 @@ const SCHEDULE_PRESETS = [
 ]
 
 import { cn } from "../lib/utils"
+import i18n from "../js/i18n.js"
+import { LANGUAGES } from "../js/languages.js"
 
 const humanCron = (cronString) => {
 	if (!cronString) return cronString ?? ""
 	try {
-		return cronstrue.toString(cronString)
+		return cronstrue.toString(cronString, { locale: LANGUAGES[i18n.language]?.cronstrue ?? "en" })
 	} catch {
 		return cronString
 	}
@@ -51,10 +54,10 @@ const taskSummary = (task, cameras = []) => {
 	).join(" › ") || "—"
 	const camId = task.body?.camera
 	const cam = camId
-		? (cameras.find(c => String(c.id) === String(camId))?.name ?? `cam ${camId}`)
+		? (cameras.find(c => String(c.id) === String(camId))?.name ?? i18n.t("schedule.camFallback", { id: camId }))
 		: null
 	const hours = task.body?.hours
-	const window = hours != null ? `past ${hours < 1 ? `${hours * 60}m` : `${hours}h`}` : null
+	const window = hours != null ? i18n.t("schedule.pastDuration", { duration: hours < 1 ? `${hours * 60}m` : `${hours}h` }) : null
 	return [label, cam, window].filter(Boolean).join(" · ")
 }
 
@@ -66,22 +69,26 @@ const nextRunSeconds = (cronString) => {
 	}
 }
 
-const DeleteTaskDialog = ({ target, label, truncate = false, onClose, onConfirm }) => (
-	<Dialog open={!!target} onOpenChange={open => !open && onClose()}>
-		<DialogContent className="max-w-sm">
-			<DialogHeader>
-				<DialogTitle>Delete task?</DialogTitle>
-				<DialogDescription className={truncate ? "truncate" : undefined}>{label}</DialogDescription>
-			</DialogHeader>
-			<DialogFooter>
-				<Button variant="outline" onClick={onClose}>Cancel</Button>
-				<Button variant="destructive" onClick={onConfirm}>Delete</Button>
-			</DialogFooter>
-		</DialogContent>
-	</Dialog>
-)
+const DeleteTaskDialog = ({ target, label, truncate = false, onClose, onConfirm }) => {
+	const { t } = useTranslation()
+	return (
+		<Dialog open={!!target} onOpenChange={open => !open && onClose()}>
+			<DialogContent className="max-w-sm">
+				<DialogHeader>
+					<DialogTitle>{t("schedule.deleteTaskConfirm")}</DialogTitle>
+					<DialogDescription className={truncate ? "truncate" : undefined}>{label}</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
+					<Button variant="destructive" onClick={onConfirm}>{t("common.delete")}</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+}
 
 const ScheduleDashboardMini = ({ withButton }) => {
+	const { t } = useTranslation()
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const [{ processList, loading }, restartTask, stopTask, deleteTask] = useTasks()
@@ -93,8 +100,8 @@ const ScheduleDashboardMini = ({ withButton }) => {
 	const sortedAll = [...processList].sort((a, b) => String(a.id).localeCompare(String(b.id)))
 
 	const renderMiniList = (items) => {
-		if (loading) return <p className="py-4 text-center text-sm text-muted">Loading…</p>
-		if (!items.length) return <p className="py-4 text-center text-sm text-muted">No tasks</p>
+		if (loading) return <p className="py-4 text-center text-sm text-muted">{t("common.loading")}</p>
+		if (!items.length) return <p className="py-4 text-center text-sm text-muted">{t("schedule.noTasks")}</p>
 		return (
 			<ul className="divide-y divide-border max-h-56 overflow-y-auto">
 				{items.map((item) => (
@@ -128,15 +135,15 @@ const ScheduleDashboardMini = ({ withButton }) => {
 		<Card className="h-full">
 			<CardHeader className="pb-2">
 				<div className="flex items-center justify-between">
-					<CardTitle className="text-sm">Scheduled Tasks</CardTitle>
+					<CardTitle className="text-sm">{t("schedule.scheduledTasks")}</CardTitle>
 					{withButton && <NavigateToRoute to="/schedule" />}
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Tabs defaultValue="upcoming">
 					<TabsList className="mb-2 w-full">
-						<TabsTrigger value="upcoming" className="flex-1">Upcoming</TabsTrigger>
-						<TabsTrigger value="all" className="flex-1">All</TabsTrigger>
+						<TabsTrigger value="upcoming" className="flex-1">{t("schedule.upcoming")}</TabsTrigger>
+						<TabsTrigger value="all" className="flex-1">{t("schedule.all")}</TabsTrigger>
 					</TabsList>
 					<TabsContent value="upcoming">{renderMiniList(sortedUpcoming)}</TabsContent>
 					<TabsContent value="all">{renderMiniList(sortedAll)}</TabsContent>
@@ -154,6 +161,7 @@ const ScheduleDashboardMini = ({ withButton }) => {
 }
 
 const ScheduleDashboardFull = ({ mobile = false }) => {
+	const { t } = useTranslation()
 	const role = useRole()
 	const isAdmin = role === "admin"
 	const uid = useId()
@@ -203,17 +211,17 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 				<Card className="flex-1 bg-surface border-border">
 					<CardHeader>
 						<div className="flex items-center justify-between">
-							<CardTitle className="text-primary">Scheduled Tasks</CardTitle>
-							<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadTasks} disabled={loading} title="Refresh tasks">
+							<CardTitle className="text-primary">{t("schedule.scheduledTasks")}</CardTitle>
+							<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadTasks} disabled={loading} title={t("schedule.refreshTasks")}>
 								<RefreshCw className="size-4" />
 							</Button>
 						</div>
 					</CardHeader>
 					<CardContent>
 						{loading ? (
-							<p className="text-muted text-sm">Loading…</p>
+							<p className="text-muted text-sm">{t("common.loading")}</p>
 						) : processList.length === 0 ? (
-							<p className="text-muted text-sm">No scheduled tasks.</p>
+							<p className="text-muted text-sm">{t("schedule.noScheduledTasks")}</p>
 						) : mobile ? (
 							<ul className="divide-y divide-border max-h-72 overflow-y-auto">
 								{processList.map((task) => (
@@ -231,7 +239,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 													onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 												/>
 												{!task.protected && (
-													<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
+													<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title={t("schedule.destroy")}>
 														<Trash2 className="size-3.5 text-danger" />
 													</Button>
 												)}
@@ -245,10 +253,10 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 								<Table>
 									<TableHeader>
 										<TableRow className="border-border">
-											<TableHead className="text-muted text-sm">ID</TableHead>
-											<TableHead className="text-muted text-sm">Schedule</TableHead>
-											<TableHead className="text-muted text-sm">Task</TableHead>
-											{isAdmin && <TableHead className="text-muted text-sm text-right">Actions</TableHead>}
+											<TableHead className="text-muted text-sm">{t("schedule.id")}</TableHead>
+											<TableHead className="text-muted text-sm">{t("schedule.schedule")}</TableHead>
+											<TableHead className="text-muted text-sm">{t("schedule.task")}</TableHead>
+											{isAdmin && <TableHead className="text-muted text-sm text-right">{t("schedule.actions")}</TableHead>}
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -270,7 +278,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 																onCheckedChange={() => { setBusyId(task.id); task.running ? stopTask(task.id) : restartTask(task.id) }}
 															/>
 															{!task.protected && (
-																<Button variant="ghost" size="icon" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title="Destroy">
+																<Button variant="ghost" size="icon" disabled={busyId === task.id} onClick={() => setDeleteTarget(task)} title={t("schedule.destroy")}>
 																	<Trash2 className="h-4 w-4 text-danger" />
 																</Button>
 															)}
@@ -289,13 +297,13 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 				{isAdmin && (
 					<Card className={cn("bg-surface border-border", mobile ? "w-full" : "w-full xl:w-96 xl:shrink-0")}>
 						<CardHeader>
-							<CardTitle className="text-primary">Schedule a Task</CardTitle>
+							<CardTitle className="text-primary">{t("schedule.scheduleATask")}</CardTitle>
 						</CardHeader>
 						<CardContent className="flex flex-col gap-4">
 							<div className="flex flex-col gap-1.5">
-								<Label id={`${uid}-camera-label`} htmlFor={`${uid}-camera`} className="text-xs text-muted">Camera</Label>
+								<Label id={`${uid}-camera-label`} htmlFor={`${uid}-camera`} className="text-xs text-muted">{t("schedule.camera")}</Label>
 								<Select value={schedCamera == null ? "" : String(schedCamera)} onValueChange={v => setSchedCamera(parseInt(v))}>
-									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder="Select camera" /></SelectTrigger>
+									<SelectTrigger id={`${uid}-camera`} aria-labelledby={`${uid}-camera-label ${uid}-camera`}><SelectValue placeholder={t("schedule.selectCamera")} /></SelectTrigger>
 									<SelectContent>
 										{cameras.map((cam, i) => (
 											<SelectItem key={cam.id} value={String(i)}>{cam.name}</SelectItem>
@@ -305,7 +313,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							</div>
 
 							<div className="flex flex-col gap-1.5">
-								<Label id={`${uid}-window-label`} className="text-xs text-muted">Window</Label>
+								<Label id={`${uid}-window-label`} className="text-xs text-muted">{t("schedule.window")}</Label>
 								<div role="group" aria-labelledby={`${uid}-window-label`} className="flex gap-1">
 									{SCHEDULE_PRESETS.map(p => (
 										<Button
@@ -322,7 +330,7 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							</div>
 
 							<div className="flex items-center justify-between">
-								<Label htmlFor={`${uid}-skip`} className="text-xs text-muted">Skip</Label>
+								<Label htmlFor={`${uid}-skip`} className="text-xs text-muted">{t("schedule.skip")}</Label>
 								<div className="flex items-center gap-1">
 									<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setSchedSkip(s => Math.max(1, s - 1))}>
 										<Minus className="size-3" />
@@ -346,17 +354,17 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							<Tabs value={outputType} onValueChange={setOutputType}>
 								<TabsList className="bg-surface-raised">
 									<TabsTrigger value="video" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-									Video
+										{t("schedule.video")}
 									</TabsTrigger>
 									<TabsTrigger value="zip" className="data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
-									Zip
+										{t("schedule.zip")}
 									</TabsTrigger>
 								</TabsList>
 							</Tabs>
 
 							{outputType === "video" && (
 								<div className="flex items-center justify-between">
-									<Label id={`${uid}-fps-label`} className="text-xs text-muted">FPS</Label>
+									<Label id={`${uid}-fps-label`} className="text-xs text-muted">{t("schedule.fps")}</Label>
 									<div role="group" aria-labelledby={`${uid}-fps-label`} className="flex items-center gap-1">
 										<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={() => setFps(f => Math.max(1, f - 5))}>
 											<Minus className="size-3" />
@@ -383,17 +391,17 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 			<Card className="bg-surface border-border">
 				<CardHeader>
 					<div className="flex items-center justify-between">
-						<CardTitle className="text-primary">Run History</CardTitle>
-						<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadRuns} disabled={runsLoading} title="Refresh run history">
+						<CardTitle className="text-primary">{t("schedule.runHistory")}</CardTitle>
+						<Button variant="ghost" size="icon" className="size-7 pointer-coarse:size-11" onClick={reloadRuns} disabled={runsLoading} title={t("schedule.refreshRunHistory")}>
 							<RefreshCw className="size-4" />
 						</Button>
 					</div>
 				</CardHeader>
 				<CardContent>
 					{runsLoading ? (
-						<p className="text-muted text-sm">Loading…</p>
+						<p className="text-muted text-sm">{t("common.loading")}</p>
 					) : runs.length === 0 ? (
-						<p className="text-muted text-sm">No runs recorded yet.</p>
+						<p className="text-muted text-sm">{t("schedule.noRunsRecorded")}</p>
 					) : mobile ? (
 						<ul className="divide-y divide-border max-h-80 overflow-y-auto">
 							{runs.map((run) => (
@@ -417,12 +425,12 @@ const ScheduleDashboardFull = ({ mobile = false }) => {
 							<Table>
 								<TableHeader>
 									<TableRow className="border-border">
-										<TableHead className="text-muted text-sm">Task</TableHead>
-										<TableHead className="text-muted text-sm">URL</TableHead>
-										<TableHead className="text-muted text-sm">Status</TableHead>
-										<TableHead className="text-muted text-sm">HTTP</TableHead>
-										<TableHead className="text-muted text-sm">Error</TableHead>
-										<TableHead className="text-muted text-sm">When</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.task")}</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.url")}</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.status")}</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.http")}</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.error")}</TableHead>
+										<TableHead className="text-muted text-sm">{t("schedule.when")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
