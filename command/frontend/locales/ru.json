@@ -165,6 +165,7 @@
 		"partialDeleted": "Удалено {{deleted}}/{{total}}"
 	},
 	"language": {
+		"change": "Изменить язык",
 		"label": "Язык",
 		"loadFailed": "Не удалось загрузить язык",
 		"preferences": "Настройки",

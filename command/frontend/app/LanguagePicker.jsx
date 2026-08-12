@@ -1,14 +1,22 @@
-import React, { useId } from "react"
+import React, { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { Button } from "../components/ui/button"
 import { Label } from "../components/ui/label"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "../components/ui/select"
 import { useLanguage } from "./LanguageContext.jsx"
 import tags, { LANGUAGES } from "../js/languages.js"
 
-const LanguagePicker = () => {
+const LanguagePicker = ({ collapsible = false }) => {
 	const { language, applyLanguage } = useLanguage()
 	const { t } = useTranslation()
 	const uid = useId()
+	const [expanded, setExpanded] = useState(!collapsible)
+
+	if (!expanded) return (
+		<Button type="button" variant="link" size="sm" onClick={() => setExpanded(true)} className="self-center text-muted">
+			{t("language.change")}
+		</Button>
+	)
 
 	return (
 		<div className="flex flex-col gap-1">

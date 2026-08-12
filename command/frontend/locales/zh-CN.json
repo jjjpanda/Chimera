@@ -162,6 +162,7 @@
 		"partialDeleted": "已删除 {{deleted}}/{{total}}"
 	},
 	"language": {
+		"change": "更改语言",
 		"label": "语言",
 		"loadFailed": "无法加载语言设置",
 		"preferences": "偏好设置",

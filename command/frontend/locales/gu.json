@@ -163,6 +163,7 @@
 		"partialDeleted": "{{deleted}}/{{total}} કાઢી નાખવામાં આવી"
 	},
 	"language": {
+		"change": "ભાષા બદલો",
 		"label": "ભાષા",
 		"loadFailed": "ભાષા લોડ કરી શકાઈ નહીં",
 		"preferences": "પસંદગીઓ",

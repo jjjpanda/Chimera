@@ -163,6 +163,7 @@
 		"partialDeleted": "{{deleted}}/{{total}} हटाई गईं"
 	},
 	"language": {
+		"change": "भाषा बदलें",
 		"label": "भाषा",
 		"loadFailed": "भाषा लोड नहीं की जा सकी",
 		"preferences": "प्राथमिकताएं",

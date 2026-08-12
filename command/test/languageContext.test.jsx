@@ -66,33 +66,38 @@ test("a fresh login with no server language lands on en rather than a stale loca
 	expect(screen.getByTestId("language").textContent).toBe("en")
 })
 
-test("a logged-out render falls back to navigator.language on the base tag", () => {
+test("a logged-out render starts on en rather than the browser's language", () => {
 	Object.defineProperty(navigator, "languages", { value: ["es-MX"], configurable: true })
 
 	renderWithProvider({ serverLanguage: "ko", loggedIn: false })
 
-	expect(screen.getByTestId("language").textContent).toBe("es")
+	expect(screen.getByTestId("language").textContent).toBe("en")
+})
+
+test("a logged-out render restores the language the user last chose", () => {
+	localStorage.setItem("language", "ja")
+
+	renderWithProvider({ serverLanguage: null, loggedIn: false })
+
+	expect(screen.getByTestId("language").textContent).toBe("ja")
 })
 
 test.each([
-	[["pt-PT", "fr"], "fr"],
-	[["zh-TW", "ja"], "ja"],
-	[["zh-Hant", "ja"], "ja"],
-	[["zh-HK", "ja"], "ja"],
-	[["zh-Hans"], "zh-CN"],
-	[["zh-SG"], "zh-CN"],
-	[["zh"], "zh-CN"],
-	[["pt"], "pt-BR"]
-])("%s resolves to %s", (languages, expected) => {
-	Object.defineProperty(navigator, "languages", { value: languages, configurable: true })
+	["es-MX", "es"],
+	["zh-Hans", "zh-CN"],
+	["zh-SG", "zh-CN"],
+	["zh", "zh-CN"],
+	["pt", "pt-BR"]
+])("a stored %s resolves to %s", (stored, expected) => {
+	localStorage.setItem("language", stored)
 
 	renderWithProvider({ serverLanguage: null, loggedIn: false })
 
 	expect(screen.getByTestId("language").textContent).toBe(expected)
 })
 
-test("an unsupported navigator language falls back to en", () => {
-	Object.defineProperty(navigator, "languages", { value: ["is-IS"], configurable: true })
+test.each(["pt-PT", "zh-TW", "zh-Hant", "zh-HK", "is-IS"])("a stored %s falls back to en", (stored) => {
+	localStorage.setItem("language", stored)
 
 	renderWithProvider({ serverLanguage: null, loggedIn: false })
 
@@ -117,6 +122,52 @@ test("picking a language while logged in saves it to the server once its bundle 
 	await waitFor(() => expect(requests).toHaveLength(1))
 	expect(requests[0][0]).toBe("/authorization/language")
 	expect(JSON.parse(requests[0][1].body)).toEqual({ language: "ja" })
+})
+
+test("a language picked on the login page survives the login instead of snapping back to the server's", async () => {
+	const { rerender } = renderWithProvider({ serverLanguage: null, loggedIn: false })
+	fireEvent.click(screen.getByTestId("language"))
+	await waitFor(() => expect(localStorage.getItem("language")).toBe("ja"))
+	expect(requests).toHaveLength(0)
+
+	rerender(React.createElement(LanguageProvider, { serverLanguage: "en", loggedIn: true },
+		React.createElement(Consumer)))
+
+	await waitFor(() => expect(requests).toHaveLength(1))
+	expect(JSON.parse(requests[0][1].body)).toEqual({ language: "ja" })
+	expect(screen.getByTestId("language").textContent).toBe("ja")
+	expect(localStorage.getItem("language")).toBe("ja")
+})
+
+test("a login-page pick is saved only once, so a later sign-out and sign-in does not resend it", async () => {
+	const { rerender } = renderWithProvider({ serverLanguage: null, loggedIn: false })
+	fireEvent.click(screen.getByTestId("language"))
+	const login = (loggedIn) => rerender(React.createElement(LanguageProvider,
+		{ serverLanguage: "ja", loggedIn }, React.createElement(Consumer)))
+
+	login(true)
+	await waitFor(() => expect(requests).toHaveLength(1))
+	login(false)
+	login(true)
+
+	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("ja"))
+	expect(requests).toHaveLength(1)
+})
+
+test("a login-page pick whose bundle fails to load does not block the server language", async () => {
+	const rejected = Promise.reject(new Error("chunk 404"))
+	rejected.catch(() => {})
+	loads["ru"] = rejected
+	picked = "ru"
+	const { rerender } = renderWithProvider({ serverLanguage: null, loggedIn: false })
+	fireEvent.click(screen.getByTestId("language"))
+	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("en"))
+
+	rerender(React.createElement(LanguageProvider, { serverLanguage: "ko", loggedIn: true },
+		React.createElement(Consumer)))
+
+	await waitFor(() => expect(screen.getByTestId("language").textContent).toBe("ko"))
+	expect(requests).toHaveLength(0)
 })
 
 test("logging in does not write the language the server just supplied back to it", async () => {
@@ -159,7 +210,7 @@ test("a locale chunk that lands after a newer language change leaves moment on t
 	let landHindi
 	loads["hi"] = new Promise((resolve) => { landHindi = resolve })
 		.then(() => { require("moment/locale/hi"); moment.locale("hi"); return [] })
-	Object.defineProperty(navigator, "languages", { value: ["hi"], configurable: true })
+	localStorage.setItem("language", "hi")
 
 	const { rerender } = renderWithProvider({ serverLanguage: null, loggedIn: false })
 	rerender(React.createElement(LanguageProvider, { serverLanguage: "en", loggedIn: true },

@@ -163,6 +163,7 @@
 		"partialDeleted": "{{deleted}}/{{total}} gelöscht"
 	},
 	"language": {
+		"change": "Sprache ändern",
 		"label": "Sprache",
 		"loadFailed": "Sprache konnte nicht geladen werden",
 		"preferences": "Einstellungen",

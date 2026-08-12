@@ -164,6 +164,7 @@
 		"partialDeleted": "{{deleted}}/{{total}} Excluídos"
 	},
 	"language": {
+		"change": "Alterar idioma",
 		"label": "Idioma",
 		"loadFailed": "Não foi possível carregar o idioma",
 		"preferences": "Preferências",
