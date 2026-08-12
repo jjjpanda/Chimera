@@ -164,7 +164,7 @@ const dryRun = () => {
 	const argv = rebootArgv()
 	console.log(composeCommand(RESTART_ARGS).join(" "))
 	console.log(argv ? argv.join(" ") : NO_REBOOT)
-	console.log(Object.values(checkUrl()).join("\n") || NOTHING_TO_POLL)
+	console.log(loopbackHost() ? Object.values(checkUrl()).join("\n") || NOTHING_TO_POLL : NO_PORT)
 	console.log(Object.values(reachUrl()).join("\n") || (gatewayHost() ? NOTHING_TO_POLL : NO_HOST))
 }
 
