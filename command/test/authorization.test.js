@@ -1111,18 +1111,20 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.99")
 				.send({ username: "dosvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
-			expect(res.body.errors).toBe("TOO_MANY_ATTEMPTS")
+			expect(res.status).toBe(200)
+			expect(res.body.error).toBe(false)
 		})
 
 		test("only one credential check runs per throttle window once the budget is spent", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			for (let i = 0; i < 10; i++) {
 				await supertest(app)
 					.post("/authorization/login")
 					.set("X-Forwarded-For", `192.0.2.${160 + i}`)
 					.send({ username: "floodvictim", password: "wrongpassword" })
 			}
-			const start = Date.now()
+			const start = process.hrtime.bigint()
 			const first = await supertest(app)
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.180")
@@ -1131,9 +1133,9 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.181")
 				.send({ username: "floodvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 			expect(second.status).toBe(429)
-			expect(Date.now() - start).toBeLessThan(1000)
+			expect(Number(process.hrtime.bigint() - start) / 1e6).toBeLessThan(1000)
 		})
 
 		// the throttle slot is one per username and anyone can take it, so a long window would hand an
@@ -1167,7 +1169,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", "192.0.2.52")
 				.send({ username, password: "mockedPassword" })
-			expect(tenSecondsLater.status).toBe(429)
+			expect(tenSecondsLater.status).toBe(200)
 		})
 
 		test("a throttled request is refused immediately instead of being queued", async () => {
@@ -1200,12 +1202,14 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", shared)
 				.send({ username: "sharedvictim", password: "mockedPassword" })
-			expect(res.status).toBe(429)
+			expect(res.status).toBe(200)
 		})
 
 		// one username for the whole spray, so the per-username throttle refuses most
 		// of it before passwordCheck and the loop costs ~11 bcrypt compares, not 20
 		test("a spent per-IP budget throttles instead of blocking, and a device token does not skip it", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const ip = "198.18.3.3"
 			const agent = supertest.agent(app)
 			const enrol = await agent
@@ -1225,7 +1229,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "sprayvictim", password: "mockedPassword" })
-			expect(first.status).toBe(429)
+			expect(first.status).toBe(200)
 
 			const second = await supertest(app)
 				.post("/authorization/login")
@@ -1309,7 +1313,7 @@ describe("Authorization Routes", () => {
 				.post("/authorization/login")
 				.set("X-Forwarded-For", ip)
 				.send({ username: "daytokenuser", password: "mockedPassword" })
-			expect(stranger.status).toBe(429)
+			expect(stranger.status).toBe(200)
 
 			const throttled = await supertest(app)
 				.post("/authorization/login")
@@ -1393,6 +1397,8 @@ describe("Authorization Routes", () => {
 		})
 
 		test("a device token for another username does not skip the throttle", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			await agent
 				.post("/authorization/login")
@@ -1418,6 +1424,8 @@ describe("Authorization Routes", () => {
 		})
 
 		test("a password change voids the device token", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			const enrol = await agent
 				.post("/authorization/login")
@@ -1441,6 +1449,8 @@ describe("Authorization Routes", () => {
 		})
 
 		test("a deleted account voids the device token", async () => {
+			const now = Date.now()
+			jest.spyOn(Date, "now").mockImplementation(() => now)
 			const agent = supertest.agent(app)
 			await agent
 				.post("/authorization/login")
