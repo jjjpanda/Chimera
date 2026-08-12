@@ -88,11 +88,18 @@ Host-side liveness check, the only script here that keeps running after boot. It
 ```
 npm run watchdog              # self-polling, every watchdog_INTERVAL_MS
 npm run watchdog:once         # one pass, then exit — for a scheduler
-npm run watchdog -- --dry-run # print the restart command, the reboot command and the polled URLs, exit 0
+npm run watchdog -- --dry-run # print the restart command, the reboot command and both URL sets, exit 0
 ```
 
-**Polling** — the `<gateway_HOST>/<service>/health` map from [healthChecks.js](../lib/utils/healthChecks.js), narrowed by `localOnly`, with a 10s timeout.
+**Polling** — two sets from [healthChecks.js](../lib/utils/healthChecks.js), both narrowed by `localOnly`, both with a 10s timeout.
 
+| set | base | can restart or reboot |
+|---|---|---|
+| stack | `http://127.0.0.1:<gateway_PORT>` | yes |
+| reachability | `gateway_HOST` | no — alert only |
+
+- Only the loopback set arms an action. It skips DNS, TLS and anything proxying in front, so an outage between this host and the internet cannot reboot a recorder that is running fine.
+- An unusable `gateway_PORT` is fatal at startup; an empty `gateway_HOST` only turns the alert off.
 - A service is polled only with `<name>_PROXY_ON=true` *and* `<name>_ON=true`. `_PROXY_ON` alone means the gateway proxies it, not that it runs here — rebooting this host would never fix a fault on another machine. The [heartbeat](../heartbeat.config.js) keeps the wider map; it only alerts.
 - Runs on the host: the heartbeat is a pm2 app inside `chimera` and dies with what it watches. Neither survives a kernel hang.
 - Takes `.env` and the compose cwd from `preflight.js`'s `ENV`/`ROOT`, so a scheduler can run it from any directory.
@@ -105,12 +112,12 @@ npm run watchdog -- --dry-run # print the restart command, the reboot command an
 - Restart is `docker compose up -d --force-recreate` through `compose.js`. Plain `restart` exits `0` doing nothing once `docker:down` or a half-finished `docker:rebuild` removed the containers. A daemon it cannot reach logs and exits `1` like a failed reboot, so an account outside the `docker` group is visible rather than silently escalating.
 - Reboot is `systemctl reboot` (linux + systemd, detected by `/run/systemd/system`), `shutdown -r now` (linux without systemd, darwin), `shutdown /r /t 0` (win32), prefixed `sudo -n` for a non-root posix user. An unknown platform, missing binary, or non-zero exit sets exit code `1` and logs the reason without tearing the process down.
 - The alert is awaited before the reboot, which is why `webhookAlert` returns its promise.
-- `watchdog.state.json` holds `{ failures, healthy, stage }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs. A write failure exits `1`, since a count that cannot persist never reaches the threshold.
+- `watchdog.state.json` holds `{ failures, healthy, stage, unreachable }` via `jsonFileHandling.js` — what makes `watchdog:once` work across runs. A write failure exits `1`, since a count that cannot persist never reaches the threshold.
 
 **Config** — `watchdog_ON` must be `true`; anything else exits `0`. `watchdog_INTERVAL_MS` and `watchdog_FAILURES` default to `60000` and `3`.
 
 - Preflight rejects a non-integer, a threshold below `1`, and an interval below `WATCHDOG_MIN_INTERVAL_MS` (5000) — `60` meaning seconds would poll every 60ms. `settings()` clamps to the same floor, since nothing runs preflight before `npm run watchdog`.
-- Exits `1` rather than `0` on a config that cannot work — an unreadable `.env` whose settings are not in the environment either, an empty `gateway_HOST` (relative paths `fetch` cannot parse, so every poll fails on a healthy host), or an empty poll set. Exit `0` would leave the operator believing the host is supervised.
+- Exits `1` rather than `0` on a config that cannot work — an unreadable `.env` whose settings are not in the environment either, an unusable `gateway_PORT` (relative paths `fetch` cannot parse, so every poll fails on a healthy host), or an empty poll set. Exit `0` would leave the operator believing the host is supervised.
 - Startup prints preflight's `watchdogHostWarning` instead of running `preflight.js --check` as a `pre` hook, which would exit `1` on any unrelated env problem and make npm skip the watchdog itself.
 - That warning reads `process.env` (`envLines()`), not `.env`: dotenv does not overwrite an already-set variable, so a systemd `Environment=` or exported shell var is what `settings()` and `checkUrl()` see. `composeArgs` reads the `certbot_ON` gate the same way, or a `certbot_ON=true` living in the unit would get `--scale certbot=0` on every watchdog restart and stop renewal.
 - It covers both certificate traps: a scheme-less `gateway_HOST` (read as `https://`, so a plain-HTTP deploy fails every poll) and an explicit `https://` on a name no public CA issues for — an IP literal, a single label, or a `.lan`/`.local`/`.internal`/`.intranet`/`.home.arpa` suffix, where node's `fetch` rejects the self-signed certificate unless `NODE_EXTRA_CA_CERTS` points at the CA.

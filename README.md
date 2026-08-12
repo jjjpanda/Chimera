@@ -220,7 +220,14 @@ Your first successful login leaves a second cookie in that browser for a year. I
 <details>
 <summary><b>Watchdog</b></summary>
 
-[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the gateway health endpoints of the services that run on this host. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if every endpoint keeps failing it reboots the host, then cycles back to the restart. A partial outage only ever restarts the stack — one slow service does not take the machine down. It never powers the machine off, and cannot rescue a kernel hang. The alert goes to `alert_URL`; leave that blank and the stack restarts and the host reboots with no notification at all.
+[chimera/watchdog.js](chimera/watchdog.js) runs on the host, outside Docker, polling the health endpoints of the services that run on this host. After `watchdog_FAILURES` consecutive failed polls it alerts and brings the stack back up; if every endpoint keeps failing it reboots the host, then cycles back to the restart. A partial outage only ever restarts the stack — one slow service does not take the machine down. It never powers the machine off, and cannot rescue a kernel hang. The alert goes to `alert_URL`; leave that blank and the stack restarts and the host reboots with no notification at all.
+
+**It checks two addresses, and only one of them can reboot anything.**
+
+| what it asks | which address | if it fails |
+|---|---|---|
+| is the stack running? | `http://127.0.0.1:<gateway_PORT>` — the machine's own port | restart, then reboot |
+| can a visitor get in? | `gateway_HOST` — the address you type in a browser | alert, nothing else |
 
 A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
 
@@ -267,7 +274,7 @@ A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` a
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
-**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every poll and reboots a perfectly healthy host on a loop. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment.
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
 
 Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 

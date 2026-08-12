@@ -4,7 +4,7 @@ const helmet = require("helmet")
 var {
 	createProxyMiddleware
 }              = require("http-proxy-middleware")
-const { helmetOptions, redirectTarget, trustProxyHops } = require("lib")
+const { helmetOptions, redirectTarget, trustProxyHops, isHealthPath } = require("lib")
 
 var app = express()
 const trustHops = trustProxyHops()
@@ -29,7 +29,7 @@ const isSecure = (req) => !!req.socket.encrypted || (trustProxy && forwardedProt
 if(process.env.gateway_HTTPS_Redirect == "true"){
 	const target = redirectTarget({ trustProxy })
 	app.use((req, res, next) => {
-		if(isSecure(req) || req.path.split("/")[1] == ".well-known"){
+		if(isSecure(req) || req.path.split("/")[1] == ".well-known" || isHealthPath(req.path)){
 			next()
 		}
 		else if(target){
