@@ -2,7 +2,7 @@ var express = require("express")
 var { validateBody, auth, password, languages, timingSafeCompare, rateLimiter } = require("lib")
 const { requireAdmin, isCrossSite } = auth
 const { passwordCheck, login, pool, withTransaction, HttpError, COOKIE_SECURE, knownDevice } = require("./lib/auth.js")
-const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout"]
+const forcedChangeAllowed = ["/authorization/password", "/authorization/verify", "/authorization/logout", "/authorization/language"]
 const authorize = auth.createAuthorize(pool, { forcedChangeAllowed })
 const blockCrossSite = (req, res, next) => (isCrossSite(req) ? res.status(403).send({ error: "forbidden" }) : next())
 
