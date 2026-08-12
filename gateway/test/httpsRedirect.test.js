@@ -56,7 +56,7 @@ describe("gateway_HTTPS_Redirect with gateway_TRUST_PROXY=true", () => {
 
 	test("the exemption is the exact health path, not any path containing it", (done) => {
 		supertest(gateway)
-			.get("/command/health/../../secret")
+			.get("/command/healthy")
 			.expect(302, done)
 	})
 })

@@ -49,6 +49,7 @@ beforeEach(() => {
 afterEach(() => {
 	process.exitCode = undefined
 	process.env.gateway_HOST = GATEWAY_HOST
+	process.env.gateway_PORT = "8080"
 	jest.restoreAllMocks()
 })
 
@@ -426,6 +427,12 @@ describe("dryRun", () => {
 		dryRun()
 		expect(printed()[2]).toBe(NOTHING_TO_POLL)
 		for (const s of SERVICES) process.env[`${s}_PROXY_ON`] = "true"
+	})
+
+	test("says so when there is no port to poll, instead of printing five relative paths", () => {
+		process.env.gateway_PORT = ""
+		dryRun()
+		expect(printed()[2]).toBe(NO_PORT)
 	})
 
 	test("names the two polls apart, and says when the reachability one has no address", () => {
