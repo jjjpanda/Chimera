@@ -1657,5 +1657,17 @@ describe("Authorization Routes", () => {
 				.send({ password: "replacement-passphrase" })
 			expect(res.status).toBe(200)
 		})
+
+		test("allows the language route through", async () => {
+			mockedPool.query
+				.mockResolvedValueOnce({ rows: [{ role: "user", force_password_change: true, revoked: false }], rowCount: 1 })
+				.mockResolvedValueOnce({ rowCount: 1 })
+			const res = await supertest(app)
+				.put("/authorization/language")
+				.set("Cookie", `bearertoken=Bearer%20${token}`)
+				.send({ language: "fr" })
+			expect(res.status).toBe(200)
+			expect(mockedPool.query).toHaveBeenCalledWith("UPDATE auth SET language = $1 WHERE username = $2", ["fr", "bob"])
+		})
 	})
 })
