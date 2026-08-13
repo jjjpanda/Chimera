@@ -105,9 +105,9 @@ const UPDATE_INTERRUPTED = "the watchdog stopped while an update was running —
 
 const readUpdate = (file) => new Promise(resolve => readJSON(file, (err, data) => resolve(err ? null : data)))
 
-const writeUpdate = (file, data) => new Promise(resolve => writeJSON(file, data, resolve, ({ message }) => {
+const writeUpdate = (file, data) => new Promise(resolve => writeJSON(file, data, () => resolve(true), ({ message }) => {
 	fail(`watchdog: cannot write ${file} (${message}) — the admin panel cannot see what happened to the update`)
-	resolve()
+	resolve(false)
 }))
 
 const clearUpdate = (file) => {
@@ -141,7 +141,7 @@ const checkUpdateRequest = async () => {
 	}
 	if (!fs.existsSync(REQUEST)) return false
 	const request = await readUpdate(REQUEST) ?? {}
-	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
+	if (!await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })) return true
 	clearUpdate(REQUEST)
 	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
 	await endUpdate(update())
