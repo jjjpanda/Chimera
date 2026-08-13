@@ -19,6 +19,18 @@
 			"user": "utilisateur"
 		},
 		"sessions": "Sessions",
+		"update": {
+			"button": "Mettre à jour",
+			"confirm": "Récupérer le code le plus récent et reconstruire ? Le système sera indisponible pendant quelques minutes.",
+			"description": "Récupère le code le plus récent, reconstruit les conteneurs et les redémarre. Les caméras et les enregistrements sont indisponibles pendant quelques minutes.",
+			"failed": "Impossible de demander la mise à jour",
+			"lastFailure": "Dernière mise à jour échouée {{when}} : {{message}}",
+			"lastSuccess": "Dernière mise à jour réussie {{when}}.",
+			"pending": "Demandée par {{username}}, en attente du watchdog de l'hôte.",
+			"requested": "Mise à jour demandée",
+			"running": "Mise à jour en cours — la pile redémarre à la fin.",
+			"title": "Mise à jour du système"
+		},
 		"updateUserFailed": "Échec de la mise à jour de l'utilisateur",
 		"userCreated": "Utilisateur créé. Communiquez-lui ce mot de passe temporaire :",
 		"userDeleted": "Utilisateur supprimé",
@@ -153,6 +165,7 @@
 		"passwordTooShort": "Le mot de passe doit comporter au moins {{minLength}} caractères.",
 		"setupTokenMismatch": "Le jeton de configuration ne correspond pas à setup_TOKEN dans .env",
 		"tooManyAttempts": "Trop de tentatives",
+		"updateInProgress": "Une mise à jour est déjà en cours",
 		"wrongCurrentPassword": "Le mot de passe actuel est incorrect"
 	},
 	"footage": {

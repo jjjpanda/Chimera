@@ -1,4 +1,4 @@
-const { ENV, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
+const { ENV, ROOT, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
 const { error: envError } = require("dotenv").config({ path: ENV })
 const fs = require("fs")
 const os = require("os")
@@ -9,6 +9,7 @@ const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
+const { REQUEST, RUNNING, RESULT } = require("../lib/utils/updateBridge.js")
 
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
@@ -100,6 +101,53 @@ const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state
 
 const alert = (emoji, text) => webhookAlert(`${emoji} Chimera watchdog on ${os.hostname()}: ${text}`)
 
+const UPDATE_INTERRUPTED = "the watchdog stopped while an update was running — check `git log` and `docker compose ps` before trying again"
+
+const readUpdate = (file) => new Promise(resolve => readJSON(file, (err, data) => resolve(err ? null : data)))
+
+const writeUpdate = (file, data) => new Promise(resolve => writeJSON(file, data, resolve, ({ message }) => {
+	fail(`watchdog: cannot write ${file} (${message}) — the admin panel cannot see what happened to the update`)
+	resolve()
+}))
+
+const clearUpdate = (file) => {
+	try {
+		fs.unlinkSync(file)
+	} catch ({ code, message }) {
+		if (code !== "ENOENT") fail(`watchdog: cannot remove ${file} (${message}) — the admin panel will keep reporting an update that already ended`)
+	}
+}
+
+const runStep = (command, args) => {
+	console.log(`watchdog: ${[command, ...args].join(" ")}`)
+	const { status, error } = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" })
+	if (error) return `\`${[command, ...args].join(" ")}\` could not run: ${error.message}`
+	if (status !== 0) return `\`${[command, ...args].join(" ")}\` exited ${status ?? "without status"}`
+	return null
+}
+
+const update = () => runStep("git", ["pull"]) ?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
+
+const endUpdate = async (problem) => {
+	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
+	clearUpdate(RUNNING)
+	await alert(problem ? "⚠️" : "✅", problem ? `update failed — ${problem}` : "update finished, the stack was rebuilt")
+}
+
+const checkUpdateRequest = async () => {
+	if (fs.existsSync(RUNNING)) {
+		await endUpdate(UPDATE_INTERRUPTED)
+		return true
+	}
+	if (!fs.existsSync(REQUEST)) return false
+	const request = await readUpdate(REQUEST) ?? {}
+	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
+	clearUpdate(REQUEST)
+	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
+	await endUpdate(update())
+	return true
+}
+
 const act = async (stage, failed) => {
 	await alert("⚠️", `${stage === "reboot" ? "rebooting the host" : "restarting the stack"}\n${failed.join("\n")}`)
 	return stage === "reboot" ? reboot() : restart()
@@ -135,6 +183,8 @@ const reachability = async (state, threshold) => {
 }
 
 const runOnce = async () => {
+	// the stack is down for most of an update and comes up cold after it, so this pass polls nothing
+	if (await checkUpdateRequest()) return
 	const { threshold } = settings()
 	const urls = checkUrl()
 	const failed = await poll(urls)
@@ -190,4 +240,4 @@ if (require.main === module) {
 	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest }

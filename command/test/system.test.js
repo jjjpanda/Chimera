@@ -1,0 +1,129 @@
+process.env.SECRETKEY = "test-secret"
+process.env.command_COOKIE_SECURE = "false"
+
+jest.mock("pg")
+jest.mock("pm2")
+jest.mock("axios")
+jest.mock("memory")
+
+let mockFiles = {}
+let mockWriteFails = false
+
+jest.mock("lib/utils/jsonFileHandling.js", () => ({
+	readJSON: (file, onRead, onMissing = onRead) =>
+		(file in mockFiles ? onRead(null, mockFiles[file]) : onMissing(new Error("ENOENT"), {})),
+	writeJSON: (file, data, onWrite, onFail) => {
+		if (mockWriteFails) return onFail(new Error("EACCES: permission denied"))
+		mockFiles[file] = data
+		onWrite()
+	},
+	isStringJSON: () => true
+}))
+
+const supertest = require("supertest")
+const jwt = require("jsonwebtoken")
+const app = require("../backend/command.js")
+const { auth, updateBridge } = require("lib")
+const { REQUEST, RUNNING, RESULT } = updateBridge
+
+const { mockedPool } = require("pg")
+
+const session = (role) => mockedPool.query.mockResolvedValueOnce({ rows: [{ role, revoked: false }], rowCount: 1 })
+
+const as = (req, role = "admin", username = "susan") => {
+	session(role)
+	return req.set("Cookie", `bearertoken=Bearer%20${jwt.sign({ username, role, jti: `jti-${username}` }, "test-secret")}`)
+}
+
+describe("System Routes", () => {
+	beforeEach(() => {
+		mockFiles = {}
+		mockWriteFails = false
+		auth.invalidateAllSessions()
+	})
+
+	afterEach(() => jest.restoreAllMocks())
+
+	describe("GET /system/update", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).get("/system/update")
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 403 for a non-admin, since an update takes the whole stack down", async () => {
+			const res = await as(supertest(app).get("/system/update"), "user")
+			expect(res.status).toBe(403)
+		})
+
+		test("reports idle with nothing on the bridge", async () => {
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null })
+		})
+
+		test("reports a request the host watchdog has not picked up yet as pending", async () => {
+			mockFiles[REQUEST] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "susan" }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body).toMatchObject({ state: "pending", requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "susan" })
+		})
+
+		// the panel keeps polling across the rebuild, and a stale result would read as finished
+		test("a running marker outranks the last result, so an in-flight rebuild never reads as done", async () => {
+			mockFiles[RUNNING] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "susan" }
+			mockFiles[RESULT] = { success: true, message: "updated and rebuilt", at: "2026-08-12T00:00:00.000Z" }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body).toMatchObject({ state: "running", requestedBy: "susan", last: { success: true } })
+		})
+
+		test("hands back the last result once the bridge is clear again", async () => {
+			mockFiles[RESULT] = { success: false, message: "`git pull` exited 1", at: "2026-08-12T00:00:00.000Z" }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body).toMatchObject({ state: "idle", last: { success: false, message: "`git pull` exited 1" } })
+		})
+	})
+
+	describe("POST /system/update", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).post("/system/update")
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 403 for a non-admin", async () => {
+			const res = await as(supertest(app).post("/system/update"), "user")
+			expect(res.status).toBe(403)
+			expect(mockFiles[REQUEST]).toBeUndefined()
+		})
+
+		test("writes a request naming the admin who asked for it", async () => {
+			const res = await as(supertest(app).post("/system/update"))
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+			expect(mockFiles[REQUEST]).toMatchObject({ requestedBy: "susan" })
+			expect(mockFiles[REQUEST].requestedAt).toEqual(expect.any(String))
+		})
+
+		test("refuses a second request while one is still waiting", async () => {
+			mockFiles[REQUEST] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "alex" }
+			const res = await as(supertest(app).post("/system/update"))
+			expect(res.status).toBe(409)
+			expect(res.body).toEqual({ error: true, errors: "UPDATE_IN_PROGRESS" })
+			expect(mockFiles[REQUEST].requestedBy).toBe("alex")
+		})
+
+		test("refuses a request while the host is mid-rebuild", async () => {
+			mockFiles[RUNNING] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "alex" }
+			const res = await as(supertest(app).post("/system/update"))
+			expect(res.status).toBe(409)
+			expect(mockFiles[REQUEST]).toBeUndefined()
+		})
+
+		// an unwritable bridge means the watchdog never sees the request, so the panel must not claim success
+		test("reports a bridge it cannot write to", async () => {
+			mockWriteFails = true
+			jest.spyOn(console, "error").mockImplementation(() => {})
+			const res = await as(supertest(app).post("/system/update"))
+			expect(res.status).toBe(500)
+			expect(res.body).toEqual({ error: true })
+		})
+	})
+})

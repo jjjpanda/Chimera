@@ -20,6 +20,7 @@ app.use("/command/health", require("heartbeat").heart)
 
 app.use("/authorization", require("./routes/authorization.js"))
 app.use("/cameras", auth.createAuthorize(pool), require("./routes/cameras.js"))
+app.use("/system", require("./routes/system.js"))
 app.use("/res", express.static(path.join(__dirname, "../frontend/res")))
 const webAppRoutes = ["/login", "/", "/clip", "/live", "/recordings", "/stats", "/schedule", "/admin", "/objects", "/account"]
 for(const webpath of webAppRoutes){

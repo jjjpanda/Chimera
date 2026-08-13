@@ -7,6 +7,7 @@ import { request, authPromiseHandler } from "../js/request.js"
 import NavigateToRoute from "./NavigateToRoute.jsx"
 import UserList from "./UserList.jsx"
 import AddUserDialog from "./AddUserDialog.jsx"
+import SystemUpdate from "./SystemUpdate.jsx"
 
 const AdminPanel = ({ withButton } = {}) => {
 	const { t } = useTranslation()
@@ -78,6 +79,7 @@ const AdminPanel = ({ withButton } = {}) => {
 					)}
 				</CardContent>
 			</Card>
+			<SystemUpdate />
 		</div>
 	)
 }

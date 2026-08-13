@@ -19,6 +19,18 @@
 			"user": "benutzer"
 		},
 		"sessions": "Sitzungen",
+		"update": {
+			"button": "Jetzt aktualisieren",
+			"confirm": "Neuesten Code holen und neu bauen? Das System ist für einige Minuten nicht verfügbar.",
+			"description": "Holt den neuesten Code, baut die Container neu und startet sie neu. Kameras und Aufnahmen sind für einige Minuten nicht verfügbar.",
+			"failed": "Aktualisierung kann nicht angefordert werden",
+			"lastFailure": "Letzte Aktualisierung {{when}} fehlgeschlagen: {{message}}",
+			"lastSuccess": "Letzte Aktualisierung {{when}} erfolgreich.",
+			"pending": "Angefordert von {{username}}, wartet auf den Watchdog des Hosts.",
+			"requested": "Aktualisierung angefordert",
+			"running": "Aktualisierung läuft – der Stack startet danach neu.",
+			"title": "Systemaktualisierung"
+		},
 		"updateUserFailed": "Benutzer konnte nicht aktualisiert werden",
 		"userCreated": "Benutzer erstellt. Teilen Sie ihm dieses temporäre Passwort mit:",
 		"userDeleted": "Benutzer gelöscht",
@@ -152,6 +164,7 @@
 		"passwordTooShort": "Das Passwort muss mindestens {{minLength}} Zeichen lang sein.",
 		"setupTokenMismatch": "Setup-Token stimmt nicht mit setup_TOKEN in .env überein",
 		"tooManyAttempts": "Zu viele Versuche",
+		"updateInProgress": "Es läuft bereits eine Aktualisierung",
 		"wrongCurrentPassword": "Das aktuelle Passwort ist falsch"
 	},
 	"footage": {
