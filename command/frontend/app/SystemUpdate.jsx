@@ -38,6 +38,14 @@ const SystemUpdate = () => {
 		})
 	}
 
+	const cancelUpdate = () => {
+		request("/system/update", { method: "DELETE" }, authPromiseHandler).then(res => {
+			if (res.error) toast(errorMessage(res.errors) || t("admin.update.failed"))
+			else toast(t("admin.update.cancelled"))
+			fetchStatus()
+		})
+	}
+
 	const last = status?.last
 
 	return (
@@ -64,7 +72,12 @@ const SystemUpdate = () => {
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
 				<p className="text-sm text-muted">{t("admin.update.description")}</p>
-				{state === "pending" && <p className="text-sm text-primary">{t("admin.update.pending", { username: status.requestedBy })}</p>}
+				{state === "pending" && (
+					<p className="text-sm text-primary flex items-center gap-2">
+						{t("admin.update.pending", { username: status.requestedBy })}
+						<Button size="sm" variant="ghost" onClick={cancelUpdate} className="text-muted hover:text-primary">{t("admin.update.cancel")}</Button>
+					</p>
+				)}
 				{state === "running" && <p className="text-sm text-primary">{t("admin.update.running")}</p>}
 				{last && (
 					<p className={`text-sm ${last.success ? "text-muted" : "text-danger"}`}>

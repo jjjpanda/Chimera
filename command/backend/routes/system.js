@@ -1,4 +1,5 @@
 var express = require("express")
+const fs = require("fs")
 const { auth, updateBridge, jsonFileHanding } = require("lib")
 const { requireAdmin } = auth
 const { REQUEST, RUNNING, RESULT } = updateBridge
@@ -40,6 +41,22 @@ app.post("/update", authorize, requireAdmin, async (req, res) => {
 				console.error(e)
 				res.status(500).json({ error: true })
 			})
+	} catch (e) {
+		console.error(e)
+		res.status(500).json({ error: true })
+	}
+})
+
+app.delete("/update", authorize, requireAdmin, async (req, res) => {
+	try {
+		if ((await status()).state !== "pending") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
+		fs.unlink(REQUEST, (err) => {
+			if (err && err.code !== "ENOENT") {
+				console.error(err)
+				return res.status(500).json({ error: true })
+			}
+			res.json({ error: false })
+		})
 	} catch (e) {
 		console.error(e)
 		res.status(500).json({ error: true })
