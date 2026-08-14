@@ -82,6 +82,22 @@ test("a failed update keeps the reason on screen", async () => {
 	expect(buttons()[0].disabled).toBe(false)
 })
 
+// fetchStatus is also what the poll interval calls every 5s while busy — the backend is unreachable for the
+// whole rebuild (docker:down runs before docker:up), so a transport failure there must not read as "idle"
+test("a fetch that fails keeps the on-screen state instead of falling back to idle", async () => {
+	status({ state: "pending", requestedBy: "alex", last: null })
+	render(React.createElement(SystemUpdate))
+	await screen.findByText(/Requested by alex/)
+
+	request
+		.mockImplementationOnce(() => Promise.resolve({ error: false }))
+		.mockImplementationOnce(() => Promise.resolve({ error: true }))
+
+	await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cancel Request" })) })
+
+	expect(screen.queryByText(/Requested by alex/)).not.toBeNull()
+})
+
 test("a rejected request is reported rather than passed off as accepted", async () => {
 	render(React.createElement(SystemUpdate))
 	await waitFor(() => expect(request).toHaveBeenCalled())

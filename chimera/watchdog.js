@@ -113,8 +113,21 @@ const writeUpdate = (file, data) => new Promise(resolve => writeJSON(file, data,
 const clearUpdate = (file) => {
 	try {
 		fs.unlinkSync(file)
+		return true
 	} catch ({ code, message }) {
-		if (code !== "ENOENT") fail(`watchdog: cannot remove ${file} (${message}) — the admin panel will keep reporting an update that already ended`)
+		if (code === "ENOENT") return true
+		fail(`watchdog: cannot remove ${file} (${message}) — the admin panel will keep reporting an update that already ended`)
+		return false
+	}
+}
+
+const claimRequest = () => {
+	try {
+		fs.renameSync(REQUEST, RUNNING)
+		return true
+	} catch ({ code, message }) {
+		if (code !== "ENOENT") fail(`watchdog: cannot claim ${REQUEST} (${message})`)
+		return false
 	}
 }
 
@@ -129,20 +142,16 @@ const runStep = (command, args) => {
 const update = () => runStep("git", ["pull"]) ?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
 
 const endUpdate = async (problem) => {
-	const wrote = await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
-	if (wrote) clearUpdate(RUNNING)
+	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
 	await alert(problem ? "⚠️" : "✅", problem ? `update failed — ${problem}` : "update finished, the stack was rebuilt")
+	return clearUpdate(RUNNING)
 }
 
 const checkUpdateRequest = async () => {
-	if (fs.existsSync(RUNNING)) {
-		await endUpdate(UPDATE_INTERRUPTED)
-		return true
-	}
-	if (!fs.existsSync(REQUEST)) return false
-	const request = await readUpdate(REQUEST) ?? {}
-	if (!await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })) return true
-	clearUpdate(REQUEST)
+	if (fs.existsSync(RUNNING)) return endUpdate(UPDATE_INTERRUPTED)
+	if (!claimRequest()) return false
+	const request = await readUpdate(RUNNING) ?? {}
+	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
 	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
 	await endUpdate(update())
 	return true

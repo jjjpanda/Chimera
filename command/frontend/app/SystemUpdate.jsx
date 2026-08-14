@@ -17,7 +17,7 @@ const SystemUpdate = () => {
 	const [open, setOpen] = useState(false)
 
 	const fetchStatus = () => request("/system/update", { method: "GET" }, authPromiseHandler)
-		.then(data => setStatus(data.error ? null : data))
+		.then(data => { if (!data.error) setStatus(data) })
 
 	const state = status?.state ?? "idle"
 	const busy = state !== "idle"

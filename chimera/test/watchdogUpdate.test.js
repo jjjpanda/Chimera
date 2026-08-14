@@ -128,3 +128,26 @@ test("a request that arrives during an interrupted update is kept for the next p
 	expect(await checkUpdateRequest()).toBe(true)
 	expect(spawnSync).toHaveBeenCalledTimes(2)
 })
+
+// a bridge write that keeps failing must not pin the watchdog to skipping every poll forever
+test("a result that cannot be written still clears the running marker", async () => {
+	write(RUNNING, { requestedBy: "susan" })
+	fs.mkdirSync(RESULT)
+
+	expect(await checkUpdateRequest()).toBe(true)
+
+	expect(fs.existsSync(RUNNING)).toBe(false)
+	fs.rmdirSync(RESULT)
+})
+
+test("a claim that cannot be enriched with startedAt still runs the update instead of stalling every pass", async () => {
+	write(REQUEST, { requestedBy: "susan" })
+	const realWriteFile = fs.writeFile.bind(fs)
+	jest.spyOn(fs, "writeFile").mockImplementation((file, data, cb) =>
+		file === RUNNING ? cb(new Error("EACCES: permission denied")) : realWriteFile(file, data, cb))
+
+	expect(await checkUpdateRequest()).toBe(true)
+
+	expect(spawnSync).toHaveBeenCalledTimes(2)
+	expect(fs.existsSync(REQUEST)).toBe(false)
+})
