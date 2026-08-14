@@ -58,18 +58,6 @@ test("an update already on the bridge disables the button and names who asked", 
 	expect(buttons()[0].disabled).toBe(true)
 })
 
-test("cancelling asks the backend to drop the request and says so", async () => {
-	status({ state: "pending", requestedBy: "alex", last: null })
-	render(React.createElement(SystemUpdate))
-	await screen.findByText(/Requested by alex/)
-	status({ error: false })
-
-	await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cancel Request" })) })
-
-	await waitFor(() => expect(request).toHaveBeenCalledWith("/system/update", { method: "DELETE" }, expect.anything()))
-	await waitFor(() => expect(toast).toHaveBeenCalledWith("Update request cancelled"))
-})
-
 test("a rebuild in flight is not reported as finished, whatever the last result was", async () => {
 	status({ state: "running", requestedBy: "alex", last: { success: true, at: "2026-08-12T00:00:00.000Z" } })
 	render(React.createElement(SystemUpdate))
@@ -88,18 +76,20 @@ test("a failed update keeps the reason on screen", async () => {
 
 // fetchStatus is also what the poll interval calls every 5s while busy — the backend is unreachable for the
 // whole rebuild (docker:down runs before docker:up), so a transport failure there must not read as "idle"
-test("a fetch that fails keeps the on-screen state instead of falling back to idle", async () => {
-	status({ state: "pending", requestedBy: "alex", last: null })
-	render(React.createElement(SystemUpdate))
-	await screen.findByText(/Requested by alex/)
+test("a poll that fails keeps the on-screen state instead of falling back to idle", async () => {
+	jest.useFakeTimers()
+	try {
+		status({ state: "pending", requestedBy: "alex", last: null })
+		render(React.createElement(SystemUpdate))
+		await act(async () => {})
 
-	request
-		.mockImplementationOnce(() => Promise.resolve({ error: false }))
-		.mockImplementationOnce(() => Promise.resolve({ error: true }))
+		request.mockImplementationOnce(() => Promise.resolve({ error: true }))
+		await act(async () => { jest.advanceTimersByTime(5000) })
 
-	await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cancel Request" })) })
-
-	expect(screen.queryByText(/Requested by alex/)).not.toBeNull()
+		expect(screen.queryByText(/Requested by alex/)).not.toBeNull()
+	} finally {
+		jest.useRealTimers()
+	}
 })
 
 describe("versions", () => {

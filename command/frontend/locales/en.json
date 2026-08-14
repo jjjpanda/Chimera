@@ -21,8 +21,6 @@
 		"sessions": "Sessions",
 		"update": {
 			"button": "Update Now",
-			"cancel": "Cancel Request",
-			"cancelled": "Update request cancelled",
 			"confirm": "Pull the latest code and rebuild? The system is unavailable for a few minutes.",
 			"description": "Pulls the latest code, rebuilds the containers and restarts them. Cameras and recordings are unavailable for a few minutes.",
 			"failed": "Cannot request update",

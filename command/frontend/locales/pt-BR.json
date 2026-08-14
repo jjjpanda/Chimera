@@ -21,8 +21,6 @@
 		"sessions": "Sessões",
 		"update": {
 			"button": "Atualizar agora",
-			"cancel": "Cancelar solicitação",
-			"cancelled": "Solicitação de atualização cancelada",
 			"confirm": "Baixar o código mais recente e reconstruir? O sistema fica indisponível por alguns minutos.",
 			"description": "Baixa o código mais recente, reconstrói os contêineres e os reinicia. Câmeras e gravações ficam indisponíveis por alguns minutos.",
 			"failed": "Não é possível solicitar a atualização",

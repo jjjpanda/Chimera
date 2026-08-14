@@ -132,18 +132,15 @@ npm run watchdog -- --dry-run # print the restart command, the reboot command an
 | `version.json` | watchdog | `{ current, available, at }` — the local checkout against the upstream branch |
 
 - The markers are a tri-state on purpose. A rebuild takes minutes and takes the panel down with it, so a panel that came back to only an old `result.json` would report the previous update as this one's outcome.
-- The request becomes `running.json` *before* `git pull`, so a request arriving mid-rebuild is a new one waiting rather than a duplicate. `command` answers `409` to a second `POST` while either marker exists; `DELETE /system/update` drops `request.json`, refused once `running.json` exists.
-- `spawnSync` blocks the loop until the rebuild ends, and the pass returns without polling — the stack is down on purpose, and it comes up cold.
+- The request becomes `running.json` *before* `git pull`, so a request arriving mid-rebuild is a new one waiting rather than a duplicate. `command` answers `409` to a second `POST` while either marker exists. There is no cancel: the confirm dialog is the only decision point, and once it is taken the stack goes down for the rebuild.
+- `spawnSync` blocks the loop until the rebuild ends, and the pass returns without polling — the stack is down on purpose, and it comes up cold. `webhookAlert` names who asked and what happened.
 - A `running.json` found at the start of a pass therefore cannot be an update in flight. It is a watchdog killed mid-rebuild, closed as a failure rather than pinning the panel to *running*. Check `git log` and `docker compose ps` first.
 - `entrypoint.sh` chowns the directory to `node` (uid 1000), so the host account running the watchdog must be able to write it — the docker group alone is not enough.
 - Nothing happens without `watchdog_ON=true`: nothing else reads the directory, and `command` cannot tell whether anything is listening.
 
 **Versions** — `git pull` follows the upstream branch wherever it goes, so the watchdog reads the version on both ends and the panel names the bump before an admin commits to it.
 
-- `git show <upstream>:package.json` against the local `package.json`, refreshed hourly and published as `version.json`. A detached head, a missing upstream or an unreachable remote leaves `available` null.
-- `bumpKind()` in `updateBridge.js` classifies the pair, and both ends read it from there so the warning and the gate cannot disagree.
-- **Major** is refused. The watchdog writes `{ blocked: true, from, to }` and pulls nothing until a request carries `allowMajor` — the panel's checkbox. A major can need steps a rebuild does not do.
-- **Minor** is named in the confirm dialog and goes ahead on a normal click. **Patch** is silent.
-- The gate re-reads the remote at request time rather than trusting the published pair, which can be an hour old. The panel warning can be stale; the refusal cannot.
-- An unknown version on either end gates nothing. A remote nobody can reach must not become a block that no confirmation can lift.
-- Both ends are alerted through `webhookAlert` — who asked, and what happened.
+- `git show <upstream>:package.json` against the local one, published hourly as `version.json` and re-read at request time — the panel's warning can be stale, the refusal cannot.
+- `bumpKind()` in `updateBridge.js` classifies the pair for both ends, so the warning and the gate cannot disagree.
+- **Major** is refused — `{ blocked: true, from, to }`, nothing pulled — until a request carries `allowMajor`, the panel's checkbox. It can need steps a rebuild does not do. **Minor** is named in the confirm dialog, **patch** is silent.
+- An unknown version gates nothing: a detached head, a missing upstream or an unreachable remote leaves `available` null, and a remote nobody can reach must not become a block no confirmation can lift.

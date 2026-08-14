@@ -1,5 +1,4 @@
 var express = require("express")
-const fs = require("fs")
 const memory = require("memory")
 const { auth, updateBridge, jsonFileHanding } = require("lib")
 const { requireAdmin } = auth
@@ -73,26 +72,6 @@ app.post("/update", authorize, requireAdmin, async (req, res) => {
 				if ((await status()).state !== "idle") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 				await new Promise((resolve, reject) =>
 					writeJSON(REQUEST, { requestedAt: new Date().toISOString(), requestedBy: req.decoded.username, allowMajor: req.body?.allowMajor === true }, resolve, reject))
-				res.json({ error: false })
-			} finally {
-				release()
-			}
-		})
-	} catch (e) {
-		console.error(e)
-		res.status(500).json({ error: true })
-	}
-})
-
-app.delete("/update", authorize, requireAdmin, async (req, res) => {
-	try {
-		await serialized(async () => {
-			const release = await acquireLock()
-			if (!release) return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
-			try {
-				if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
-				await new Promise((resolve, reject) =>
-					fs.unlink(REQUEST, (err) => err && err.code !== "ENOENT" ? reject(err) : resolve()))
 				res.json({ error: false })
 			} finally {
 				release()

@@ -21,8 +21,6 @@
 		"sessions": "Sessions",
 		"update": {
 			"button": "Mettre à jour",
-			"cancel": "Annuler la demande",
-			"cancelled": "Demande de mise à jour annulée",
 			"confirm": "Récupérer le code le plus récent et reconstruire ? Le système sera indisponible pendant quelques minutes.",
 			"description": "Récupère le code le plus récent, reconstruit les conteneurs et les redémarre. Les caméras et les enregistrements sont indisponibles pendant quelques minutes.",
 			"failed": "Impossible de demander la mise à jour",

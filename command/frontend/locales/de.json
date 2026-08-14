@@ -21,8 +21,6 @@
 		"sessions": "Sitzungen",
 		"update": {
 			"button": "Jetzt aktualisieren",
-			"cancel": "Anfrage abbrechen",
-			"cancelled": "Aktualisierungsanfrage abgebrochen",
 			"confirm": "Neuesten Code holen und neu bauen? Das System ist für einige Minuten nicht verfügbar.",
 			"description": "Holt den neuesten Code, baut die Container neu und startet sie neu. Kameras und Aufnahmen sind für einige Minuten nicht verfügbar.",
 			"failed": "Aktualisierung kann nicht angefordert werden",
