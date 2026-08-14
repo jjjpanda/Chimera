@@ -90,9 +90,9 @@ app.delete("/update", authorize, requireAdmin, async (req, res) => {
 			const release = await acquireLock()
 			if (!release) return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 			try {
+				if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 				await new Promise((resolve, reject) =>
 					fs.unlink(REQUEST, (err) => err && err.code !== "ENOENT" ? reject(err) : resolve()))
-				if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 				res.json({ error: false })
 			} finally {
 				release()

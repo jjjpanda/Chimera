@@ -288,7 +288,12 @@ const envProblem = (error = envError, env = process.env) => error && !env.watchd
 const recoverOrFail = async (problem) => {
 	if (settings().enabled) await checkUpdateRequest()
 	require("dotenv").config({ path: ENV, override: true })
-	return configProblem() ? fail(problem) : true
+	if (configProblem()) return fail(problem)
+	if (!settings().enabled) {
+		console.log("watchdog_ON is not true — nothing to do")
+		return false
+	}
+	return true
 }
 
 const configProblem = () => {
