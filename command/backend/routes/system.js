@@ -19,6 +19,8 @@ const versions = async () => {
 	return { ...pair, checkedAt: published?.at ?? null, bump: bumpKind(pair) }
 }
 
+const watchdogEnabled = () => process.env.watchdog_ON === "true"
+
 const status = async () => {
 	const [marker, request, last, version] = await Promise.all([read(RUNNING), read(REQUEST), read(RESULT), versions()])
 	const active = marker ?? request
@@ -27,7 +29,8 @@ const status = async () => {
 		requestedAt: active?.requestedAt ?? null,
 		requestedBy: active?.requestedBy ?? null,
 		last: last ?? null,
-		version
+		version,
+		watchdogEnabled: watchdogEnabled()
 	}
 }
 
@@ -65,6 +68,7 @@ app.get("/update", authorize, requireAdmin, async (req, res) => {
 
 app.post("/update", authorize, requireAdmin, async (req, res) => {
 	try {
+		if (!watchdogEnabled()) return res.status(409).json({ error: true, errors: "WATCHDOG_DISABLED" })
 		await serialized(async () => {
 			const release = await acquireLock()
 			if (!release) return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })

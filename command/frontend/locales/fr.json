@@ -35,7 +35,8 @@
 			"title": "Mise à jour du système",
 			"versionAvailable": "Version {{from}}, {{to}} disponible.",
 			"versionCurrent": "Version {{current}}, à jour.",
-			"versionMajor": "Version {{from}}, {{to}} disponible — une version majeure."
+			"versionMajor": "Version {{from}}, {{to}} disponible — une version majeure.",
+			"watchdogOff": "Le watchdog de l'hôte n'est pas actif. Activez watchdog_ON pour utiliser la mise à jour automatique."
 		},
 		"updateUserFailed": "Échec de la mise à jour de l'utilisateur",
 		"userCreated": "Utilisateur créé. Communiquez-lui ce mot de passe temporaire :",
@@ -172,6 +173,7 @@
 		"setupTokenMismatch": "Le jeton de configuration ne correspond pas à setup_TOKEN dans .env",
 		"tooManyAttempts": "Trop de tentatives",
 		"updateInProgress": "Une mise à jour est déjà en cours",
+		"watchdogDisabled": "Le watchdog de l'hôte n'est pas actif — la mise à jour automatique n'est pas disponible.",
 		"wrongCurrentPassword": "Le mot de passe actuel est incorrect"
 	},
 	"footage": {

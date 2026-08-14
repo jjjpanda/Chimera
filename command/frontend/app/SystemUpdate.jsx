@@ -22,6 +22,7 @@ const SystemUpdate = () => {
 
 	const state = status?.state ?? "idle"
 	const busy = state !== "idle"
+	const watchdogOff = status?.watchdogEnabled === false
 	const version = status?.version
 	const bump = version?.bump
 	const major = bump === "major"
@@ -55,7 +56,7 @@ const SystemUpdate = () => {
 				<CardTitle className="text-primary text-lg">{t("admin.update.title")}</CardTitle>
 				<Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setConfirmedMajor(false) }}>
 					<DialogTrigger asChild>
-						<Button size="sm" disabled={busy} className="bg-accent text-accent-foreground hover:bg-accent/80">{t("admin.update.button")}</Button>
+						<Button size="sm" disabled={busy || watchdogOff} className="bg-accent text-accent-foreground hover:bg-accent/80">{t("admin.update.button")}</Button>
 					</DialogTrigger>
 					<DialogContent className="bg-surface-raised border-border text-primary">
 						<DialogHeader>
@@ -82,6 +83,7 @@ const SystemUpdate = () => {
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
 				<p className="text-sm text-muted">{t("admin.update.description")}</p>
+				{watchdogOff && <p className="text-sm text-danger">{t("admin.update.watchdogOff")}</p>}
 				{version && bump && (
 					<p className={`text-sm ${major ? "text-danger" : "text-muted"}`}>
 						{bump === "none"

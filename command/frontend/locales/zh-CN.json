@@ -35,7 +35,8 @@
 			"title": "系统更新",
 			"versionAvailable": "版本 {{from}}，{{to}} 可用。",
 			"versionCurrent": "版本 {{current}}，已是最新。",
-			"versionMajor": "版本 {{from}}，{{to}} 可用 — 这是主版本。"
+			"versionMajor": "版本 {{from}}，{{to}} 可用 — 这是主版本。",
+			"watchdogOff": "主机看门狗未运行。请启用 watchdog_ON 以使用自动更新。"
 		},
 		"updateUserFailed": "更新用户失败",
 		"userCreated": "用户已创建。请将此临时密码分享给该用户：",
@@ -170,6 +171,7 @@
 		"setupTokenMismatch": "设置令牌与 .env 中的 setup_TOKEN 不匹配",
 		"tooManyAttempts": "尝试次数过多",
 		"updateInProgress": "更新已在进行中",
+		"watchdogDisabled": "主机看门狗未运行 — 自动更新不可用。",
 		"wrongCurrentPassword": "当前密码不正确"
 	},
 	"footage": {

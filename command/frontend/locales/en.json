@@ -35,7 +35,8 @@
 			"title": "System Update",
 			"versionAvailable": "Version {{from}}, {{to}} available.",
 			"versionCurrent": "Version {{current}}, up to date.",
-			"versionMajor": "Version {{from}}, {{to}} available — a major version."
+			"versionMajor": "Version {{from}}, {{to}} available — a major version.",
+			"watchdogOff": "The host watchdog is not running. Enable watchdog_ON to use auto-update."
 		},
 		"updateUserFailed": "Failed to update user",
 		"userCreated": "User created. Share this temporary password with them:",
@@ -171,6 +172,7 @@
 		"setupTokenMismatch": "Setup token does not match setup_TOKEN in .env",
 		"tooManyAttempts": "Too many attempts",
 		"updateInProgress": "An update is already running",
+		"watchdogDisabled": "The host watchdog is not running — auto-update is unavailable.",
 		"wrongCurrentPassword": "Current password is incorrect"
 	},
 	"footage": {

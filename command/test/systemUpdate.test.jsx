@@ -165,6 +165,14 @@ describe("versions", () => {
 	})
 })
 
+test("disables the button and warns when watchdog is off", async () => {
+	status({ state: "idle", last: null, watchdogEnabled: false })
+	render(React.createElement(SystemUpdate))
+
+	await screen.findByText(/watchdog is not running/)
+	expect(buttons()[0].disabled).toBe(true)
+})
+
 test("a rejected request is reported rather than passed off as accepted", async () => {
 	render(React.createElement(SystemUpdate))
 	await waitFor(() => expect(request).toHaveBeenCalled())

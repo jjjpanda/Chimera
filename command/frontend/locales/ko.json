@@ -35,7 +35,8 @@
 			"title": "시스템 업데이트",
 			"versionAvailable": "버전 {{from}}, {{to}} 사용 가능.",
 			"versionCurrent": "버전 {{current}}, 최신입니다.",
-			"versionMajor": "버전 {{from}}, {{to}} 사용 가능 — 메이저 버전입니다."
+			"versionMajor": "버전 {{from}}, {{to}} 사용 가능 — 메이저 버전입니다.",
+			"watchdogOff": "호스트 워치독이 실행되고 있지 않습니다. 자동 업데이트를 사용하려면 watchdog_ON을 활성화하세요."
 		},
 		"updateUserFailed": "사용자 업데이트 실패",
 		"userCreated": "사용자가 생성되었습니다. 다음 임시 비밀번호를 전달하세요:",
@@ -170,6 +171,7 @@
 		"setupTokenMismatch": "설정 토큰이 .env의 setup_TOKEN과 일치하지 않습니다",
 		"tooManyAttempts": "시도 횟수가 너무 많습니다",
 		"updateInProgress": "업데이트가 이미 진행 중입니다",
+		"watchdogDisabled": "호스트 워치독이 실행되고 있지 않습니다 — 자동 업데이트를 사용할 수 없습니다.",
 		"wrongCurrentPassword": "현재 비밀번호가 올바르지 않습니다"
 	},
 	"footage": {

@@ -35,7 +35,8 @@
 			"title": "सिस्टम अपडेट",
 			"versionAvailable": "संस्करण {{from}}, {{to}} उपलब्ध है।",
 			"versionCurrent": "संस्करण {{current}}, अद्यतित है।",
-			"versionMajor": "संस्करण {{from}}, {{to}} उपलब्ध है — एक मुख्य संस्करण।"
+			"versionMajor": "संस्करण {{from}}, {{to}} उपलब्ध है — एक मुख्य संस्करण।",
+			"watchdogOff": "होस्ट वॉचडॉग नहीं चल रहा है। ऑटो-अपडेट के लिए watchdog_ON सक्रिय करें।"
 		},
 		"updateUserFailed": "उपयोगकर्ता अपडेट करने में विफल",
 		"userCreated": "उपयोगकर्ता बनाया गया। यह अस्थायी पासवर्ड उनके साथ साझा करें:",
@@ -171,6 +172,7 @@
 		"setupTokenMismatch": "सेटअप टोकन .env में मौजूद setup_TOKEN से मेल नहीं खाता",
 		"tooManyAttempts": "बहुत अधिक प्रयास",
 		"updateInProgress": "एक अपडेट पहले से चल रहा है",
+		"watchdogDisabled": "होस्ट वॉचडॉग नहीं चल रहा है — ऑटो-अपडेट उपलब्ध नहीं है।",
 		"wrongCurrentPassword": "वर्तमान पासवर्ड गलत है"
 	},
 	"footage": {

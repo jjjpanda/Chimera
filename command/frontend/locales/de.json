@@ -35,7 +35,8 @@
 			"title": "Systemaktualisierung",
 			"versionAvailable": "Version {{from}}, {{to}} verfügbar.",
 			"versionCurrent": "Version {{current}}, aktuell.",
-			"versionMajor": "Version {{from}}, {{to}} verfügbar – eine Hauptversion."
+			"versionMajor": "Version {{from}}, {{to}} verfügbar – eine Hauptversion.",
+			"watchdogOff": "Der Host-Watchdog läuft nicht. Aktivieren Sie watchdog_ON, um das automatische Update zu nutzen."
 		},
 		"updateUserFailed": "Benutzer konnte nicht aktualisiert werden",
 		"userCreated": "Benutzer erstellt. Teilen Sie ihm dieses temporäre Passwort mit:",
@@ -171,6 +172,7 @@
 		"setupTokenMismatch": "Setup-Token stimmt nicht mit setup_TOKEN in .env überein",
 		"tooManyAttempts": "Zu viele Versuche",
 		"updateInProgress": "Es läuft bereits eine Aktualisierung",
+		"watchdogDisabled": "Der Host-Watchdog läuft nicht — automatisches Update ist nicht verfügbar.",
 		"wrongCurrentPassword": "Das aktuelle Passwort ist falsch"
 	},
 	"footage": {

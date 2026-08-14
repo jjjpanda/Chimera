@@ -5,6 +5,7 @@ const path = require("path")
 process.env.SECRETKEY = "test-secret"
 process.env.command_COOKIE_SECURE = "false"
 process.env.CHIMERA_UPDATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-update-"))
+process.env.watchdog_ON = "true"
 
 jest.mock("pg")
 jest.mock("pm2")
@@ -61,6 +62,17 @@ describe("System Routes", () => {
 			expect(res.status).toBe(403)
 		})
 
+		test("reports watchdog disabled when watchdog_ON is not true", async () => {
+			const prev = process.env.watchdog_ON
+			process.env.watchdog_ON = "false"
+			try {
+				const res = await as(supertest(app).get("/system/update"))
+				expect(res.body.watchdogEnabled).toBe(false)
+			} finally {
+				process.env.watchdog_ON = prev
+			}
+		})
+
 		test("reports idle with nothing on the bridge", async () => {
 			const res = await as(supertest(app).get("/system/update"))
 			expect(res.status).toBe(200)
@@ -70,7 +82,8 @@ describe("System Routes", () => {
 				requestedAt: null,
 				requestedBy: null,
 				last: null,
-				version: { current: RUNNING_VERSION, available: null, checkedAt: null, bump: null }
+				version: { current: RUNNING_VERSION, available: null, checkedAt: null, bump: null },
+				watchdogEnabled: true
 			})
 		})
 
@@ -157,6 +170,19 @@ describe("System Routes", () => {
 			const res = await as(supertest(app).post("/system/update"))
 			expect(res.status).toBe(409)
 			expect(mockFiles[REQUEST]).toBeUndefined()
+		})
+
+		test("refuses an update when watchdog is off", async () => {
+			const prev = process.env.watchdog_ON
+			process.env.watchdog_ON = "false"
+			try {
+				const res = await as(supertest(app).post("/system/update"))
+				expect(res.status).toBe(409)
+				expect(res.body).toEqual({ error: true, errors: "WATCHDOG_DISABLED" })
+				expect(mockFiles[REQUEST]).toBeUndefined()
+			} finally {
+				process.env.watchdog_ON = prev
+			}
 		})
 
 		// an unwritable bridge means the watchdog never sees the request, so the panel must not claim success

@@ -35,7 +35,8 @@
 			"title": "સિસ્ટમ અપડેટ",
 			"versionAvailable": "સંસ્કરણ {{from}}, {{to}} ઉપલબ્ધ છે.",
 			"versionCurrent": "સંસ્કરણ {{current}}, અદ્યતન છે.",
-			"versionMajor": "સંસ્કરણ {{from}}, {{to}} ઉપલબ્ધ છે — એક મુખ્ય સંસ્કરણ."
+			"versionMajor": "સંસ્કરણ {{from}}, {{to}} ઉપલબ્ધ છે — એક મુખ્ય સંસ્કરણ.",
+			"watchdogOff": "હોસ્ટ વૉચડોગ ચાલી રહ્યું નથી. ઓટો-અપડેટ વાપરવા watchdog_ON સક્રિય કરો."
 		},
 		"updateUserFailed": "વપરાશકર્તા અપડેટ કરવામાં નિષ્ફળ",
 		"userCreated": "વપરાશકર્તા બનાવવામાં આવ્યો. આ કામચલાઉ પાસવર્ડ તેમની સાથે શેર કરો:",
@@ -171,6 +172,7 @@
 		"setupTokenMismatch": "સેટઅપ ટોકન .env માંના setup_TOKEN સાથે મેળ ખાતું નથી",
 		"tooManyAttempts": "ઘણા બધા પ્રયાસો",
 		"updateInProgress": "એક અપડેટ પહેલેથી ચાલી રહ્યું છે",
+		"watchdogDisabled": "હોસ્ટ વૉચડોગ ચાલી રહ્યું નથી — ઓટો-અપડેટ ઉપલબ્ધ નથી.",
 		"wrongCurrentPassword": "વર્તમાન પાસવર્ડ ખોટો છે"
 	},
 	"footage": {

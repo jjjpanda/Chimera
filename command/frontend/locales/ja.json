@@ -35,7 +35,8 @@
 			"title": "システムの更新",
 			"versionAvailable": "バージョン {{from}}、{{to}} が利用できます。",
 			"versionCurrent": "バージョン {{current}}、最新です。",
-			"versionMajor": "バージョン {{from}}、{{to}} が利用できます — メジャーバージョンです。"
+			"versionMajor": "バージョン {{from}}、{{to}} が利用できます — メジャーバージョンです。",
+			"watchdogOff": "ホストのウォッチドッグが動作していません。自動更新を使用するには watchdog_ON を有効にしてください。"
 		},
 		"updateUserFailed": "ユーザーの更新に失敗しました",
 		"userCreated": "ユーザーを作成しました。以下の仮パスワードを本人に伝えてください：",
@@ -170,6 +171,7 @@
 		"setupTokenMismatch": "セットアップトークンが .env の setup_TOKEN と一致しません",
 		"tooManyAttempts": "試行回数が多すぎます",
 		"updateInProgress": "更新はすでに実行中です",
+		"watchdogDisabled": "ホストのウォッチドッグが動作していません — 自動更新は利用できません。",
 		"wrongCurrentPassword": "現在のパスワードが正しくありません"
 	},
 	"footage": {
