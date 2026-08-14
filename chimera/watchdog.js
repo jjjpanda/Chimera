@@ -297,7 +297,7 @@ if (require.main === module) {
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
 	if (dry) dryRun()
-	else if (problem) (settings().enabled ? checkUpdateRequest() : Promise.resolve()).then(() => fail(problem)).catch(({ message }) => fail(message))
+	else if (problem) (settings().enabled && problem !== NO_PORT ? checkUpdateRequest() : Promise.resolve()).then(() => fail(problem)).catch(({ message }) => fail(message))
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
 	else (process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()).catch(({ message }) => fail(message))
 }
