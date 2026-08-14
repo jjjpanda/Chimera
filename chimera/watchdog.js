@@ -287,6 +287,7 @@ const envProblem = (error = envError, env = process.env) => error && !env.watchd
 // an update can fix the problem (eg. a bad .env), so the loop restarts instead of exiting on a problem that no longer exists
 const recoverOrFail = async (problem) => {
 	if (settings().enabled) await checkUpdateRequest()
+	require("dotenv").config({ path: ENV, override: true })
 	return configProblem() ? fail(problem) : true
 }
 

@@ -13,7 +13,7 @@ jest.mock("../../lib/utils/webhookAlert.js", () => jest.fn(() => Promise.resolve
 
 const { spawnSync } = require("child_process")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
-const { ROOT } = require("../preflight.js")
+const { ROOT, ENV } = require("../preflight.js")
 const { DIR, REQUEST, RUNNING, RESULT, VERSION } = require("../../lib/utils/updateBridge.js")
 const { checkUpdateRequest, refreshVersions, recoverOrFail, UPDATE_INTERRUPTED, majorHeld, NO_PORT } = require("../watchdog.js")
 const { version: LOCAL } = require("../../package.json")
@@ -238,17 +238,20 @@ describe("versions", () => {
 
 describe("recoverOrFail", () => {
 	const ENV_KEYS = ["watchdog_ON", "gateway_PORT", "command_ON", "command_PROXY_ON"]
-	let saved
+	let saved, savedEnvFile
 
 	beforeEach(() => {
 		saved = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]))
 		process.env.watchdog_ON = "true"
 		process.env.command_ON = "true"
 		process.env.command_PROXY_ON = "true"
+		savedEnvFile = fs.existsSync(ENV) ? fs.readFileSync(ENV, "utf8") : null
 	})
 
 	afterEach(() => {
 		for (const k of ENV_KEYS) saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k])
+		if (savedEnvFile === null) fs.rmSync(ENV, { force: true })
+		else fs.writeFileSync(ENV, savedEnvFile)
 	})
 
 	// commit 131efe4 made an update request skip on NO_PORT specifically — dropped per review
@@ -272,7 +275,8 @@ describe("recoverOrFail", () => {
 	})
 
 	test("a config problem the update cleared re-enters the loop instead of failing", async () => {
-		process.env.gateway_PORT = "8080"
+		process.env.gateway_PORT = ""
+		fs.writeFileSync(ENV, "gateway_PORT=8080\n")
 
 		expect(await recoverOrFail(NO_PORT)).toBe(true)
 
