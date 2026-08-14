@@ -39,20 +39,19 @@ const serialized = (fn) => {
 	return run
 }
 
-// pm2 cluster mode (chimeraInstances > 1) runs multiple `command` workers, each with its own
-// `queue` above, so that in-process lock alone can't keep the read-then-write on REQUEST/RUNNING
-// atomic across workers. When memory_ON, borrow the same loginReserve/loginRelease primitive
-// lib/utils/rateLimit.js uses for cross-instance coordination, as a short-lived mutex.
+// `queue` above is per worker, and pm2 cluster mode runs several, so the shared mutex is what
+// keeps the read-then-write on REQUEST atomic across them — falling back to `queue` alone when
+// memory is unreachable, as lib/utils/rateLimit.js does.
 const LOCK_KEY = "system-update"
 const LOCK_TTL_MS = 10000
 const sharedLock = process.env.memory_ON === "true"
 const lockClient = sharedLock ? memory.client("SYSTEM_UPDATE") : null
+const unlocked = () => {}
 
 const acquireLock = () => new Promise((resolve) => {
-	if (!sharedLock) return resolve(() => {})
-	if (!lockClient.connected) return resolve(null)
+	if (!sharedLock || !lockClient.connected) return resolve(unlocked)
 	lockClient.timeout(1000).emit("loginReserve", LOCK_KEY, 1, LOCK_TTL_MS, (err, blocked) => {
-		resolve(err || blocked ? null : () => lockClient.emit("loginRelease", LOCK_KEY))
+		resolve(err ? unlocked : blocked ? null : () => lockClient.emit("loginRelease", LOCK_KEY))
 	})
 })
 

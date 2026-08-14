@@ -305,10 +305,11 @@ if (require.main === module) {
 	if (settings().enabled && !gatewayHost()) console.warn(NO_HOST)
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
+	const run = () => process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()
 	if (dry) dryRun()
-	else if (problem) recoverOrFail(problem).then(recovered => recovered && loop()).catch(({ message }) => fail(message))
+	else if (problem) recoverOrFail(problem).then(recovered => recovered && run()).catch(({ message }) => fail(message))
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
-	else (process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()).catch(({ message }) => fail(message))
+	else run().catch(({ message }) => fail(message))
 }
 
 module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions, recoverOrFail }
