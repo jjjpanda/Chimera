@@ -129,8 +129,8 @@ const runStep = (command, args) => {
 const update = () => runStep("git", ["pull"]) ?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
 
 const endUpdate = async (problem) => {
-	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
-	clearUpdate(RUNNING)
+	const wrote = await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
+	if (wrote) clearUpdate(RUNNING)
 	await alert(problem ? "⚠️" : "✅", problem ? `update failed — ${problem}` : "update finished, the stack was rebuilt")
 }
 
