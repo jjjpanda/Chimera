@@ -176,15 +176,17 @@ const refreshVersions = async (force) => {
 	return versions
 }
 
-const runStep = (command, args) => {
+const runStep = (command, args, options = {}) => {
 	console.log(`watchdog: ${[command, ...args].join(" ")}`)
-	const { status, error } = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" })
+	const { status, error } = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32", ...options })
 	if (error) return `\`${[command, ...args].join(" ")}\` could not run: ${error.message}`
 	if (status !== 0) return `\`${[command, ...args].join(" ")}\` exited ${status ?? "without status"}`
 	return null
 }
 
-const update = () => runStep("git", ["pull"]) ?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
+// a git pull that stops to ask for credentials would otherwise hang the loop with no timeout to save it
+const update = () => runStep("git", ["pull"], { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })
+	?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
 
 const endUpdate = async (problem, extra = {}) => {
 	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString(), ...extra })
@@ -282,6 +284,12 @@ const dryRun = () => {
 
 const envProblem = (error = envError, env = process.env) => error && !env.watchdog_ON ? unreadableEnv(error) : null
 
+// an update can fix the problem (eg. a bad .env), so the loop restarts instead of exiting on a problem that no longer exists
+const recoverOrFail = async (problem) => {
+	if (settings().enabled) await checkUpdateRequest()
+	return configProblem() ? fail(problem) : true
+}
+
 const configProblem = () => {
 	const unreadable = envProblem()
 	if (unreadable) return unreadable
@@ -297,9 +305,9 @@ if (require.main === module) {
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
 	if (dry) dryRun()
-	else if (problem) (settings().enabled && problem !== NO_PORT ? checkUpdateRequest() : Promise.resolve()).then(() => fail(problem)).catch(({ message }) => fail(message))
+	else if (problem) recoverOrFail(problem).then(recovered => recovered && loop()).catch(({ message }) => fail(message))
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
 	else (process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions, recoverOrFail }

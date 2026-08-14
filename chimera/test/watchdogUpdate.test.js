@@ -15,7 +15,7 @@ const { spawnSync } = require("child_process")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { ROOT } = require("../preflight.js")
 const { DIR, REQUEST, RUNNING, RESULT, VERSION } = require("../../lib/utils/updateBridge.js")
-const { checkUpdateRequest, refreshVersions, UPDATE_INTERRUPTED, majorHeld } = require("../watchdog.js")
+const { checkUpdateRequest, refreshVersions, recoverOrFail, UPDATE_INTERRUPTED, majorHeld, NO_PORT } = require("../watchdog.js")
 const { version: LOCAL } = require("../../package.json")
 
 const write = (file, data) => fs.writeFileSync(file, JSON.stringify(data))
@@ -67,7 +67,7 @@ test("a request pulls and rebuilds from the repo root, in that order", async () 
 	expect(steps()).toHaveLength(2)
 	expect(steps()[0][0]).toBe("git")
 	expect(steps()[0][1]).toEqual(["pull"])
-	expect(steps()[0][2]).toMatchObject({ cwd: ROOT })
+	expect(steps()[0][2]).toMatchObject({ cwd: ROOT, env: expect.objectContaining({ GIT_TERMINAL_PROMPT: "0" }) })
 	expect(steps()[1][1]).toEqual(["run", "docker:rebuild"])
 	expect(steps()[1][2]).toMatchObject({ cwd: ROOT })
 })
@@ -233,5 +233,49 @@ describe("versions", () => {
 		await checkUpdateRequest()
 
 		expect(read(RESULT)).toMatchObject({ blocked: true, to: bumped(0) })
+	})
+})
+
+describe("recoverOrFail", () => {
+	const ENV_KEYS = ["watchdog_ON", "gateway_PORT", "command_ON", "command_PROXY_ON"]
+	let saved
+
+	beforeEach(() => {
+		saved = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]))
+		process.env.watchdog_ON = "true"
+		process.env.command_ON = "true"
+		process.env.command_PROXY_ON = "true"
+	})
+
+	afterEach(() => {
+		for (const k of ENV_KEYS) saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k])
+	})
+
+	// commit 131efe4 made an update request skip on NO_PORT specifically — dropped per review
+	test("a waiting request is still serviced when the config problem is NO_PORT", async () => {
+		process.env.gateway_PORT = ""
+		write(REQUEST, { requestedBy: "susan" })
+
+		await recoverOrFail(NO_PORT)
+
+		expect(fs.existsSync(REQUEST)).toBe(false)
+		expect(read(RESULT)).toMatchObject({ success: true })
+	})
+
+	test("a config problem the update did not clear still fails instead of looping", async () => {
+		process.env.gateway_PORT = ""
+
+		expect(await recoverOrFail(NO_PORT)).toBe(false)
+
+		expect(console.error).toHaveBeenCalledWith(NO_PORT)
+		expect(process.exitCode).toBe(1)
+	})
+
+	test("a config problem the update cleared re-enters the loop instead of failing", async () => {
+		process.env.gateway_PORT = "8080"
+
+		expect(await recoverOrFail(NO_PORT)).toBe(true)
+
+		expect(console.error).not.toHaveBeenCalled()
 	})
 })
