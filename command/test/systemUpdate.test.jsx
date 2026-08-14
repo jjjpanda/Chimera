@@ -41,7 +41,11 @@ test("confirming posts the request and says so", async () => {
 
 	await confirmUpdate()
 
-	await waitFor(() => expect(request).toHaveBeenCalledWith("/system/update", { method: "POST" }, expect.anything()))
+	await waitFor(() => expect(request).toHaveBeenCalledWith("/system/update", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ allowMajor: false })
+	}, expect.anything()))
 	await waitFor(() => expect(toast).toHaveBeenCalledWith("Update requested"))
 })
 
@@ -96,6 +100,71 @@ test("a fetch that fails keeps the on-screen state instead of falling back to id
 	await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cancel Request" })) })
 
 	expect(screen.queryByText(/Requested by alex/)).not.toBeNull()
+})
+
+describe("versions", () => {
+	const version = (bump, extra = {}) => ({ current: "6.0.2", available: "7.0.0", checkedAt: null, bump, ...extra })
+
+	test("names the version on offer before the admin commits to it", async () => {
+		status({ state: "idle", last: null, version: version("major") })
+		render(React.createElement(SystemUpdate))
+
+		await screen.findByText(/Version 6\.0\.2, 7\.0\.0 available — a major version\./)
+	})
+
+	test("a host already on the newest version says so instead of offering a bump", async () => {
+		status({ state: "idle", last: null, version: version("none", { available: "6.0.2" }) })
+		render(React.createElement(SystemUpdate))
+
+		await screen.findByText(/Version 6\.0\.2, up to date\./)
+	})
+
+	// the host refuses a major without allowMajor, so an unchecked box would be a request that can only be held
+	test("a major bump holds the confirm button until the admin ticks the box", async () => {
+		status({ state: "idle", last: null, version: version("major") })
+		render(React.createElement(SystemUpdate))
+		await screen.findByText(/a major version/)
+
+		await act(async () => { fireEvent.click(buttons()[0]) })
+		expect(buttons().at(-1).disabled).toBe(true)
+
+		await act(async () => { fireEvent.click(screen.getByRole("checkbox")) })
+		expect(buttons().at(-1).disabled).toBe(false)
+	})
+
+	test("a ticked box is what carries the confirmation to the host", async () => {
+		status({ state: "idle", last: null, version: version("major") })
+		render(React.createElement(SystemUpdate))
+		await screen.findByText(/a major version/)
+		status({ error: false })
+
+		await act(async () => { fireEvent.click(buttons()[0]) })
+		await act(async () => { fireEvent.click(screen.getByRole("checkbox")) })
+		await act(async () => { fireEvent.click(buttons().at(-1)) })
+
+		await waitFor(() => expect(request).toHaveBeenCalledWith("/system/update",
+			expect.objectContaining({ body: JSON.stringify({ allowMajor: true }) }), expect.anything()))
+	})
+
+	test("a minor bump is named in the dialog but needs no box to tick", async () => {
+		status({ state: "idle", last: null, version: version("minor", { available: "6.1.0" }) })
+		render(React.createElement(SystemUpdate))
+		await screen.findByText(/Version 6\.0\.2, 6\.1\.0 available\./)
+
+		await act(async () => { fireEvent.click(buttons()[0]) })
+
+		await screen.findByText(/This is a minor update, 6\.0\.2 → 6\.1\.0\./)
+		expect(screen.queryByRole("checkbox")).toBeNull()
+		expect(buttons().at(-1).disabled).toBe(false)
+	})
+
+	// version.json can be an hour old, so the host is the gate and the panel has to report what it decided
+	test("an update the host held reads as held rather than failed", async () => {
+		status({ state: "idle", version: version("major"), last: { success: false, blocked: true, from: "6.0.2", to: "7.0.0", at: "2026-08-12T00:00:00.000Z" } })
+		render(React.createElement(SystemUpdate))
+
+		await screen.findByText(/is a major version\. Confirm it to go ahead\./)
+	})
 })
 
 test("a rejected request is reported rather than passed off as accepted", async () => {

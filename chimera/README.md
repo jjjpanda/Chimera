@@ -122,18 +122,28 @@ npm run watchdog -- --dry-run # print the restart command, the reboot command an
 - That warning reads `process.env` (`envLines()`), not `.env`: dotenv does not overwrite an already-set variable, so a systemd `Environment=` or exported shell var is what `settings()` and `checkUrl()` see. `composeArgs` reads the `certbot_ON` gate the same way, or a `certbot_ON=true` living in the unit would get `--scale certbot=0` on every watchdog restart and stop renewal.
 - It covers both certificate traps: a scheme-less `gateway_HOST` (read as `https://`, so a plain-HTTP deploy fails every poll) and an explicit `https://` on a name no public CA issues for — an IP literal, a single label, or a `.lan`/`.local`/`.internal`/`.intranet`/`.home.arpa` suffix, where node's `fetch` rejects the self-signed certificate unless `NODE_EXTRA_CA_CERTS` points at the CA.
 
-**Updates** — the admin panel's update button runs `git pull` and `npm run docker:rebuild` here, at the top of `runOnce()`, before the poll. `command` cannot do it itself: it runs inside the `chimera` container, which has no Docker socket, no host shell and no checkout. It leaves a file instead, on the `chimera-update/` directory both sides share — the host directory bind-mounted at `/app/chimera-update`, whose paths [updateBridge.js](../lib/utils/updateBridge.js) names once for both.
+**Updates** — the admin panel's update button runs `git pull` and `npm run docker:rebuild` here, at the top of `runOnce()`. `command` cannot: it runs inside the `chimera` container, which has no Docker socket, no host shell and no checkout. It leaves a file on the shared `chimera-update/` directory instead — bind-mounted at `/app/chimera-update`, its paths named once for both sides in [updateBridge.js](../lib/utils/updateBridge.js).
 
 | file | written by | means |
 |---|---|---|
-| `request.json` | `command` | an admin asked for an update; nothing has started |
+| `request.json` | `command` | an admin asked; nothing has started |
 | `running.json` | watchdog | the pull or the rebuild is running now |
-| `result.json` | watchdog | `{ success, message, at }` of the last one that finished |
+| `result.json` | watchdog | `{ success, message, at, from, to }` of the last one that finished |
+| `version.json` | watchdog | `{ current, available, at }` — the local checkout against the upstream branch |
 
-- The three files are a tri-state on purpose. A rebuild takes minutes and takes the panel down with the stack, so a panel that came back to `request.json` gone and only an old `result.json` would report the previous update as this one's outcome.
-- The request is turned into `running.json` and deleted *before* `git pull` runs, so a second request that arrives mid-rebuild is a new one waiting rather than a duplicate of the one in flight. `command` also answers `409` to a second `POST` while either file is present, and cancelling with `DELETE /system/update` deletes `request.json` — refused with `409` only once `running.json` exists, since a rebuild already under way cannot be pulled back.
-- `spawnSync` blocks the whole loop until the rebuild ends — nothing is polled while the stack it would poll is down on purpose. The pass returns right after, without polling, since the stack comes up cold and a poll of it would count as a failure.
-- A `running.json` found at the start of a pass therefore cannot be an update in flight: `spawnSync` never returns to leave one. It is a watchdog that was killed mid-rebuild, so it is closed as a failure rather than pinning the panel to *running* forever. Check `git log` and `docker compose ps` before asking again.
+- The markers are a tri-state on purpose. A rebuild takes minutes and takes the panel down with it, so a panel that came back to only an old `result.json` would report the previous update as this one's outcome.
+- The request becomes `running.json` *before* `git pull`, so a request arriving mid-rebuild is a new one waiting rather than a duplicate. `command` answers `409` to a second `POST` while either marker exists; `DELETE /system/update` drops `request.json`, refused once `running.json` exists.
+- `spawnSync` blocks the loop until the rebuild ends, and the pass returns without polling — the stack is down on purpose, and it comes up cold.
+- A `running.json` found at the start of a pass therefore cannot be an update in flight. It is a watchdog killed mid-rebuild, closed as a failure rather than pinning the panel to *running*. Check `git log` and `docker compose ps` first.
+- `entrypoint.sh` chowns the directory to `node` (uid 1000), so the host account running the watchdog must be able to write it — the docker group alone is not enough.
+- Nothing happens without `watchdog_ON=true`: nothing else reads the directory, and `command` cannot tell whether anything is listening.
+
+**Versions** — `git pull` follows the upstream branch wherever it goes, so the watchdog reads the version on both ends and the panel names the bump before an admin commits to it.
+
+- `git show <upstream>:package.json` against the local `package.json`, refreshed hourly and published as `version.json`. A detached head, a missing upstream or an unreachable remote leaves `available` null.
+- `bumpKind()` in `updateBridge.js` classifies the pair, and both ends read it from there so the warning and the gate cannot disagree.
+- **Major** is refused. The watchdog writes `{ blocked: true, from, to }` and pulls nothing until a request carries `allowMajor` — the panel's checkbox. A major can need steps a rebuild does not do.
+- **Minor** is named in the confirm dialog and goes ahead on a normal click. **Patch** is silent.
+- The gate re-reads the remote at request time rather than trusting the published pair, which can be an hour old. The panel warning can be stale; the refusal cannot.
+- An unknown version on either end gates nothing. A remote nobody can reach must not become a block that no confirmation can lift.
 - Both ends are alerted through `webhookAlert` — who asked, and what happened.
-- `entrypoint.sh` chowns the directory to `node` (uid 1000) like the other read-write binds, so the host account running the watchdog must be able to write it; the docker group alone is not enough.
-- The button does nothing without `watchdog_ON=true`. Nothing else on the host reads the directory, and `command` cannot tell whether anything is listening.

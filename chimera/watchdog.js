@@ -9,7 +9,7 @@ const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
-const { REQUEST, RUNNING, RESULT } = require("../lib/utils/updateBridge.js")
+const { REQUEST, RUNNING, RESULT, VERSION, majorBump } = require("../lib/utils/updateBridge.js")
 
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
@@ -102,6 +102,9 @@ const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state
 const alert = (emoji, text) => webhookAlert(`${emoji} Chimera watchdog on ${os.hostname()}: ${text}`)
 
 const UPDATE_INTERRUPTED = "the watchdog stopped while an update was running — check `git log` and `docker compose ps` before trying again"
+const VERSION_REFRESH_MS = 3600000
+const GIT_TIMEOUT_MS = 30000
+const majorHeld = (from, to) => `major version bump ${from} → ${to} — it can need steps a rebuild does not do, so it has to be confirmed in the admin panel`
 
 const readUpdate = (file) => new Promise(resolve => readJSON(file, (err, data) => resolve(err ? null : data)))
 
@@ -131,6 +134,48 @@ const claimRequest = () => {
 	}
 }
 
+// timed out, since a fetch that stops to ask for credentials would hang the whole loop
+const git = (args) => {
+	const { status, stdout } = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", timeout: GIT_TIMEOUT_MS })
+	return status === 0 ? (stdout ?? "").trim() : null
+}
+
+const versionIn = (json) => {
+	try {
+		return JSON.parse(json).version ?? null
+	} catch {
+		return null
+	}
+}
+
+const localVersion = () => {
+	try {
+		return versionIn(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"))
+	} catch {
+		return null
+	}
+}
+
+const remoteVersion = () => {
+	const upstream = git(["rev-parse", "--abbrev-ref", "@{u}"])
+	if (!upstream || git(["fetch", "--quiet"]) === null) return null
+	return versionIn(git(["show", `${upstream}:package.json`]) ?? "")
+}
+
+/**
+ * Publishes `{ current, available }` to the bridge so the panel can name the
+ * bump before an admin asks for it. Throttled, since a fetch every poll would
+ * hit the remote once a minute; `force` is for the request itself, which must
+ * never gate on an hour-old answer.
+ */
+const refreshVersions = async (force) => {
+	const cached = await readUpdate(VERSION)
+	if (!force && cached?.at && Date.now() - Date.parse(cached.at) < VERSION_REFRESH_MS) return cached
+	const versions = { current: localVersion(), available: remoteVersion(), at: new Date().toISOString() }
+	await writeUpdate(VERSION, versions)
+	return versions
+}
+
 const runStep = (command, args) => {
 	console.log(`watchdog: ${[command, ...args].join(" ")}`)
 	const { status, error } = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" })
@@ -141,9 +186,9 @@ const runStep = (command, args) => {
 
 const update = () => runStep("git", ["pull"]) ?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
 
-const endUpdate = async (problem) => {
-	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString() })
-	await alert(problem ? "⚠️" : "✅", problem ? `update failed — ${problem}` : "update finished, the stack was rebuilt")
+const endUpdate = async (problem, extra = {}) => {
+	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString(), ...extra })
+	await alert(problem ? "⚠️" : "✅", problem ? `update ${extra.blocked ? "held" : "failed"} — ${problem}` : "update finished, the stack was rebuilt")
 	return clearUpdate(RUNNING)
 }
 
@@ -152,8 +197,15 @@ const checkUpdateRequest = async () => {
 	if (!claimRequest()) return false
 	const request = await readUpdate(RUNNING) ?? {}
 	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
+	const { current: from, available: to } = await refreshVersions(true)
+	if (majorBump({ current: from, available: to }) && !request.allowMajor) {
+		await endUpdate(majorHeld(from, to), { blocked: true, from, to })
+		return true
+	}
 	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
-	await endUpdate(update())
+	const problem = update()
+	await endUpdate(problem, { from, to })
+	if (!problem) await refreshVersions(true)
 	return true
 }
 
@@ -214,6 +266,7 @@ const runOnce = async () => {
 const loop = async () => {
 	const { intervalMs } = settings()
 	for (;;) {
+		await refreshVersions()
 		await runOnce()
 		await new Promise(resolve => setTimeout(resolve, intervalMs))
 	}
@@ -246,7 +299,7 @@ if (require.main === module) {
 	if (dry) dryRun()
 	else if (problem) (settings().enabled ? checkUpdateRequest() : Promise.resolve()).then(() => fail(problem)).catch(({ message }) => fail(message))
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
-	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
+	else (process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()).catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions }

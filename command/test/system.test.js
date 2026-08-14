@@ -29,7 +29,8 @@ const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
 const app = require("../backend/command.js")
 const { auth, updateBridge } = require("lib")
-const { REQUEST, RUNNING, RESULT } = updateBridge
+const { REQUEST, RUNNING, RESULT, VERSION } = updateBridge
+const { version: RUNNING_VERSION } = require("../../package.json")
 
 const { mockedPool } = require("pg")
 
@@ -63,7 +64,32 @@ describe("System Routes", () => {
 		test("reports idle with nothing on the bridge", async () => {
 			const res = await as(supertest(app).get("/system/update"))
 			expect(res.status).toBe(200)
-			expect(res.body).toEqual({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null })
+			expect(res.body).toEqual({
+				error: false,
+				state: "idle",
+				requestedAt: null,
+				requestedBy: null,
+				last: null,
+				version: { current: RUNNING_VERSION, available: null, checkedAt: null, bump: null }
+			})
+		})
+
+		// nothing publishes version.json until the watchdog runs, and the panel still has to name what is running
+		test("falls back to the running version when the host has published nothing", async () => {
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.version).toMatchObject({ current: RUNNING_VERSION, bump: null })
+		})
+
+		test("classifies the published pair so the panel and the host gate agree", async () => {
+			mockFiles[VERSION] = { current: "6.0.2", available: "7.0.0", at: "2026-08-13T00:00:00.000Z" }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.version).toEqual({ current: "6.0.2", available: "7.0.0", checkedAt: "2026-08-13T00:00:00.000Z", bump: "major" })
+		})
+
+		test("reports a host already on the newest version as none rather than a bump", async () => {
+			mockFiles[VERSION] = { current: "6.0.2", available: "6.0.2", at: "2026-08-13T00:00:00.000Z" }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.version).toMatchObject({ bump: "none" })
 		})
 
 		test("reports a request the host watchdog has not picked up yet as pending", async () => {
@@ -103,8 +129,19 @@ describe("System Routes", () => {
 			const res = await as(supertest(app).post("/system/update"))
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({ error: false })
-			expect(mockFiles[REQUEST]).toMatchObject({ requestedBy: "susan" })
+			expect(mockFiles[REQUEST]).toMatchObject({ requestedBy: "susan", allowMajor: false })
 			expect(mockFiles[REQUEST].requestedAt).toEqual(expect.any(String))
+		})
+
+		// the host holds a major bump unless the request carries the admin's confirmation
+		test("carries the major confirmation through to the host", async () => {
+			await as(supertest(app).post("/system/update")).send({ allowMajor: true })
+			expect(mockFiles[REQUEST]).toMatchObject({ allowMajor: true })
+		})
+
+		test("treats anything but a true confirmation as none, so a stray body cannot open the gate", async () => {
+			await as(supertest(app).post("/system/update")).send({ allowMajor: "yes" })
+			expect(mockFiles[REQUEST]).toMatchObject({ allowMajor: false })
 		})
 
 		test("refuses a second request while one is still waiting", async () => {

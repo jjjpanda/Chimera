@@ -15,12 +15,16 @@ const SystemUpdate = () => {
 	const { t } = useTranslation()
 	const [status, setStatus] = useState(null)
 	const [open, setOpen] = useState(false)
+	const [confirmedMajor, setConfirmedMajor] = useState(false)
 
 	const fetchStatus = () => request("/system/update", { method: "GET" }, authPromiseHandler)
 		.then(data => { if (!data.error) setStatus(data) })
 
 	const state = status?.state ?? "idle"
 	const busy = state !== "idle"
+	const version = status?.version
+	const bump = version?.bump
+	const major = bump === "major"
 
 	useEffect(() => { fetchStatus() }, [])
 
@@ -30,10 +34,15 @@ const SystemUpdate = () => {
 	}, [busy])
 
 	const requestUpdate = () => {
-		request("/system/update", { method: "POST" }, authPromiseHandler).then(res => {
+		request("/system/update", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ allowMajor: major && confirmedMajor })
+		}, authPromiseHandler).then(res => {
 			if (res.error) toast(errorMessage(res.errors) || t("admin.update.failed"))
 			else toast(t("admin.update.requested"))
 			setOpen(false)
+			setConfirmedMajor(false)
 			fetchStatus()
 		})
 	}
@@ -52,7 +61,7 @@ const SystemUpdate = () => {
 		<Card className="bg-surface border-border mt-4">
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="text-primary text-lg">{t("admin.update.title")}</CardTitle>
-				<Dialog open={open} onOpenChange={setOpen}>
+				<Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setConfirmedMajor(false) }}>
 					<DialogTrigger asChild>
 						<Button size="sm" disabled={busy} className="bg-accent text-accent-foreground hover:bg-accent/80">{t("admin.update.button")}</Button>
 					</DialogTrigger>
@@ -61,17 +70,33 @@ const SystemUpdate = () => {
 							<DialogTitle className="text-primary">{t("admin.update.title")}</DialogTitle>
 							<DialogDescription className="text-muted">{t("admin.update.confirm")}</DialogDescription>
 						</DialogHeader>
+						{bump === "minor" && (
+							<p className="text-sm text-muted">{t("admin.update.minorNotice", { from: version.current, to: version.available })}</p>
+						)}
+						{major && (
+							<label className="flex items-start gap-2 text-sm text-danger">
+								<input type="checkbox" checked={confirmedMajor} onChange={(e) => setConfirmedMajor(e.target.checked)} className="mt-1" />
+								<span>{t("admin.update.majorConfirm", { from: version.current, to: version.available })}</span>
+							</label>
+						)}
 						<DialogFooter>
 							<DialogClose asChild>
 								<Button variant="ghost" className="text-muted hover:text-primary">{t("common.cancel")}</Button>
 							</DialogClose>
-							<Button onClick={requestUpdate} className="bg-accent text-accent-foreground hover:bg-accent/80">{t("admin.update.button")}</Button>
+							<Button onClick={requestUpdate} disabled={major && !confirmedMajor} className="bg-accent text-accent-foreground hover:bg-accent/80">{t("admin.update.button")}</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
 				<p className="text-sm text-muted">{t("admin.update.description")}</p>
+				{version && (
+					<p className={`text-sm ${major ? "text-danger" : "text-muted"}`}>
+						{bump && bump !== "none"
+							? t(major ? "admin.update.versionMajor" : "admin.update.versionAvailable", { from: version.current, to: version.available })
+							: t("admin.update.versionCurrent", { current: version.current })}
+					</p>
+				)}
 				{state === "pending" && (
 					<p className="text-sm text-primary flex items-center gap-2">
 						{t("admin.update.pending", { username: status.requestedBy })}
@@ -83,7 +108,9 @@ const SystemUpdate = () => {
 					<p className={`text-sm ${last.success ? "text-muted" : "text-danger"}`}>
 						{last.success
 							? t("admin.update.lastSuccess", { when: moment(last.at).fromNow() })
-							: t("admin.update.lastFailure", { when: moment(last.at).fromNow(), message: last.message })}
+							: last.blocked
+								? t("admin.update.lastBlocked", { when: moment(last.at).fromNow(), from: last.from, to: last.to })
+								: t("admin.update.lastFailure", { when: moment(last.at).fromNow(), message: last.message })}
 					</p>
 				)}
 			</CardContent>

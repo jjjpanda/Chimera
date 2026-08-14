@@ -296,7 +296,7 @@ Check the path with `command -v systemctl` — sudoers matches it literally, and
 
 Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
 
-**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. With `watchdog_ON=false`, or with a watchdog that cannot write that directory, the button reports the request and nothing ever happens. Whatever is on the tracked branch goes live — there is no staging or approval step — and the stack is down for the rebuild. [chimera/README.md](chimera/README.md) has the file flow.
+**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. With `watchdog_ON=false`, or with a watchdog that cannot write that directory, the button reports the request and nothing ever happens. Whatever is on the tracked branch goes live and the stack is down for the rebuild. The panel names the version on offer against the one running; a major bump is refused until an admin confirms it, a minor one is only pointed out. [chimera/README.md](chimera/README.md) has the file flow.
 
 </details>
 

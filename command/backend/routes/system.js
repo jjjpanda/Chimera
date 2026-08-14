@@ -2,7 +2,8 @@ var express = require("express")
 const fs = require("fs")
 const { auth, updateBridge, jsonFileHanding } = require("lib")
 const { requireAdmin } = auth
-const { REQUEST, RUNNING, RESULT } = updateBridge
+const { REQUEST, RUNNING, RESULT, VERSION, bumpKind } = updateBridge
+const { version: running } = require("../../../package.json")
 const { readJSON, writeJSON } = jsonFileHanding
 const { pool } = require("./lib/auth.js")
 
@@ -12,14 +13,21 @@ const app = express.Router()
 
 const read = (file) => new Promise(resolve => readJSON(file, (err, data) => resolve(err ? null : data)))
 
+const versions = async () => {
+	const published = await read(VERSION)
+	const pair = { current: published?.current ?? running, available: published?.available ?? null }
+	return { ...pair, checkedAt: published?.at ?? null, bump: bumpKind(pair) }
+}
+
 const status = async () => {
-	const [running, request, last] = await Promise.all([read(RUNNING), read(REQUEST), read(RESULT)])
-	const active = running ?? request
+	const [marker, request, last, version] = await Promise.all([read(RUNNING), read(REQUEST), read(RESULT), versions()])
+	const active = marker ?? request
 	return {
-		state: running ? "running" : request ? "pending" : "idle",
+		state: marker ? "running" : request ? "pending" : "idle",
 		requestedAt: active?.requestedAt ?? null,
 		requestedBy: active?.requestedBy ?? null,
-		last: last ?? null
+		last: last ?? null,
+		version
 	}
 }
 
@@ -44,7 +52,7 @@ app.post("/update", authorize, requireAdmin, async (req, res) => {
 		await serialized(async () => {
 			if ((await status()).state !== "idle") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 			await new Promise((resolve, reject) =>
-				writeJSON(REQUEST, { requestedAt: new Date().toISOString(), requestedBy: req.decoded.username }, resolve, reject))
+				writeJSON(REQUEST, { requestedAt: new Date().toISOString(), requestedBy: req.decoded.username, allowMajor: req.body?.allowMajor === true }, resolve, reject))
 			res.json({ error: false })
 		})
 	} catch (e) {

@@ -15,7 +15,7 @@ const defaultRoutes = {
 	"POST /authorization/password": json({ error: false }),
 	"GET /cameras": json([{ id: 0, name: "indoor" }, { id: 1, name: "outdoor" }]),
 	"GET /usage": json({ used_gb: 0, max_gb: 100, total_frames: 0, cameras: [] }),
-	"GET /system/update": json({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null })
+	"GET /system/update": json({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null, version: { current: "6.0.2", available: null, checkedAt: null, bump: null } })
 }
 
 const apiPrefixes = [

@@ -14,12 +14,26 @@ jest.mock("../../lib/utils/webhookAlert.js", () => jest.fn(() => Promise.resolve
 const { spawnSync } = require("child_process")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { ROOT } = require("../preflight.js")
-const { DIR, REQUEST, RUNNING, RESULT } = require("../../lib/utils/updateBridge.js")
-const { checkUpdateRequest, UPDATE_INTERRUPTED } = require("../watchdog.js")
+const { DIR, REQUEST, RUNNING, RESULT, VERSION } = require("../../lib/utils/updateBridge.js")
+const { checkUpdateRequest, refreshVersions, UPDATE_INTERRUPTED, majorHeld } = require("../watchdog.js")
+const { version: LOCAL } = require("../../package.json")
 
 const write = (file, data) => fs.writeFileSync(file, JSON.stringify(data))
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"))
-const clear = () => [REQUEST, RUNNING, RESULT].forEach(file => fs.rmSync(file, { force: true }))
+const clear = () => [REQUEST, RUNNING, RESULT, VERSION].forEach(file => fs.rmSync(file, { force: true }))
+
+const bumped = (index) => LOCAL.split(".").map((n, i) => i === index ? Number(n) + 1 : i > index ? 0 : n).join(".")
+
+// the version probe spawns git too, so the update steps are what is left once it is filtered out
+const PROBE = ["rev-parse", "fetch", "show"]
+const steps = () => spawnSync.mock.calls.filter(([command, args]) => !(command === "git" && PROBE.includes(args[0])))
+
+const remoteIs = (version) => spawnSync.mockImplementation((command, args) => {
+	if (command !== "git") return { status: 0 }
+	if (args[0] === "rev-parse") return { status: 0, stdout: "origin/develop\n" }
+	if (args[0] === "show") return { status: 0, stdout: JSON.stringify({ version }) }
+	return { status: 0 }
+})
 
 beforeEach(() => {
 	fs.mkdirSync(DIR, { recursive: true })
@@ -50,12 +64,12 @@ test("a request pulls and rebuilds from the repo root, in that order", async () 
 
 	expect(await checkUpdateRequest()).toBe(true)
 
-	expect(spawnSync).toHaveBeenCalledTimes(2)
-	expect(spawnSync.mock.calls[0][0]).toBe("git")
-	expect(spawnSync.mock.calls[0][1]).toEqual(["pull"])
-	expect(spawnSync.mock.calls[0][2]).toMatchObject({ cwd: ROOT })
-	expect(spawnSync.mock.calls[1][1]).toEqual(["run", "docker:rebuild"])
-	expect(spawnSync.mock.calls[1][2]).toMatchObject({ cwd: ROOT })
+	expect(steps()).toHaveLength(2)
+	expect(steps()[0][0]).toBe("git")
+	expect(steps()[0][1]).toEqual(["pull"])
+	expect(steps()[0][2]).toMatchObject({ cwd: ROOT })
+	expect(steps()[1][1]).toEqual(["run", "docker:rebuild"])
+	expect(steps()[1][2]).toMatchObject({ cwd: ROOT })
 })
 
 // the panel polls while the rebuild runs, and must not read an in-flight update as finished
@@ -63,7 +77,7 @@ test("the request becomes a running marker before anything is spawned, and the m
 	write(REQUEST, { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "susan" })
 	let markerDuringRun = null
 	spawnSync.mockImplementation(() => {
-		markerDuringRun = fs.existsSync(RUNNING) ? read(RUNNING) : null
+		markerDuringRun ??= fs.existsSync(RUNNING) ? read(RUNNING) : null
 		return { status: 0 }
 	})
 
@@ -92,14 +106,15 @@ test("a failed pull is reported without rebuilding a tree that never changed", a
 
 	await checkUpdateRequest()
 
-	expect(spawnSync).toHaveBeenCalledTimes(1)
+	expect(steps()).toHaveLength(1)
 	expect(read(RESULT)).toMatchObject({ success: false })
 	expect(read(RESULT).message).toContain("git pull")
 })
 
 test("a rebuild that could not run is reported rather than counted as an update", async () => {
 	write(REQUEST, { requestedBy: "susan" })
-	spawnSync.mockReturnValueOnce({ status: 0 }).mockReturnValueOnce({ error: new Error("spawn npm ENOENT") })
+	// the version probe takes the first call, the pull the second, the rebuild the third
+	spawnSync.mockReturnValueOnce({ status: 0 }).mockReturnValueOnce({ status: 0 }).mockReturnValueOnce({ error: new Error("spawn npm ENOENT") })
 
 	await checkUpdateRequest()
 
@@ -126,7 +141,7 @@ test("a request that arrives during an interrupted update is kept for the next p
 
 	expect(fs.existsSync(REQUEST)).toBe(true)
 	expect(await checkUpdateRequest()).toBe(true)
-	expect(spawnSync).toHaveBeenCalledTimes(2)
+	expect(steps()).toHaveLength(2)
 })
 
 // a bridge write that keeps failing must not pin the watchdog to skipping every poll forever
@@ -148,6 +163,75 @@ test("a claim that cannot be enriched with startedAt still runs the update inste
 
 	expect(await checkUpdateRequest()).toBe(true)
 
-	expect(spawnSync).toHaveBeenCalledTimes(2)
+	expect(steps()).toHaveLength(2)
 	expect(fs.existsSync(REQUEST)).toBe(false)
+})
+
+describe("versions", () => {
+	test("a major bump is held instead of pulled, and the panel is told what to confirm", async () => {
+		const to = bumped(0)
+		remoteIs(to)
+		write(REQUEST, { requestedBy: "susan" })
+
+		expect(await checkUpdateRequest()).toBe(true)
+
+		expect(steps()).toHaveLength(0)
+		expect(read(RESULT)).toMatchObject({ success: false, blocked: true, from: LOCAL, to, message: majorHeld(LOCAL, to) })
+		expect(fs.existsSync(RUNNING)).toBe(false)
+		expect(webhookAlert.mock.calls[0][0]).toContain("held")
+	})
+
+	test("a major bump the admin confirmed is pulled like any other", async () => {
+		remoteIs(bumped(0))
+		write(REQUEST, { requestedBy: "susan", allowMajor: true })
+
+		await checkUpdateRequest()
+
+		expect(steps()).toHaveLength(2)
+		expect(read(RESULT)).toMatchObject({ success: true })
+		expect(read(RESULT).blocked).toBeUndefined()
+	})
+
+	test("a minor bump needs no confirmation", async () => {
+		const to = bumped(1)
+		remoteIs(to)
+		write(REQUEST, { requestedBy: "susan" })
+
+		await checkUpdateRequest()
+
+		expect(steps()).toHaveLength(2)
+		expect(read(RESULT)).toMatchObject({ success: true, from: LOCAL, to })
+	})
+
+	// a remote nobody can reach must not become a gate that no confirmation can open
+	test("an unreadable remote version leaves the update ungated", async () => {
+		spawnSync.mockReturnValue({ status: 1 })
+		write(REQUEST, { requestedBy: "susan" })
+
+		await checkUpdateRequest()
+
+		expect(read(VERSION)).toMatchObject({ current: LOCAL, available: null })
+		expect(steps()[0][1]).toEqual(["pull"])
+	})
+
+	test("the published pair is reused until it goes stale, so the remote is not hit every poll", async () => {
+		remoteIs(bumped(2))
+
+		await refreshVersions()
+		const first = spawnSync.mock.calls.length
+		await refreshVersions()
+
+		expect(spawnSync.mock.calls).toHaveLength(first)
+		expect(read(VERSION)).toMatchObject({ current: LOCAL, available: bumped(2) })
+	})
+
+	test("a request re-reads the remote rather than gating on an hour-old answer", async () => {
+		write(VERSION, { current: LOCAL, available: LOCAL, at: new Date().toISOString() })
+		remoteIs(bumped(0))
+		write(REQUEST, { requestedBy: "susan" })
+
+		await checkUpdateRequest()
+
+		expect(read(RESULT)).toMatchObject({ blocked: true, to: bumped(0) })
+	})
 })
