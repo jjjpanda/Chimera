@@ -185,7 +185,7 @@ const runStep = (command, args, options = {}) => {
 }
 
 // a git pull that stops to ask for credentials would otherwise hang the loop with no timeout to save it
-const update = () => runStep("git", ["pull"], { env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })
+const update = () => runStep("git", ["pull"], { timeout: GIT_TIMEOUT_MS, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })
 	?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
 
 const endUpdate = async (problem, extra = {}) => {

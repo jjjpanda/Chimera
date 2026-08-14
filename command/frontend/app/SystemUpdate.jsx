@@ -90,11 +90,11 @@ const SystemUpdate = () => {
 			</CardHeader>
 			<CardContent className="flex flex-col gap-2">
 				<p className="text-sm text-muted">{t("admin.update.description")}</p>
-				{version && (
+				{version && bump && (
 					<p className={`text-sm ${major ? "text-danger" : "text-muted"}`}>
-						{bump && bump !== "none"
-							? t(major ? "admin.update.versionMajor" : "admin.update.versionAvailable", { from: version.current, to: version.available })
-							: t("admin.update.versionCurrent", { current: version.current })}
+						{bump === "none"
+							? t("admin.update.versionCurrent", { current: version.current })
+							: t(major ? "admin.update.versionMajor" : "admin.update.versionAvailable", { from: version.current, to: version.available })}
 					</p>
 				)}
 				{state === "pending" && (

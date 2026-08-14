@@ -146,6 +146,14 @@ describe("versions", () => {
 			expect.objectContaining({ body: JSON.stringify({ allowMajor: true }) }), expect.anything()))
 	})
 
+	test("an unclassifiable bump says nothing rather than claiming the host is current", async () => {
+		status({ state: "idle", last: null, version: version(null) })
+		render(React.createElement(SystemUpdate))
+		await waitFor(() => expect(request).toHaveBeenCalled())
+
+		expect(screen.queryByText(/up to date/)).toBeNull()
+	})
+
 	test("a minor bump is named in the dialog but needs no box to tick", async () => {
 		status({ state: "idle", last: null, version: version("minor", { available: "6.1.0" }) })
 		render(React.createElement(SystemUpdate))
