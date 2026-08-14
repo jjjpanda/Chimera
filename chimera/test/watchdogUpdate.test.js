@@ -3,6 +3,7 @@ const os = require("os")
 const path = require("path")
 
 process.env.CHIMERA_UPDATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-update-"))
+process.env.CHIMERA_ENV_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "chimera-env-")), ".env")
 
 jest.mock("child_process", () => ({ spawnSync: jest.fn(() => ({ status: 0 })) }))
 jest.mock("../compose.js", () => ({
@@ -238,20 +239,18 @@ describe("versions", () => {
 
 describe("recoverOrFail", () => {
 	const ENV_KEYS = ["watchdog_ON", "gateway_PORT", "command_ON", "command_PROXY_ON"]
-	let saved, savedEnvFile
+	let saved
 
 	beforeEach(() => {
 		saved = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]))
 		process.env.watchdog_ON = "true"
 		process.env.command_ON = "true"
 		process.env.command_PROXY_ON = "true"
-		savedEnvFile = fs.existsSync(ENV) ? fs.readFileSync(ENV, "utf8") : null
 	})
 
 	afterEach(() => {
 		for (const k of ENV_KEYS) saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k])
-		if (savedEnvFile === null) fs.rmSync(ENV, { force: true })
-		else fs.writeFileSync(ENV, savedEnvFile)
+		fs.rmSync(ENV, { force: true })
 	})
 
 	// commit 131efe4 made an update request skip on NO_PORT specifically — dropped per review
