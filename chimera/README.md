@@ -131,7 +131,7 @@ npm run watchdog -- --dry-run # print the restart command, the reboot command an
 | `result.json` | watchdog | `{ success, message, at }` of the last one that finished |
 
 - The three files are a tri-state on purpose. A rebuild takes minutes and takes the panel down with the stack, so a panel that came back to `request.json` gone and only an old `result.json` would report the previous update as this one's outcome.
-- The request is turned into `running.json` and deleted *before* `git pull` runs, so a second request that arrives mid-rebuild is a new one waiting rather than a duplicate of the one in flight. `command` also answers `409` while either file is present.
+- The request is turned into `running.json` and deleted *before* `git pull` runs, so a second request that arrives mid-rebuild is a new one waiting rather than a duplicate of the one in flight. `command` also answers `409` to a second `POST` while either file is present, and cancelling with `DELETE /system/update` deletes `request.json` — refused with `409` only once `running.json` exists, since a rebuild already under way cannot be pulled back.
 - `spawnSync` blocks the whole loop until the rebuild ends — nothing is polled while the stack it would poll is down on purpose. The pass returns right after, without polling, since the stack comes up cold and a poll of it would count as a failure.
 - A `running.json` found at the start of a pass therefore cannot be an update in flight: `spawnSync` never returns to leave one. It is a watchdog that was killed mid-rebuild, so it is closed as a failure rather than pinning the panel to *running* forever. Check `git log` and `docker compose ps` before asking again.
 - Both ends are alerted through `webhookAlert` — who asked, and what happened.

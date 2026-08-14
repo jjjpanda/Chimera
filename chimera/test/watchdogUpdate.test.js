@@ -1,4 +1,8 @@
 const fs = require("fs")
+const os = require("os")
+const path = require("path")
+
+process.env.CHIMERA_UPDATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-update-"))
 
 jest.mock("child_process", () => ({ spawnSync: jest.fn(() => ({ status: 0 })) }))
 jest.mock("../compose.js", () => ({
@@ -12,8 +16,6 @@ const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { ROOT } = require("../preflight.js")
 const { DIR, REQUEST, RUNNING, RESULT } = require("../../lib/utils/updateBridge.js")
 const { checkUpdateRequest, UPDATE_INTERRUPTED } = require("../watchdog.js")
-
-const preexisting = fs.existsSync(DIR)
 
 const write = (file, data) => fs.writeFileSync(file, JSON.stringify(data))
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"))
@@ -34,8 +36,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-	clear()
-	if (!preexisting) fs.rmSync(DIR, { recursive: true, force: true })
+	fs.rmSync(DIR, { recursive: true, force: true })
 })
 
 test("no request means no update, and the poll that follows still runs", async () => {

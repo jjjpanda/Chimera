@@ -54,6 +54,18 @@ test("an update already on the bridge disables the button and names who asked", 
 	expect(buttons()[0].disabled).toBe(true)
 })
 
+test("cancelling asks the backend to drop the request and says so", async () => {
+	status({ state: "pending", requestedBy: "alex", last: null })
+	render(React.createElement(SystemUpdate))
+	await screen.findByText(/Requested by alex/)
+	status({ error: false })
+
+	await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Cancel Request" })) })
+
+	await waitFor(() => expect(request).toHaveBeenCalledWith("/system/update", { method: "DELETE" }, expect.anything()))
+	await waitFor(() => expect(toast).toHaveBeenCalledWith("Update request cancelled"))
+})
+
 test("a rebuild in flight is not reported as finished, whatever the last result was", async () => {
 	status({ state: "running", requestedBy: "alex", last: { success: true, at: "2026-08-12T00:00:00.000Z" } })
 	render(React.createElement(SystemUpdate))

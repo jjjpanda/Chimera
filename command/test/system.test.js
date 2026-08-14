@@ -1,5 +1,10 @@
+const fs = require("fs")
+const os = require("os")
+const path = require("path")
+
 process.env.SECRETKEY = "test-secret"
 process.env.command_COOKIE_SECURE = "false"
+process.env.CHIMERA_UPDATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-update-"))
 
 jest.mock("pg")
 jest.mock("pm2")
@@ -124,6 +129,39 @@ describe("System Routes", () => {
 			const res = await as(supertest(app).post("/system/update"))
 			expect(res.status).toBe(500)
 			expect(res.body).toEqual({ error: true })
+		})
+	})
+
+	describe("DELETE /system/update", () => {
+		test("returns 401 with no token", async () => {
+			const res = await supertest(app).delete("/system/update")
+			expect(res.status).toBe(401)
+		})
+
+		test("returns 403 for a non-admin", async () => {
+			const res = await as(supertest(app).delete("/system/update"), "user")
+			expect(res.status).toBe(403)
+		})
+
+		test("cancels a pending request", async () => {
+			mockFiles[REQUEST] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "susan" }
+			const res = await as(supertest(app).delete("/system/update"))
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+
+		// a stale panel can show a pending row the watchdog already finished — cancelling it must not claim a run is in progress
+		test("is a no-op when nothing is pending", async () => {
+			const res = await as(supertest(app).delete("/system/update"))
+			expect(res.status).toBe(200)
+			expect(res.body).toEqual({ error: false })
+		})
+
+		test("refuses to cancel while the host is mid-rebuild", async () => {
+			mockFiles[RUNNING] = { requestedAt: "2026-08-13T00:00:00.000Z", requestedBy: "alex" }
+			const res = await as(supertest(app).delete("/system/update"))
+			expect(res.status).toBe(409)
+			expect(res.body).toEqual({ error: true, errors: "UPDATE_IN_PROGRESS" })
 		})
 	})
 })

@@ -23,6 +23,13 @@ const status = async () => {
 	}
 }
 
+let queue = Promise.resolve()
+const serialized = (fn) => {
+	const run = queue.then(fn, fn)
+	queue = run.catch(() => {})
+	return run
+}
+
 app.get("/update", authorize, requireAdmin, async (req, res) => {
 	try {
 		res.json({ error: false, ...await status() })
@@ -34,13 +41,12 @@ app.get("/update", authorize, requireAdmin, async (req, res) => {
 
 app.post("/update", authorize, requireAdmin, async (req, res) => {
 	try {
-		if ((await status()).state !== "idle") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
-		writeJSON(REQUEST, { requestedAt: new Date().toISOString(), requestedBy: req.decoded.username },
-			() => res.json({ error: false }),
-			(e) => {
-				console.error(e)
-				res.status(500).json({ error: true })
-			})
+		await serialized(async () => {
+			if ((await status()).state !== "idle") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
+			await new Promise((resolve, reject) =>
+				writeJSON(REQUEST, { requestedAt: new Date().toISOString(), requestedBy: req.decoded.username }, resolve, reject))
+			res.json({ error: false })
+		})
 	} catch (e) {
 		console.error(e)
 		res.status(500).json({ error: true })
@@ -49,12 +55,10 @@ app.post("/update", authorize, requireAdmin, async (req, res) => {
 
 app.delete("/update", authorize, requireAdmin, async (req, res) => {
 	try {
-		if ((await status()).state !== "pending") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
-		fs.unlink(REQUEST, (err) => {
-			if (err && err.code !== "ENOENT") {
-				console.error(err)
-				return res.status(500).json({ error: true })
-			}
+		await serialized(async () => {
+			if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
+			await new Promise((resolve, reject) =>
+				fs.unlink(REQUEST, (err) => err && err.code !== "ENOENT" ? reject(err) : resolve()))
 			res.json({ error: false })
 		})
 	} catch (e) {
