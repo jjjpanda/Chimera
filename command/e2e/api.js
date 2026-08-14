@@ -14,11 +14,12 @@ const defaultRoutes = {
 	"POST /authorization/setup": json({ error: false }),
 	"POST /authorization/password": json({ error: false }),
 	"GET /cameras": json([{ id: 0, name: "indoor" }, { id: 1, name: "outdoor" }]),
-	"GET /usage": json({ used_gb: 0, max_gb: 100, total_frames: 0, cameras: [] })
+	"GET /usage": json({ used_gb: 0, max_gb: 100, total_frames: 0, cameras: [] }),
+	"GET /system/update": json({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null, version: { current: "6.0.2", available: null, checkedAt: null, bump: null } })
 }
 
 const apiPrefixes = [
-	"/authorization", "/cameras", "/command", "/schedule", "/storage",
+	"/authorization", "/cameras", "/command", "/schedule", "/storage", "/system",
 	"/motion", "/database", "/livestream", "/memory", "/object",
 	"/file", "/frames", "/usage", "/task", "/convert", "/events", "/shared"
 ]

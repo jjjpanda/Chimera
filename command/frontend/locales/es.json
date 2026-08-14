@@ -19,6 +19,25 @@
 			"user": "usuario"
 		},
 		"sessions": "Sesiones",
+		"update": {
+			"button": "Actualizar ahora",
+			"confirm": "¿Descargar el código más reciente y reconstruir? El sistema no estará disponible durante unos minutos.",
+			"description": "Descarga el código más reciente, reconstruye los contenedores y los reinicia. Las cámaras y las grabaciones no están disponibles durante unos minutos.",
+			"failed": "No se puede solicitar la actualización",
+			"lastBlocked": "Actualización retenida {{when}}: {{from}} → {{to}} es una versión mayor. Confírmela para continuar.",
+			"lastFailure": "La última actualización falló {{when}}: {{message}}",
+			"lastSuccess": "La última actualización se completó {{when}}.",
+			"majorConfirm": "{{from}} → {{to}} es una versión mayor. Puede requerir pasos que una reconstrucción no hace: lea primero las notas de la versión. Actualizar de todos modos.",
+			"minorNotice": "Esta es una actualización menor, {{from}} → {{to}}.",
+			"pending": "Solicitada por {{username}}, esperando al watchdog del host.",
+			"requested": "Actualización solicitada",
+			"running": "Actualización en curso: el sistema se reiniciará al terminar.",
+			"title": "Actualización del sistema",
+			"versionAvailable": "Versión {{from}}, {{to}} disponible.",
+			"versionCurrent": "Versión {{current}}, actualizada.",
+			"versionMajor": "Versión {{from}}, {{to}} disponible: una versión mayor.",
+			"watchdogOff": "El watchdog del host no está en ejecución. Active watchdog_ON para usar la actualización automática."
+		},
 		"updateUserFailed": "Error al actualizar usuario",
 		"userCreated": "Usuario creado. Comparte esta contraseña temporal con él:",
 		"userDeleted": "Usuario eliminado",
@@ -153,6 +172,8 @@
 		"passwordTooShort": "La contraseña debe tener al menos {{minLength}} caracteres.",
 		"setupTokenMismatch": "El token de configuración no coincide con setup_TOKEN en .env",
 		"tooManyAttempts": "Demasiados intentos",
+		"updateInProgress": "Ya hay una actualización en curso",
+		"watchdogDisabled": "El watchdog del host no está en ejecución — la actualización automática no está disponible.",
 		"wrongCurrentPassword": "La contraseña actual es incorrecta"
 	},
 	"footage": {

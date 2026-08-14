@@ -19,6 +19,25 @@
 			"user": "user"
 		},
 		"sessions": "Sessions",
+		"update": {
+			"button": "Update Now",
+			"confirm": "Pull the latest code and rebuild? The system is unavailable for a few minutes.",
+			"description": "Pulls the latest code, rebuilds the containers and restarts them. Cameras and recordings are unavailable for a few minutes.",
+			"failed": "Cannot request update",
+			"lastBlocked": "Update held {{when}}: {{from}} → {{to}} is a major version. Confirm it to go ahead.",
+			"lastFailure": "Last update failed {{when}}: {{message}}",
+			"lastSuccess": "Last update succeeded {{when}}.",
+			"majorConfirm": "{{from}} → {{to}} is a major version. It can need steps a rebuild does not do — read the release notes first. Update anyway.",
+			"minorNotice": "This is a minor update, {{from}} → {{to}}.",
+			"pending": "Requested by {{username}}, waiting for the host watchdog to pick it up.",
+			"requested": "Update requested",
+			"running": "Update running — the stack restarts when it finishes.",
+			"title": "System Update",
+			"versionAvailable": "Version {{from}}, {{to}} available.",
+			"versionCurrent": "Version {{current}}, up to date.",
+			"versionMajor": "Version {{from}}, {{to}} available — a major version.",
+			"watchdogOff": "The host watchdog is not running. Enable watchdog_ON to use auto-update."
+		},
 		"updateUserFailed": "Failed to update user",
 		"userCreated": "User created. Share this temporary password with them:",
 		"userDeleted": "User deleted",
@@ -152,6 +171,8 @@
 		"passwordTooShort": "Password must be at least {{minLength}} characters.",
 		"setupTokenMismatch": "Setup token does not match setup_TOKEN in .env",
 		"tooManyAttempts": "Too many attempts",
+		"updateInProgress": "An update is already running",
+		"watchdogDisabled": "The host watchdog is not running — auto-update is unavailable.",
 		"wrongCurrentPassword": "Current password is incorrect"
 	},
 	"footage": {

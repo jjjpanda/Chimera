@@ -20,3 +20,4 @@ command/test-results
 command/playwright-report
 __pycache__
 chimera/watchdog.state.json
+chimera-update

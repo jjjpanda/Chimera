@@ -19,6 +19,25 @@
 			"user": "utilisateur"
 		},
 		"sessions": "Sessions",
+		"update": {
+			"button": "Mettre à jour",
+			"confirm": "Récupérer le code le plus récent et reconstruire ? Le système sera indisponible pendant quelques minutes.",
+			"description": "Récupère le code le plus récent, reconstruit les conteneurs et les redémarre. Les caméras et les enregistrements sont indisponibles pendant quelques minutes.",
+			"failed": "Impossible de demander la mise à jour",
+			"lastBlocked": "Mise à jour retenue {{when}} : {{from}} → {{to}} est une version majeure. Confirmez-la pour continuer.",
+			"lastFailure": "Dernière mise à jour échouée {{when}} : {{message}}",
+			"lastSuccess": "Dernière mise à jour réussie {{when}}.",
+			"majorConfirm": "{{from}} → {{to}} est une version majeure. Elle peut exiger des étapes qu'une reconstruction ne fait pas — lisez d'abord les notes de version. Mettre à jour quand même.",
+			"minorNotice": "Il s'agit d'une mise à jour mineure, {{from}} → {{to}}.",
+			"pending": "Demandée par {{username}}, en attente du watchdog de l'hôte.",
+			"requested": "Mise à jour demandée",
+			"running": "Mise à jour en cours — la pile redémarre à la fin.",
+			"title": "Mise à jour du système",
+			"versionAvailable": "Version {{from}}, {{to}} disponible.",
+			"versionCurrent": "Version {{current}}, à jour.",
+			"versionMajor": "Version {{from}}, {{to}} disponible — une version majeure.",
+			"watchdogOff": "Le watchdog de l'hôte n'est pas actif. Activez watchdog_ON pour utiliser la mise à jour automatique."
+		},
 		"updateUserFailed": "Échec de la mise à jour de l'utilisateur",
 		"userCreated": "Utilisateur créé. Communiquez-lui ce mot de passe temporaire :",
 		"userDeleted": "Utilisateur supprimé",
@@ -153,6 +172,8 @@
 		"passwordTooShort": "Le mot de passe doit comporter au moins {{minLength}} caractères.",
 		"setupTokenMismatch": "Le jeton de configuration ne correspond pas à setup_TOKEN dans .env",
 		"tooManyAttempts": "Trop de tentatives",
+		"updateInProgress": "Une mise à jour est déjà en cours",
+		"watchdogDisabled": "Le watchdog de l'hôte n'est pas actif — la mise à jour automatique n'est pas disponible.",
 		"wrongCurrentPassword": "Le mot de passe actuel est incorrect"
 	},
 	"footage": {

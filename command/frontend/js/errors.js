@@ -9,7 +9,9 @@ const keys = {
 	WRONG_CURRENT_PASSWORD: "errors.wrongCurrentPassword",
 	PASSWORD_TOO_SHORT: "errors.passwordTooShort",
 	CANNOT_DEMOTE_LAST_ADMIN: "errors.cannotDemoteLastAdmin",
-	CANNOT_DELETE_LAST_ADMIN: "errors.cannotDeleteLastAdmin"
+	CANNOT_DELETE_LAST_ADMIN: "errors.cannotDeleteLastAdmin",
+	UPDATE_IN_PROGRESS: "errors.updateInProgress",
+	WATCHDOG_DISABLED: "errors.watchdogDisabled"
 }
 
 export default (code) => (keys[code] ? i18n.t(keys[code], { minLength: pw.minLength }) : code)
