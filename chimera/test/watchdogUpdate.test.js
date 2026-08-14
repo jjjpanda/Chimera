@@ -127,7 +127,7 @@ test("a rebuild that could not run is reported rather than counted as an update"
 test("a marker left by a killed watchdog ends as a failure instead of pinning the panel to running", async () => {
 	write(RUNNING, { requestedBy: "susan", startedAt: "2026-08-13T00:00:00.000Z" })
 
-	expect(await checkUpdateRequest()).toBe(true)
+	expect(await checkUpdateRequest()).toBe(false)
 
 	expect(spawnSync).not.toHaveBeenCalled()
 	expect(fs.existsSync(RUNNING)).toBe(false)
@@ -150,7 +150,7 @@ test("a result that cannot be written still clears the running marker", async ()
 	write(RUNNING, { requestedBy: "susan" })
 	fs.mkdirSync(RESULT)
 
-	expect(await checkUpdateRequest()).toBe(true)
+	expect(await checkUpdateRequest()).toBe(false)
 
 	expect(fs.existsSync(RUNNING)).toBe(false)
 	fs.rmdirSync(RESULT)
@@ -174,7 +174,7 @@ describe("versions", () => {
 		remoteIs(to)
 		write(REQUEST, { requestedBy: "susan" })
 
-		expect(await checkUpdateRequest()).toBe(true)
+		expect(await checkUpdateRequest()).toBe(false)
 
 		expect(steps()).toHaveLength(0)
 		expect(read(RESULT)).toMatchObject({ success: false, blocked: true, from: LOCAL, to, message: majorHeld(LOCAL, to) })

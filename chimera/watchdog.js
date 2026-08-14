@@ -195,14 +195,17 @@ const endUpdate = async (problem, extra = {}) => {
 }
 
 const checkUpdateRequest = async () => {
-	if (fs.existsSync(RUNNING)) return endUpdate(UPDATE_INTERRUPTED)
+	if (fs.existsSync(RUNNING)) {
+		await endUpdate(UPDATE_INTERRUPTED)
+		return false
+	}
 	if (!claimRequest()) return false
 	const request = await readUpdate(RUNNING) ?? {}
 	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
 	const { current: from, available: to } = await refreshVersions(true)
 	if (majorBump({ current: from, available: to }) && !request.allowMajor) {
 		await endUpdate(majorHeld(from, to), { blocked: true, from, to })
-		return true
+		return false
 	}
 	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
 	const problem = update()
@@ -246,7 +249,7 @@ const reachability = async (state, threshold) => {
 }
 
 const runOnce = async () => {
-	// the stack is down for most of an update and comes up cold after it, so this pass polls nothing
+	// only a pull-and-rebuild actually takes the stack down, so that is the only case this pass polls nothing for
 	if (await checkUpdateRequest()) return
 	const { threshold } = settings()
 	const urls = checkUrl()
