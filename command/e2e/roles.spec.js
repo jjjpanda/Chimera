@@ -32,6 +32,7 @@ test.describe("role-based access", () => {
 		await mockApi(page, asAdminSession)
 		await page.goto("/admin")
 		await expect(page.getByRole("button", { name: "Add User" })).toBeVisible()
+		await expect(page.getByRole("button", { name: "Update Now" })).toBeVisible()
 	})
 
 	test("non-admin deep link to /schedule redirects to the dashboard", async ({ page }) => {

@@ -19,6 +19,24 @@
 			"user": "usuário"
 		},
 		"sessions": "Sessões",
+		"update": {
+			"button": "Atualizar agora",
+			"confirm": "Baixar o código mais recente e reconstruir? O sistema fica indisponível por alguns minutos.",
+			"description": "Baixa o código mais recente, reconstrói os contêineres e os reinicia. Câmeras e gravações ficam indisponíveis por alguns minutos.",
+			"failed": "Não é possível solicitar a atualização",
+			"lastBlocked": "Atualização retida {{when}}: {{from}} → {{to}} é uma versão maior. Confirme para prosseguir.",
+			"lastFailure": "Última atualização falhou {{when}}: {{message}}",
+			"lastSuccess": "Última atualização concluída {{when}}.",
+			"majorConfirm": "{{from}} → {{to}} é uma versão maior. Pode exigir etapas que uma reconstrução não faz — leia as notas da versão primeiro. Atualizar mesmo assim.",
+			"minorNotice": "Esta é uma atualização menor, {{from}} → {{to}}.",
+			"pending": "Solicitada por {{username}}, aguardando o watchdog do host.",
+			"requested": "Atualização solicitada",
+			"running": "Atualização em andamento — a pilha reinicia ao terminar.",
+			"title": "Atualização do sistema",
+			"versionAvailable": "Versão {{from}}, {{to}} disponível.",
+			"versionCurrent": "Versão {{current}}, atualizada.",
+			"versionMajor": "Versão {{from}}, {{to}} disponível — uma versão maior."
+		},
 		"updateUserFailed": "Falha ao atualizar usuário",
 		"userCreated": "Usuário criado. Compartilhe esta senha temporária com ele:",
 		"userDeleted": "Usuário excluído",
@@ -153,6 +171,7 @@
 		"passwordTooShort": "A senha deve ter pelo menos {{minLength}} caracteres.",
 		"setupTokenMismatch": "O token de configuração não corresponde a setup_TOKEN no .env",
 		"tooManyAttempts": "Muitas tentativas",
+		"updateInProgress": "Já há uma atualização em andamento",
 		"wrongCurrentPassword": "A senha atual está incorreta"
 	},
 	"footage": {

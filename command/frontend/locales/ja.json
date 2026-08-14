@@ -19,6 +19,24 @@
 			"user": "ユーザー"
 		},
 		"sessions": "セッション",
+		"update": {
+			"button": "今すぐ更新",
+			"confirm": "最新のコードを取得して再構築しますか？数分間システムを利用できなくなります。",
+			"description": "最新のコードを取得し、コンテナーを再構築して再起動します。数分間、カメラと録画は利用できません。",
+			"failed": "更新をリクエストできません",
+			"lastBlocked": "更新を{{when}}に保留しました: {{from}} → {{to}} はメジャーバージョンです。続けるには確認してください。",
+			"lastFailure": "前回の更新は{{when}}に失敗しました: {{message}}",
+			"lastSuccess": "前回の更新は{{when}}に成功しました。",
+			"majorConfirm": "{{from}} → {{to}} はメジャーバージョンです。再構築では行われない手順が必要になる場合があります。先にリリースノートを確認してください。それでも更新する。",
+			"minorNotice": "これはマイナー更新です（{{from}} → {{to}}）。",
+			"pending": "{{username}} がリクエストしました。ホストのウォッチドッグの実行を待っています。",
+			"requested": "更新をリクエストしました",
+			"running": "更新中です。完了するとスタックが再起動します。",
+			"title": "システムの更新",
+			"versionAvailable": "バージョン {{from}}、{{to}} が利用できます。",
+			"versionCurrent": "バージョン {{current}}、最新です。",
+			"versionMajor": "バージョン {{from}}、{{to}} が利用できます — メジャーバージョンです。"
+		},
 		"updateUserFailed": "ユーザーの更新に失敗しました",
 		"userCreated": "ユーザーを作成しました。以下の仮パスワードを本人に伝えてください：",
 		"userDeleted": "ユーザーを削除しました",
@@ -151,6 +169,7 @@
 		"passwordTooShort": "パスワードは{{minLength}}文字以上で入力してください。",
 		"setupTokenMismatch": "セットアップトークンが .env の setup_TOKEN と一致しません",
 		"tooManyAttempts": "試行回数が多すぎます",
+		"updateInProgress": "更新はすでに実行中です",
 		"wrongCurrentPassword": "現在のパスワードが正しくありません"
 	},
 	"footage": {

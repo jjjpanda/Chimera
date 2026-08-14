@@ -26,7 +26,7 @@ const { letsencryptPaths, isFile, isIpLiteral } = certPaths
 const { validTrustProxy } = trustProxyHops
 
 const ROOT = path.join(__dirname, "..")
-const ENV = path.join(ROOT, ".env")
+const ENV = process.env.CHIMERA_ENV_FILE || path.join(ROOT, ".env")
 const ENV_EXAMPLE = path.join(ROOT, "env.example")
 const MOTION = path.join(ROOT, "motion.conf")
 const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")

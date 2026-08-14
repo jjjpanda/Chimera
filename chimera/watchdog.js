@@ -1,4 +1,4 @@
-const { ENV, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
+const { ENV, ROOT, watchdogHostWarning, WATCHDOG_MIN_INTERVAL_MS } = require("./preflight.js")
 const { error: envError } = require("dotenv").config({ path: ENV })
 const fs = require("fs")
 const os = require("os")
@@ -9,6 +9,7 @@ const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
+const { REQUEST, RUNNING, RESULT, VERSION, majorBump } = require("../lib/utils/updateBridge.js")
 
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
@@ -100,6 +101,119 @@ const writeState = (state) => new Promise(resolve => writeJSON(STATE_FILE, state
 
 const alert = (emoji, text) => webhookAlert(`${emoji} Chimera watchdog on ${os.hostname()}: ${text}`)
 
+const UPDATE_INTERRUPTED = "the watchdog stopped while an update was running — check `git log` and `docker compose ps` before trying again"
+const VERSION_REFRESH_MS = 3600000
+const GIT_TIMEOUT_MS = 30000
+const majorHeld = (from, to) => `major version bump ${from} → ${to} — it can need steps a rebuild does not do, so it has to be confirmed in the admin panel`
+
+const readUpdate = (file) => new Promise(resolve => readJSON(file, (err, data) => resolve(err ? null : data)))
+
+const writeUpdate = (file, data) => new Promise(resolve => writeJSON(file, data, () => resolve(true), ({ message }) => {
+	fail(`watchdog: cannot write ${file} (${message}) — the admin panel cannot see what happened to the update`)
+	resolve(false)
+}))
+
+const clearUpdate = (file) => {
+	try {
+		fs.unlinkSync(file)
+		return true
+	} catch ({ code, message }) {
+		if (code === "ENOENT") return true
+		fail(`watchdog: cannot remove ${file} (${message}) — the admin panel will keep reporting an update that already ended`)
+		return false
+	}
+}
+
+const claimRequest = () => {
+	try {
+		fs.renameSync(REQUEST, RUNNING)
+		return true
+	} catch ({ code, message }) {
+		if (code !== "ENOENT") fail(`watchdog: cannot claim ${REQUEST} (${message})`)
+		return false
+	}
+}
+
+// timed out, since a fetch that stops to ask for credentials would hang the whole loop
+const git = (args) => {
+	const { status, stdout } = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", timeout: GIT_TIMEOUT_MS })
+	return status === 0 ? (stdout ?? "").trim() : null
+}
+
+const versionIn = (json) => {
+	try {
+		return JSON.parse(json).version ?? null
+	} catch {
+		return null
+	}
+}
+
+const localVersion = () => {
+	try {
+		return versionIn(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"))
+	} catch {
+		return null
+	}
+}
+
+const remoteVersion = () => {
+	const upstream = git(["rev-parse", "--abbrev-ref", "@{u}"])
+	if (!upstream || git(["fetch", "--quiet"]) === null) return null
+	return versionIn(git(["show", `${upstream}:package.json`]) ?? "")
+}
+
+/**
+ * Publishes `{ current, available }` to the bridge so the panel can name the
+ * bump before an admin asks for it. Throttled, since a fetch every poll would
+ * hit the remote once a minute; `force` is for the request itself, which must
+ * never gate on an hour-old answer.
+ */
+const refreshVersions = async (force) => {
+	const cached = await readUpdate(VERSION)
+	if (!force && cached?.at && Date.now() - Date.parse(cached.at) < VERSION_REFRESH_MS) return cached
+	const versions = { current: localVersion(), available: remoteVersion(), at: new Date().toISOString() }
+	await writeUpdate(VERSION, versions)
+	return versions
+}
+
+const runStep = (command, args, options = {}) => {
+	console.log(`watchdog: ${[command, ...args].join(" ")}`)
+	const { status, error } = spawnSync(command, args, { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32", ...options })
+	if (error) return `\`${[command, ...args].join(" ")}\` could not run: ${error.message}`
+	if (status !== 0) return `\`${[command, ...args].join(" ")}\` exited ${status ?? "without status"}`
+	return null
+}
+
+// a git pull that stops to ask for credentials would otherwise hang the loop with no timeout to save it
+const update = () => runStep("git", ["pull"], { timeout: GIT_TIMEOUT_MS, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })
+	?? runStep(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "docker:rebuild"])
+
+const endUpdate = async (problem, extra = {}) => {
+	await writeUpdate(RESULT, { success: !problem, message: problem ?? "updated and rebuilt", at: new Date().toISOString(), ...extra })
+	await alert(problem ? "⚠️" : "✅", problem ? `update ${extra.blocked ? "held" : "failed"} — ${problem}` : "update finished, the stack was rebuilt")
+	return clearUpdate(RUNNING)
+}
+
+const checkUpdateRequest = async () => {
+	if (fs.existsSync(RUNNING)) {
+		await endUpdate(UPDATE_INTERRUPTED)
+		return false
+	}
+	if (!claimRequest()) return false
+	const request = await readUpdate(RUNNING) ?? {}
+	await writeUpdate(RUNNING, { ...request, startedAt: new Date().toISOString() })
+	const { current: from, available: to } = await refreshVersions(true)
+	if (majorBump({ current: from, available: to }) && !request.allowMajor) {
+		await endUpdate(majorHeld(from, to), { blocked: true, from, to })
+		return false
+	}
+	await alert("🔄", `update requested by ${request.requestedBy ?? "an admin"} — pulling and rebuilding, the stack goes down for it`)
+	const problem = update()
+	await endUpdate(problem, { from, to })
+	if (!problem) await refreshVersions(true)
+	return true
+}
+
 const act = async (stage, failed) => {
 	await alert("⚠️", `${stage === "reboot" ? "rebooting the host" : "restarting the stack"}\n${failed.join("\n")}`)
 	return stage === "reboot" ? reboot() : restart()
@@ -135,6 +249,8 @@ const reachability = async (state, threshold) => {
 }
 
 const runOnce = async () => {
+	// only a pull-and-rebuild actually takes the stack down, so that is the only case this pass polls nothing for
+	if (await checkUpdateRequest()) return
 	const { threshold } = settings()
 	const urls = checkUrl()
 	const failed = await poll(urls)
@@ -155,6 +271,7 @@ const runOnce = async () => {
 const loop = async () => {
 	const { intervalMs } = settings()
 	for (;;) {
+		await refreshVersions()
 		await runOnce()
 		await new Promise(resolve => setTimeout(resolve, intervalMs))
 	}
@@ -170,6 +287,18 @@ const dryRun = () => {
 
 const envProblem = (error = envError, env = process.env) => error && !env.watchdog_ON ? unreadableEnv(error) : null
 
+// an update can fix the problem (eg. a bad .env), so the loop restarts instead of exiting on a problem that no longer exists
+const recoverOrFail = async (problem) => {
+	if (settings().enabled) await checkUpdateRequest()
+	require("dotenv").config({ path: ENV, override: true })
+	if (configProblem()) return fail(problem)
+	if (!settings().enabled) {
+		console.log("watchdog_ON is not true — nothing to do")
+		return false
+	}
+	return true
+}
+
 const configProblem = () => {
 	const unreadable = envProblem()
 	if (unreadable) return unreadable
@@ -184,10 +313,11 @@ if (require.main === module) {
 	if (settings().enabled && !gatewayHost()) console.warn(NO_HOST)
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
+	const run = () => process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()
 	if (dry) dryRun()
-	else if (problem) fail(problem)
+	else if (problem) recoverOrFail(problem).then(recovered => recovered && run()).catch(({ message }) => fail(message))
 	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
-	else (process.argv.includes("--once") ? runOnce() : loop()).catch(({ message }) => fail(message))
+	else run().catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions, recoverOrFail }
