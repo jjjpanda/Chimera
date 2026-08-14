@@ -56,9 +56,9 @@ app.post("/update", authorize, requireAdmin, async (req, res) => {
 app.delete("/update", authorize, requireAdmin, async (req, res) => {
 	try {
 		await serialized(async () => {
-			if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 			await new Promise((resolve, reject) =>
 				fs.unlink(REQUEST, (err) => err && err.code !== "ENOENT" ? reject(err) : resolve()))
+			if ((await status()).state === "running") return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })
 			res.json({ error: false })
 		})
 	} catch (e) {
