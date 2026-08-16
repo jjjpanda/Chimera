@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "6.0.2",
+  "version": "6.0.6",
   "description": "a microservices based security camera system",
   "engines": {
     "npm": ">=7.0.0",
@@ -50,7 +50,8 @@
     "docker:rebuild": "npm-run-all -s --npm-path npm docker:down docker:build docker:up",
     "docker:delete": "node chimera/compose.js down -v",
     "watchdog": "node chimera/watchdog.js",
-    "watchdog:once": "node chimera/watchdog.js --once"
+    "watchdog:once": "node chimera/watchdog.js --once",
+    "watchdog:install": "node chimera/watchdogInstall.js"
   },
   "dependencies": {
     "command": "file:./command",
