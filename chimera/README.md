@@ -53,11 +53,12 @@ npm run preflight -- --check # CI mode, exits 1 if blocked
 ---
 # watchdog.js — `npm run watchdog`
 
-Host-side liveness check. Does not supervise itself — use cron (`--once`) or systemd. Setup is in the root [README](../README.md) under *Watchdog*.
+Host-side liveness check. Does not supervise itself — install it as a boot service with `npm run watchdog:install`. Setup is in the root [README](../README.md) under *Watchdog*.
 
 ```
 npm run watchdog              # self-polling
 npm run watchdog:once         # one pass, then exit
+npm run watchdog:install      # generate boot service config
 npm run watchdog -- --dry-run # print what it would do
 ```
 
@@ -72,12 +73,13 @@ Only the loopback set triggers actions — an internet outage cannot reboot a wo
 
 **Escalation** — after `watchdog_FAILURES` consecutive failures, alternates between container restart (`docker compose up -d --force-recreate`) and host reboot. State persists in `watchdog.state.json`, which is how `--once` carries context between runs.
 
-**Config** — `watchdog_ON` must be `true`. Bad config exits `1` (not `0`) so the operator knows supervision is down. The watchdog reads `process.env`, not `.env` — a systemd `Environment=` line is what it actually sees.
+**Config** — bad config exits `1` (not `0`) so the operator knows supervision is down. The watchdog reads `process.env`, not `.env` — a systemd `Environment=` line is what it actually sees.
 
 **Updates** — the admin panel triggers `git pull` + `docker:rebuild` through the watchdog, because `command` runs inside the container with no Docker socket or host shell. Communication happens via files in `chimera-update/`, defined in [updateBridge.js](../lib/utils/updateBridge.js):
 
 | file | writer | meaning |
 |---|---|---|
+| `heartbeat.json` | watchdog | proves the watchdog is alive; the panel enables the Update button when this is under 6 minutes old (`HEARTBEAT_MAX_AGE_MS`) |
 | `request.json` | command | admin asked for an update |
 | `running.json` | watchdog | pull or rebuild in progress |
 | `result.json` | watchdog | outcome of the last update |

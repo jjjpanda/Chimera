@@ -36,7 +36,7 @@
 			"versionAvailable": "Version {{from}}, {{to}} available.",
 			"versionCurrent": "Version {{current}}, up to date.",
 			"versionMajor": "Version {{from}}, {{to}} available — a major version.",
-			"watchdogOff": "The host watchdog is not running. Enable watchdog_ON to use auto-update."
+			"watchdogOff": "The host watchdog is not running. Start it on the host to use auto-update."
 		},
 		"updateUserFailed": "Failed to update user",
 		"userCreated": "User created. Share this temporary password with them:",

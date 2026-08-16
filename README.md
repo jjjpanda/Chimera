@@ -232,10 +232,11 @@ Your first successful login leaves a second cookie in that browser for a year. I
 A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
 
 ```
-watchdog_ON = true            # off by default
 watchdog_INTERVAL_MS = 60000  # self-polling mode only, milliseconds, minimum 5000
 watchdog_FAILURES = 3
 ```
+
+The container detects the watchdog through a heartbeat file written to the shared `chimera-update/` directory on every poll cycle. The panel considers the watchdog alive when the heartbeat is under 6 minutes old, so any polling interval must stay below that.
 
 `npm run watchdog:once` runs a single pass for cron, a systemd timer or Task Scheduler, keeping the failure count in `chimera/watchdog.state.json`:
 
@@ -243,42 +244,23 @@ watchdog_FAILURES = 3
 */5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
 ```
 
-`npm run watchdog` polls on its own timer instead. It is an ordinary foreground process: it ends when the terminal closes, and nothing brings it back after the reboot it just caused. Give it a supervisor that starts at boot.
-
-```ini
-# /etc/systemd/system/chimera-watchdog.service — then: sudo systemctl enable --now chimera-watchdog
-[Unit]
-Description=Chimera host watchdog
-Requires=docker.service
-After=docker.service
-
-[Service]
-User=chimera
-WorkingDirectory=/opt/chimera
-ExecStart=/usr/bin/npm run watchdog
-Restart=always
-RestartSec=30
-
-[Install]
-WantedBy=multi-user.target
-```
-
-pm2 does the same on any platform, macOS and Windows included:
+`npm run watchdog` polls on its own timer instead. It is an ordinary foreground process: it ends when the terminal closes, and nothing brings it back after the reboot it just caused. Install it as a boot service:
 
 ```bash
-pm2 start npm --name chimera-watchdog -- run watchdog
-pm2 save && pm2 startup   # run the command pm2 startup prints
+npm run watchdog:install
 ```
 
-A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` and any variable exported before pm2 starts win over `.env`, because dotenv never overwrites a variable that is already set.
+This generates the platform-native service config (systemd on Linux, launchd on macOS) or prints the PowerShell command for Windows Task Scheduler, then tells you what to run to enable it.
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
-**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
+**Set up git authentication.** The watchdog runs `git pull` for updates, so the host account needs passwordless access to the remote (SSH key or credential helper). The watchdog warns at startup only if no `origin` remote is configured at all — it never checks whether that remote is reachable or auth actually works.
+
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. The watchdog warns about this at startup. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
 
 Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
-**Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it: the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
+**Read access to `.env`.** Preflight writes it mode `0640`, readable only by the account that ran the install and that account's group, so a separate `User=` cannot open it. The watchdog warns and continues — settings from `.env` are unavailable, so `gateway_PORT` and other variables must come from the environment (e.g. systemd `Environment=`). If they do not, the watchdog exits `1` and the supervisor restart-loops it every `RestartSec`. Either run the unit as the installing account, or hand the watchdog account the file's group (`sudo usermod -aG "$(stat -c %G .env)" chimera`).
 
 **Write access to `chimera/`.** The failure count lives in `chimera/watchdog.state.json`, next to the script. A checkout leaves that directory writable only by the account that made it, and the group membership above adds no write bit, so a separate `User=` cannot create the file: every run logs the write failure, starts the count at zero again and never reaches `watchdog_FAILURES`, leaving a watchdog that polls and alerts but never restarts or reboots. Either run the unit as the installing account, or `sudo chown chimera /opt/chimera/chimera`.
 
@@ -296,7 +278,7 @@ Check the path with `command -v systemctl` — sudoers matches it literally, and
 
 Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
 
-**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. With `watchdog_ON=false`, or with a watchdog that cannot write that directory, the button reports the request and nothing ever happens. Whatever is on the tracked branch goes live and the stack is down for the rebuild. The panel names the version on offer against the one running; a major bump is refused until an admin confirms it, a minor one is only pointed out. [chimera/README.md](chimera/README.md) has the file flow.
+**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. Without a running watchdog, the button is disabled — the panel detects the watchdog through its heartbeat file. Whatever is on the tracked branch goes live and the stack is down for the rebuild. The panel names the version on offer against the one running; a major bump is refused until an admin confirms it, a minor one is only pointed out. [chimera/README.md](chimera/README.md) has the file flow.
 
 </details>
 

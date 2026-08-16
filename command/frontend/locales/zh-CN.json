@@ -36,7 +36,7 @@
 			"versionAvailable": "版本 {{from}}，{{to}} 可用。",
 			"versionCurrent": "版本 {{current}}，已是最新。",
 			"versionMajor": "版本 {{from}}，{{to}} 可用 — 这是主版本。",
-			"watchdogOff": "主机看门狗未运行。请启用 watchdog_ON 以使用自动更新。"
+			"watchdogOff": "主机看门狗未运行。请在主机上启动看门狗以使用自动更新。"
 		},
 		"updateUserFailed": "更新用户失败",
 		"userCreated": "用户已创建。请将此临时密码分享给该用户：",

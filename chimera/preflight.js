@@ -33,6 +33,7 @@ const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
 
 const WATCHDOG_MIN_INTERVAL_MS = 5000
+const { HEARTBEAT_MAX_AGE_MS } = require("../lib/utils/updateBridge.js")
 
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
@@ -130,6 +131,7 @@ const varProblem = (v, val) => {
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (v.key === "watchdog_FAILURES" && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
 	if (v.key === "watchdog_INTERVAL_MS" && !(/^\d+$/.test(val) && Number(val) >= WATCHDOG_MIN_INTERVAL_MS)) return `must be milliseconds, an integer >= ${WATCHDOG_MIN_INTERVAL_MS} — 60 is 60ms, not a minute (got "${val}")`
+	if (v.key === "watchdog_INTERVAL_MS" && Number(val) > HEARTBEAT_MAX_AGE_MS - 60000) return `must stay at or below ${HEARTBEAT_MAX_AGE_MS - 60000}ms — the heartbeat freshness threshold needs headroom for processing (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
@@ -267,11 +269,10 @@ const PRIVATE_SUFFIX = /\.(lan|local|internal|intranet|home\.arpa)$/i
 const privateHostname = (host) => !!host && (isIpLiteral(host) || !host.includes(".") || PRIVATE_SUFFIX.test(host))
 
 const watchdogHostWarning = (lines) => {
-	if (getVal(lines, "watchdog_ON") !== "true") return null
-	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
+	if (schemelessHost(lines)) return "WARNING: gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 	const url = gatewayUrl(lines)
 	return urlPart(url, "protocol") === "https:" && privateHostname(urlPart(url, "hostname"))
-		? "WARNING: watchdog_ON=true and gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the reachability check reports the site unreachable every time — point NODE_EXTRA_CA_CERTS at the CA that signed it"
+		? "WARNING: gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the reachability check reports the site unreachable every time — point NODE_EXTRA_CA_CERTS at the CA that signed it"
 		: null
 }
 
@@ -340,7 +341,7 @@ const redirectWarnings = (lines) => {
 	return [httpsRedirectLoopWarning(lines, pair), certUnreadableWarning(lines, pair), httpsRedirectPortWarning(lines)].filter(Boolean)
 }
 
-const warnings = (lines) => [...redirectWarnings(lines), watchdogHostWarning(lines)].filter(Boolean)
+const warnings = (lines) => [...redirectWarnings(lines)].filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"
