@@ -74,6 +74,8 @@
     "eslint-plugin-react": "^7.27.0",
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "supertest": "^7.2.2"
   }
 }

@@ -6,7 +6,7 @@ module.exports = {
 		"jsx",
 		"json"
 	],
-	setupFiles: ["dotenv/config", "<rootDir>/test/i18nSetup.js"],
+	setupFiles: ["<rootDir>/test/polyfills.js", "dotenv/config", "<rootDir>/test/i18nSetup.js"],
 	testPathIgnorePatterns: ["/node_modules/", "/e2e/"],
 	testTimeout: 10000,
 	transform: {
