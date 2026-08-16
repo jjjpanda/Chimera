@@ -31,14 +31,14 @@ const systemd = () => {
 }
 
 const launchd = () => {
-	const plist = path.join(ROOT, `com.chimera.watchdog.plist`)
+	const plist = path.join(ROOT, "com.chimera.watchdog.plist")
 	fs.writeFileSync(plist, [
-		'<?xml version="1.0" encoding="UTF-8"?>',
-		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
-		'<plist version="1.0">',
+		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+		"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">",
+		"<plist version=\"1.0\">",
 		"<dict>",
 		"    <key>Label</key>",
-		`    <string>com.chimera.watchdog</string>`,
+		"    <string>com.chimera.watchdog</string>",
 		"    <key>WorkingDirectory</key>",
 		`    <string>${ROOT}</string>`,
 		"    <key>ProgramArguments</key>",
@@ -56,15 +56,15 @@ const launchd = () => {
 	console.log(`wrote ${plist}\n`)
 	console.log("run:")
 	console.log(`  cp ${plist} ~/Library/LaunchAgents/`)
-	console.log(`  launchctl load ~/Library/LaunchAgents/com.chimera.watchdog.plist`)
+	console.log("  launchctl load ~/Library/LaunchAgents/com.chimera.watchdog.plist")
 }
 
 const win32 = () => {
 	console.log("paste into an admin PowerShell:\n")
 	console.log([
 		`$action = New-ScheduledTaskAction -Execute "${NODE}" -Argument "${SCRIPT}" -WorkingDirectory "${ROOT}"`,
-		`$trigger = New-ScheduledTaskTrigger -AtStartup`,
-		`$settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Seconds 30)`,
+		"$trigger = New-ScheduledTaskTrigger -AtStartup",
+		"$settings = New-ScheduledTaskSettingsSet -RestartCount 999 -RestartInterval (New-TimeSpan -Seconds 30)",
 		`Register-ScheduledTask -TaskName "${NAME}" -Action $action -Trigger $trigger -Settings $settings -User "SYSTEM" -RunLevel Highest`,
 	].join("\n"))
 }
