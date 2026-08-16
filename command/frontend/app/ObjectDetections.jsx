@@ -102,6 +102,7 @@ const ObjectDetectionsMini = () => {
 
 	return (
 		<CameraGridMini
+			title={t("detections.title")}
 			slots={slots}
 			onActivate={() => navigate("/objects")}
 			activateLabel={t("detections.openObjectDetections")}

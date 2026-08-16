@@ -270,6 +270,7 @@ const ClipMakerMini = () => {
 
 	return (
 		<CameraGridMini
+			title={t("clip.title")}
 			slots={slots}
 			onActivate={() => navigate("/clip")}
 			activateLabel={t("clip.openClipMaker")}

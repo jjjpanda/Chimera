@@ -120,7 +120,7 @@
 		"switchToSingleCamera": "Switch to single camera",
 		"timeRange": "Time Range",
 		"timeZoom": "Time Zoom",
-		"title": "clip maker",
+		"title": "Clip Maker",
 		"trimEnd": "Trim end",
 		"trimEndValue": "End {{value}}%",
 		"trimStart": "Trim start",
@@ -161,7 +161,7 @@
 		"scanResultFound_other": "Camera {{camera}}: {{count}} detections",
 		"scanningCamera": "Scanning camera {{camera}}…",
 		"scrubDetections": "Scrub detections",
-		"title": "object detection"
+		"title": "Object Detection"
 	},
 	"errors": {
 		"cannotDeleteLastAdmin": "Cannot delete the last admin",

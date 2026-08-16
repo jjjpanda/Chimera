@@ -5,6 +5,7 @@ import useStorageUsage from "../hooks/useStorageUsage.js"
 import StorageBreakdown from "./StorageBreakdown.jsx"
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
+import NavigateToRoute from "./NavigateToRoute.jsx"
 import formatBytes from "../js/formatBytes.js"
 import colors, { CHART_ACCENT } from "../js/colors.js"
 import { useRole } from "./AuthContext"
@@ -25,6 +26,7 @@ const StorageWidget = () => {
 		<Card className="h-full">
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="text-sm font-medium">{t("storage.usageTitle")}</CardTitle>
+				<NavigateToRoute to="/stats" />
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
 				{usage.cameras.length > 0 ? (
