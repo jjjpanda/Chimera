@@ -319,7 +319,7 @@ if (require.main === module) {
 	if (gitWarning) console.warn(`WARNING: ${gitWarning}`)
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
-	const run = () => process.argv.includes("--once") ? writeHeartbeat().then(refreshVersions).then(runOnce) : loop()
+	const run = () => process.argv.includes("--once") ? writeHeartbeat().then(() => refreshVersions()).then(runOnce) : loop()
 	if (dry) dryRun()
 	else if (problem) recoverOrFail(problem).then(recovered => recovered && run()).catch(({ message }) => fail(message))
 	else run().catch(({ message }) => fail(message))
