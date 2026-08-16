@@ -236,7 +236,7 @@ watchdog_INTERVAL_MS = 60000  # self-polling mode only, milliseconds, minimum 50
 watchdog_FAILURES = 3
 ```
 
-The container detects the watchdog through a heartbeat file written to the shared `chimera-update/` directory on every poll cycle.
+The container detects the watchdog through a heartbeat file written to the shared `chimera-update/` directory on every poll cycle. The panel considers the watchdog alive when the heartbeat is under 6 minutes old, so any polling interval must stay below that.
 
 `npm run watchdog:once` runs a single pass for cron, a systemd timer or Task Scheduler, keeping the failure count in `chimera/watchdog.state.json`:
 

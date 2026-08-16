@@ -79,7 +79,7 @@ Only the loopback set triggers actions — an internet outage cannot reboot a wo
 
 | file | writer | meaning |
 |---|---|---|
-| `heartbeat.json` | watchdog | proves the watchdog is alive; the panel enables the Update button when this is fresh |
+| `heartbeat.json` | watchdog | proves the watchdog is alive; the panel enables the Update button when this is under 6 minutes old (`HEARTBEAT_MAX_AGE_MS`) |
 | `request.json` | command | admin asked for an update |
 | `running.json` | watchdog | pull or rebuild in progress |
 | `result.json` | watchdog | outcome of the last update |
