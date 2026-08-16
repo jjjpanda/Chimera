@@ -72,7 +72,7 @@ Only the loopback set triggers actions — an internet outage cannot reboot a wo
 
 **Escalation** — after `watchdog_FAILURES` consecutive failures, alternates between container restart (`docker compose up -d --force-recreate`) and host reboot. State persists in `watchdog.state.json`, which is how `--once` carries context between runs.
 
-**Config** — running the process enables it; there is no separate flag. Bad config exits `1` (not `0`) so the operator knows supervision is down. The watchdog reads `process.env`, not `.env` — a systemd `Environment=` line is what it actually sees.
+**Config** — bad config exits `1` (not `0`) so the operator knows supervision is down. The watchdog reads `process.env`, not `.env` — a systemd `Environment=` line is what it actually sees.
 
 **Updates** — the admin panel triggers `git pull` + `docker:rebuild` through the watchdog, because `command` runs inside the container with no Docker socket or host shell. Communication happens via files in `chimera-update/`, defined in [updateBridge.js](../lib/utils/updateBridge.js):
 
