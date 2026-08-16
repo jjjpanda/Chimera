@@ -120,7 +120,7 @@
 		"switchToSingleCamera": "Переключиться на одну камеру",
 		"timeRange": "Диапазон времени",
 		"timeZoom": "Масштаб времени",
-		"title": "создание клипов",
+		"title": "Создание Клипов",
 		"trimEnd": "Обрезать конец",
 		"trimEndValue": "Конец {{value}}%",
 		"trimStart": "Обрезать начало",
@@ -163,7 +163,7 @@
 		"scanResultFound_other": "Камера {{camera}}: {{count}} обнаружения",
 		"scanningCamera": "Сканирование камеры {{camera}}…",
 		"scrubDetections": "Прокрутка обнаружений",
-		"title": "обнаружение объектов"
+		"title": "Обнаружение Объектов"
 	},
 	"errors": {
 		"cannotDeleteLastAdmin": "Невозможно удалить последнего администратора",

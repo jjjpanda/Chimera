@@ -120,7 +120,7 @@
 		"switchToSingleCamera": "Cambiar a cámara única",
 		"timeRange": "Rango de tiempo",
 		"timeZoom": "Zoom de tiempo",
-		"title": "creador de clips",
+		"title": "Creador de Clips",
 		"trimEnd": "Recortar fin",
 		"trimEndValue": "Fin {{value}}%",
 		"trimStart": "Recortar inicio",
@@ -162,7 +162,7 @@
 		"scanResultFound_other": "Cámara {{camera}}: {{count}} detecciones",
 		"scanningCamera": "Escaneando cámara {{camera}}…",
 		"scrubDetections": "Desplazar detecciones",
-		"title": "detección de objetos"
+		"title": "Detección de Objetos"
 	},
 	"errors": {
 		"cannotDeleteLastAdmin": "No se puede eliminar el último administrador",
