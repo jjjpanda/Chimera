@@ -15,13 +15,13 @@ jest.mock("../../lib/utils/webhookAlert.js", () => jest.fn(() => Promise.resolve
 const { spawnSync } = require("child_process")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { ROOT, ENV } = require("../preflight.js")
-const { DIR, REQUEST, RUNNING, RESULT, VERSION } = require("../../lib/utils/updateBridge.js")
-const { checkUpdateRequest, refreshVersions, recoverOrFail, UPDATE_INTERRUPTED, majorHeld, NO_PORT } = require("../watchdog.js")
+const { DIR, REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT } = require("../../lib/utils/updateBridge.js")
+const { checkUpdateRequest, refreshVersions, recoverOrFail, UPDATE_INTERRUPTED, majorHeld, NO_PORT, writeHeartbeat, gitRemoteReady } = require("../watchdog.js")
 const { version: LOCAL } = require("../../package.json")
 
 const write = (file, data) => fs.writeFileSync(file, JSON.stringify(data))
 const read = (file) => JSON.parse(fs.readFileSync(file, "utf8"))
-const clear = () => [REQUEST, RUNNING, RESULT, VERSION].forEach(file => fs.rmSync(file, { force: true }))
+const clear = () => [REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT].forEach(file => fs.rmSync(file, { force: true }))
 
 const bumped = (index) => LOCAL.split(".").map((n, i) => i === index ? Number(n) + 1 : i > index ? 0 : n).join(".")
 
@@ -279,5 +279,29 @@ describe("recoverOrFail", () => {
 		expect(await recoverOrFail(NO_PORT)).toBe(true)
 
 		expect(console.error).not.toHaveBeenCalled()
+	})
+})
+
+describe("writeHeartbeat", () => {
+	test("proves liveness with a timestamp and this process's pid", async () => {
+		await writeHeartbeat()
+
+		expect(read(HEARTBEAT)).toMatchObject({ at: expect.any(String), pid: process.pid })
+	})
+})
+
+describe("gitRemoteReady", () => {
+	test("warns when the repo has no origin remote", () => {
+		spawnSync.mockReturnValue({ status: 1 })
+
+		expect(gitRemoteReady()).toMatch(/no git remote configured/)
+	})
+
+	test("is silent once origin is configured, without touching the network", () => {
+		spawnSync.mockReturnValue({ status: 0, stdout: "git@github.com:example/chimera.git\n" })
+
+		expect(gitRemoteReady()).toBeNull()
+		expect(spawnSync).toHaveBeenCalledTimes(1)
+		expect(spawnSync.mock.calls[0]).toEqual(["git", ["remote", "get-url", "origin"], expect.objectContaining({ cwd: ROOT })])
 	})
 })

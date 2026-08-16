@@ -269,12 +269,8 @@ const runOnce = async () => {
 
 const writeHeartbeat = () => writeUpdate(HEARTBEAT, { at: new Date().toISOString(), pid: process.pid })
 
-const gitRemoteReady = () => {
-	const remote = git(["remote", "get-url", "origin"])
-	if (!remote) return "no git remote configured — updates will fail until one is added (`git remote add origin <url>`)"
-	if (git(["fetch", "--quiet"]) === null) return `cannot reach ${remote} — updates will fail until authentication is set up (SSH key or credential helper)`
-	return null
-}
+const gitRemoteReady = () =>
+	git(["remote", "get-url", "origin"]) ? null : "no git remote configured — updates will fail until one is added (`git remote add origin <url>`)"
 
 const loop = async () => {
 	const { intervalMs } = settings()

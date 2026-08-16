@@ -1,4 +1,5 @@
 const fs = require("fs")
+const os = require("os")
 const path = require("path")
 const ROOT = path.join(__dirname, "..")
 const NAME = "chimera-watchdog"
@@ -15,7 +16,7 @@ const systemd = () => {
 		"After=docker.service",
 		"",
 		"[Service]",
-		`User=${process.env.USER || process.env.USERNAME}`,
+		`User=${os.userInfo().username}`,
 		`WorkingDirectory=${ROOT}`,
 		`ExecStart=${NODE} ${SCRIPT}`,
 		"Restart=always",
