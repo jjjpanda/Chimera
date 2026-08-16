@@ -254,7 +254,7 @@ This generates the platform-native service config (systemd on Linux, launchd on 
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
-**Set up git authentication.** The watchdog runs `git pull` for updates, so the host account needs passwordless access to the remote (SSH key or credential helper). The watchdog warns at startup if it cannot reach the remote.
+**Set up git authentication.** The watchdog runs `git pull` for updates, so the host account needs passwordless access to the remote (SSH key or credential helper). The watchdog warns at startup only if no `origin` remote is configured at all — it never checks whether that remote is reachable or auth actually works.
 
 **Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. The watchdog warns about this at startup. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
 
