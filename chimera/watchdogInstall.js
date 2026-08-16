@@ -51,6 +51,10 @@ const launchd = () => {
 		"    <true/>",
 		"    <key>KeepAlive</key>",
 		"    <true/>",
+		"    <key>StandardOutPath</key>",
+		`    <string>${path.join(ROOT, "chimera-watchdog.log")}</string>`,
+		"    <key>StandardErrorPath</key>",
+		`    <string>${path.join(ROOT, "chimera-watchdog.log")}</string>`,
 		"</dict>",
 		"</plist>",
 	].join("\n") + "\n")

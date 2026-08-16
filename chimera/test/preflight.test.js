@@ -201,8 +201,9 @@ describe("varProblem", () => {
 	})
 
 	test("watchdog_INTERVAL_MS: above heartbeat freshness threshold → error", () => {
-		expect(varProblem(watchdogIntervalVar, "360001")).toMatch(/heartbeat/)
-		expect(varProblem(watchdogIntervalVar, "360000")).toBeNull()
+		expect(varProblem(watchdogIntervalVar, "360000")).toMatch(/heartbeat/)
+		expect(varProblem(watchdogIntervalVar, "300001")).toMatch(/heartbeat/)
+		expect(varProblem(watchdogIntervalVar, "300000")).toBeNull()
 	})
 
 	test("gateway_TRUST_PROXY: true, false or a hop count → null; anything else → error", () => {

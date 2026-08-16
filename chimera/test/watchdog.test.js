@@ -112,7 +112,7 @@ describe("settings", () => {
 
 	test("clamps an interval above the heartbeat freshness threshold", () => {
 		process.env.watchdog_INTERVAL_MS = String(HEARTBEAT_MAX_AGE_MS + 1)
-		expect(settings().intervalMs).toBe(HEARTBEAT_MAX_AGE_MS)
+		expect(settings().intervalMs).toBe(HEARTBEAT_MAX_AGE_MS - 60000)
 	})
 
 	// "0" is falsy, so `Number(value) || 3` would fall through to the default instead of clamping to 1

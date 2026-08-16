@@ -38,6 +38,8 @@ describe("watchdogInstall", () => {
 		expect(file).toBe(path.join(ROOT, "com.chimera.watchdog.plist"))
 		expect(contents).toContain(`<string>${SCRIPT}</string>`)
 		expect(contents).toContain("<key>RunAtLoad</key>")
+		expect(contents).toContain("<key>StandardOutPath</key>")
+		expect(contents).toContain("<key>StandardErrorPath</key>")
 		expect(console.log).toHaveBeenCalledWith(expect.stringContaining("launchctl load"))
 	})
 
