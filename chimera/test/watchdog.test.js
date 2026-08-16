@@ -32,6 +32,7 @@ const { spawnSync } = require("child_process")
 const { runCompose } = require("../compose.js")
 const webhookAlert = require("../../lib/utils/webhookAlert.js")
 const { WATCHDOG_MIN_INTERVAL_MS, watchdogHostWarning } = require("../preflight.js")
+const { HEARTBEAT_MAX_AGE_MS } = require("../../lib/utils/updateBridge.js")
 const { checkUrl, reachUrl, configProblem, envProblem, envLines, settings, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL } = require("../watchdog.js")
 
 const healthy = () => Promise.resolve({ ok: true, status: 200 })
@@ -107,6 +108,11 @@ describe("settings", () => {
 		expect(settings().intervalMs).toBe(30000)
 		delete process.env.watchdog_INTERVAL_MS
 		expect(settings().intervalMs).toBe(60000)
+	})
+
+	test("clamps an interval above the heartbeat freshness threshold", () => {
+		process.env.watchdog_INTERVAL_MS = String(HEARTBEAT_MAX_AGE_MS + 1)
+		expect(settings().intervalMs).toBe(HEARTBEAT_MAX_AGE_MS)
 	})
 
 	// "0" is falsy, so `Number(value) || 3` would fall through to the default instead of clamping to 1

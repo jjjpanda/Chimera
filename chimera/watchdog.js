@@ -9,7 +9,7 @@ const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
-const { REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT, majorBump } = require("../lib/utils/updateBridge.js")
+const { REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT, HEARTBEAT_MAX_AGE_MS, majorBump } = require("../lib/utils/updateBridge.js")
 
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
@@ -30,7 +30,7 @@ const envLines =(env = process.env) => ["gateway_HOST"].map(k => `${k} = ${env[k
 const numOrDefault = (value, fallback) => value && !Number.isNaN(Number(value)) ? Number(value) : fallback
 
 const settings = () => ({
-	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, numOrDefault(process.env.watchdog_INTERVAL_MS, 60000)),
+	intervalMs: Math.min(HEARTBEAT_MAX_AGE_MS, Math.max(WATCHDOG_MIN_INTERVAL_MS, numOrDefault(process.env.watchdog_INTERVAL_MS, 60000))),
 	threshold: Math.max(1, numOrDefault(process.env.watchdog_FAILURES, 3))
 })
 

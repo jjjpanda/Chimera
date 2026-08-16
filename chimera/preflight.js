@@ -33,6 +33,7 @@ const MOTION_EXAMPLE = path.join(ROOT, "motion.conf.example")
 const CAM_DIR = path.join(ROOT, "cameraconf")
 
 const WATCHDOG_MIN_INTERVAL_MS = 5000
+const { HEARTBEAT_MAX_AGE_MS } = require("../lib/utils/updateBridge.js")
 
 const CHECK_ONLY = process.argv.includes("--check") || (!process.stdin.isTTY && !process.argv.includes("--interactive"))
 const OK = "✓", BAD = "✗"
@@ -130,6 +131,7 @@ const varProblem = (v, val) => {
 	if (v.key === "object_ALERT_ON" && !["true", "text", "false"].includes(val)) return `must be true, text, or false (got "${val}")`
 	if (v.key === "watchdog_FAILURES" && !(/^\d+$/.test(val) && Number(val) >= 1)) return `must be an integer >= 1 (got "${val}")`
 	if (v.key === "watchdog_INTERVAL_MS" && !(/^\d+$/.test(val) && Number(val) >= WATCHDOG_MIN_INTERVAL_MS)) return `must be milliseconds, an integer >= ${WATCHDOG_MIN_INTERVAL_MS} — 60 is 60ms, not a minute (got "${val}")`
+	if (v.key === "watchdog_INTERVAL_MS" && Number(val) > HEARTBEAT_MAX_AGE_MS) return `must stay at or below ${HEARTBEAT_MAX_AGE_MS}ms (the heartbeat freshness threshold) (got "${val}")`
 	if (isSecret(v.key) && val.length < 32) return `must be at least 32 characters (got ${val.length})`
 	const t = typeOf(v.key, v.placeholder)
 	if (t === "bool" && val !== "true" && val !== "false") return `must be true or false (got "${val}")`
