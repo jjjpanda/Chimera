@@ -24,7 +24,7 @@ test.describe("navigation", () => {
 	test("opens the objects page", async ({ page }) => {
 		await page.getByRole("button", { name: "Objects" }).click()
 		await expect(page).toHaveURL(/\/objects$/)
-		await expect(page.getByText("object detection")).toBeVisible()
+		await expect(page.getByText("Object Detection")).toBeVisible()
 	})
 
 	test("admin can open the user management page", async ({ page }) => {

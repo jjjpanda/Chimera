@@ -1,13 +1,25 @@
 import React from "react"
-import { ImageOff } from "lucide-react"
+import { ImageOff, Maximize2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Card } from "./ui/card"
 
-const CameraGridMini = ({ slots, renderCell, cellLabel, onCellClick, centerIcon, onActivate, activateLabel }) => {
+const CameraGridMini = ({ slots, renderCell, cellLabel, onCellClick, centerIcon, onActivate, activateLabel, title }) => {
 	const { t } = useTranslation()
 
 	return (
 		<Card className="h-full overflow-hidden cursor-pointer select-none transition-shadow" onClick={onActivate}>
+			{title && (
+				<div className="flex h-9 items-center justify-between bg-surface-raised px-3">
+					<span className="text-sm font-medium text-primary">{title}</span>
+					<button
+						type="button"
+						onClick={(e) => { e.stopPropagation(); onActivate() }}
+						className="flex items-center justify-center size-7 rounded-md text-muted transition-colors hover:text-primary hover:bg-surface"
+					>
+						<Maximize2 className="size-4" />
+					</button>
+				</div>
+			)}
 			<div className="relative flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-border min-h-0 h-full">
 				{slots.map((slot, i) => (
 					<div
