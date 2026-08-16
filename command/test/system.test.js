@@ -73,7 +73,7 @@ describe("System Routes", () => {
 		})
 
 		test("reports watchdog disabled when heartbeat is stale", async () => {
-			mockFiles[HEARTBEAT] = { at: new Date(Date.now() - 200000).toISOString(), pid: 1234 }
+			mockFiles[HEARTBEAT] = { at: new Date(Date.now() - 400000).toISOString(), pid: 1234 }
 			const res = await as(supertest(app).get("/system/update"))
 			expect(res.body.watchdogEnabled).toBe(false)
 		})
