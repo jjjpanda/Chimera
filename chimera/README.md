@@ -53,11 +53,12 @@ npm run preflight -- --check # CI mode, exits 1 if blocked
 ---
 # watchdog.js — `npm run watchdog`
 
-Host-side liveness check. Does not supervise itself — use cron (`--once`) or systemd. Setup is in the root [README](../README.md) under *Watchdog*.
+Host-side liveness check. Does not supervise itself — install it as a boot service with `npm run watchdog:install`. Setup is in the root [README](../README.md) under *Watchdog*.
 
 ```
 npm run watchdog              # self-polling
 npm run watchdog:once         # one pass, then exit
+npm run watchdog:install      # generate boot service config
 npm run watchdog -- --dry-run # print what it would do
 ```
 

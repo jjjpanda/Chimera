@@ -21,3 +21,5 @@ command/playwright-report
 __pycache__
 chimera/watchdog.state.json
 chimera-update
+chimera-watchdog.service
+com.chimera.watchdog.plist

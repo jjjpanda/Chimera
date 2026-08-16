@@ -244,34 +244,13 @@ The container detects the watchdog through a heartbeat file written to the share
 */5 * * * * cd /opt/chimera && /usr/bin/npm run watchdog:once >> /var/log/chimera-watchdog.log 2>&1
 ```
 
-`npm run watchdog` polls on its own timer instead. It is an ordinary foreground process: it ends when the terminal closes, and nothing brings it back after the reboot it just caused. Give it a supervisor that starts at boot.
-
-```ini
-# /etc/systemd/system/chimera-watchdog.service — then: sudo systemctl enable --now chimera-watchdog
-[Unit]
-Description=Chimera host watchdog
-Requires=docker.service
-After=docker.service
-
-[Service]
-User=chimera
-WorkingDirectory=/opt/chimera
-ExecStart=/usr/bin/npm run watchdog
-Restart=always
-RestartSec=30
-
-[Install]
-WantedBy=multi-user.target
-```
-
-pm2 does the same on any platform, macOS and Windows included:
+`npm run watchdog` polls on its own timer instead. It is an ordinary foreground process: it ends when the terminal closes, and nothing brings it back after the reboot it just caused. Install it as a boot service:
 
 ```bash
-pm2 start npm --name chimera-watchdog -- run watchdog
-pm2 save && pm2 startup   # run the command pm2 startup prints
+npm run watchdog:install
 ```
 
-A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` and any variable exported before pm2 starts win over `.env`, because dotenv never overwrites a variable that is already set.
+This generates the platform-native service config (systemd on Linux, launchd on macOS) or prints the PowerShell command for Windows Task Scheduler, then tells you what to run to enable it.
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
