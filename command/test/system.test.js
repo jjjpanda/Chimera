@@ -5,7 +5,6 @@ const path = require("path")
 process.env.SECRETKEY = "test-secret"
 process.env.command_COOKIE_SECURE = "false"
 process.env.CHIMERA_UPDATE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "chimera-update-"))
-process.env.watchdog_ON = "true"
 
 jest.mock("pg")
 jest.mock("pm2")
@@ -30,7 +29,7 @@ const supertest = require("supertest")
 const jwt = require("jsonwebtoken")
 const app = require("../backend/command.js")
 const { auth, updateBridge } = require("lib")
-const { REQUEST, RUNNING, RESULT, VERSION } = updateBridge
+const { REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT } = updateBridge
 const { version: RUNNING_VERSION } = require("../../package.json")
 
 const { mockedPool } = require("pg")
@@ -62,18 +61,25 @@ describe("System Routes", () => {
 			expect(res.status).toBe(403)
 		})
 
-		test("reports watchdog disabled when watchdog_ON is not true", async () => {
-			const prev = process.env.watchdog_ON
-			process.env.watchdog_ON = "false"
-			try {
-				const res = await as(supertest(app).get("/system/update"))
-				expect(res.body.watchdogEnabled).toBe(false)
-			} finally {
-				process.env.watchdog_ON = prev
-			}
+		test("reports watchdog disabled when no heartbeat file exists", async () => {
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.watchdogEnabled).toBe(false)
+		})
+
+		test("reports watchdog enabled when heartbeat is fresh", async () => {
+			mockFiles[HEARTBEAT] = { at: new Date().toISOString(), pid: 1234 }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.watchdogEnabled).toBe(true)
+		})
+
+		test("reports watchdog disabled when heartbeat is stale", async () => {
+			mockFiles[HEARTBEAT] = { at: new Date(Date.now() - 200000).toISOString(), pid: 1234 }
+			const res = await as(supertest(app).get("/system/update"))
+			expect(res.body.watchdogEnabled).toBe(false)
 		})
 
 		test("reports idle with nothing on the bridge", async () => {
+			mockFiles[HEARTBEAT] = { at: new Date().toISOString(), pid: 1234 }
 			const res = await as(supertest(app).get("/system/update"))
 			expect(res.status).toBe(200)
 			expect(res.body).toEqual({
@@ -127,6 +133,8 @@ describe("System Routes", () => {
 	})
 
 	describe("POST /system/update", () => {
+		beforeEach(() => { mockFiles[HEARTBEAT] = { at: new Date().toISOString(), pid: 1234 } })
+
 		test("returns 401 with no token", async () => {
 			const res = await supertest(app).post("/system/update")
 			expect(res.status).toBe(401)
@@ -172,17 +180,12 @@ describe("System Routes", () => {
 			expect(mockFiles[REQUEST]).toBeUndefined()
 		})
 
-		test("refuses an update when watchdog is off", async () => {
-			const prev = process.env.watchdog_ON
-			process.env.watchdog_ON = "false"
-			try {
-				const res = await as(supertest(app).post("/system/update"))
-				expect(res.status).toBe(409)
-				expect(res.body).toEqual({ error: true, errors: "WATCHDOG_DISABLED" })
-				expect(mockFiles[REQUEST]).toBeUndefined()
-			} finally {
-				process.env.watchdog_ON = prev
-			}
+		test("refuses an update when watchdog has no heartbeat", async () => {
+			delete mockFiles[HEARTBEAT]
+			const res = await as(supertest(app).post("/system/update"))
+			expect(res.status).toBe(409)
+			expect(res.body).toEqual({ error: true, errors: "WATCHDOG_DISABLED" })
+			expect(mockFiles[REQUEST]).toBeUndefined()
 		})
 
 		// an unwritable bridge means the watchdog never sees the request, so the panel must not claim success

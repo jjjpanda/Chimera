@@ -36,7 +36,7 @@
 			"versionAvailable": "Versión {{from}}, {{to}} disponible.",
 			"versionCurrent": "Versión {{current}}, actualizada.",
 			"versionMajor": "Versión {{from}}, {{to}} disponible: una versión mayor.",
-			"watchdogOff": "El watchdog del host no está en ejecución. Active watchdog_ON para usar la actualización automática."
+			"watchdogOff": "El watchdog del host no está en ejecución. Inícielo en el host para usar la actualización automática."
 		},
 		"updateUserFailed": "Error al actualizar usuario",
 		"userCreated": "Usuario creado. Comparte esta contraseña temporal con él:",

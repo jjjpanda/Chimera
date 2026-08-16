@@ -232,10 +232,11 @@ Your first successful login leaves a second cookie in that browser for a year. I
 A service with `<name>_PROXY_ON=true` but `<name>_ON=false` runs on another box: the gateway proxies it, but no restart or reboot here can fix it, so the watchdog leaves it to the heartbeat.
 
 ```
-watchdog_ON = true            # off by default
 watchdog_INTERVAL_MS = 60000  # self-polling mode only, milliseconds, minimum 5000
 watchdog_FAILURES = 3
 ```
+
+Running the watchdog process is what enables it — there is no separate flag. The container detects the watchdog through a heartbeat file written to the shared `chimera-update/` directory on every poll cycle.
 
 `npm run watchdog:once` runs a single pass for cron, a systemd timer or Task Scheduler, keeping the failure count in `chimera/watchdog.state.json`:
 
@@ -274,7 +275,9 @@ A supervisor unit sets its own environment. `Environment=`, `EnvironmentFile=` a
 
 `npm run watchdog -- --dry-run` prints the restart command, the reboot command and the URLs it would poll, then exits 0 without running anything.
 
-**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. Preflight and the watchdog's own startup both warn about this once `watchdog_ON=true`. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
+**Set up git authentication.** The watchdog runs `git pull` for updates, so the host account needs passwordless access to the remote (SSH key or credential helper). The watchdog warns at startup if it cannot reach the remote.
+
+**Give `gateway_HOST` an explicit scheme.** Without one it reads as `https://`, so a plain-HTTP deploy fails every reachability poll and alerts you to an outage that is not happening. The watchdog warns about this at startup. If your certificate is self-signed or issued by a private CA, node's `fetch` rejects it too; point `NODE_EXTRA_CA_CERTS` at the certificate in the watchdog's environment. Neither fault can restart or reboot anything.
 
 Only services with `<name>_PROXY_ON=true` **and** `<name>_ON=true` are polled. The gateway routes no health path for the others, so polling them would treat an intentional opt-out as an outage.
 
@@ -296,7 +299,7 @@ Check the path with `command -v systemctl` — sudoers matches it literally, and
 
 Windows needs an elevated shell, or a Scheduled Task set to run with highest privileges.
 
-**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. With `watchdog_ON=false`, or with a watchdog that cannot write that directory, the button reports the request and nothing ever happens. Whatever is on the tracked branch goes live and the stack is down for the rebuild. The panel names the version on offer against the one running; a major bump is refused until an admin confirms it, a minor one is only pointed out. [chimera/README.md](chimera/README.md) has the file flow.
+**It also runs the admin panel's update button.** *Admin → System Update* pulls the latest code and rebuilds the stack, and the watchdog is what carries that out: the panel runs inside the container, which has no checkout, no Docker socket and no host shell, so it leaves a request on the shared `chimera-update/` directory instead. Without a running watchdog, the button is disabled — the panel detects the watchdog through its heartbeat file. Whatever is on the tracked branch goes live and the stack is down for the rebuild. The panel names the version on offer against the one running; a major bump is refused until an admin confirms it, a minor one is only pointed out. [chimera/README.md](chimera/README.md) has the file flow.
 
 </details>
 

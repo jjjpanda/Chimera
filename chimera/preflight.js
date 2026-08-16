@@ -267,11 +267,10 @@ const PRIVATE_SUFFIX = /\.(lan|local|internal|intranet|home\.arpa)$/i
 const privateHostname = (host) => !!host && (isIpLiteral(host) || !host.includes(".") || PRIVATE_SUFFIX.test(host))
 
 const watchdogHostWarning = (lines) => {
-	if (getVal(lines, "watchdog_ON") !== "true") return null
-	if (schemelessHost(lines)) return "WARNING: watchdog_ON=true and gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
+	if (schemelessHost(lines)) return "WARNING: gateway_HOST has no scheme, so the reachability check tries https://. On a plain-HTTP deploy it reports the site unreachable on every poll — give gateway_HOST an explicit http:// or https:// prefix. If the certificate is self-signed or from a private CA, point NODE_EXTRA_CA_CERTS at it, or node's fetch rejects it"
 	const url = gatewayUrl(lines)
 	return urlPart(url, "protocol") === "https:" && privateHostname(urlPart(url, "hostname"))
-		? "WARNING: watchdog_ON=true and gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the reachability check reports the site unreachable every time — point NODE_EXTRA_CA_CERTS at the CA that signed it"
+		? "WARNING: gateway_HOST is https:// on a name no public CA issues for, so the certificate is self-signed or from a private CA. Node's fetch rejects it (UNABLE_TO_VERIFY_LEAF_SIGNATURE) on every poll, and the reachability check reports the site unreachable every time — point NODE_EXTRA_CA_CERTS at the CA that signed it"
 		: null
 }
 
@@ -340,7 +339,7 @@ const redirectWarnings = (lines) => {
 	return [httpsRedirectLoopWarning(lines, pair), certUnreadableWarning(lines, pair), httpsRedirectPortWarning(lines)].filter(Boolean)
 }
 
-const warnings = (lines) => [...redirectWarnings(lines), watchdogHostWarning(lines)].filter(Boolean)
+const warnings = (lines) => [...redirectWarnings(lines)].filter(Boolean)
 
 const certbotPortProblem = (lines) =>
 	getVal(lines, "certbot_ON") === "true" && getVal(lines, "gateway_PORT") !== "80"

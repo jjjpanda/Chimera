@@ -9,7 +9,7 @@ const { healthChecks, loopbackHost } = require("../lib/utils/healthChecks.js")
 const gatewayHost = require("../lib/utils/gatewayHost.js")
 const webhookAlert = require("../lib/utils/webhookAlert.js")
 const { readJSON, writeJSON } = require("../lib/utils/jsonFileHandling.js")
-const { REQUEST, RUNNING, RESULT, VERSION, majorBump } = require("../lib/utils/updateBridge.js")
+const { REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT, majorBump } = require("../lib/utils/updateBridge.js")
 
 const STAGES = ["restart", "reboot"]
 const STATE_FILE = path.join(__dirname, "watchdog.state.json")
@@ -19,18 +19,17 @@ const NO_REBOOT = `no reboot command known for platform ${process.platform} — 
 const NOTHING_TO_POLL = "no service has both *_ON=true and *_PROXY_ON=true — nothing runs on this host that the gateway routes a health endpoint for"
 const NO_PORT = "gateway_PORT is not a usable port — the restart and reboot stages poll the stack at http://127.0.0.1:<gateway_PORT>, so without it every poll would read as an outage and reboot a healthy host"
 const NO_HOST = "gateway_HOST is empty — nothing to try for the reachability alert; restart and reboot are unaffected"
-const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? message}) and watchdog_ON is not set in the environment either — every setting reads as unset, and the watchdog would exit clean while polling nothing`
+const unreadableEnv = ({ code, message }) => `cannot read ${ENV} (${code ?? message}) — settings from .env are unavailable; gateway_PORT and other variables must come from the environment`
 
 const checkUrl = () => healthChecks({ localOnly: true, base: loopbackHost() })
 
 const reachUrl = () => (gatewayHost() ? healthChecks({ localOnly: true }) : {})
 
-const envLines =(env = process.env) => ["watchdog_ON", "gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
+const envLines =(env = process.env) => ["gateway_HOST"].map(k => `${k} = ${env[k] ?? ""}`)
 
 const numOrDefault = (value, fallback) => value && !Number.isNaN(Number(value)) ? Number(value) : fallback
 
 const settings = () => ({
-	enabled: process.env.watchdog_ON === "true",
 	intervalMs: Math.max(WATCHDOG_MIN_INTERVAL_MS, numOrDefault(process.env.watchdog_INTERVAL_MS, 60000)),
 	threshold: Math.max(1, numOrDefault(process.env.watchdog_FAILURES, 3))
 })
@@ -268,9 +267,19 @@ const runOnce = async () => {
 	if (!await act(stage, failed) && stage === STAGES[0]) await resetCounts(state, state.stage)
 }
 
+const writeHeartbeat = () => writeUpdate(HEARTBEAT, { at: new Date().toISOString(), pid: process.pid })
+
+const gitRemoteReady = () => {
+	const remote = git(["remote", "get-url", "origin"])
+	if (!remote) return "no git remote configured — updates will fail until one is added (`git remote add origin <url>`)"
+	if (git(["fetch", "--quiet"]) === null) return `cannot reach ${remote} — updates will fail until authentication is set up (SSH key or credential helper)`
+	return null
+}
+
 const loop = async () => {
 	const { intervalMs } = settings()
 	for (;;) {
+		await writeHeartbeat()
 		await refreshVersions()
 		await runOnce()
 		await new Promise(resolve => setTimeout(resolve, intervalMs))
@@ -285,24 +294,19 @@ const dryRun = () => {
 	console.log(Object.values(reachUrl()).join("\n") || (gatewayHost() ? NOTHING_TO_POLL : NO_HOST))
 }
 
-const envProblem = (error = envError, env = process.env) => error && !env.watchdog_ON ? unreadableEnv(error) : null
+const envProblem = (error = envError) => error ? unreadableEnv(error) : null
 
 // an update can fix the problem (eg. a bad .env), so the loop restarts instead of exiting on a problem that no longer exists
 const recoverOrFail = async (problem) => {
-	if (settings().enabled) await checkUpdateRequest()
+	await checkUpdateRequest()
 	require("dotenv").config({ path: ENV, override: true })
 	if (configProblem()) return fail(problem)
-	if (!settings().enabled) {
-		console.log("watchdog_ON is not true — nothing to do")
-		return false
-	}
 	return true
 }
 
 const configProblem = () => {
 	const unreadable = envProblem()
-	if (unreadable) return unreadable
-	if (!settings().enabled) return null
+	if (unreadable) console.warn(unreadable)
 	if (!loopbackHost()) return NO_PORT
 	return Object.keys(checkUrl()).length ? null : NOTHING_TO_POLL
 }
@@ -310,14 +314,15 @@ const configProblem = () => {
 if (require.main === module) {
 	const hostWarning = watchdogHostWarning(envLines())
 	if (hostWarning) console.warn(hostWarning)
-	if (settings().enabled && !gatewayHost()) console.warn(NO_HOST)
+	if (!gatewayHost()) console.warn(NO_HOST)
+	const gitWarning = gitRemoteReady()
+	if (gitWarning) console.warn(`WARNING: ${gitWarning}`)
 	const dry = process.argv.includes("--dry-run")
 	const problem = dry ? null : configProblem()
-	const run = () => process.argv.includes("--once") ? refreshVersions().then(runOnce) : loop()
+	const run = () => process.argv.includes("--once") ? writeHeartbeat().then(refreshVersions).then(runOnce) : loop()
 	if (dry) dryRun()
 	else if (problem) recoverOrFail(problem).then(recovered => recovered && run()).catch(({ message }) => fail(message))
-	else if (!settings().enabled) console.log("watchdog_ON is not true — nothing to do")
 	else run().catch(({ message }) => fail(message))
 }
 
-module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions, recoverOrFail }
+module.exports = { STAGES, NO_HOST, NO_PORT, NOTHING_TO_POLL, UPDATE_INTERRUPTED, majorHeld, checkUrl, reachUrl, configProblem, envProblem, envLines, settings, poll, rebootCommand, privileged, nextStage, runOnce, restart, reboot, dryRun, checkUpdateRequest, refreshVersions, recoverOrFail, writeHeartbeat, gitRemoteReady }

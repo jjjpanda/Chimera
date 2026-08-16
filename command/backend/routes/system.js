@@ -2,7 +2,7 @@ var express = require("express")
 const memory = require("memory")
 const { auth, updateBridge, jsonFileHanding } = require("lib")
 const { requireAdmin } = auth
-const { REQUEST, RUNNING, RESULT, VERSION, bumpKind } = updateBridge
+const { REQUEST, RUNNING, RESULT, VERSION, HEARTBEAT, HEARTBEAT_MAX_AGE_MS, bumpKind } = updateBridge
 const { version: running } = require("../../../package.json")
 const { readJSON, writeJSON } = jsonFileHanding
 const { pool } = require("./lib/auth.js")
@@ -19,10 +19,14 @@ const versions = async () => {
 	return { ...pair, checkedAt: published?.at ?? null, bump: bumpKind(pair) }
 }
 
-const watchdogEnabled = () => process.env.watchdog_ON === "true"
+const watchdogAlive = async () => {
+	const hb = await read(HEARTBEAT)
+	if (!hb?.at) return false
+	return Date.now() - Date.parse(hb.at) < HEARTBEAT_MAX_AGE_MS
+}
 
 const status = async () => {
-	const [marker, request, last, version] = await Promise.all([read(RUNNING), read(REQUEST), read(RESULT), versions()])
+	const [marker, request, last, version, alive] = await Promise.all([read(RUNNING), read(REQUEST), read(RESULT), versions(), watchdogAlive()])
 	const active = marker ?? request
 	return {
 		state: marker ? "running" : request ? "pending" : "idle",
@@ -30,7 +34,7 @@ const status = async () => {
 		requestedBy: active?.requestedBy ?? null,
 		last: last ?? null,
 		version,
-		watchdogEnabled: watchdogEnabled()
+		watchdogEnabled: alive
 	}
 }
 
@@ -68,7 +72,7 @@ app.get("/update", authorize, requireAdmin, async (req, res) => {
 
 app.post("/update", authorize, requireAdmin, async (req, res) => {
 	try {
-		if (!watchdogEnabled()) return res.status(409).json({ error: true, errors: "WATCHDOG_DISABLED" })
+		if (!await watchdogAlive()) return res.status(409).json({ error: true, errors: "WATCHDOG_DISABLED" })
 		await serialized(async () => {
 			const release = await acquireLock()
 			if (!release) return res.status(409).json({ error: true, errors: "UPDATE_IN_PROGRESS" })

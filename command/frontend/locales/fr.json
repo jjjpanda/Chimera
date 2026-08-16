@@ -36,7 +36,7 @@
 			"versionAvailable": "Version {{from}}, {{to}} disponible.",
 			"versionCurrent": "Version {{current}}, à jour.",
 			"versionMajor": "Version {{from}}, {{to}} disponible — une version majeure.",
-			"watchdogOff": "Le watchdog de l'hôte n'est pas actif. Activez watchdog_ON pour utiliser la mise à jour automatique."
+			"watchdogOff": "Le watchdog de l'hôte n'est pas actif. Démarrez-le sur l'hôte pour utiliser la mise à jour automatique."
 		},
 		"updateUserFailed": "Échec de la mise à jour de l'utilisateur",
 		"userCreated": "Utilisateur créé. Communiquez-lui ce mot de passe temporaire :",

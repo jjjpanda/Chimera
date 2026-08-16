@@ -238,12 +238,11 @@ describe("versions", () => {
 })
 
 describe("recoverOrFail", () => {
-	const ENV_KEYS = ["watchdog_ON", "gateway_PORT", "command_ON", "command_PROXY_ON"]
+	const ENV_KEYS = ["gateway_PORT", "command_ON", "command_PROXY_ON"]
 	let saved
 
 	beforeEach(() => {
 		saved = Object.fromEntries(ENV_KEYS.map(k => [k, process.env[k]]))
-		process.env.watchdog_ON = "true"
 		process.env.command_ON = "true"
 		process.env.command_PROXY_ON = "true"
 	})

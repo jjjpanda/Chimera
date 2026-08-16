@@ -624,41 +624,40 @@ describe("watchdogHostWarning", () => {
 	const lines = (o) => Object.entries(o).map(([k, v]) => `${k} = ${v}`)
 
 	test("fires on a scheme-less host — normalizeHost reads it as https, so a plain-HTTP deploy alerts on every poll", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reports the site unreachable/)
+		expect(watchdogHostWarning(lines({ gateway_HOST: "192.168.1.50:8080" }))).toMatch(/reports the site unreachable/)
 	})
 
 	test("no warning claims a gateway_HOST fault reboots the host", () => {
 		for (const host of ["192.168.1.50:8080", "https://chimera.lan", "https://192.168.1.50"]) {
-			expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: host })) ?? "").not.toMatch(/reboot/)
+			expect(watchdogHostWarning(lines({ gateway_HOST: host })) ?? "").not.toMatch(/reboot/)
 		}
 	})
 
 	test("an explicit scheme rules it out, either way", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "http://192.168.1.50:8080" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "https://cam.example.com" }))).toBeNull()
 	})
 
-	test("never fires while the watchdog is off — nothing polls, so nothing reboots", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "false", gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
-		expect(watchdogHostWarning(lines({ gateway_HOST: "192.168.1.50:8080" }))).toBeNull()
+	test("no warning when gateway_HOST is absent", () => {
+		expect(watchdogHostWarning(lines({}))).toBeNull()
 	})
 
 	test("names NODE_EXTRA_CA_CERTS, since node's fetch rejects the self-signed pair the FILEPATH vars allow", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "cam.example.com" }))).toMatch(/NODE_EXTRA_CA_CERTS/)
+		expect(watchdogHostWarning(lines({ gateway_HOST: "cam.example.com" }))).toMatch(/NODE_EXTRA_CA_CERTS/)
 	})
 
 	test("fires on an explicit https:// host no public CA issues for", () => {
 		for (const host of ["https://cam.lan", "https://chimera", "https://192.168.1.50:8443", "https://nvr.internal"]) {
-			expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: host }))).toMatch(/NODE_EXTRA_CA_CERTS/)
+			expect(watchdogHostWarning(lines({ gateway_HOST: host }))).toMatch(/NODE_EXTRA_CA_CERTS/)
 		}
 	})
 
 	test("a publicly resolvable https:// host stays quiet — its certificate chains to a public CA", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "https://cam.example.com" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "https://cam.example.com" }))).toBeNull()
 	})
 
 	test("http:// on a private name stays quiet", () => {
-		expect(watchdogHostWarning(lines({ watchdog_ON: "true", gateway_HOST: "http://cam.lan" }))).toBeNull()
+		expect(watchdogHostWarning(lines({ gateway_HOST: "http://cam.lan" }))).toBeNull()
 	})
 })
 

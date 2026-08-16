@@ -449,68 +449,49 @@ describe("dryRun", () => {
 describe("configProblem", () => {
 	afterEach(() => {
 		process.env.gateway_PORT = "8080"
-		delete process.env.watchdog_ON
 	})
 
-	test("an enabled watchdog with a clean config has nothing to report", () => {
-		process.env.watchdog_ON = "true"
+	test("a clean config has nothing to report", () => {
 		expect(configProblem()).toBeNull()
 	})
 
 	test("an unusable gateway_PORT is a startup error, not six failed polls", () => {
-		process.env.watchdog_ON = "true"
 		process.env.gateway_PORT = ""
 		expect(configProblem()).toBe(NO_PORT)
 	})
 
 	test("an empty gateway_HOST does not block startup — it costs the alert and nothing else", () => {
-		process.env.watchdog_ON = "true"
 		process.env.gateway_HOST = ""
 		expect(configProblem()).toBeNull()
 	})
 
 	test("polling nothing is a startup error too — the host would look supervised while nothing is watched", () => {
-		process.env.watchdog_ON = "true"
 		for (const s of SERVICES) process.env[`${s}_PROXY_ON`] = "false"
 		expect(configProblem()).toBe(NOTHING_TO_POLL)
 		for (const s of SERVICES) process.env[`${s}_PROXY_ON`] = "true"
 	})
-
-	test("a disabled watchdog reports nothing — there is nothing to misconfigure", () => {
-		process.env.watchdog_ON = "false"
-		process.env.gateway_PORT = ""
-		expect(configProblem()).toBeNull()
-	})
 })
 
-// dotenv discards read errors, so an unreadable .env leaves every setting unset. Without this the
-// process prints "watchdog_ON is not true", exits 0, and the operator believes the host is supervised
 describe("envProblem", () => {
 	const denied = Object.assign(new Error("EACCES"), { code: "EACCES" })
 
-	test("an unreadable .env is fatal when the environment does not carry the settings either", () => {
-		expect(envProblem(denied, {})).toMatch(/cannot read .*EACCES/)
-	})
-
-	test("stays quiet when the settings arrive from the supervisor instead of the file", () => {
-		expect(envProblem(denied, { watchdog_ON: "true" })).toBeNull()
+	test("an unreadable .env is reported so the operator knows settings come from defaults", () => {
+		expect(envProblem(denied)).toMatch(/cannot read .*EACCES/)
 	})
 
 	test("a readable .env is never a problem", () => {
-		expect(envProblem(null, {})).toBeNull()
+		expect(envProblem(null)).toBeNull()
 	})
 })
 
-// a systemd Environment= or an exported shell var beats .env, and the scheme warning has to see it
 describe("scheme warning source", () => {
 	test("reads what process.env holds, not the .env file", () => {
-		expect(watchdogHostWarning(envLines({ watchdog_ON: "true", gateway_HOST: "chimera.lan" })))
+		expect(watchdogHostWarning(envLines({ gateway_HOST: "chimera.lan" })))
 			.toContain("no scheme")
-		expect(watchdogHostWarning(envLines({ watchdog_ON: "true", gateway_HOST: "http://chimera.lan" }))).toBeNull()
-		expect(watchdogHostWarning(envLines({ gateway_HOST: "chimera.lan" }))).toBeNull()
+		expect(watchdogHostWarning(envLines({ gateway_HOST: "http://chimera.lan" }))).toBeNull()
 	})
 
 	test("an unset key reads as empty, not as the string undefined", () => {
-		expect(envLines({})).toEqual(["watchdog_ON = ", "gateway_HOST = "])
+		expect(envLines({})).toEqual(["gateway_HOST = "])
 	})
 })
