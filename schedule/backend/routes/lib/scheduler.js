@@ -241,9 +241,7 @@ const runTask = ({ id, url, body }) => {
 			[id, url, deferred ? "deferred" : "success"]
 		).catch(err => console.log("RUN INSERT ERROR", err))
 	}).catch(({response, message}) => {
-		if (url !== "/file/pathAutoClean") {
-			webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
-		}
+		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ❌ \nerror ${message} | code ${response?.status}`)
 		console.log(`code ${response?.status} | error ${message}`)
 		pool.query(
 			"INSERT INTO task_runs (task_id, url, status, http_status, error) VALUES ($1, $2, 'failure', $3, $4)",
