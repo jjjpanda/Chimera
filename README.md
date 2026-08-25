@@ -58,7 +58,7 @@ Each service is toggled by `<prefix>_ON`, except the gateway — it publishes th
 **What you need on your machine:**
 
 - **Docker**, with Compose **v2.23.1 or newer** (`docker compose version`). Older ones cannot read `secrets.environment`.
-  - **Windows users:** Install Docker Engine inside a WSL2 distro (like Ubuntu) rather than using Docker Desktop. You will need a `.wslconfig` enabling `networkingMode=mirrored` and `hostAddressLoopback=true` under `[experimental]`. You may also need to disable Docker's userland proxy (`"userland-proxy": false` in `/etc/docker/daemon.json`) if port binding issues occur.
+  - **Windows users:** Install Docker Engine inside a WSL2 distro (like Ubuntu) rather than using Docker Desktop. You will need systemd enabled in `/etc/wsl.conf` (`[boot]` section with `systemd=true`), and a global `%USERPROFILE%\.wslconfig` enabling `networkingMode=mirrored` and `hostAddressLoopback=true` under `[experimental]`. You may also need to disable Docker's userland proxy (`"userland-proxy": false` in `/etc/docker/daemon.json`) if your containers are inaccessible from the host.
 - **Node 22+ and npm 7+**, for the `npm run` scripts below. The services themselves run in the container.
 - **`git` and a connection to github.com** — `npm install` pulls every workspace's packages, and `heartbeat` comes straight from GitHub.
 
@@ -212,6 +212,7 @@ Your first successful login leaves a second cookie in that browser for a year. I
 **Coming back after a reboot or a power cut.** `chimera`, `certbot` and `postgres` carry `restart: unless-stopped`, so they come back once the Docker daemon starts — which is not automatic:
 
 - Linux: `sudo systemctl enable --now docker`.
+- Windows (WSL2): Create a Windows Task Scheduler task triggering "At system startup". Action: `wsl.exe -d <distro> -u <user> -- bash -c "sleep infinity"`. Select "Run whether user is logged in or not" under your own account (not SYSTEM).
 - `unless-stopped` does not restart a container you stopped yourself, so a stack left down by `npm run docker:down` stays down across a reboot. Start it with `npm run docker:up`.
 - None of the above helps if the machine never powers back on. Enable power restore in the firmware — vendors all name that setting differently, so look up yours.
 
