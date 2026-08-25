@@ -58,6 +58,7 @@ Each service is toggled by `<prefix>_ON`, except the gateway — it publishes th
 **What you need on your machine:**
 
 - **Docker**, with Compose **v2.23.1 or newer** (`docker compose version`). Older ones cannot read `secrets.environment`.
+  - **Windows users:** Install Docker Engine inside a WSL2 distro (like Ubuntu) rather than using Docker Desktop. You will need a `.wslconfig` enabling `networkingMode=mirrored` and `hostAddressLoopback=true` under `[experimental]`. You may also need to disable Docker's userland proxy (`"userland-proxy": false` in `/etc/docker/daemon.json`) if port binding issues occur.
 - **Node 22+ and npm 7+**, for the `npm run` scripts below. The services themselves run in the container.
 - **`git` and a connection to github.com** — `npm install` pulls every workspace's packages, and `heartbeat` comes straight from GitHub.
 
@@ -153,7 +154,7 @@ A build can pass and still fail at startup: the `*_URL` addresses, the file path
 
 **Or it says `CANNOT READ`.**
 
-- **Ownership** produces `CANNOT READ` at startup, and only on Linux, including a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Windows or Mac drive Docker Desktop sets ownership for you.
+- **Ownership** produces `CANNOT READ` at startup, and only on Linux, including a folder inside WSL such as `\\wsl$\Ubuntu\home\you\chimera`. On a Mac drive Docker Desktop sets ownership for you.
 - **File mode** is checked before the build, not at startup, and everywhere except a Windows drive (`C:\Users\you\chimera`, `/mnt/c/...`) — those report a fixed mode whatever you `chmod`, so Chimera does not look. macOS is checked like Linux.
 
 Inside the container the app runs as `node`, uid 1000, and reads your config files as that user. Copy them with plain `cp`, never `sudo`, so they stay yours.
@@ -211,7 +212,7 @@ Your first successful login leaves a second cookie in that browser for a year. I
 **Coming back after a reboot or a power cut.** `chimera`, `certbot` and `postgres` carry `restart: unless-stopped`, so they come back once the Docker daemon starts — which is not automatic:
 
 - Linux: `sudo systemctl enable --now docker`.
-- Docker Desktop (Windows / macOS): turn on Settings → General → *Start Docker Desktop when you sign in*. That is a login, not a boot, so a machine nobody signs into stays down — run Docker Engine on Linux there instead.
+- Docker Desktop (macOS): turn on Settings → General → *Start Docker Desktop when you sign in*. That is a login, not a boot, so a machine nobody signs into stays down — run Docker Engine on Linux there instead.
 - `unless-stopped` does not restart a container you stopped yourself, so a stack left down by `npm run docker:down` stays down across a reboot. Start it with `npm run docker:up`.
 - None of the above helps if the machine never powers back on. Enable power restore in the firmware — vendors all name that setting differently, so look up yours.
 
