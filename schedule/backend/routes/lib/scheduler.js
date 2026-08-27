@@ -232,7 +232,9 @@ const runTask = ({ id, url, body }) => {
 		headers: { "Authorization": process.env.scheduler_AUTH }
 	}).then(({data}) => {
 		const deferred = !!data?.deferred
-		webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ${deferred ? "⚠️ deferred" : "✅"} \nresponse ${JSON.stringify(data, null, 2)}`)
+		if (url !== "/file/pathAutoClean") {
+			webhookAlert(`scheduled task ID: ${id}\ndatetime: ${alertTime().format("LLL z")}\nURL: ${url} ${deferred ? "⚠️ deferred" : "✅"} \nresponse ${JSON.stringify(data, null, 2)}`)
+		}
 		console.log(data)
 		pool.query(
 			"INSERT INTO task_runs (task_id, url, status, http_status) VALUES ($1, $2, $3, 200)",
