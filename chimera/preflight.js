@@ -574,9 +574,7 @@ const runInteractive = async () => {
 		console.log("Checking cameraconf/...")
 		const camDir = getCamDir()
 		if (!fs.existsSync(camDir)) fs.mkdirSync(camDir, { recursive: true })
-		while (cameraProblems().length) {
-			for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
-			if (!(await confirm("  Add a camera now?"))) break
+		const addCamera = async () => {
 			const files = listConfs()
 			const confs = files.map(f => parseConf(fs.readFileSync(path.join(camDir, f), "utf8")))
 			const used = confs.map(c => parseInt(c.camera_id))
@@ -614,7 +612,14 @@ const runInteractive = async () => {
 			} while (urlProblem(url, buildFullUrl(url, userpass)))
 			writeSecret(path.join(camDir, `cam${id}.conf`), camTemplate(id, name, url, userpass))
 			console.log(`    created ${camDir}/cam${id}.conf ${OK}`)
-			if (!(await confirm("  Add another camera?", false))) break
+		}
+		while (cameraProblems().length) {
+			for (const p of cameraProblems()) console.log(`  ${BAD} ${p}`)
+			if (!(await confirm("  Add a camera now?"))) break
+			await addCamera()
+		}
+		if (!cameraProblems().length) {
+			while (await confirm(listConfs().length ? "  Add another camera?" : "  Add a camera?", false)) await addCamera()
 		}
 		for (const f of listConfs()) {
 			try { fs.chmodSync(path.join(camDir, f), SECRET_MODE) } catch { /* reported by confModeProblem below */ }
