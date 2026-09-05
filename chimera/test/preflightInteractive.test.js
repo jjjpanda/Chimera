@@ -1,5 +1,14 @@
-const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null }
+const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null, git: null }
 const mockEOF = Symbol("EOF")
+
+jest.mock("child_process", () => ({
+	execSync: jest.fn((cmd) => {
+		if (!mockState.git) throw Object.assign(new Error("not a git repository"), { code: 128 })
+		const result = mockState.git(cmd)
+		if (result instanceof Error) throw result
+		return Buffer.from(String(result))
+	})
+}))
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
@@ -80,6 +89,7 @@ const setup = ({ env, answers, noEnv = false, noCams = false, motionDir = false,
 	mockState.modes = {}
 	mockState.chmodFail = new Set()
 	mockState.close = null
+	mockState.git = null
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -115,8 +125,8 @@ describe("runInteractive re-walk", () => {
 	test("answering object_ON=true unskips storage_FOLDERPATH and livestream_FOLDERPATH, which the first pass already walked past", async () => {
 		setup({
 			env: BLANK,
-			// storage_ON, livestream_ON, livestream_FOLDERPATH, livestream_PROXY_ON, object_ON, SECRETKEY, then the second-pass storage_FOLDERPATH
-			answers: ["false", "true", "/mnt/live", "false", "true", SECRET, "/mnt/storage"]
+			// storage_ON, livestream_ON, livestream_FOLDERPATH, livestream_PROXY_ON, object_ON, SECRETKEY, then the second-pass storage_FOLDERPATH, then "Add another camera?"
+			answers: ["false", "true", "/mnt/live", "false", "true", SECRET, "/mnt/storage", "n"]
 		})
 		const { out, exitCode, env } = await run()
 		expect(env).toContain("storage_FOLDERPATH = /mnt/storage")
@@ -195,8 +205,8 @@ describe("runInteractive re-walk", () => {
 			env: {},
 			noEnv: true,
 			example: EXAMPLE.replace("storage_FOLDERPATH = Base shared file path", "storage_FOLDERPATH = /mnt/storage/  # default; base shared file path"),
-			// storage_ON, livestream_ON, object_ON, SECRETKEY — no prompt for storage_FOLDERPATH
-			answers: ["true", "false", "false", SECRET]
+			// storage_ON, livestream_ON, object_ON, SECRETKEY — no prompt for storage_FOLDERPATH, then "Add another camera?"
+			answers: ["true", "false", "false", SECRET, "n"]
 		})
 		const { env, exitCode } = await run()
 		expect(env).toContain("storage_FOLDERPATH = /mnt/storage/  # default; base shared file path")
@@ -249,7 +259,7 @@ describe("runInteractive secret file modes", () => {
 	test("an existing camera conf is tightened to 0640 even when the wizard adds nothing", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
-			answers: []
+			answers: ["n"]
 		})
 		const { modes, exitCode } = await run()
 		expect(modes["cameraconf/cam1.conf"]).toBe(0o640)
@@ -260,7 +270,7 @@ describe("runInteractive secret file modes", () => {
 	test("an existing camera conf that resists chmod stays loose and is reported", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
-			answers: []
+			answers: ["n"]
 		})
 		mockState.chmodFail.add("cameraconf/cam1.conf")
 		const { out, exitCode } = await run()
@@ -339,6 +349,19 @@ describe("runInteractive camera_id/camera_name prompts", () => {
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})
+
+	// regression: cameraProblems() goes empty after the first camera, so a second "y" used to dead-end
+	test("adds a second and third camera in one run when there were no initial problems", async () => {
+		setup({
+			env: CAM_ENV,
+			answers: ["y", "2", "backyard", "rtsp://2.2.2.2/cam", "", "y", "3", "garage", "rtsp://3.3.3.3/cam", "", "n"]
+		})
+		const { out, exitCode } = await run()
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
+		expect(mockState.files["cameraconf/cam3.conf"]).toContain("camera_id 3")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
 })
 
 describe("runInteractive objectFeedProblem", () => {
@@ -346,7 +369,7 @@ describe("runInteractive objectFeedProblem", () => {
 	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: SECRET }
 
 	test("prompts livestream_ON instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
-		setup({ env: BROKEN, answers: ["true"] })
+		setup({ env: BROKEN, answers: ["true", "n"] })
 		const { out, env, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
 		expect(env).toContain("livestream_ON = true")
@@ -362,7 +385,7 @@ describe("runInteractive objectFeedProblem", () => {
 	})
 
 	test("re-asks while the pair stays inconsistent", async () => {
-		setup({ env: BROKEN, answers: ["false", "true", "true"] })
+		setup({ env: BROKEN, answers: ["false", "true", "true", "n"] })
 		const { env, exitCode } = await run()
 		expect(env).toContain("livestream_ON = true")
 		expect(env).toContain("object_ON = true")
@@ -370,7 +393,7 @@ describe("runInteractive objectFeedProblem", () => {
 	})
 
 	test("livestream_PROXY_ON=true is no escape — it only routes gateway HTTP, so the wizard still prompts", async () => {
-		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true"] })
+		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true", "n"] })
 		const { out, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
 		expect(exitCode).toBe(0)
@@ -426,7 +449,7 @@ describe("runInteractive motion.conf directory", () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
 			motionDir: true,
-			answers: []
+			answers: ["n"]
 		})
 		const { out, exitCode } = await run()
 		expect(out).toContain("is a directory")
@@ -571,6 +594,101 @@ describe("runInteractive abort", () => {
 	})
 })
 
+describe("runInteractive git setup", () => {
+	const GIT_ENV = { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET }
+
+	test("skips the git section entirely outside a git repo", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		const { out, exitCode } = await run()
+		expect(out).not.toContain("Checking git setup")
+		expect(out).not.toContain("git master")
+		expect(out).not.toContain("git upstream")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("fetches origin master when the local branch is missing, and reports it fixed", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		let masterFetched = false
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return masterFetched ? "abc123" : new Error("missing")
+			if (cmd.includes("fetch origin master:master")) { masterFetched = true; return "" }
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("git master")
+		expect(out).not.toContain("could not be fetched")
+		expect(out).toContain("develop -> origin/develop")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports git master as failed, but does not block docker, when origin has no master to fetch", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return new Error("missing")
+			if (cmd.includes("fetch origin master:master")) return new Error("couldn't find remote ref master")
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("local master branch missing and origin/master could not be fetched")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("sets upstream tracking when missing, and reports it fixed", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		let upstreamSet = false
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "feature-x"
+			if (cmd.includes("@{upstream}")) return upstreamSet ? "origin/feature-x" : new Error("no upstream configured")
+			if (cmd.includes("branch --set-upstream-to=origin/feature-x feature-x")) { upstreamSet = true; return "" }
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("feature-x -> origin/feature-x")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports upstream as failed, but does not block docker, when origin has no matching branch", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "feature-x"
+			if (cmd.includes("@{upstream}")) return new Error("no upstream configured")
+			if (cmd.includes("branch --set-upstream-to")) return new Error("unknown remote ref")
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("could not set upstream for feature-x")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports a detached HEAD instead of attempting to set upstream", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "HEAD"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("detached HEAD has no branch to track")
+		expect(exitCode).toBe(0)
+	})
+})
+
 const runCheckOnce = () => {
 	const out = []
 	const log = jest.spyOn(console, "log").mockImplementation((...a) => out.push(a.join(" ")))
@@ -668,6 +786,60 @@ describe("runCheck", () => {
 		mockState.modes[".env"] = 0o640
 		const { out, exitCode } = runCheckOnce()
 		expect(out).toContain("ERR_SSL_PROTOCOL_ERROR")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("says nothing about git outside a git repo", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).not.toContain("git master")
+		expect(out).not.toContain("git upstream")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports git master and upstream status without fetching or fixing anything", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("git master")
+		expect(out).toContain("develop -> origin/develop")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("flags a missing master branch and missing upstream without blocking docker", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return new Error("missing")
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return new Error("no upstream configured")
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("local master branch missing")
+		expect(out).toContain("develop has no upstream tracking branch")
+		expect(out).not.toContain("fetch")
+		expect(out).not.toContain("set-upstream")
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})
