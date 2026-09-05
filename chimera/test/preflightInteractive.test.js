@@ -1,5 +1,14 @@
-const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null }
+const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null, git: null }
 const mockEOF = Symbol("EOF")
+
+jest.mock("child_process", () => ({
+	execSync: jest.fn((cmd) => {
+		if (!mockState.git) throw Object.assign(new Error("not a git repository"), { code: 128 })
+		const result = mockState.git(cmd)
+		if (result instanceof Error) throw result
+		return Buffer.from(String(result))
+	})
+}))
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
@@ -80,6 +89,7 @@ const setup = ({ env, answers, noEnv = false, noCams = false, motionDir = false,
 	mockState.modes = {}
 	mockState.chmodFail = new Set()
 	mockState.close = null
+	mockState.git = null
 }
 
 const BLANK = { storage_ON: "", storage_FOLDERPATH: "", livestream_ON: "", livestream_FOLDERPATH: "", livestream_PROXY_ON: "", object_ON: "", SECRETKEY: "" }
@@ -584,6 +594,101 @@ describe("runInteractive abort", () => {
 	})
 })
 
+describe("runInteractive git setup", () => {
+	const GIT_ENV = { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET }
+
+	test("skips the git section entirely outside a git repo", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		const { out, exitCode } = await run()
+		expect(out).not.toContain("Checking git setup")
+		expect(out).not.toContain("git master")
+		expect(out).not.toContain("git upstream")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("fetches origin master when the local branch is missing, and reports it fixed", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		let masterFetched = false
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return masterFetched ? "abc123" : new Error("missing")
+			if (cmd.includes("fetch origin master:master")) { masterFetched = true; return "" }
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("git master")
+		expect(out).not.toContain("could not be fetched")
+		expect(out).toContain("develop -> origin/develop")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports git master as failed, but does not block docker, when origin has no master to fetch", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return new Error("missing")
+			if (cmd.includes("fetch origin master:master")) return new Error("couldn't find remote ref master")
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("local master branch missing and origin/master could not be fetched")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("sets upstream tracking when missing, and reports it fixed", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		let upstreamSet = false
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "feature-x"
+			if (cmd.includes("@{upstream}")) return upstreamSet ? "origin/feature-x" : new Error("no upstream configured")
+			if (cmd.includes("branch --set-upstream-to=origin/feature-x feature-x")) { upstreamSet = true; return "" }
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("feature-x -> origin/feature-x")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports upstream as failed, but does not block docker, when origin has no matching branch", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "feature-x"
+			if (cmd.includes("@{upstream}")) return new Error("no upstream configured")
+			if (cmd.includes("branch --set-upstream-to")) return new Error("unknown remote ref")
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("could not set upstream for feature-x")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports a detached HEAD instead of attempting to set upstream", async () => {
+		setup({ env: GIT_ENV, answers: [] })
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "HEAD"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = await run()
+		expect(out).toContain("detached HEAD has no branch to track")
+		expect(exitCode).toBe(0)
+	})
+})
+
 const runCheckOnce = () => {
 	const out = []
 	const log = jest.spyOn(console, "log").mockImplementation((...a) => out.push(a.join(" ")))
@@ -681,6 +786,60 @@ describe("runCheck", () => {
 		mockState.modes[".env"] = 0o640
 		const { out, exitCode } = runCheckOnce()
 		expect(out).toContain("ERR_SSL_PROTOCOL_ERROR")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("says nothing about git outside a git repo", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		const { out, exitCode } = runCheckOnce()
+		expect(out).not.toContain("git master")
+		expect(out).not.toContain("git upstream")
+		expect(exitCode).toBe(0)
+	})
+
+	test("reports git master and upstream status without fetching or fixing anything", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return "abc123"
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return "origin/develop"
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("git master")
+		expect(out).toContain("develop -> origin/develop")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("flags a missing master branch and missing upstream without blocking docker", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "false", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.git = (cmd) => {
+			if (cmd.includes("is-inside-work-tree")) return "true"
+			if (cmd.includes("refs/heads/master")) return new Error("missing")
+			if (cmd.includes("abbrev-ref HEAD")) return "develop"
+			if (cmd.includes("@{upstream}")) return new Error("no upstream configured")
+			throw new Error(`unhandled: ${cmd}`)
+		}
+		const { out, exitCode } = runCheckOnce()
+		expect(out).toContain("local master branch missing")
+		expect(out).toContain("develop has no upstream tracking branch")
+		expect(out).not.toContain("fetch")
+		expect(out).not.toContain("set-upstream")
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})

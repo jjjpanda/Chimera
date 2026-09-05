@@ -2,6 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
+const { execSync } = require("child_process")
 
 let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths, redirectTarget, trustProxyHops
 try {
@@ -389,6 +390,31 @@ const envProblems = (schema, lines) => {
 	return probs
 }
 
+const git = (args) => {
+	try {
+		return execSync(`git ${args}`, { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+	} catch {
+		return null
+	}
+}
+
+const isGitRepo = () => git("rev-parse --is-inside-work-tree") === "true"
+const currentBranch = () => git("rev-parse --abbrev-ref HEAD")
+const localBranchExists = (name) => git(`rev-parse --verify --quiet refs/heads/${name}`) !== null
+const upstreamOf = (branch) => branch && branch !== "HEAD" ? git(`rev-parse --abbrev-ref ${branch}@{upstream}`) : null
+
+const ensureMasterBranch = () => {
+	if (localBranchExists("master")) return true
+	git("fetch origin master:master")
+	return localBranchExists("master")
+}
+
+const ensureUpstream = (branch) => {
+	if (upstreamOf(branch)) return true
+	git(`branch --set-upstream-to=origin/${branch} ${branch}`)
+	return !!upstreamOf(branch)
+}
+
 const runCheck = () => {
 	const schema = parseSchema()
 	const lines = readLines()
@@ -418,6 +444,15 @@ const runCheck = () => {
 		console.log(`  cameraconf/   ${cam.length ? BAD : OK}${cam.length ? `  ${cam.length} problem(s)` : ""}`)
 		cam.forEach(p => console.log(`                  - ${p}`))
 		if (cam.length) failed = true
+	}
+
+	if (isGitRepo()) {
+		const branch = currentBranch()
+		const masterOk = localBranchExists("master")
+		console.log(`  git master    ${masterOk ? OK : BAD}${masterOk ? "" : "  local master branch missing"}`)
+
+		const upstream = upstreamOf(branch)
+		console.log(`  git upstream  ${upstream ? OK : BAD}${upstream ? `  ${branch} -> ${upstream}` : `  ${branch === "HEAD" ? "detached HEAD" : branch} has no upstream tracking branch`}`)
 	}
 
 	for (const w of warnings(lines)) console.log(`\n${w}`)
@@ -630,6 +665,19 @@ const runInteractive = async () => {
 		console.log(`cameraconf/ ${camOk ? OK : BAD}\n`)
 	}
 
+	if (isGitRepo()) {
+		console.log("Checking git setup...")
+		const masterOk = ensureMasterBranch()
+		console.log(`git master ${masterOk ? OK : BAD}${masterOk ? "" : "  local master branch missing and origin/master could not be fetched"}`)
+
+		const branch = currentBranch()
+		if (branch === "HEAD") console.log(`git upstream ${BAD}  detached HEAD has no branch to track\n`)
+		else {
+			const upstreamOk = ensureUpstream(branch)
+			console.log(`git upstream ${upstreamOk ? OK : BAD}${upstreamOk ? `  ${branch} -> ${upstreamOf(branch)}` : `  could not set upstream for ${branch} — no origin/${branch}?`}\n`)
+		}
+	}
+
 	finished = true
 	rl.close()
 	const setupHint = setupTokenHint(lines)
@@ -645,4 +693,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, warnings, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem }
+module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, warnings, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream }
