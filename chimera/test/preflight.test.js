@@ -21,8 +21,10 @@ jest.mock("fs", () => {
 	}
 })
 
+jest.mock("child_process", () => ({ execSync: jest.fn() }))
+
 const fs = require("fs")
-const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode } = require("../preflight.js")
+const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -987,5 +989,104 @@ describe("looseMode", () => {
 
 	test("null for a file that is not there, so a missing artifact reports as missing", () => {
 		expect(looseMode(path.join(dir, "absent"))).toBeNull()
+	})
+})
+
+describe("isGitRepo / currentBranch / localBranchExists / upstreamOf", () => {
+	const { execSync } = require("child_process")
+
+	afterEach(() => execSync.mockReset())
+
+	test("isGitRepo reads git's --is-inside-work-tree output", () => {
+		execSync.mockReturnValue(Buffer.from("true\n"))
+		expect(isGitRepo()).toBe(true)
+	})
+
+	test("isGitRepo is false when git exits non-zero, e.g. outside a repo", () => {
+		execSync.mockImplementation(() => { throw new Error("not a git repository") })
+		expect(isGitRepo()).toBe(false)
+	})
+
+	test("currentBranch trims git's output", () => {
+		execSync.mockReturnValue(Buffer.from("develop\n"))
+		expect(currentBranch()).toBe("develop")
+	})
+
+	test("localBranchExists is true when git resolves the ref", () => {
+		execSync.mockReturnValue(Buffer.from("abc123\n"))
+		expect(localBranchExists("master")).toBe(true)
+	})
+
+	test("localBranchExists is false when git errors because the branch is missing", () => {
+		execSync.mockImplementation(() => { throw new Error("unknown revision") })
+		expect(localBranchExists("master")).toBe(false)
+	})
+
+	test("upstreamOf returns the tracking branch name", () => {
+		execSync.mockReturnValue(Buffer.from("origin/develop\n"))
+		expect(upstreamOf("develop")).toBe("origin/develop")
+	})
+
+	test("upstreamOf returns null when no upstream is configured", () => {
+		execSync.mockImplementation(() => { throw new Error("no upstream configured") })
+		expect(upstreamOf("develop")).toBeNull()
+	})
+
+	test("upstreamOf skips the git call entirely on a detached HEAD", () => {
+		expect(upstreamOf("HEAD")).toBeNull()
+		expect(execSync).not.toHaveBeenCalled()
+	})
+})
+
+describe("ensureMasterBranch", () => {
+	const { execSync } = require("child_process")
+
+	afterEach(() => execSync.mockReset())
+
+	test("does nothing when master already exists locally", () => {
+		execSync.mockReturnValue(Buffer.from("abc123\n"))
+		expect(ensureMasterBranch()).toBe(true)
+		expect(execSync).toHaveBeenCalledTimes(1)
+		expect(execSync.mock.calls[0][0]).toMatch(/rev-parse --verify --quiet refs\/heads\/master/)
+	})
+
+	test("fetches origin master into a local branch when it is missing", () => {
+		execSync
+			.mockImplementationOnce(() => { throw new Error("missing") })
+			.mockImplementationOnce(() => Buffer.from(""))
+			.mockImplementationOnce(() => Buffer.from("abc123\n"))
+		expect(ensureMasterBranch()).toBe(true)
+		expect(execSync.mock.calls[1][0]).toMatch(/fetch origin master:master/)
+	})
+
+	test("reports failure when origin has no master to fetch", () => {
+		execSync.mockImplementation(() => { throw new Error("missing") })
+		expect(ensureMasterBranch()).toBe(false)
+	})
+})
+
+describe("ensureUpstream", () => {
+	const { execSync } = require("child_process")
+
+	afterEach(() => execSync.mockReset())
+
+	test("does nothing when upstream is already set", () => {
+		execSync.mockReturnValue(Buffer.from("origin/develop\n"))
+		expect(ensureUpstream("develop")).toBe(true)
+		expect(execSync).toHaveBeenCalledTimes(1)
+	})
+
+	test("sets upstream to origin/<branch> when missing, then confirms it stuck", () => {
+		execSync
+			.mockImplementationOnce(() => { throw new Error("no upstream") })
+			.mockImplementationOnce(() => Buffer.from(""))
+			.mockImplementationOnce(() => Buffer.from("origin/feature\n"))
+		expect(ensureUpstream("feature")).toBe(true)
+		expect(execSync.mock.calls[1][0]).toMatch(/branch --set-upstream-to=origin\/feature feature/)
+	})
+
+	test("reports failure when origin has no matching branch to track", () => {
+		execSync.mockImplementation(() => { throw new Error("no upstream") })
+		expect(ensureUpstream("feature")).toBe(false)
 	})
 })
