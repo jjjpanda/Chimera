@@ -125,8 +125,8 @@ describe("runInteractive re-walk", () => {
 	test("answering object_ON=true unskips storage_FOLDERPATH and livestream_FOLDERPATH, which the first pass already walked past", async () => {
 		setup({
 			env: BLANK,
-			// storage_ON, livestream_ON, livestream_FOLDERPATH, livestream_PROXY_ON, object_ON, SECRETKEY, then the second-pass storage_FOLDERPATH
-			answers: ["false", "true", "/mnt/live", "false", "true", SECRET, "/mnt/storage"]
+			// storage_ON, livestream_ON, livestream_FOLDERPATH, livestream_PROXY_ON, object_ON, SECRETKEY, then the second-pass storage_FOLDERPATH, then "Add another camera?"
+			answers: ["false", "true", "/mnt/live", "false", "true", SECRET, "/mnt/storage", "n"]
 		})
 		const { out, exitCode, env } = await run()
 		expect(env).toContain("storage_FOLDERPATH = /mnt/storage")
@@ -205,8 +205,8 @@ describe("runInteractive re-walk", () => {
 			env: {},
 			noEnv: true,
 			example: EXAMPLE.replace("storage_FOLDERPATH = Base shared file path", "storage_FOLDERPATH = /mnt/storage/  # default; base shared file path"),
-			// storage_ON, livestream_ON, object_ON, SECRETKEY — no prompt for storage_FOLDERPATH
-			answers: ["true", "false", "false", SECRET]
+			// storage_ON, livestream_ON, object_ON, SECRETKEY — no prompt for storage_FOLDERPATH, then "Add another camera?"
+			answers: ["true", "false", "false", SECRET, "n"]
 		})
 		const { env, exitCode } = await run()
 		expect(env).toContain("storage_FOLDERPATH = /mnt/storage/  # default; base shared file path")
@@ -259,7 +259,7 @@ describe("runInteractive secret file modes", () => {
 	test("an existing camera conf is tightened to 0640 even when the wizard adds nothing", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
-			answers: []
+			answers: ["n"]
 		})
 		const { modes, exitCode } = await run()
 		expect(modes["cameraconf/cam1.conf"]).toBe(0o640)
@@ -270,7 +270,7 @@ describe("runInteractive secret file modes", () => {
 	test("an existing camera conf that resists chmod stays loose and is reported", async () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
-			answers: []
+			answers: ["n"]
 		})
 		mockState.chmodFail.add("cameraconf/cam1.conf")
 		const { out, exitCode } = await run()
@@ -349,6 +349,19 @@ describe("runInteractive camera_id/camera_name prompts", () => {
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})
+
+	// regression: cameraProblems() goes empty after the first camera, so a second "y" used to dead-end
+	test("adds a second and third camera in one run when there were no initial problems", async () => {
+		setup({
+			env: CAM_ENV,
+			answers: ["y", "2", "backyard", "rtsp://2.2.2.2/cam", "", "y", "3", "garage", "rtsp://3.3.3.3/cam", "", "n"]
+		})
+		const { out, exitCode } = await run()
+		expect(mockState.files["cameraconf/cam2.conf"]).toContain("camera_id 2")
+		expect(mockState.files["cameraconf/cam3.conf"]).toContain("camera_id 3")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
 })
 
 describe("runInteractive objectFeedProblem", () => {
@@ -356,7 +369,7 @@ describe("runInteractive objectFeedProblem", () => {
 	const BROKEN = { ...BLANK, storage_ON: "false", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", livestream_FOLDERPATH: "/mnt/live", livestream_PROXY_ON: "false", object_ON: "true", SECRETKEY: SECRET }
 
 	test("prompts livestream_ON instead of dead-ending — nothing has a varProblem, so only the forced re-ask can fix it", async () => {
-		setup({ env: BROKEN, answers: ["true"] })
+		setup({ env: BROKEN, answers: ["true", "n"] })
 		const { out, env, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
 		expect(env).toContain("livestream_ON = true")
@@ -372,7 +385,7 @@ describe("runInteractive objectFeedProblem", () => {
 	})
 
 	test("re-asks while the pair stays inconsistent", async () => {
-		setup({ env: BROKEN, answers: ["false", "true", "true"] })
+		setup({ env: BROKEN, answers: ["false", "true", "true", "n"] })
 		const { env, exitCode } = await run()
 		expect(env).toContain("livestream_ON = true")
 		expect(env).toContain("object_ON = true")
@@ -380,7 +393,7 @@ describe("runInteractive objectFeedProblem", () => {
 	})
 
 	test("livestream_PROXY_ON=true is no escape — it only routes gateway HTTP, so the wizard still prompts", async () => {
-		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true"] })
+		setup({ env: { ...BROKEN, livestream_PROXY_ON: "true" }, answers: ["true", "n"] })
 		const { out, exitCode } = await run()
 		expect(out).toContain("object_ON requires livestream_ON")
 		expect(exitCode).toBe(0)
@@ -436,7 +449,7 @@ describe("runInteractive motion.conf directory", () => {
 		setup({
 			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
 			motionDir: true,
-			answers: []
+			answers: ["n"]
 		})
 		const { out, exitCode } = await run()
 		expect(out).toContain("is a directory")
