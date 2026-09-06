@@ -2,7 +2,7 @@ const fs = require("fs")
 const path = require("path")
 const readline = require("readline")
 const crypto = require("crypto")
-const { execSync } = require("child_process")
+const { execFileSync } = require("child_process")
 
 let loadCameras, multiInstanceLib, trustedSourcesLib, normalizeHost, certPaths, redirectTarget, trustProxyHops
 try {
@@ -390,28 +390,28 @@ const envProblems = (schema, lines) => {
 	return probs
 }
 
-const git = (args) => {
+const git = (...args) => {
 	try {
-		return execSync(`git ${args}`, { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+		return execFileSync("git", args, { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
 	} catch {
 		return null
 	}
 }
 
-const isGitRepo = () => git("rev-parse --is-inside-work-tree") === "true"
-const currentBranch = () => git("rev-parse --abbrev-ref HEAD")
-const localBranchExists = (name) => git(`rev-parse --verify --quiet refs/heads/${name}`) !== null
-const upstreamOf = (branch) => branch && branch !== "HEAD" ? git(`rev-parse --abbrev-ref ${branch}@{upstream}`) : null
+const isGitRepo = () => git("rev-parse", "--is-inside-work-tree") === "true"
+const currentBranch = () => git("rev-parse", "--abbrev-ref", "HEAD")
+const localBranchExists = (name) => git("rev-parse", "--verify", "--quiet", `refs/heads/${name}`) !== null
+const upstreamOf = (branch) => branch && branch !== "HEAD" ? git("rev-parse", "--abbrev-ref", `${branch}@{upstream}`) : null
 
 const ensureMasterBranch = () => {
 	if (localBranchExists("master")) return true
-	git("fetch origin master:master")
+	git("fetch", "origin", "master:master")
 	return localBranchExists("master")
 }
 
 const ensureUpstream = (branch) => {
 	if (upstreamOf(branch)) return true
-	git(`branch --set-upstream-to=origin/${branch} ${branch}`)
+	git("branch", `--set-upstream-to=origin/${branch}`, branch)
 	return !!upstreamOf(branch)
 }
 
