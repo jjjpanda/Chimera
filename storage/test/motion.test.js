@@ -71,7 +71,9 @@ describe("PUT /motion/sensitivity", () => {
 	beforeEach(() => {
 		fs.promises = {
 			readFile: jest.fn().mockResolvedValue("daemon off\nthreshold 3000\nnoise_level 32\n"),
-			writeFile: jest.fn().mockResolvedValue(undefined)
+			writeFile: jest.fn().mockResolvedValue(undefined),
+			rename: jest.fn().mockResolvedValue(undefined),
+			unlink: jest.fn().mockResolvedValue(undefined)
 		}
 	})
 
@@ -82,6 +84,7 @@ describe("PUT /motion/sensitivity", () => {
 			.send({ threshold: 1000 })
 		expect(res.status).toBe(403)
 		expect(fs.promises.writeFile).not.toHaveBeenCalled()
+		expect(fs.promises.rename).not.toHaveBeenCalled()
 	})
 
 	test("rejects non-integer threshold", async () => {
@@ -91,6 +94,7 @@ describe("PUT /motion/sensitivity", () => {
 			.send({ threshold: "fast" })
 		expect(res.status).toBe(400)
 		expect(fs.promises.writeFile).not.toHaveBeenCalled()
+		expect(fs.promises.rename).not.toHaveBeenCalled()
 	})
 
 	test("rejects threshold below 1", async () => {
@@ -100,6 +104,7 @@ describe("PUT /motion/sensitivity", () => {
 			.send({ threshold: 0 })
 		expect(res.status).toBe(400)
 		expect(fs.promises.writeFile).not.toHaveBeenCalled()
+		expect(fs.promises.rename).not.toHaveBeenCalled()
 	})
 
 	test("writes the new threshold and restarts motion", async () => {
@@ -109,7 +114,12 @@ describe("PUT /motion/sensitivity", () => {
 			.send({ threshold: 1000 })
 		expect(res.status).toBe(200)
 		expect(res.body).toEqual({ threshold: 1000, motionRestarted: true })
+		expect(fs.promises.writeFile.mock.calls[0][0]).toBe(`${process.env.storage_MOTION_CONF_FILEPATH}.tmp`)
 		expect(fs.promises.writeFile.mock.calls[0][1]).toBe("daemon off\nthreshold 1000\nnoise_level 32\n")
+		expect(fs.promises.rename).toHaveBeenCalledWith(
+			`${process.env.storage_MOTION_CONF_FILEPATH}.tmp`,
+			process.env.storage_MOTION_CONF_FILEPATH
+		)
 		expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
 	})
 
@@ -131,5 +141,26 @@ describe("PUT /motion/sensitivity", () => {
 			.send({ threshold: 1000 })
 		expect(res.status).toBe(500)
 		expect(fs.promises.writeFile).not.toHaveBeenCalled()
+		expect(fs.promises.rename).not.toHaveBeenCalled()
+	})
+
+	test("returns 500 when writing temp file fails", async () => {
+		fs.promises.writeFile.mockRejectedValue(new Error("disk full"))
+		const res = await supertest(app)
+			.put("/motion/sensitivity")
+			.set("Cookie", "validCookie")
+			.send({ threshold: 1000 })
+		expect(res.status).toBe(500)
+		expect(fs.promises.rename).not.toHaveBeenCalled()
+	})
+
+	test("returns 500 and cleans up temp file when rename fails", async () => {
+		fs.promises.rename.mockRejectedValue(new Error("rename failed"))
+		const res = await supertest(app)
+			.put("/motion/sensitivity")
+			.set("Cookie", "validCookie")
+			.send({ threshold: 1000 })
+		expect(res.status).toBe(500)
+		expect(fs.promises.unlink).toHaveBeenCalledWith(`${process.env.storage_MOTION_CONF_FILEPATH}.tmp`)
 	})
 })

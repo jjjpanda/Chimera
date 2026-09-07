@@ -29,7 +29,7 @@ app.get("/sensitivity", async (req, res) => {
 		const text = await fs.promises.readFile(process.env.storage_MOTION_CONF_FILEPATH, "utf8")
 		const match = text.match(THRESHOLD_LINE)
 		if (!match) return res.status(500).json({ error: "threshold not found in motion.conf" })
-		res.json({ threshold: parseInt(match[1]) })
+		res.json({ threshold: parseInt(match[1], 10) })
 	} catch (e) {
 		res.status(500).json({ error: true })
 	}
@@ -40,13 +40,19 @@ app.put("/sensitivity", requireAdmin, async (req, res) => {
 	if (!Number.isInteger(threshold) || threshold < 1) {
 		return res.status(400).json({ error: "threshold must be an integer >= 1" })
 	}
+	const confPath = process.env.storage_MOTION_CONF_FILEPATH
+	const tempPath = `${confPath}.tmp`
 	try {
-		const text = await fs.promises.readFile(process.env.storage_MOTION_CONF_FILEPATH, "utf8")
+		const text = await fs.promises.readFile(confPath, "utf8")
 		if (!THRESHOLD_LINE.test(text)) return res.status(500).json({ error: "threshold not found in motion.conf" })
-		await fs.promises.writeFile(process.env.storage_MOTION_CONF_FILEPATH, text.replace(THRESHOLD_LINE, `threshold ${threshold}`))
+		await fs.promises.writeFile(tempPath, text.replace(THRESHOLD_LINE, `threshold ${threshold}`))
+		await fs.promises.rename(tempPath, confPath)
 		const motionRestarted = await restartMotion()
 		res.status(motionRestarted ? 200 : 502).json({ threshold, motionRestarted })
 	} catch (e) {
+		if (fs.promises.unlink) {
+			await fs.promises.unlink(tempPath).catch(() => {})
+		}
 		res.status(500).json({ error: true })
 	}
 })
