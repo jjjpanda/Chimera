@@ -1,14 +1,19 @@
 const mockState = { files: {}, dirs: [], answers: [], modes: {}, chmodFail: new Set(), close: null, git: null }
 const mockEOF = Symbol("EOF")
 
-jest.mock("child_process", () => ({
-	execSync: jest.fn((cmd) => {
+jest.mock("child_process", () => {
+	const run = (cmd, args) => {
 		if (!mockState.git) throw Object.assign(new Error("not a git repository"), { code: 128 })
-		const result = mockState.git(cmd)
+		const fullCmd = Array.isArray(args) ? `${cmd} ${args.join(" ")}` : cmd
+		const result = mockState.git(fullCmd)
 		if (result instanceof Error) throw result
 		return Buffer.from(String(result))
-	})
-}))
+	}
+	return {
+		execSync: jest.fn(run),
+		execFileSync: jest.fn(run)
+	}
+})
 
 jest.mock("fs", () => {
 	const norm = (p) => String(p).replace(/\\/g, "/")
