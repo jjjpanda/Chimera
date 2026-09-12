@@ -1,3 +1,4 @@
+process.env.storage_MOTION_CONF_FILEPATH = "/etc/motion/motion.conf"
 const supertest = require("supertest")
 const app = require("../backend/storage.js")
 
@@ -135,7 +136,7 @@ describe("GET /motion/sensitivity/:id", () => {
 	test("returns custom threshold when camera config has threshold", async () => {
 		lib.cameraConfFiles.mockResolvedValue(["/etc/motion/cameraconf/cam1.conf"])
 		fs.promises.readFile.mockImplementation(async (file) => {
-			if (file.includes("cam1.conf")) return "camera_id 1\nthreshold 800\n"
+			if (file && file.includes("cam1.conf")) return "camera_id 1\nthreshold 800\n"
 			return "daemon off\nthreshold 3000\n"
 		})
 		const res = await supertest(app)
@@ -148,7 +149,7 @@ describe("GET /motion/sensitivity/:id", () => {
 	test("returns custom threshold when camera config has indented threshold", async () => {
 		lib.cameraConfFiles.mockResolvedValue(["/etc/motion/cameraconf/cam1.conf"])
 		fs.promises.readFile.mockImplementation(async (file) => {
-			if (file.includes("cam1.conf")) return "camera_id 1\n  threshold 800\n"
+			if (file && file.includes("cam1.conf")) return "camera_id 1\n  threshold 800\n"
 			return "daemon off\nthreshold 3000\n"
 		})
 		const res = await supertest(app)
@@ -161,7 +162,7 @@ describe("GET /motion/sensitivity/:id", () => {
 	test("returns default threshold when camera config has no threshold", async () => {
 		lib.cameraConfFiles.mockResolvedValue(["/etc/motion/cameraconf/cam2.conf"])
 		fs.promises.readFile.mockImplementation(async (file) => {
-			if (file.includes("cam2.conf")) return "camera_id 2\n"
+			if (file && file.includes("cam2.conf")) return "camera_id 2\n"
 			return "daemon off\nthreshold 3000\n"
 		})
 		const res = await supertest(app)
@@ -263,7 +264,7 @@ describe("PUT /motion/sensitivity/:id", () => {
 	beforeEach(() => {
 		fs.promises = {
 			readFile: jest.fn().mockImplementation(async (file) => {
-				if (file.includes("cam1.conf")) return "camera_id 1\nnetcam_url rtsp://...\n"
+				if (file && file.includes("cam1.conf")) return "camera_id 1\nnetcam_url rtsp://...\n"
 				return "daemon off\nthreshold 3000\n"
 			}),
 			writeFile: jest.fn().mockResolvedValue(undefined)

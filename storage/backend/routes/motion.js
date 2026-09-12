@@ -25,7 +25,8 @@ const restartMotion = () => new Promise((resolve) => pm2.restart("motion", (err)
 }))
 
 const getGlobalThreshold = async () => {
-	const text = await fs.promises.readFile(process.env.storage_MOTION_CONF_FILEPATH, "utf8")
+	const confPath = process.env.storage_MOTION_CONF_FILEPATH || "/etc/motion/motion.conf"
+	const text = await fs.promises.readFile(confPath, "utf8")
 	const match = text.match(THRESHOLD_LINE)
 	if (!match) throw new Error("threshold not found in motion.conf")
 	return parseInt(match[1], 10)
@@ -84,7 +85,7 @@ app.put("/sensitivity", requireAdmin, async (req, res) => {
 	if (!Number.isInteger(threshold) || threshold < 1) {
 		return res.status(400).json({ error: "threshold must be an integer >= 1" })
 	}
-	const confPath = process.env.storage_MOTION_CONF_FILEPATH
+	const confPath = process.env.storage_MOTION_CONF_FILEPATH || "/etc/motion/motion.conf"
 	try {
 		const text = await fs.promises.readFile(confPath, "utf8")
 		if (!THRESHOLD_LINE.test(text)) return res.status(500).json({ error: "threshold not found in motion.conf" })
