@@ -15,7 +15,18 @@ const defaultRoutes = {
 	"POST /authorization/password": json({ error: false }),
 	"GET /cameras": json([{ id: 0, name: "indoor" }, { id: 1, name: "outdoor" }]),
 	"GET /usage": json({ used_gb: 0, max_gb: 100, total_frames: 0, cameras: [] }),
-	"GET /system/update": json({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null, version: { current: "6.0.2", available: null, checkedAt: null, bump: null } })
+	"GET /system/update": json({ error: false, state: "idle", requestedAt: null, requestedBy: null, last: null, version: { current: "6.0.2", available: null, checkedAt: null, bump: null } }),
+	"GET /motion/sensitivity": json({
+		threshold: 1500,
+		defaultThreshold: 1500,
+		cameras: [
+			{ id: 0, name: "indoor", threshold: 1500, isCustom: false },
+			{ id: 1, name: "outdoor", threshold: 800, isCustom: true }
+		]
+	}),
+	"PUT /motion/sensitivity": json({ threshold: 1500, motionRestarted: true }),
+	"PUT /motion/sensitivity/0": json({ id: 0, threshold: 2200, isCustom: true, motionRestarted: true }),
+	"PUT /motion/sensitivity/1": json({ id: 1, threshold: 1500, isCustom: false, motionRestarted: true })
 }
 
 const apiPrefixes = [

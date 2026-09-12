@@ -42,7 +42,25 @@
 		"userCreated": "사용자가 생성되었습니다. 다음 임시 비밀번호를 전달하세요:",
 		"userDeleted": "사용자가 삭제되었습니다",
 		"userUpdated": "사용자가 업데이트되었습니다",
-		"users": "사용자"
+		"users": "사용자",
+		"motion": {
+			"title": "모션 감지 감도",
+			"description": "모션 감지를 트리거하는 데 필요한 변경된 픽셀 임계값을 조정합니다. 값이 낮을수록 더 민감합니다.",
+			"save": "감도 저장",
+			"saved": "모션 감도가 업데이트되었습니다",
+			"savedRestartFailed": "감도가 저장되었지만 motion 재시작에 실패했습니다",
+			"failed": "모션 감도 업데이트에 실패했습니다",
+			"loadFailed": "모션 감도를 불러오지 못했습니다.",
+			"moreSensitive": "더 민감하게",
+			"lessSensitive": "덜 민감하게",
+			"thresholdValue": "감도 임계값",
+			"allCameras": "시스템 기본값",
+			"customOverride": "사용자 지정 감도",
+			"usingDefault": "시스템 기본값 사용 중",
+			"revertToDefault": "기본값으로 복원",
+			"reverted": "시스템 기본 감도로 복원되었습니다",
+			"cameraSaved": "카메라 감도가 업데이트되었습니다"
+		}
 	},
 	"auth": {
 		"accountCreated": "계정이 생성되었습니다 — 로그인 페이지로 이동 중…",

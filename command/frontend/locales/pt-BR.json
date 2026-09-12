@@ -42,7 +42,25 @@
 		"userCreated": "Usuário criado. Compartilhe esta senha temporária com ele:",
 		"userDeleted": "Usuário excluído",
 		"userUpdated": "Usuário atualizado",
-		"users": "Usuários"
+		"users": "Usuários",
+		"motion": {
+			"title": "Sensibilidade de detecção de movimento",
+			"description": "Ajuste o limite de pixels alterados necessário para acionar a detecção de movimento. Valores menores são mais sensíveis.",
+			"save": "Salvar sensibilidade",
+			"saved": "Sensibilidade de movimento atualizada",
+			"savedRestartFailed": "Sensibilidade salva, mas a reinicialização do motion falhou",
+			"failed": "Falha ao atualizar a sensibilidade de movimento",
+			"loadFailed": "Falha ao carregar a sensibilidade de movimento.",
+			"moreSensitive": "Mais sensível",
+			"lessSensitive": "Menos sensível",
+			"thresholdValue": "Limite de sensibilidade",
+			"allCameras": "Padrão do sistema",
+			"customOverride": "Sensibilidade personalizada",
+			"usingDefault": "Herdando o padrão do sistema",
+			"revertToDefault": "Restaurar padrão",
+			"reverted": "Restaurado para a sensibilidade padrão do sistema",
+			"cameraSaved": "Sensibilidade da câmera atualizada"
+		}
 	},
 	"auth": {
 		"accountCreated": "Conta criada — redirecionando para o login…",

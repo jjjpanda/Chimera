@@ -42,7 +42,25 @@
 		"userCreated": "Benutzer erstellt. Teilen Sie ihm dieses temporäre Passwort mit:",
 		"userDeleted": "Benutzer gelöscht",
 		"userUpdated": "Benutzer aktualisiert",
-		"users": "Benutzer"
+		"users": "Benutzer",
+		"motion": {
+			"title": "Bewegungserkennungsempfindlichkeit",
+			"description": "Passen Sie den Schwellenwert für geänderte Pixel an, der zum Auslösen der Bewegungserkennung erforderlich ist. Niedrigere Werte sind empfindlicher.",
+			"save": "Empfindlichkeit speichern",
+			"saved": "Bewegungsempfindlichkeit aktualisiert",
+			"savedRestartFailed": "Empfindlichkeit gespeichert, aber Neustart von Motion fehlgeschlagen",
+			"failed": "Fehler beim Aktualisieren der Bewegungsempfindlichkeit",
+			"loadFailed": "Fehler beim Laden der Bewegungsempfindlichkeit.",
+			"moreSensitive": "Empfindlicher",
+			"lessSensitive": "Weniger empfindlich",
+			"thresholdValue": "Empfindlichkeitsschwellenwert",
+			"allCameras": "Systemstandard",
+			"customOverride": "Benutzerdefinierte Empfindlichkeit",
+			"usingDefault": "Systemstandard wird übernommen",
+			"revertToDefault": "Auf Standard zurücksetzen",
+			"reverted": "Auf Systemstandard-Empfindlichkeit zurückgesetzt",
+			"cameraSaved": "Kamera-Empfindlichkeit aktualisiert"
+		}
 	},
 	"auth": {
 		"accountCreated": "Konto erstellt — Weiterleitung zur Anmeldung…",
