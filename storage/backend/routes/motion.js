@@ -17,7 +17,7 @@ app.get("/status", (req, res, next) => {
 	next()
 }, subprocess.processListMiddleware)
 
-const THRESHOLD_LINE = /^\s*threshold\s+(\S+)/m
+const THRESHOLD_LINE = /^\s*threshold\s+(\S+)[^\r\n]*/m
 
 const restartMotion = () => new Promise((resolve) => pm2.restart("motion", (err) => {
 	if (err) console.log("STORAGE: motion restart failed after sensitivity change", err.message || err)
@@ -112,7 +112,7 @@ app.put("/sensitivity/:id", requireAdmin, async (req, res) => {
 		for (const file of confFiles) {
 			let text = await fs.promises.readFile(file, "utf8")
 			if (isReset) {
-				text = text.replace(/^\s*threshold\s+\S+\r?\n?/gm, "")
+				text = text.replace(/^\s*threshold\b[^\r\n]*\r?\n?/gm, "")
 			} else if (THRESHOLD_LINE.test(text)) {
 				text = text.replace(THRESHOLD_LINE, `threshold ${threshold}`)
 			} else {

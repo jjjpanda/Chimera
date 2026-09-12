@@ -230,6 +230,19 @@ describe("PUT /motion/sensitivity", () => {
 		expect(pm2.restart).toHaveBeenCalledWith("motion", expect.any(Function))
 	})
 
+	test("replaces threshold line and strips trailing comment", async () => {
+		fs.promises.readFile.mockResolvedValue("daemon off\nthreshold 3000 # motion sensitivity\nnoise_level 32\n")
+		const res = await supertest(app)
+			.put("/motion/sensitivity")
+			.set("Cookie", "validCookie")
+			.send({ threshold: 1200 })
+		expect(res.status).toBe(200)
+		expect(fs.promises.writeFile).toHaveBeenCalledWith(
+			process.env.storage_MOTION_CONF_FILEPATH,
+			"daemon off\nthreshold 1200\nnoise_level 32\n"
+		)
+	})
+
 	test("returns 502 with motionRestarted:false when the restart fails", async () => {
 		pm2.restart.mockImplementationOnce((name, cb) => cb(new Error("pm2 busy")))
 		const res = await supertest(app)
@@ -386,6 +399,40 @@ describe("PUT /motion/sensitivity/:id", () => {
 			.send({ reset: true })
 		expect(res.status).toBe(200)
 		expect(res.body).toEqual({ id: 1, threshold: 3000, isCustom: false, motionRestarted: true })
+		expect(fs.promises.writeFile).toHaveBeenCalledWith(
+			"/etc/motion/cameraconf/cam1.conf",
+			"camera_id 1\n",
+			"utf8"
+		)
+	})
+
+	test("updates existing custom threshold and strips trailing comment", async () => {
+		fs.promises.readFile.mockImplementation(async (file) => {
+			if (file.includes("cam1.conf")) return "camera_id 1\nthreshold 500 # cam override\n"
+			return "daemon off\nthreshold 3000\n"
+		})
+		const res = await supertest(app)
+			.put("/motion/sensitivity/1")
+			.set("Cookie", "validCookie")
+			.send({ threshold: 900 })
+		expect(res.status).toBe(200)
+		expect(fs.promises.writeFile).toHaveBeenCalledWith(
+			"/etc/motion/cameraconf/cam1.conf",
+			"camera_id 1\nthreshold 900\n",
+			"utf8"
+		)
+	})
+
+	test("removes threshold and trailing comment when reset: true", async () => {
+		fs.promises.readFile.mockImplementation(async (file) => {
+			if (file.includes("cam1.conf")) return "camera_id 1\nthreshold 500 # cam override\n"
+			return "daemon off\nthreshold 3000\n"
+		})
+		const res = await supertest(app)
+			.put("/motion/sensitivity/1")
+			.set("Cookie", "validCookie")
+			.send({ reset: true })
+		expect(res.status).toBe(200)
 		expect(fs.promises.writeFile).toHaveBeenCalledWith(
 			"/etc/motion/cameraconf/cam1.conf",
 			"camera_id 1\n",
