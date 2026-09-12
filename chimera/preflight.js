@@ -390,9 +390,16 @@ const envProblems = (schema, lines) => {
 	return probs
 }
 
+const GIT_TIMEOUT_MS = 10000
+
 const git = (...args) => {
 	try {
-		return execFileSync("git", args, { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()
+		return execFileSync("git", args, {
+			cwd: ROOT,
+			stdio: ["ignore", "pipe", "ignore"],
+			timeout: GIT_TIMEOUT_MS,
+			env: { ...process.env, GIT_TERMINAL_PROMPT: "0" }
+		}).toString().trim()
 	} catch {
 		return null
 	}

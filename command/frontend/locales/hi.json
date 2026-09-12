@@ -42,7 +42,25 @@
 		"userCreated": "उपयोगकर्ता बनाया गया। यह अस्थायी पासवर्ड उनके साथ साझा करें:",
 		"userDeleted": "उपयोगकर्ता हटाया गया",
 		"userUpdated": "उपयोगकर्ता अपडेट किया गया",
-		"users": "उपयोगकर्ता"
+		"users": "उपयोगकर्ता",
+		"motion": {
+			"title": "Motion Detection Sensitivity",
+			"description": "Adjust the changed-pixel threshold required to trigger motion detection. Lower values are more sensitive.",
+			"save": "Save Sensitivity",
+			"saved": "Motion sensitivity updated",
+			"savedRestartFailed": "Sensitivity saved, but motion restart failed",
+			"failed": "Failed to update motion sensitivity",
+			"loadFailed": "Failed to load motion sensitivity.",
+			"moreSensitive": "More sensitive",
+			"lessSensitive": "Less sensitive",
+			"thresholdValue": "Sensitivity Threshold",
+			"allCameras": "System Default",
+			"customOverride": "Custom Sensitivity",
+			"usingDefault": "Inheriting system default",
+			"revertToDefault": "Revert to Default",
+			"reverted": "Reverted to system default sensitivity",
+			"cameraSaved": "Camera sensitivity updated"
+		}
 	},
 	"auth": {
 		"accountCreated": "खाता बनाया गया — लॉगिन पर रीडायरेक्ट हो रहा है…",

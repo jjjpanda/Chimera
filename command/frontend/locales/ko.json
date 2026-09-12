@@ -42,7 +42,25 @@
 		"userCreated": "사용자가 생성되었습니다. 다음 임시 비밀번호를 전달하세요:",
 		"userDeleted": "사용자가 삭제되었습니다",
 		"userUpdated": "사용자가 업데이트되었습니다",
-		"users": "사용자"
+		"users": "사용자",
+		"motion": {
+			"title": "Motion Detection Sensitivity",
+			"description": "Adjust the changed-pixel threshold required to trigger motion detection. Lower values are more sensitive.",
+			"save": "Save Sensitivity",
+			"saved": "Motion sensitivity updated",
+			"savedRestartFailed": "Sensitivity saved, but motion restart failed",
+			"failed": "Failed to update motion sensitivity",
+			"loadFailed": "Failed to load motion sensitivity.",
+			"moreSensitive": "More sensitive",
+			"lessSensitive": "Less sensitive",
+			"thresholdValue": "Sensitivity Threshold",
+			"allCameras": "System Default",
+			"customOverride": "Custom Sensitivity",
+			"usingDefault": "Inheriting system default",
+			"revertToDefault": "Revert to Default",
+			"reverted": "Reverted to system default sensitivity",
+			"cameraSaved": "Camera sensitivity updated"
+		}
 	},
 	"auth": {
 		"accountCreated": "계정이 생성되었습니다 — 로그인 페이지로 이동 중…",
