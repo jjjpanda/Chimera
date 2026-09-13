@@ -31,7 +31,7 @@
     "memory": "file:../memory",
     "moment": "^2.29.1",
     "pg": "^8.11.0",
-    "react": "^19.2.8",
+    "react": "^19.3.0",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.13",
     "react-responsive": "^10.0.0",
