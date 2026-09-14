@@ -12,7 +12,7 @@ The gateway forwards a request only when both of these are true:
 
 | service | methods |
 |---|---|
-| [storage](../storage) | GET, POST, DELETE |
+| [storage](../storage) | GET, POST, PUT, DELETE |
 | [schedule](../schedule) | GET, POST |
 | [livestream](../livestream) | GET, POST |
 | [object](../object) | GET, POST |
