@@ -271,6 +271,17 @@ describe("runInteractive secret file modes", () => {
 		expect(exitCode).toBe(0)
 	})
 
+	test("an existing camera conf at 0660 is not reset to 0640 by interactive preflight", async () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: ["n"]
+		})
+		mockState.modes["cameraconf/cam1.conf"] = 0o660
+		const { modes, exitCode } = await run()
+		expect(modes["cameraconf/cam1.conf"]).toBe(0o660)
+		expect(exitCode).toBe(0)
+	})
+
 	// preflight is unprivileged — when chmod itself fails, the conf stays loose and must be reported, not trusted
 	test("an existing camera conf that resists chmod stays loose and is reported", async () => {
 		setup({
@@ -845,6 +856,19 @@ describe("runCheck", () => {
 		expect(out).toContain("develop has no upstream tracking branch")
 		expect(out).not.toContain("fetch")
 		expect(out).not.toContain("set-upstream")
+		expect(out).toContain("All checks passed")
+		expect(exitCode).toBe(0)
+	})
+
+	test("accepts 0660 for camera confs so container group node can write overrides", () => {
+		setup({
+			env: { ...BLANK, storage_ON: "true", storage_FOLDERPATH: "/mnt/storage", livestream_ON: "false", object_ON: "false", SECRETKEY: SECRET },
+			answers: []
+		})
+		mockState.modes[".env"] = 0o640
+		mockState.modes["cameraconf/cam1.conf"] = 0o660
+		const { out, exitCode } = runCheckOnce()
+		expect(out).not.toContain("cam1.conf mode")
 		expect(out).toContain("All checks passed")
 		expect(exitCode).toBe(0)
 	})

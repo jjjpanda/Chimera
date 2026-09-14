@@ -104,6 +104,15 @@ const looseMode = (file) => {
 		return null
 	}
 }
+const looseConfMode = (file) => {
+	try {
+		if (!modesSupported()) return null
+		const mode = fs.statSync(file).mode & 0o777
+		return mode & 0o017 ? `0${mode.toString(8).padStart(3, "0")}` : null
+	} catch {
+		return null
+	}
+}
 const groupHint = () => {
 	const gid = process.getgid?.()
 	if (!secretsWritten.includes(ENV) || gid === undefined || gid === CONTAINER_GID) return null
@@ -195,9 +204,9 @@ const cameraProblems = () => {
 
 const confModeProblem = () => {
 	const camDir = getCamDir()
-	const loose = listConfs().map(f => [f, looseMode(path.join(camDir, f))]).filter(([, m]) => m)
+	const loose = listConfs().map(f => [f, looseConfMode(path.join(camDir, f))]).filter(([, m]) => m)
 	return loose.length
-		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds camera logins and every account on this machine can read them; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
+		? `${loose.map(([f, m]) => `${f} mode ${m}`).join(", ")} — holds camera logins and other accounts on this machine can read them; run: chmod 640 ${path.relative(ROOT, camDir) || camDir}/*.conf`
 		: null
 }
 
@@ -664,7 +673,10 @@ const runInteractive = async () => {
 			while (await confirm(listConfs().length ? "  Add another camera?" : "  Add a camera?", false)) await addCamera()
 		}
 		for (const f of listConfs()) {
-			try { fs.chmodSync(path.join(camDir, f), SECRET_MODE) } catch { /* reported by confModeProblem below */ }
+			const confPath = path.join(camDir, f)
+			try {
+				if (looseConfMode(confPath)) fs.chmodSync(confPath, SECRET_MODE)
+			} catch { /* reported by confModeProblem below */ }
 		}
 		const modeProb = confModeProblem()
 		if (modeProb) console.log(`  ${BAD} ${modeProb}`)
@@ -700,4 +712,4 @@ if (require.main === module) {
 	else runInteractive()
 }
 
-module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, warnings, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, confModeProblem, motionDirProblem, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream }
+module.exports = { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, isSecret, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, warnings, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, answerProblem, envProblems, hashTruncated, runInteractive, runCheck, ROOT, ENV, readLines, getVal, setVal, looseMode, looseConfMode, confModeProblem, motionDirProblem, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream }

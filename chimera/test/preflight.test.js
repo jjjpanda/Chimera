@@ -28,7 +28,7 @@ jest.mock("child_process", () => ({
 }))
 
 const fs = require("fs")
-const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream } = require("../preflight.js")
+const { WATCHDOG_MIN_INTERVAL_MS, parseSchema, typeOf, varProblem, cameraProblems, isServiceOff, blankDisables, objectFeedProblem, insecureCookie, cookieSecureProblem, cookiePlainHttpProblem, cookieAmbiguousHostWarning, httpsRedirectLoopWarning, certUnreadableWarning, httpsRedirectPortWarning, watchdogHostWarning, certbotPortProblem, duplicatePortProblems, setupTokenHint, envProblems, hashTruncated, looseMode, looseConfMode, isGitRepo, currentBranch, localBranchExists, upstreamOf, ensureMasterBranch, ensureUpstream } = require("../preflight.js")
 
 describe("parseSchema", () => {
 	test("parses required keys", () => {
@@ -989,6 +989,17 @@ describe("looseMode", () => {
 
 	onModes("flags group-write — group 1000 could rewrite the secret, not just read it", () => {
 		expect(looseMode(at("groupwrite", 0o660))).toBe("0660")
+	})
+
+	onModes("looseConfMode accepts 0660 and 0640 for camera confs", () => {
+		expect(looseConfMode(at("conf640", 0o640))).toBeNull()
+		expect(looseConfMode(at("conf660", 0o660))).toBeNull()
+		expect(looseConfMode(at("conf600", 0o600))).toBeNull()
+	})
+
+	onModes("looseConfMode flags other-readable camera confs", () => {
+		expect(looseConfMode(at("conf644", 0o644))).toBe("0644")
+		expect(looseConfMode(at("conf664", 0o664))).toBe("0664")
 	})
 
 	test("null for a file that is not there, so a missing artifact reports as missing", () => {
