@@ -42,7 +42,25 @@
 		"userCreated": "用户已创建。请将此临时密码分享给该用户：",
 		"userDeleted": "用户已删除",
 		"userUpdated": "用户已更新",
-		"users": "用户"
+		"users": "用户",
+		"motion": {
+			"title": "移动侦测灵敏度",
+			"description": "调整触发移动侦测所需的变更像素阈值。数值越低越灵敏。",
+			"save": "保存灵敏度",
+			"saved": "移动侦测灵敏度已更新",
+			"savedRestartFailed": "灵敏度已保存，但 motion 重启失败",
+			"failed": "更新移动侦测灵敏度失败",
+			"loadFailed": "加载移动侦测灵敏度失败。",
+			"moreSensitive": "更灵敏",
+			"lessSensitive": "较迟钝",
+			"thresholdValue": "灵敏度阈值",
+			"allCameras": "系统默认",
+			"customOverride": "自定义灵敏度",
+			"usingDefault": "继承系统默认值",
+			"revertToDefault": "恢复默认",
+			"reverted": "已恢复为系统默认灵敏度",
+			"cameraSaved": "摄像头灵敏度已更新"
+		}
 	},
 	"auth": {
 		"accountCreated": "账户已创建 — 正在跳转到登录页面…",

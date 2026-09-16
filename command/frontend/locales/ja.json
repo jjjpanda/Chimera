@@ -42,7 +42,25 @@
 		"userCreated": "ユーザーを作成しました。以下の仮パスワードを本人に伝えてください：",
 		"userDeleted": "ユーザーを削除しました",
 		"userUpdated": "ユーザーを更新しました",
-		"users": "ユーザー"
+		"users": "ユーザー",
+		"motion": {
+			"title": "動体検知の感度",
+			"description": "動体検知を作動させるために必要な変更ピクセルのしきい値を調整します。値が小さいほど感度が高くなります。",
+			"save": "感度を保存",
+			"saved": "動体検知の感度を更新しました",
+			"savedRestartFailed": "感度は保存されましたが、motionの再起動に失敗しました",
+			"failed": "動体検知感度の更新に失敗しました",
+			"loadFailed": "動体検知感度の読み込みに失敗しました。",
+			"moreSensitive": "高感度",
+			"lessSensitive": "低感度",
+			"thresholdValue": "感度しきい値",
+			"allCameras": "システムデフォルト",
+			"customOverride": "カスタム感度",
+			"usingDefault": "システムデフォルトを適用中",
+			"revertToDefault": "デフォルトに戻す",
+			"reverted": "システムデフォルトの感度に戻しました",
+			"cameraSaved": "カメラの感度を更新しました"
+		}
 	},
 	"auth": {
 		"accountCreated": "アカウントを作成しました — ログインへリダイレクトしています…",

@@ -24,6 +24,7 @@ const HlsPlayer = ({ src, className }) => {
 
 		if (video.canPlayType("application/vnd.apple.mpegurl")) {
 			video.src = src
+			video.play().catch(() => {})
 			return () => {
 				video.pause()
 				video.removeAttribute("src")
@@ -32,7 +33,10 @@ const HlsPlayer = ({ src, className }) => {
 		}
 
 		if (Hls.isSupported()) {
-			const hls = new Hls()
+			const hls = new Hls({
+				liveSyncDurationCount: 1,
+				liveMaxLatencyDurationCount: 3,
+			})
 			hls.on(Hls.Events.ERROR, (_, data) => {
 				if (!data.fatal) return
 				if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad()
@@ -41,6 +45,9 @@ const HlsPlayer = ({ src, className }) => {
 			})
 			hls.loadSource(src)
 			hls.attachMedia(video)
+			hls.on(Hls.Events.MANIFEST_PARSED, () => {
+				video.play().catch(() => {})
+			})
 			return () => hls.destroy()
 		}
 	}, [src])

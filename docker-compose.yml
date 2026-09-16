@@ -24,7 +24,7 @@ services:
     volumes:
       - chimera-storage:/mnt/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - ./motion.conf:/etc/motion/motion.conf:ro
+      - ./motion.conf:/etc/motion/motion.conf
       - ./cameraconf:/etc/motion/cameraconf
       - acme-webroot:/app/.well-known
       - ./.env:/app/.env:ro
