@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15.18@sha256:74e110c41804365e3915fcc09d5e7a1eff50161aaa94d5da0e58e0cd75ae509c
+    image: postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     environment:
       TZ: UTC
       PGTZ: UTC
