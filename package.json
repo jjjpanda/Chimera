@@ -1,6 +1,6 @@
 {
   "name": "chimera",
-  "version": "6.0.8",
+  "version": "6.0.9",
   "description": "a microservices based security camera system",
   "engines": {
     "npm": ">=7.0.0",
