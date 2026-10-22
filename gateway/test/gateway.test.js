@@ -81,4 +81,32 @@ describe("Gateway Tests", () => {
 				})
 		})
 	})
+
+	test("Gateway routes non-command services to their own backend", (done) => {
+		const storage = require("express")()
+		storage.get("/storage/health", (req, res) => res.send("storage"))
+		const server = storage.listen(parseInt(new URL(process.env.storage_HOST).port), () => {
+			supertest(gateway)
+				.get("/storage/health?x=1")
+				.expect(200, "storage", (err) => {
+					server.close()
+					done(err)
+				})
+		})
+	})
+
+	test("Gateway proxies absolute-form request targets", (done) => {
+		const storage = require("express")()
+		storage.get("/storage/health", (req, res) => res.send("storage"))
+		const server = storage.listen(parseInt(new URL(process.env.storage_HOST).port), () => {
+			const listener = gateway.listen(0, () => {
+				require("http").get({ port: listener.address().port, path: "http://example.test/storage/health?x=1" }, (res) => {
+					res.resume()
+					server.close()
+					listener.close()
+					done(res.statusCode == 200 ? undefined : new Error(`status ${res.statusCode}`))
+				})
+			})
+		})
+	})
 })
