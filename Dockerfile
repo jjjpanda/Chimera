@@ -1,4 +1,4 @@
-FROM node:22.23.4-bookworm@sha256:82693da96a4e38b8c0e2bf0c5df58fcb86d2d25e5a235c07748f09bfa38567c2 AS builder
+FROM node:26.11.1-bookworm@sha256:f1233c415b41ffcf237c717b3dea92e9d4ea006e0e4c71edcb790605d74f5404 AS builder
 WORKDIR /app
 ENV ONNXRUNTIME_NODE_INSTALL=skip
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY . .
 RUN npm ci && npm run build:command && npm prune --omit=dev
 
-FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
+FROM node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567
 WORKDIR /app
 
 ENV TZ=UTC
