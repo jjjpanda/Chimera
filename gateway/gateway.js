@@ -2,6 +2,7 @@ var express    = require("express")
 const path = require("path")
 const helmet = require("helmet")
 const httpProxy = require("http-proxy")
+const parseurl = require("parseurl")
 const { helmetOptions, redirectTarget, trustProxyHops, isHealthPath } = require("lib")
 
 var app = express()
@@ -76,7 +77,7 @@ for(const apiService of services){
 				|| (patchRe && patchRe.test(pathname) && req.method === "PATCH")
 		}
 		app.use(new RegExp(sources.join("|")), (req, res, next) => {
-			if(!shouldProxy(req.originalUrl.split("?")[0], req)) return next()
+			if(!shouldProxy(parseurl.original(req).pathname, req)) return next()
 			req.url = req.originalUrl
 			proxy.web(req, res)
 		})
