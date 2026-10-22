@@ -76,7 +76,7 @@ for(const apiService of services){
 				|| (patchRe && patchRe.test(pathname) && req.method === "PATCH")
 		}
 		app.use(new RegExp(sources.join("|")), (req, res, next) => {
-			if(!shouldProxy(req.path, req)) return next()
+			if(!shouldProxy(req.originalUrl.split("?")[0], req)) return next()
 			req.url = req.originalUrl
 			proxy.web(req, res)
 		})

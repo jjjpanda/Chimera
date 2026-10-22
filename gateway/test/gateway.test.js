@@ -81,4 +81,17 @@ describe("Gateway Tests", () => {
 				})
 		})
 	})
+
+	test("Gateway routes non-command services to their own backend", (done) => {
+		const storage = require("express")()
+		storage.get("/storage/health", (req, res) => res.send("storage"))
+		const server = storage.listen(parseInt(new URL(process.env.storage_HOST).port), () => {
+			supertest(gateway)
+				.get("/storage/health?x=1")
+				.expect(200, "storage", (err) => {
+					server.close()
+					done(err)
+				})
+		})
+	})
 })
