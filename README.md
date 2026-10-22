@@ -59,7 +59,7 @@ Each service is toggled by `<prefix>_ON`, except the gateway — it publishes th
 
 - **Docker**, with Compose **v2.23.1 or newer** (`docker compose version`). Older ones cannot read `secrets.environment`.
   - **Windows users:** Install Docker Engine inside a WSL2 distro (like Ubuntu) rather than using Docker Desktop. You will need systemd enabled in `/etc/wsl.conf` (`[boot]` section with `systemd=true`), and a global `%USERPROFILE%\.wslconfig` enabling `networkingMode=mirrored` and `hostAddressLoopback=true` under `[experimental]`. You may also need to disable Docker's userland proxy (`"userland-proxy": false` in `/etc/docker/daemon.json`) if your containers are inaccessible from the host.
-- **Node ≥ 22.23.4, ≥ 24.22.1, or ≥ 26.12.1, and npm 7+**, for the `npm run` scripts below. The services themselves run in the container.
+- **A Node version that satisfies `engines` in `package.json`, and npm 7+**, for the `npm run` scripts below. The services themselves run in the container.
 - **`git` and a connection to github.com** — `npm install` pulls every workspace's packages, and `heartbeat` comes straight from GitHub.
 
 ### 1 · Install
