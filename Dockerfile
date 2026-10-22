@@ -1,10 +1,13 @@
-FROM node:22.22.0@sha256:20a424ecd1d2064a44e12fe287bf3dae443aab31dc5e0c0cb6c74bef9c78911c AS builder
+FROM node:22.23.4-bookworm@sha256:82693da96a4e38b8c0e2bf0c5df58fcb86d2d25e5a235c07748f09bfa38567c2 AS builder
 WORKDIR /app
 ENV ONNXRUNTIME_NODE_INSTALL=skip
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge '20250419~deb12u2' \
+    && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN npm ci && npm run build:command && npm prune --omit=dev
 
-FROM node:22.22.0-slim@sha256:dd9d21971ec4395903fa6143c2b9267d048ae01ca6d3ea96f16cb30df6187d94
+FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 WORKDIR /app
 
 ENV TZ=UTC
@@ -13,6 +16,7 @@ ENV PATH=/app/node_modules/.bin:$PATH
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates motion ffmpeg postgresql-client gosu \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' ca-certificates)" ge '20250419~deb12u2' \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app ./

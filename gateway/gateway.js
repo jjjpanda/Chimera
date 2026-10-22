@@ -1,9 +1,8 @@
 var express    = require("express")
 const path = require("path")
 const helmet = require("helmet")
-var {
-	createProxyMiddleware
-}              = require("http-proxy-middleware")
+const httpProxy = require("http-proxy")
+const parseurl = require("parseurl")
 const { helmetOptions, redirectTarget, trustProxyHops, isHealthPath } = require("lib")
 
 var app = express()
@@ -65,16 +64,23 @@ for(const apiService of services){
 		if (deleteRe) sources.push(deleteRe.source)
 		if (putRe) sources.push(putRe.source)
 		if (patchRe) sources.push(patchRe.source)
-		app.use(new RegExp(sources.join("|")), createProxyMiddleware((pathname, req) => {
+		const proxy = httpProxy.createProxyServer({ target: baseURL })
+		proxy.on("error", (err, req, res) => {
+			if(!res.headersSent) res.writeHead(/^(ECONNRESET|ENOTFOUND|ECONNREFUSED|ETIMEDOUT)$/.test(err.code) ? 504 : /^HPE_INVALID/.test(err.code) ? 502 : 500)
+			res.end()
+		})
+		const shouldProxy = (pathname, req) => {
 			return (postRe.test(pathname) && req.method === "POST")
 				|| (getRe.test(pathname) && req.method === "GET")
 				|| (deleteRe && deleteRe.test(pathname) && req.method === "DELETE")
 				|| (putRe && putRe.test(pathname) && req.method === "PUT")
 				|| (patchRe && patchRe.test(pathname) && req.method === "PATCH")
-		}, {
-			target: baseURL,
-			logLevel: "silent",
-		}))
+		}
+		app.use(new RegExp(sources.join("|")), (req, res, next) => {
+			if(!shouldProxy(parseurl.original(req).pathname, req)) return next()
+			req.url = req.originalUrl
+			proxy.web(req, res)
+		})
 	}
 }
 

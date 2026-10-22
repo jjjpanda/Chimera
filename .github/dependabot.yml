@@ -6,3 +6,17 @@ updates:
     schedule:
       interval: weekly
     target-branch: develop
+
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /certbot
+    schedule:
+      interval: weekly
+    target-branch: develop
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: develop
