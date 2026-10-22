@@ -65,7 +65,7 @@ for(const apiService of services){
 		if (patchRe) sources.push(patchRe.source)
 		const proxy = httpProxy.createProxyServer({ target: baseURL })
 		proxy.on("error", (err, req, res) => {
-			if(!res.headersSent) res.writeHead(err.code == "ECONNREFUSED" ? 504 : 500)
+			if(!res.headersSent) res.writeHead(/^(ECONNRESET|ENOTFOUND|ECONNREFUSED|ETIMEDOUT)$/.test(err.code) ? 504 : /^HPE_INVALID/.test(err.code) ? 502 : 500)
 			res.end()
 		})
 		const shouldProxy = (pathname, req) => {
