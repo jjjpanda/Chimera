@@ -76,7 +76,7 @@
   "devDependencies": {
     "@babel/core": "^8.0.7",
     "@babel/preset-env": "^8.0.5",
-    "eslint": "^8.57.1",
+    "eslint": "^10.13.0",
     "eslint-plugin-react": "^7.27.0",
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.5.1",
